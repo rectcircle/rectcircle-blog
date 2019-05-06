@@ -842,6 +842,23 @@ tags:
         f.write(md.encode(encoding='utf-8'))
 ```
 
+### 部署到netlify
+
+netlify 是一个静态博客网站部署平台，提供静态网站的免费CDN分发服务。
+
+首先添加netlify的配置文件`netlify.toml`，并将博客push到github上
+
+```toml
+[build]
+publish = "public"
+command = "hugo --gc --minify"
+
+[context.production.environment]
+  HUGO_VERSION = "0.55.5"
+```
+
+然后在 [netlify](https://app.netlify.com) 上注册一个账号。然后在github中选择相应的代码库，即可完成。最后需要在 [domain设置页面](https://app.netlify.com/sites/rectcircle/settings/domain) 设置URL或者自定义域名即可完成部署。
+
 [^1]: https://www.techiediaries.com/jekyll-hugo-hexo/
 [^2]: https://stackshare.io/stackups/hexo-vs-hugo_2-vs-jekyll
 [^3]: https://www.npmtrends.com/elasticlunr-vs-fuse.js-vs-fuzzy-vs-fuzzysearch-vs-lunr-vs-reds-vs-search-index

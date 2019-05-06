@@ -4,6 +4,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 	const searchResult = document.querySelector('#searchResult')
 	const searchCount = document.querySelector('#searchCount')
 
+	searchInput.focus()
+
 	function parseLocationSearch() {
 		let locationSearch = location.search
 		let result = {}

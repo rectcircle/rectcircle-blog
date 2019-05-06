@@ -1,4 +1,4 @@
-baseURL = "https://rectcircle.netlify.com"
+baseURL = "https://www.rectcircle.cn"
 languageCode = "zh" # html的lang属性值
 DefaultContentLanguage = "zh" # 默认内容语言用于选择i18n语言模板
 title = "Rectcircle Blog"
@@ -12,6 +12,8 @@ disableAliases = true # 使用 Netlify 301 重定向
 pygmentsCodeFences = true
 googleAnalytics = 'UA-139468050-1'
 disqusShortname = "rectcircle-blog"
+relativeURLs = true # 使用相对URL
+enableGitInfo = true # 使能git信息
 
 [author]
   name   = "Rectcircle"
@@ -60,6 +62,8 @@ home = ["HTML", "REDIR", "JSON", "RSS"]
   # 自定义JS
   # customJS = ['/js/anchorforid.js', '/js/fuse.min.js', '/js/search.js']
   customJS = ['/js/anchorforid.js']
+
+  gitUrl = 'https://github.com/rectcircle/rectcircle-blog/commit/'
 
   # 首页社交配置
   [[params.social]]
