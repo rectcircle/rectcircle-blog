@@ -1,4 +1,4 @@
-baseURL = "https://www.rectcircle.cn/"
+baseURL = "https://rectcircle.netlify.com"
 languageCode = "zh" # html的lang属性值
 DefaultContentLanguage = "zh" # 默认内容语言用于选择i18n语言模板
 title = "Rectcircle Blog"
@@ -8,7 +8,7 @@ keywords = "js,javascript,nodejs,jquery,css,sass,gulp,html,git,java,hibernate,sp
 copyright = '<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>'
 readOtherPosts = "Read other posts"
 pygmentsCodeFencesGuessSyntax = true 
-disableAliases = false # 使用 Netlify 301 重定向
+disableAliases = true # 使用 Netlify 301 重定向
 pygmentsCodeFences = true
 googleAnalytics = 'UA-139468050-1'
 disqusShortname = "rectcircle-blog"
