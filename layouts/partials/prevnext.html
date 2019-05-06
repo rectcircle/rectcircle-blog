@@ -1,0 +1,24 @@
+{{$prev := .PrevInSection}}
+{{$next := .NextInSection}}
+
+{{if or $prev $next}}
+<div class="clearfix">
+<ul class="prevnext">
+{{if $prev}}
+  <li>
+  <a href="{{$prev.Permalink}}">
+    上一篇：{{$prev.Title}}
+  </a>
+  </li>
+{{end}}
+{{if $next}}
+  <li>
+  <a href="{{$next.Permalink}}">
+    下一篇：{{$next.Title}}
+  </a>
+  </li>
+{{end}}
+</ul>
+</div>
+<hr>
+{{end}}

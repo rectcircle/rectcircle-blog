@@ -1,0 +1,36 @@
+# Translations for English
+# https://gohugo.io/content-management/multilingual/#translation-of-strings
+
+# Generic
+#
+[translations]
+other = "译文"
+
+[postAvailable]
+other = "Also available in"
+
+
+# 404.html
+#
+[archives]
+other = "文章"
+
+[home]
+other = "首页"
+
+[notFound]
+other = "页面没有发现"
+
+
+# posts/single.html
+#
+[readingTime]
+one   = "一分钟"
+other = "{{ .Count }} 分钟"
+
+[tableOfContents]
+other = "目 录"
+
+[wordCount]
+one   = "字数：1"
+other = "字数：{{ .Count }}"

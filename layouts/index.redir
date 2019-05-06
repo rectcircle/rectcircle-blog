@@ -1,0 +1,7 @@
+# Netlify redirects. See https://www.netlify.com/docs/redirects/
+# https://github.com/gohugoio/hugo/blob/master/docs/themes/gohugoioTheme/layouts/index.redir
+{{  range $p := .Site.Pages -}}
+{{ range .Aliases }}
+{{  . | printf "%-35s" }}  {{ $p.RelPermalink -}}
+{{ end -}}
+{{- end -}}

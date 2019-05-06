@@ -1,0 +1,100 @@
+baseURL = "https://www.rectcircle.cn/"
+languageCode = "zh" # html的lang属性值
+DefaultContentLanguage = "zh" # 默认内容语言用于选择i18n语言模板
+title = "Rectcircle Blog"
+theme = "hello-friend-ng"
+subtitle = "Reactcircle Record And Share"
+keywords = "js,javascript,nodejs,jquery,css,sass,gulp,html,git,java,hibernate,spring,maven,mysql,sql,linux,acm,架构,前端,后端,原创,编程,开发,算法,运维,云计算,网络,互联网"
+copyright = '<a href="https://creativecommons.org/licenses/by-nc/4.0/" target="_blank" rel="noopener">CC BY-NC 4.0</a>'
+readOtherPosts = "Read other posts"
+pygmentsCodeFencesGuessSyntax = true 
+disableAliases = false # 使用 Netlify 301 重定向
+pygmentsCodeFences = true
+googleAnalytics = 'UA-139468050-1'
+disqusShortname = "rectcircle-blog"
+
+[author]
+  name   = "Rectcircle"
+  email  = "rectcircle96@gmail.com"
+
+[taxonomies]
+  tag = "tags"
+
+# 配置自定义输出：产生 netlify 重定向配置文件 _redirects
+[outputs]
+home = ["HTML", "REDIR", "JSON", "RSS"]
+
+[mediaTypes]
+  [mediaTypes."text/netlify"]
+    delimiter = ""
+
+[outputFormats]
+  [outputFormats.REDIR]
+    mediatype = "text/netlify"
+    baseName = "_redirects"
+    isPlainText = true
+    notAlternative = true
+
+# 自定义成参数和主题设置
+[params]
+  dateform        = "2006-01-02"
+  dateformShort   = "2006-01-02"
+  dateformNum     = "2006-01-02"
+  dateformNumTime = "2006-01-02 15:04"
+
+  # 首页配置
+  homeSubtitle    = "Record And Share"
+
+  # Metadata mostly used in document's head
+  description = "Reactcircle Record And Share"
+  keywords = "js,javascript,nodejs,jquery,css,sass,gulp,html,git,java,hibernate,spring,maven,mysql,sql,linux,acm,架构,前端,后端,原创,编程,开发,算法,运维,云计算,网络,互联网"
+
+  # Directory name of your blog content (default is `content/posts`)
+  contentTypeName = "posts"
+  # Default theme "light" or "dark"
+  defaultTheme = "dark"
+
+  # 自定义CSS
+  customCSS = ['/css/main.css']
+
+  # 自定义JS
+  # customJS = ['/js/anchorforid.js', '/js/fuse.min.js', '/js/search.js']
+  customJS = ['/js/anchorforid.js']
+
+  # 首页社交配置
+  [[params.social]]
+    name = "github"
+    url  = "https://github.com/rectcircle"
+  
+  [[params.social]]
+    name = "email"
+    url  = "mailto:rectcircle96@gmail.com"
+
+  [params.logo]
+    logoText = "$cd /home/rectcircle"
+    logoHomeLink = "/"
+
+  [menu]
+    [[menu.main]]
+      identifier = "about"
+      name       = "About"
+      url        = "/about"
+    [[menu.main]]
+      identifier = "blog"
+      name       = "Blog"
+      url        = "/posts"
+    [[menu.main]]
+      identifier = "tag"
+      name       = "Tags"
+      url        = "/tags"
+    [[menu.main]]
+      identifier = "series"
+      name       = "系列"
+      url        = "/series"
+
+
+
+
+
+
+

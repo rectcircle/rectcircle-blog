@@ -1,0 +1,186 @@
+.post-summary {
+	color: red;
+}
+
+/* 全局标签微调 */
+
+.breadcrumb a, .breadcrumb .active a:hover, #toc a, .footer a {
+	text-decoration: none;
+}
+
+a:hover {
+	text-decoration: underline;
+}
+
+/* figure微调 */
+
+figure.center {
+	text-align: center;
+}
+
+figure.center img {
+	display: inline;
+}
+
+/* 404 微调 */
+/* 参考 https://wow.techbrood.com/fiddle/32385 */
+
+.banner-404 h1 {
+	justify-content: center;
+
+}
+
+.btn-404 a {
+	display: inline-flex;
+	align-self: center;
+	position: relative;
+	height: 1em;
+}
+
+.btn-404 a svg {
+	width: 1em;
+}
+
+/* 面包屑导航 */
+
+.breadcrumb {
+	padding: 8px 15px;
+	margin-bottom: 40px;
+	list-style: none;
+	background-color: #0000000f;
+	margin-left: 0px;
+	border-radius: 4px;
+}
+
+.breadcrumb>li {
+	display: inline-block;
+}
+
+.breadcrumb>li+li:before {
+	padding: 0 5px;
+	color: #ccc;
+	content: ">\00a0";
+}
+
+/*
+清除浮动
+*/
+.clearfix {
+	zoom: 1
+}
+
+.clearfix:after, .clearfix:before {
+	content: "";
+	display: table
+}
+
+.clearfix:after {
+	clear: both
+}
+
+
+/* 上一页下一页 */
+
+.prevnext {
+	float: right;
+	list-style: none;
+	margin-right: 20px;
+}
+
+/* 标题锚点图标效果 */
+
+.header-link {
+	color: #0594cb;
+	transition: color .15s ease-in;
+	transition-property: color;
+	transition-duration: 0.15s;
+	transition-timing-function: ease-in;
+	transition-delay: 0s;
+	text-decoration: none;
+	height: inherit;
+}
+
+.header-link:hover {
+	color: #96ccff;
+	text-decoration: none;
+}
+
+.anchor-icon {
+	fill: currentColor;
+	opacity: .6;
+}
+
+.anchor-icon:hover {
+	color:#ff4088
+}
+
+/* 搜索 */
+
+.search-box {
+	position: relative;
+	margin-bottom: 20px;
+}
+
+#searchBoxInput {
+	padding: 0.5rem 2rem 0.5rem 1rem;
+	width: 16rem;
+	background:#eaeaea;
+	border-radius: 1rem;
+	outline: 0;
+	font-size: 1rem;
+	color: inherit;
+	border: 0px;
+	box-sizing: border-box;
+}
+
+.dark-theme .search-box #searchBoxInput {
+	background: #3b3d42;
+}
+
+#searchBoxButton {
+	display: inline;
+	background: none;
+	position: absolute;
+	left: 14rem;
+	margin: 0rem;
+	border-radius: 0rem 1rem 1rem 0rem;
+	padding: 0.45rem 0.4rem 0.30rem 0.4rem;
+}
+
+.search-box-icon {
+	color: inherit;
+	fill: currentColor;
+	width: 1.1rem;
+	height: 1.1rem;
+}
+
+.menu .search-box-icon {
+	margin-top: 6px;
+}
+
+#searchCount {
+	font-size: 0.8rem;
+}
+
+/* 标签徽章 */
+.badge{
+	display: inline-block;
+	padding: 3px 7px;
+	font-size: 12px;
+	font-weight: bold;
+	line-height: 1;
+	color: #fff;
+	text-align: center;
+	white-space: nowrap;
+	vertical-align: middle;
+	background-color: #777;
+	border-radius: 10px;
+	margin-left: 0.5rem;
+}
+
+.post-item-summary {
+	display: block;
+	margin-bottom: 12px;
+	opacity: .6;
+	font-size: 0.8rem;
+}
