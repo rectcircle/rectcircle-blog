@@ -11,16 +11,6 @@ tags:
   - python
 ---
 
-## 目录
-
-* [0、Python安装、环境、版本相关](#0、Python安装、环境、版本相关)
-* [1、使用装饰器增强一个类](#1、使用装饰器增强一个类)
-* [2、Python新式类](#2、Python新式类)
-* [3、Python类的原理](#3、Python类的原理)
-* [4、Python时间日期时区处理](#4、Python时间日期时区处理)
-* [5、Python标准包项目结构](#5、Python标准包项目结构)
-
-
 ### 0、Python安装、环境、版本相关
 
 #### （1）查看Python包目录
@@ -55,7 +45,7 @@ sys.modules['django']
     "msg": "success",
     "code": 0,
     "data": {
-		
+
 		}
 }
 ```
@@ -98,7 +88,6 @@ class StudentViewSet(WrapResponse ,viewsets.ModelViewSet):
 
 这样既可实现自动为放回数据添加包裹
 
-
 #### （2）使用装饰器
 
 一个直观的写法是：在类上添加一个装饰器，生成一个新的类，新的类是被修饰类的子类
@@ -118,7 +107,7 @@ def wrap_response(wrap_class):
 class StudentViewSet(viewsets.ModelViewSet):
     queryset = Student.objects.all()
     serializer_class = StudentSerializer
-		
+
     # 来自mixins.ListModelMixin
     # 将影响GET（get list）方法
     def list(self, request, *args, **kwargs):
@@ -126,7 +115,6 @@ class StudentViewSet(viewsets.ModelViewSet):
 ```
 
 看起来很好，但是运行起来，若调用了list方法，将会出现无限递归的问题，[原因参见](http://python.jobbole.com/85939/)，这个问题我找了半天。。。
-
 
 解决方案：动态修改属性，动态修改bound的方法
 
@@ -183,6 +171,7 @@ L（object） = [ object ]
 * 函数（称之为unbound函数）
 
 当创建一个类的对象时：
+
 * 创建一个结构，将其源信息指向class对象（叫做self）
 * 遍历class对象内部每一个
 	* 函数（类型为函数），对每个函数将self传进去，创建一个偏函数，并绑定到self内
@@ -190,7 +179,7 @@ L（object） = [ object ]
 * 执行构造函数，返回self
 * 完成
 
-```python 
+```python
 def makeBoundFunction(unboundFunction, self):
     def func(*args, **kwargs):
         unboundFunction(self, *args, **kwargs)
@@ -200,7 +189,6 @@ def makeBoundFunction(unboundFunction, self):
 以上就是`types.MethodType`的大概的实现
 
 所以可以动态的修改一个成员函数而不会影响其他函数，通过`types.MethodType`创建
-
 
 ### 4、Python时间日期时区处理
 
@@ -223,7 +211,7 @@ from django.utils import timezone
 * `time` 对 Unix时间的封装
 * `pytz` 时区相关，配合`datetime`使用，常用的有
 	* `pytz.utc`
-	* `pytz.timezone('UTC') `
+	* `pytz.timezone('UTC')`
 	* `tz = pytz.timezone('Asia/Shanghai')`
 * `timezone` django 提供的一些常用的方法
 
@@ -251,7 +239,6 @@ time.mktime(dt.timetuple()) + dt.microsecond / 1000000.0
 
 #### （3）转化为格式化的文本
 
-
 #### （4）转换为无时区的datetime
 
 ```python
@@ -264,7 +251,6 @@ dtz = utc.localize(datetime.datetime.now()) # 带时区的datetime
 dt = dtz.astimezone(tz).replace(tzinfo=None)
 ```
 
-
 #### （5）转化为有时区的datetime
 
 ```python
@@ -272,19 +258,17 @@ dt = dtz.astimezone(tz).replace(tzinfo=None)
 import datetime
 import pytz
 utc = pytz.utc
-tz =  pytz.timezone('Asia/Shanghai') 
+tz =  pytz.timezone('Asia/Shanghai')
 dt = datetime.datetime.now() # 本地无时区时间
 dtz = tz.localize(dt) # 本地有时区时间 # 不能使用 dtz = dt.replace(tz) 因为tz时间偏移量为8小时6分
 dtz = dtz.astimezone(utc) # UTC有时区时间
 ```
-
 
 #### （6）计算时间差
 
 ```python
 # 两个datetime相减
 ```
-
 
 #### （7）获取某天的0点和23点59分59秒
 
@@ -313,7 +297,6 @@ USE_TZ = True # 使用带时区的DateTime: django.utils.timezone
 * 条件查询时（比如`filter(create_time__gt=dt)`）
   * 无时区的datetime，直接将该`dt`当做UTC时区进行查询
   * 无时区的datetime，转换为UTC时区的datetime进行查询
-
 
 #### 一个时间日期转换器
 
@@ -443,9 +426,9 @@ class TimeConverter(object):
 └── requirements.txt
 ```
 
-- 当前目录名和包名最好一致
-- 最好一个项目只有一个包
-- 根目录下不要有`__init__.py`否则pylint会出错
+* 当前目录名和包名最好一致
+* 最好一个项目只有一个包
+* 根目录下不要有`__init__.py`否则pylint会出错
 
 `setup.py`文件例子
 
@@ -454,7 +437,7 @@ class TimeConverter(object):
 
 from setuptools import setup
 # or
-# from distutils.core import setup  
+# from distutils.core import setup
 
 setup(
         name='demo',     # 包名字
@@ -466,4 +449,3 @@ setup(
         packages=['demo'],                 # 包
 )
 ```
-

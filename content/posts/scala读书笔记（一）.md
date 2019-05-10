@@ -2,7 +2,7 @@
 title: scala读书笔记（一）
 date: 2016-11-22T16:38:07+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/28
@@ -11,28 +11,22 @@ tags:
   - scala
 ---
 
->  代码优于描述
-
-## 目录
-* [一、类型和内置类型详解](#一、类型和内置类型详解)
-* [二、流程控制结构](#二、流程控制结构)
-* [三、类和对象](#三、类和对象)
-* [四、包和引入](#四、包和引入)
-* [五、特质](#五、特质)
-* [六、函数式编程](#六、函数式编程)
-
-
-
+> 代码优于描述
 
 ## 一、类型和内置类型详解
-***********************************************
+
+***
+
 ### 1、String
+
 #### （1）特点
+
 * 本质上为java的String即`java.lang.String`
 * 可以使用java String类的一切方法
 * 可以使用scala扩展的函数
 
 #### （2）scala特有拓展
+
 ```scala
 /*==相当于equals*/
 	val s1 ="123"                             //> s1  : String = 123
@@ -52,8 +46,8 @@ tags:
 							|456"""
                                                   //> str  : String = 123
                                                   //| 							|456
-							
-							
+
+
 /*字符串分割，并去除前后空格*/
 	"192.168. 1. 1".split("\\.").map(_.trim); //> res0: Array[String] = Array(192, 168, 1, 1)
 
@@ -73,7 +67,7 @@ tags:
 	raw"first\nsecond"                        //> res0: String = first\nsecond
 	"first\nsecond"                           //> res1: String("first\nsecond") = first
                                                   //| second
-	
+
 /*处理字符串每个字符*/
 	"hello,world".filter(_!='l').map(_.toUpper)
                                                   //> res0: String = HEO,WORD
@@ -83,7 +77,7 @@ tags:
                                                   //| l
                                                   //| o
 	for(c<-"hello") yield c.toUpper           //> res1: String = HELLO
-	
+
 /*字符串查找模式*/
 	val numPattern = "[0-9]+".r  //numPattern: scala.util.matching.Regex = [0-9]+
 	val opt = numPattern.findFirstIn("123 afdasf"); //opt: Option[String] = Some(123)
@@ -100,19 +94,19 @@ its: scala.util.matching.Regex.MatchIterator = non-empty iterator
                                                   //> opt  : String = x afdxasf
 	val opt1 = numPattern.replaceFirstIn("123 afd234asf","x");
                                                   //> opt1  : String = x afd234asf
-	
+
 
 /*抽取字符串模式匹配结果*/
 	val pattern = "([0-9]+) ([A-Za-z]+)".r    //> pattern  : scala.util.matching.Regex = ([0-9]+) ([A-Za-z]+)
 	val pattern(num, str) = "100 nihao"       //> num  : String = 100
                                                   //| str  : String = nihao
-      
+
    "99 bottles" match {
      case pattern(num,item) => println("num => "+num +" item => " + item)
      case _ =>
    }                                              //> num => 99 item => bottles
-	 
-	 
+
+
 /*访问一个字符相当于charAt*/
 	"hello"(3)                                        //> res0: Char = l
 
@@ -125,15 +119,15 @@ its: scala.util.matching.Regex.MatchIterator = non-empty iterator
 			def plusOne = s.toInt + 1
 		}
 	}
-	
+
 	package com.rectcircle.test
-	
+
 	import com.rectcircle.util.StringUtil._
-	
+
 	object Main extends App{
 		println("abc".increment)
 	}
-	
+
 	//或者定义在包对象里
 	package com.rectcircle
 	package object util {
@@ -141,11 +135,13 @@ its: scala.util.matching.Regex.MatchIterator = non-empty iterator
 			def increment = s.map(c => (c+1).toChar)
 		}
 	}
-	
+
 	//使用时	import com.rectcircle.util._
-	
+
 ```
+
 ### 2、数字类型
+
 ```scala
 /*从字符串转数值*/
 	"100".toInt                               //> res0: Int = 100
@@ -155,15 +151,15 @@ its: scala.util.matching.Regex.MatchIterator = non-empty iterator
 	"100".toShort
 	"100".toByte
 	"aaa".toInt //异常java.lang.NumberFormatException
-	
+
 	//处理进制，可以写成隐式转换包装
 	Integer.parseInt("11", 2)                         //> res0: Int = 3
 	//关于异常，scala没有受检异常，使用option/some/none
-	
+
 /*数值类型转化*/
 	数值类型.toXxx //不会报错，会截断
 	数值类型.isValidXxx
-	
+
 /*重载默认数值类型*/
 	val a:Int = 1
 
@@ -177,7 +173,7 @@ its: scala.util.matching.Regex.MatchIterator = non-empty iterator
 		if((x-y).abs < precision) true
 		else false
 	}                                         //> ~= : (x: Double, y: Double, precision: Double)Boolean
-	
+
 	println(~=(0.1d,0.1d,0.01d))              //> true
 
 /*大数*/
@@ -186,37 +182,41 @@ its: scala.util.matching.Regex.MatchIterator = non-empty iterator
 	val c = BigDecimal("1.111111")            //> a  : scala.math.BigDecimal = 1.111111
 	a+b                                       //> res0: scala.math.BigInt = 1000000
 	和普通数值类型一样
-	
+
 /*生成随机数*/
 	val r = scala.util.Random                 //> r  : util.Random.type = scala.util.Random$@1b4fb997
 	r.nextDouble()                            //> res0: Double = 0.9011483551708958
 	r.nextDouble()                            //> res1: Double = 0.5142255521939217
-	
+
 	for(i<- 1 to 10) yield r.nextPrintableChar()
                                                   //> res3: scala.collection.immutable.IndexedSeq[Char] = Vector(I, _, E, ', {, a,
                                                   //|  T, z, v, $)
-																									
+
 /*创建一个数值区间、列表、或者数组*/
 	//数值区间
 	val r1 = 1 to 10                          //> r1  : scala.collection.immutable.Range.Inclusive = Range(1, 2, 3, 4, 5, 6, 7,
                                                   //|  8, 9, 10)
 	val r2 = 1 to 10 by 2                     //> r2  : scala.collection.immutable.Range = Range(1, 3, 5, 7, 9)
 	val r3 = 1 until 5                        //> r3  : scala.collection.immutable.Range = Range(1, 2, 3, 4)
-	
-	
+
+
 	//数组
 	val a = 1 to 5 toArray                    //> a  : Array[Int] = Array(1, 2, 3, 4, 5)
 	//列表
 	val a = 1 to 5 toList                     //> a  : List[Int] = List(1, 2, 3, 4, 5)
-	
+
 /*格式化*/
 
 ```
 
 ## 二、流程控制结构
-***********************************************
+
+***
+
 ### 1、for与foreach
+
 #### (1)遍历集合
+
 ```scala
 	val a = Array("a","b","c")                //> a  : Array[String] = Array(a, b, c)
 	for(e <- a) println(e)                    //> a
@@ -229,7 +229,7 @@ its: scala.util.matching.Regex.MatchIterator = non-empty iterator
 	}                                         //> A
                                                   //| B
                                                   //| C
-																									
+
 	  val m = Map("job" -> "123",
     "tim" -> "321")                               //> m  : scala.collection.immutable.Map[String,String] = Map(job -> 123, tim -> 3
                                                   //| 21)
@@ -240,15 +240,17 @@ its: scala.util.matching.Regex.MatchIterator = non-empty iterator
 ```
 
 #### (2)从集合中返回值，for表达式
+
 ```scala
 	val a = Array("a","b","c")                //> a  : Array[String] = Array(a, b, c)
 	for(e <- a) yield e.toUpperCase()         //> res0: Array[String] = Array(A, B, C)
-	
-	
+
+
 
 ```
 
 #### (3)循环计数器
+
 ```scala
 	val a = Array("a","b","c")                //> a  : Array[String] = Array(a, b, c)
 	for(i <- 0 until a.length) {
@@ -266,14 +268,16 @@ its: scala.util.matching.Regex.MatchIterator = non-empty iterator
 ```
 
 #### (4)生成器和卫语句
+
 ```scala
 	for(i <- 1 to 3 if i!= 2) println(i)      //> 1
                                                   //| 3
-																									
+
 	for(i <- 1 to 3 if(i!=2&&i!=3)) println(i)//> 1
 ```
 
 #### (5)实现break和continue
+
 ```scala
 import scala.util.control.Breaks._
 
@@ -299,12 +303,16 @@ for(i<- 1 to 3){
 ```
 
 ### 2、没有就三元运算符，用if else代替
+
 ```scala
 val i = 0                                 //> i  : Int = 0
 if(i==0)"a" else "b"                      //> res0: String = a
 ```
+
 ### 3、匹配表达式
+
 #### (1)基础用法像switch语句使用
+
 ```scala
 val i = 1                                 //> i  : Int = 1
 i match{
@@ -323,6 +331,7 @@ i match{
 ```
 
 #### (2)一条case匹配多个条件
+
 ```bash
 val i = 1                                 //> i  : Int = 1
 	i match{
@@ -333,6 +342,7 @@ val i = 1                                 //> i  : Int = 1
 ```
 
 #### (3)访问匹配表达式的缺省case值
+
 ```scala
 val i = 3                                 //> i  : Int = 3
 i match{
@@ -341,15 +351,17 @@ i match{
 	case default => default
 }                                         //> res0: Any = 3
 ```
+
 #### (4)使用模式匹配
+
 支持
+
 * 普通值匹配
 * 序列匹配
 * 元组匹配
 * 构造器匹配
 * 类型匹配
 * 默认匹配
-
 
 ```scala
 def echoWhatYouGaveMe(x: Any): String = x match {
@@ -389,13 +401,14 @@ def echoWhatYouGaveMe(x: Any): String = x match {
 ```
 
 #### (4)匹配case类
+
 ```scala
 	trait Animal
 	case class Dog(name: String) extends Animal
 	case class Cat(name: String) extends Animal
-	
+
 	case object Woodpecker extends Animal
-	
+
 	def determineType(x: Animal): String = x match {
         case Dog(moniker) => "Got a Dog, name = " + moniker
         case _:Cat => "Got a Cat (ignoring the name)"
@@ -409,6 +422,7 @@ def echoWhatYouGaveMe(x: Any): String = x match {
 ```
 
 #### (5)给case语句添加if表达式
+
 ```scala
 val i = 2                                 //> i  : Int = 2
 i match {
@@ -417,15 +431,17 @@ i match {
 ```
 
 #### (6)使用此替代isInstanceOf方法
+
 ```scala
 见（4）
 ```
 
 #### (7)使用List
+
 ```scala
 	//将list拼接成字符串
 	val y = 1::2::3::Nil                      //> y  : List[Int] = List(1, 2, 3)
-	
+
 	def listToString(list: List[_]):String = list match {
 		case s::rest =>s+" "+listToString(rest)
 		case Nil => ""
@@ -434,9 +450,10 @@ i match {
 
 ```
 
-
 ### 4、使用try/catch匹配异常
+
 #### （1）匹配异常
+
 ```scala
 	val s="abc"                               //> s  : String = abc
 	try{
@@ -449,6 +466,7 @@ i match {
 #### （2）在try外部定义变量
 
 ### 5、while操作符
+
 ```scala
 var i = 0;                                //> i  : Int = 0
 while(i<5){
@@ -461,23 +479,25 @@ while(i<5){
 
 ```
 
-
 ### 5、创建自定义控制结构
+
 调用
+
 ```scala
 import com.rectcircle.util.dsl._
 
 object Greeting extends App {
-  var i = 0 
+  var i = 0
   whilst(i<5){
     println(i)
     i += 1
   }
-  
+
 }
 ```
 
 实现
+
 ```scala
 package com.rectcircle.util
 import scala.annotation.tailrec
@@ -501,10 +521,15 @@ case object dsl {
 ```
 
 ## 三、类和对象
-***********************************************
+
+***
+
 ### 1、类和属性
+
 #### （1）创建一个主构造函数
+
 类似于js构造函数
+
 ```scala
  class Person(var firstName: String, var lastName: String) {
     println("the constructor begins")
@@ -527,10 +552,10 @@ case object dsl {
                                                   //| p  : worksheet.Person = adam meyer is 0 years old
 
 	p.firstName = "bb" //firstname是val可重新负值
- 
 ```
 
 java版Person
+
 ```java
 public class Person {
 	private String firstName;
@@ -588,10 +613,11 @@ public class Person {
 ```
 
 说明
+
 * _eq方法，var 定义变量的语法糖，自动添加set方法
 
-
 #### （2）控制构造函数参数的可见性
+
 * 被声明为var（包括字段：主构造函数定义的变量），会添加get/set方法、
 * 是val，只生成get方法
 * 没有val和var不会生成get/set
@@ -599,8 +625,8 @@ public class Person {
 * 以上的get/set方法不会遵循javabean命名规范
 * case类没有val和var，任然会编译成val
 
-
 ##### var声明字段
+
 ```scala
 	class Person(var name:String)
 	val p = new Person("nihao")               //> p  : worksheet.Person = worksheet$Person@5e8c92f4
@@ -609,8 +635,8 @@ public class Person {
 	p.name                                    //> res1: String = hehe
 ```
 
-
 ##### 非var和非val字段
+
 ```scala
 	class Person(name:String)
 	val p = new Person("nihao")
@@ -618,8 +644,9 @@ public class Person {
 	p.name="hehe" //报错
 	p.name //报错
 ```
-	
+
 ##### 添加private修饰
+
 ```scala
 	class Person(private var name:String)
 	val p = new Person("nihao")
@@ -629,9 +656,9 @@ public class Person {
 ```
 
 #### （3）辅助构造函数
+
 * 参数列表必须不完全相同
 * 必须调用一个已定义的构造函数
-
 
 ```scala
 class Pizza(var crustSize: Int, var crustType: String) {
@@ -644,6 +671,7 @@ class Pizza(var crustSize: Int, var crustType: String) {
 ```
 
 ##### 为case类生成构造函数
+
 ```scala
   case class Person(var name: String, var age: Int)
   // the companion object
@@ -665,6 +693,7 @@ class Pizza(var crustSize: Int, var crustType: String) {
 ```
 
 #### （4）定义私有构造函数，单例
+
 ```scala
 class Person private(name:String)
 val p = new Person("fasd") //报错
@@ -677,15 +706,15 @@ object Person {
 }
 
 val p = Person.getInstance                      //> p  : worksheet.Person = worksheet$Person@5e8c92f4
-  
+
 ```
 
 > 伴生对象，在类的同一文件中与类有相同的名字，定义关键字为object。
 > 伴生对象的任意方法将变成实例对象的静态方法
 > apply方法
 
-
 //使用伴生对象创建工具类
+
 ```scala
 object FileUtils {
 	def readFile(filename: String) = {
@@ -698,13 +727,14 @@ object FileUtils {
 ```
 
 #### （5）构造函数参数的默认值
+
 ```scala
 class Socket (val timeout: Int = 10000)
 ```
 
 #### （6）覆盖默认getset方法
-* name_=是scala语法糖
 
+* name_=是scala语法糖
 
 ```scala
 class Person(private var _name: String) {
@@ -718,6 +748,7 @@ p.name = "fasdf"
 ```
 
 符合javabean的get、set
+
 ```scala
 class Person(private var _name: String) {
 	def name = _name // accessor
@@ -736,7 +767,9 @@ p.getName                                 //> res2: String = ttwr
 ```
 
 #### （7）阻止字段生成get/set
+
 普通情况
+
 ```scala
 class Person {
 	var name:String =_
@@ -747,7 +780,9 @@ val p = new Person                        //> p  : worksheet.Person = worksheet$
 p.name                                    //> res0: String = null
 p.name = "123"
 ```
+
 不生成get/set
+
 ```scala
 class Person {
 	private var name:String =_
@@ -782,7 +817,9 @@ val f = new Foo                           //> Error happened
 ```
 
 #### （9）设置为初始化var类型
+
 不要使用null，使用Option
+
 ```scala
 var i = 0 // Int
 var d = 0.0 // Double
@@ -798,8 +835,8 @@ var address = None: Option[Address]
 ```
 
 #### （10）在继承类时处理构造函数参数
-* 在子类构造函数中，不要使用var或val定义要传给父类的参数
 
+* 在子类构造函数中，不要使用var或val定义要传给父类的参数
 
 ```scala
 case class Address (city: String, state: String)
@@ -818,7 +855,9 @@ val teresa = new Employee("Teresa", Address("Louisville", "KY"), 25)
 ```
 
 #### （11）调用父类的构造函数
+
 ##### 子类可以调用父类的任意一个构造函数
+
 ```scala
 class Animal(var name: String, var age: Int) {
 	def this(name: String) {
@@ -835,8 +874,11 @@ class Dog(name: String) extends Animal(name, 0) {
 	println("Dog constructor called")
 }
 ```
+
 ##### 子类的辅助构造函数
+
 应为scala必须存在构造函数链，最后一定会执行主构造函数，所以辅助构造函数不用显示的调用父类构造函数
+
 ```scala
 case class Address(city: String, state: String)
 case class Role(role: String)
@@ -864,10 +906,12 @@ class Employee(name: String, role: Role, address: Address)
 ```
 
 #### （12）何时使用抽象类
+
 * 需要创建一个有构造函数参数的基类
 * 需要被java调用
 
 > scala中的特质（trait）
+>
 > * 不允许有构造函数参数
 > * java无法调用带方法实现的scala trait
 > * 使用abstract修饰类
@@ -887,6 +931,7 @@ abstract class BaseController(db: Database) {
 ```
 
 #### （13）在抽象类或者特质中定义属性
+
 * 抽象类中的var属性会编译成scala的get/set方法
 * 抽象类中的val属性会编译成scala的get方法
 * 但是不会创建这么一个字段
@@ -912,10 +957,11 @@ val d = new Dog("dog")                    //> d  : worksheet.Dog = I say Woof, a
 
 ```
 
-
 #### （14）使用case类生成模板代码
+
 > case class主要是为了创建不可变记录
 > 定义一个case class scala会自动生成模板代码包括：
+>
 > * 生成apply方法，不用new
 > * val（或者不写）成get， var生成get/set
 > * 生成默认toString方法
@@ -930,8 +976,8 @@ p.name                                    //> res0: String = name
 //p.name = "fsadfd" //报错
 ```
 
-
 #### （15）定义一个equals方法
+
 > scala 对象的 == 会调用equals方法
 
 ```scala
@@ -940,8 +986,8 @@ val p2 = new Person("111",1)              //> p2  : worksheet.Person = worksheet
 p1 == p2                                  //> res0: Boolean = true
 ```
 
-
 #### （16）创建内部类
+
 ```scala
 class PandorasBox {
 	case class Thing(name: String)
@@ -951,7 +997,9 @@ class PandorasBox {
 	def addThing(name: String) { things += new Thing(name) }
 }
 ```
+
 eg.2
+
 ```scala
 class OuterClass {
 	class InnerClass {
@@ -968,23 +1016,26 @@ println(s"ic1.x = ${ic1.x}")              //> ic1.x = 10
 println(s"ic2.x = ${ic2.x}")              //> ic2.x = 20
 ```
 
-
 ### 2、方法
+
 #### （1）控制方法作用域
+
 > 默认为public
 > 从严格到宽松
+>
 > * Object-private scope对象私有作用域
->  *  `private[this] def isFoo = true`
+>   * `private[this] def isFoo = true`
 > * Private
->  * `private def ...`
+>   * `private def ...`
 > * Package
->  * `protected def`
+>   * `protected def`
 > * Package-specific
->  * 		`private[model] def doX {}`
+>   * `private[model] def doX {}`
 > * Public
->  * `def doX {}`
+>   * `def doX {}`
 
 ##### 对象私有作用域
+
 ```scala
 class Foo {
 	private[this] def isFoo = true
@@ -1003,8 +1054,9 @@ class Foo {
 }
 ```
 
-#####  私有作用域
-```
+##### 私有作用域
+
+```scala
 class Foo {
 	private def isFoo = true
 	def doFoo(other: Foo) {
@@ -1023,6 +1075,7 @@ class Dog extends Animal {
 ```
 
 ##### 保护作用域——子类可见
+
 ```scala
 class Animal {
 	protected def breathe {}
@@ -1033,6 +1086,7 @@ class Dog extends Animal {
 ```
 
 ##### 包作用域
+
 ```scala
 package com.acme.coolapp.model {
 	class Foo {
@@ -1048,6 +1102,7 @@ package com.acme.coolapp.model {
 ```
 
 ##### 开放作用域
+
 ```scala
 package com.acme.coolapp.model {
 	class Foo {
@@ -1062,12 +1117,13 @@ package org.xyz.bar {
 }
 ```
 
-
 #### （2）调用父类方法
+
 * `super.xXxx`
 * `super[父类].xXxx`
 
 一般形式
+
 ```scala
 class FourLeggedAnimal {
 	def walk { println("I'm walking") }
@@ -1082,6 +1138,7 @@ class Dog extends FourLeggedAnimal {
 ```
 
 调用特质方法(用with继承多个父类)
+
 ```scala
 trait Human {
 	def hello = "the Human trait"
@@ -1108,6 +1165,7 @@ println(s"c.printHuman = ${c.printHuman}")//> c.printHuman = the Human trait
 ```
 
 若间接继承特质，不可调用特质方法
+
 ```scala
 trait Animal {
 	def walk { println("Animal is walking") }
@@ -1117,15 +1175,15 @@ class FourLeggedAnimal extends Animal {
 }
 class Dog extends FourLeggedAnimal {
 	def walkThenRun {
-		super.walk 
-		super[FourLeggedAnimal].walk 
+		super.walk
+		super[FourLeggedAnimal].walk
 		super[Animal].walk // error
 	}
 }
 ```
 
-
 #### （3）方法参数的默认值
+
 ```scala
 class Connection {
 	def makeConnection(timeout: Int = 5000, protocol: String = "http") {
@@ -1146,9 +1204,11 @@ c.makeConnection(protocol="https", timeout=10000)
 ```
 
 #### （4）使用参数名传参，参数顺序任意
+
 `methodName(param1=value1, param2=value2, ...)`
 
 #### （5）定义一个返回多个值的tuples（元组）方法，代替java临时包装类
+
 ```scala
 def getStockInfo = ("NFLX", 100.00)               //> getStockInfo: => (String, Double)
 val (symbol, currentPrice) = getStockInfo         //> symbol  : String = NFLX
@@ -1158,6 +1218,7 @@ currentPrice                                      //> res1: Double = 100.0
 ```
 
 #### （6）调用get/set方法不要使用括号
+
 > 任意无副作用getter的声明不应该加括号
 
 ```scala
@@ -1171,15 +1232,15 @@ p.crustSize() //报错
 ```
 
 > 函数的副作用包括
+>
 > * IO输出
 > * IO读
 > * 又该一个参数的状态，或修改一个对象的某个属性值
 > * 抛出异常，出错导致程序停止
 > * 调用其他具有副作用的函数
 
-
-
 #### （7）创建接受可变参数的方法
+
 * 一个方法只允许拥有一个可变参数
 * 可变参数必须在参数列表的最后一个
 * `def printAll(strings: String*) {`
@@ -1198,9 +1259,8 @@ val arr= Array("What's","up","doc?")
 printAll(arr:_*)
 ```
 
-
-
 #### （8）方法异常声明
+
 `@throws(classOf[XxxException])`
 
 * scala 不要求处理异常
@@ -1220,11 +1280,14 @@ def playSoundFileWithJavaAudio {
 ```
 
 #### （9）方法链式调用的支持
+
 使用条件
+
 * 如果类可能会被继承，那么使用this.type作为返回值
 * 如果确定里不会被扩展，那么直接返回this，不用显示的指定返回类型为this.type
 
 ##### 会被继承
+
 ```scala
 class Person {
 	protected var fname = ""
@@ -1248,7 +1311,7 @@ class Employee extends Person {
 		"%s, %s, %s".format(fname, lname, role)
 	}
 }
- val employee = new Employee              //> employee  : worksheet.Employee = , , 
+ val employee = new Employee              //> employee  : worksheet.Employee = , ,
 
  employee.setFirstName("Al")
  .setLastName("Alexander")
@@ -1258,6 +1321,7 @@ class Employee extends Person {
 ```
 
 ##### 不会被继承
+
 ```scala
 final class Pizza {
 	import scala.collection.mutable.ArrayBuffer
@@ -1293,7 +1357,8 @@ p.setCrustSize(14)
 ```
 
 #### （10）函数柯里化
-```scalal
+
+```scala
 //多参数列表方式
 //定义
 def curriedSum(x:Int)(y:Int) = x + y
@@ -1312,17 +1377,18 @@ def plusOne = sum(1)
 
 ```
 
-
 #### （11）传名参数（创建新的控制结构）
+
 > `f:=>Boolean`
 
 单元测试框架
+
 ```scala
 //定义
-def test(desc:String)(f:=>Boolean) = 
+def test(desc:String)(f:=>Boolean) =
 	if(f) println(s"${desc}：成功")
 	else println(s"${desc}：失败")
-	
+
 //调用
 test("test1"){
 	val a=1
@@ -1332,33 +1398,39 @@ test("test1"){
 
 ```
 
-
 ### 3、对象
+
 > 对象的含义
+>
 > * java的类实例
 > * scala的关键字
->  * object
->  * package object
->  * 伴生object
+>   * object
+>   * package object
+>   * 伴生object
 
 #### （1）实例对象强制转换
+
 ```scala
 object.asInstanceOf[类型]
 ```
 
 #### （2）获取类的class对象（java.class）
+
 ```scala
  classOf[Xxx] //等价于java Xxx.class
 ```
 
 #### （3）确定实例对象所属的类
+
 ```scala
 val a = "asd"                             //> a  : String = asd
 a.getClass                                //> res0: Class[?0] = class java.lang.String
 ```
 
 #### （4）用object启动一个应用
+
 方法一、实现一个继承App特质的object
+
 ```scala
 object Hello extends App{
 	if(args.length==1)
@@ -1369,6 +1441,7 @@ object Hello extends App{
 ```
 
 方法二、实现创建一个拥有main方法的object
+
 ```scala
 object Hello {
 	def main(args: Array[String]){
@@ -1377,17 +1450,19 @@ object Hello {
 }
 ```
 
-
 #### （5）用object创建单例
+
 > object可以理解为静态类，所有方法，通过objectName调用
 
 #### （6）用伴生类创建静态成员
+
 * 在同一文件中创建class和object且具有相同的名字
 * 在object中定义静态成员
 * 在class中定义实例方法
 * object和class可以互相问私有成员
 
 一般用法
+
 ```scala
 class Pizza(var crustType: String) {
 	override def toString = "Crust type is " + crustType
@@ -1401,6 +1476,7 @@ object Pizza {
 ```
 
 互相访问私有成员
+
 ```scala
 class Foo {
 	private val secret = 2
@@ -1414,8 +1490,8 @@ object Driver extends App {
 }
 ```
 
-
 #### （7）把通用代码放在包对象package object中
+
 在不引入类和对象的情况下，让函数字段在其他代码在包级别可用
 
 ```scala
@@ -1435,16 +1511,19 @@ package object model {
 	val MutableMap = scala.collection.mutable.Map
 }
 ```
+
 > 上例子：
+>
 > * 放置在 com/alvinalexander/myapp/model文件夹内
 > * 文件名为package.scala
 
-
 #### （8）不使用new创建对象
+
 * 为类创建伴生对象，并定义一个apply方法
 * 将类定义为case类
 
 apply方法
+
 ```scala
 class Person {
 	var name: String = _
@@ -1463,11 +1542,13 @@ val a = Array(Person("Dan"), Person("Elijah"))
 ```
 
 将类定义为case类
+
 ```scala
 case class Person (var name: String)
 ```
 
 #### （9）用apply实现工厂方法
+
 ```scala
 trait Animal {
 	def speak
@@ -1489,17 +1570,21 @@ val cat = Animal("cat") // returns a Cat
 val dog = Animal("dog") // returns a Dog
 ```
 
-
 ## 四、包和引入
-***********************************************
+
+***
+
 ### 1、特点
+
 * 随处可以使用import语句
 * 导入类、包或对象
 * 导入类是隐藏或者重命名
 * 一个文件可以创建多个包类
 
 ### 2、创建
+
 c#风格包标记法
+
 ```scala
 package com.acme.store {
  class Foo { override def toString = "I am com.acme.store.Foo" }
@@ -1507,24 +1592,29 @@ package com.acme.store {
 ```
 
 java风格包定义
+
 ```scala
 package com.acme.store
 class Foo { override def toString = "I am com.acme.store.Foo" }
 ```
 
 ### 2、导入
+
 引入单个类
+
 ```scala
 import java.io.File
 ```
 
 引入包内多个类
+
 ```scala
 import java.io._
 import java.io.{File, IOException, FileNotFoundException}
 ```
 
 在块作用域内有效的import语句
+
 ```scala
 package foo
 import java.io.File
@@ -1536,21 +1626,25 @@ class Foo {
 ```
 
 导入时重命名类
+
 ```scala
 import java.util.{ArrayList => JavaList}
 import java.util.{Date => JDate, HashMap => JHashMap}
 ```
 
 导入时隐藏类
+
 ```scala
 import java.util.{Random => _, _}
 import java.util.{List => _, Map => _, Set => _, _}
 ```
 
-
 ## 五、特质
-***********************************************
+
+***
+
 ### 1、特质用作接口
+
 ```scala
 trait BaseSoundPlayer {
 	def play
@@ -1572,6 +1666,7 @@ class Foo extends Trait1 with Trait2 with Trait3 with Trait4 { ...
 ```
 
 ### 2、特质中定义抽象和实际字段
+
 ```scala
 trait PizzaTrait {
 	var numToppings: Int // abstract
@@ -1588,6 +1683,7 @@ class Pizza extends PizzaTrait {
 ```
 
 ### 3、像抽象类一样使用特质、
+
 ```scala
 trait Pet {
 	def speak { println("Yo") } // concrete implementation
@@ -1605,10 +1701,13 @@ class Cat extends Pet {
 ```
 
 ### 4、简单混入 特质
+
 使用`with`
 
 ### 5、通过继承限制特质的使用范围
+
 `trait [TraitName] extends [SuperThing]` 该特质只能被继承了SuperThing的类使用
+
 ```scala
 class StarfleetComponent
 trait StarfleetWarpCore extends StarfleetComponent
@@ -1622,6 +1721,7 @@ class Warbird extends RomulanStuff with StarfleetWarpCore
 ```
 
 ### 6、限定特质只可用于指定类型的子类
+
 ```scala
 //基本
 trait MyTrait {
@@ -1644,6 +1744,7 @@ class Enterprise extends Starship
 ```
 
 ### 7、保证特质只能添加到只有一个特定方法的类型
+
 ```scala
 trait WarpCore {
 	this: { def ejectWarpCore(password: String): Boolean } =>
@@ -1663,8 +1764,8 @@ class Enterprise extends Starship with WarpCore {
 }
 ```
 
-
 ### 8、为object类型添加特质
+
 ```scala
 object Test extends App {
 	val hulk = new DavidBanner with Angry
@@ -1672,6 +1773,7 @@ object Test extends App {
 ```
 
 ### 9、像特质一样继承一个Java接口
+
 ```java
 public interface Animal {
 	public void speak();
@@ -1693,13 +1795,19 @@ class Dog extends Animal with Wagging with Running {
 ```
 
 ## 六、函数式编程
-***********************************************
+
+***
+
 ### 1、使用匿名函数（函数字面量）
+
 匿名函数
+
 ```scala
 (i: Int) => i % 2 == 0
 ```
+
 匿名函数作为参数，简化过程
+
 ```scala
 val x = List.range(1, 3)                          //> x  : List[Int] = List(1, 2)
 x.foreach((i:Int) => println(i))                  //> 1
@@ -1715,7 +1823,9 @@ x.foreach(println)                                //> 1
 ```
 
 ### 2、将函数赋给变量
+
 #### （1）将匿名函数赋给变量
+
 ```scala
 //完整形式
 //val|var 变量名:函数签名 = (参数列表) => 函数体
@@ -1729,8 +1839,8 @@ val p2 = (x:Int) => {println(x)} //常用             //> p2  : Int => Unit = <f
 val p3 = (x:Int) => println(x)                    //> p3  : Int => Unit = <function1>
 ```
 
-
 #### （2）将已存在的函数赋给变量
+
 ```scala
 val c = scala.math.cos _                          //> c  : Double => Double = <function1>
 val c1 = scala.math.cos(_)                        //> c1  : Double => Double = <function1>
@@ -1743,6 +1853,7 @@ val sqrt = (x:Double) => scala.math.pow(x, 0.5)   //> sqrt  : Double => Double =
 ```
 
 #### （3）定义接受回调函数的方法
+
 ```scala
 def executeFunction(callback: () => Unit) {
 	callback()
@@ -1751,7 +1862,9 @@ def executeFunction(callback: () => Unit) {
 ```
 
 #### （4）闭包
+
 注意代码中的$hello
+
 ```scala
 def exec(f: (String) => Unit, name: String) {
 	f(name)
@@ -1767,11 +1880,13 @@ exec(sayHello, "Lorenzo")                 //> Hola, Lorenzo
 ```
 
 #### （5）部分应用函数
+
 ```scala
 val sqrt = scala.math.pow(_:Double, 0.5)          //> sqrt  : Double => Double = <function1>
 ```
 
 #### （6）返回函数
+
 ```scala
 def saySomething(prefix: String) = (s: String) => {
 	prefix + " " + s
@@ -1781,7 +1896,9 @@ val sayHello = saySomething("Hello")      //> sayHello  : String => String = <fu
 ```
 
 #### （7）创建偏函数
+
 普通实现
+
 ```scala
 val divide = new PartialFunction[Int, Int] {
 	def apply(x: Int) = 42 / x
@@ -1791,13 +1908,17 @@ val divide = new PartialFunction[Int, Int] {
 divide.isDefinedAt(0)                     //> res0: Boolean = false
 divide(2)                                 //> res1: Int = 21
 ```
+
 case实现
+
 ```scala
 val divide2: PartialFunction[Int, Int] = {
 	case d: Int if d != 0 => 42 / d
 }                                                 //> divide2  : PartialFunction[Int,Int] = <function1>
 ```
+
 例三
+
 ```scala
 // converts 1 to "one", etc., up to 5
 val convertLowNumToString = new PartialFunction[Int, String] {
@@ -1808,6 +1929,7 @@ val convertLowNumToString = new PartialFunction[Int, String] {
 ```
 
 使用orElse和andThen
+
 ```scala
 val convert1to5 = new PartialFunction[Int, String] {
 	val nums = Array("one", "two", "three", "four", "five")
@@ -1828,7 +1950,3 @@ val handle1to10 = convert1to5 orElse convert6to10
 handle1to10(3)                            //> res0: String = three
 handle1to10(8)                            //> res1: String = eight
 ```
-
-
-
-

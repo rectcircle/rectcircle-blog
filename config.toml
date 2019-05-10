@@ -12,7 +12,7 @@ disableAliases = true # 使用 Netlify 301 重定向
 pygmentsCodeFences = true
 googleAnalytics = 'UA-139468050-1'
 disqusShortname = "rectcircle-blog"
-relativeURLs = true # 使用相对URL
+canonifyURLs = true # 启用将相对URL转换为绝对URL
 enableGitInfo = true # 使能git信息
 
 [author]

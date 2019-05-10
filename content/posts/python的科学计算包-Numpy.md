@@ -2,7 +2,7 @@
 title: python的科学计算包-Numpy
 date: 2017-08-16T12:55:17+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/88
@@ -14,48 +14,36 @@ tags:
 
 > https://docs.scipy.org/doc/numpy/index.html
 
-## 目录
-* [一、数据类型array](#一、数据类型array)
-	* [1、array简介](#1、array简介)
-	* [2、创建array](#2、创建array)
-	* [3、array的切片和索引](#3、array的切片和索引)
-	* [4、array的属性](#3、array的属性)
-	* [5、array元素的类型](#4、array元素的类型)
-	* [6、array的重载运算符方法](#6、array的重载运算符方法)
-	* [7、array的成员方法](#7、array的成员方法)
-	* [8、array的广播规则](#8、array的广播规则)
-	* [9、随机模块](9、随机模块)
-* [二、array操作](#二、array操作)
-	* [1、数组操作例程](#1、数组操作例程)
-	* [2、线性代数相关操作](#2、线性代数相关操作)
-
-
-
-
 ## 一、数据类型array
-*******************************************
+
+***
+
 ### 1、array简介
+
 array，也就是数组，是numpy中最基础的数据结构，最关键的属性是维度和元素类型。array是np中最基本的运算单元。
 array是一个相同类型的元素列表，通过整数元组索引。
 
-
 ### 2、创建array
+
 > https://docs.scipy.org/doc/numpy/reference/routines.array-creation.html
 
 #### （1）使用`np.array()`由Python列表初始化创建
+
 ```py
-a = [1, 2, 3, 4]     	
+a = [1, 2, 3, 4]
 b = np.array(a)
 
 c = [[1, 2], [3, 4]]  	# 二维列表
 d = np.array(c)         	# 二维numpy数组
 ```
+
 函数声明：`numpy.array(object, dtype=None, copy=True, order='K', subok=False, ndmin=0)`
+
 * `object`：一个数组，任何暴露了数组接口的对象（也就是说对象的`__array__`方法返回一个数组），或者任何（嵌套）序列
 * https://docs.scipy.org/doc/numpy/reference/generated/numpy.array.html
 
-
 #### （2）其他从已存在数据创建
+
 * `asarray(a[, dtype, order])`，类似于`array()`，但是当a为narray时，不会发生拷贝
 * `asanyarray(a[, dtype, order])`	Convert the input to an ndarray, but pass ndarray subclasses through.
 * `ascontiguousarray(a[, dtype])`	Return a contiguous array in memory (C order).
@@ -69,6 +57,7 @@ d = np.array(c)         	# 二维numpy数组
 * `loadtxt(fname[, dtype, comments, delimiter, ...])`	从文本文件创建
 
 例子
+
 ```py
 b = np.array(a)
 
@@ -81,6 +70,7 @@ np.fromstring('\x01\x02\x03\x04\x05', dtype=np.uint8, count=3)
 ```
 
 #### （3）以特定规则创建
+
 * `empty(shape[, dtype, order])`	指定形状和类型创建空数组，元素值随机
 * `empty_like(a[, dtype, order, subok])`	创建和a数组形状相同的数组，元素值随机
 * `eye(N[, M, k, dtype])`	创建特殊二位矩阵，某条对角线为的值为1，其他元素值为0
@@ -105,10 +95,15 @@ np.full([2,3],2)
 ```
 
 #### （4）创建记录数组
+
 略
+
 #### （5）创建字符数组
+
 略
+
 #### （6）数值范围
+
 * `np.arange([start,] stop[, step,][, dtype])` 在给定的间隔内返回均匀间隔的值（给定间隔）
 * `np.linspace(start, stop[, num, endpoint, ...])`	在指定的间隔内返回均匀间隔的数字（给定返回的数字个数）
 * `np.logspace(start, stop[, num, endpoint, base, ...])`	返回数字在对数刻度上均匀间隔。
@@ -126,6 +121,7 @@ np.geomspace(0,4)
 ```
 
 #### （7）创建矩阵
+
 * `np.diag(v[, k])`	提取对角线或构造对角阵列
 * `np.diagflat(v[, k])` 将v转换为1维再构造矩阵对焦矩阵
 * `np.tri(N[, M, k, dtype])` 一个数组，其中给定对角线和下方的数组和其他地方的零
@@ -152,29 +148,38 @@ np.vander([1,2,3,5], increasing=True)
 * `np.mat(data[, dtype])` 将data解释成矩阵
 * `np.bmat(obj[, ldict, gdict])`	从字符串，嵌套序列或数组构建矩阵对象
 
-
 ### 3、array的切片和索引
+
 > https://docs.scipy.org/doc/numpy/reference/arrays.indexing.html#arrays-indexing
 
 #### （1）索引
+
 通过`x[obj]`表达式，索引从0开始，取出元素
+
 ```py
 d = np.array([[1,2,3],[4,5,6],[7,8,9]])
 d[1,2]
 ```
 
 #### （2）切片
+
 **基本切片表达式：**
+
 `x[i:j:k]`
+
 `i`表示起始索引（包括），`j`表示结束索引（不包括），`k`表示步长默认为1，
+
 ```py
 x = np.array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
 x[1:7:2]
 x[1:7]
 ```
+
 **负数i，j，k**
+
 负数`i`表示索引`n + i`，负数`j`表示`n+j`，`n`表示元素个数
 负数`k`表示递减（当起始索引在结束索引后面，否则将取回`array([], dtype=int32)`）
+
 ```py
 x[-2:10]
 x[-3:3:-1]
@@ -183,7 +188,9 @@ x[3:1:-1]
 ```
 
 **i或j不填**
+
 表示一直切片到尽头
+
 ```py
 x[5:] # array([5, 6, 7, 8, 9])
 x[-5:] # array([5, 6, 7, 8, 9])
@@ -192,13 +199,17 @@ x[-5::-1] # array([5, 4, 3, 2, 1, 0])
 ```
 
 **全部不填**
+
 选中全部
+
 ```py
 x[:]
 ```
 
 **多维的情况**
+
 按照各个维度进行切片
+
 ```py
 x = np.array([[[1],[2],[3]], [[4],[5],[6]]])
 x[1:2]
@@ -208,82 +219,102 @@ x[1:,:,:]
 ```
 
 **省略号**
+
 等价于多个前缀`:`
+
 ```py
 x[...,0] # 等价于x[:,:,0]
 ```
 
 **np.newaxis**
+
 添加一个维度
+
 ```py
 x[:,np.newaxis,:,:].shape # 等价于x[:,None,:,:].shape
 ```
 
 **一个整数`i`与`i:i+1`的区别**
+
 `i`：表示取出元素，减少一个维度
+
 `i:i+1`：进行切片，只包含一个元素，维度不变
+
 ```py
 x[...,0]   #array([[1, 2, 3],[4, 5, 6]])
 x[...,0:1] #array([[[1],[2],[3]],[[4],[5],[6]]])
 ```
 
 #### （3）高级索引
+
 当选择成分为非元组的对象将触发高级索引（元素必须为整型或者bool型）
 
 高级索引将返回拷贝而不是一个基本索引的视图
 
-`x[(1,2,3),]`将触发高级索引，` x[(1,2,3)]`相当于`x[1,2,3]`触发基本索引
-`x[[1,2,3]]`将触发高级索引，`x[[1,2,slice(None)]]`将触发普通索引
+* `x[(1,2,3),]`将触发高级索引，`x[(1,2,3)]`相当于`x[1,2,3]`触发基本索引
+* `x[[1,2,3]]`将触发高级索引，`x[[1,2,slice(None)]]`将触发普通索引
 
 **整数数组索引**
+
 假设为二维数组，基本形式为`[rows, columns]`，rows为列表，表示选中的行，columns为选中的列，行列组成坐标组成新的切片
 
 *例子1*
+
 ```py
 x = np.array([[1, 2], [3, 4], [5, 6]])
 x[[0, 1, 2], [0, 1, 0]] #array([1, 4, 5])
 ```
-以上说明：
-选取第0,1,3行的对应的第0,1,0列的元素
-也就是说选取坐标为(0,0),(1,1),(2,0)的元素
-等价于`np.array([x[0,0],x[1,1],x[2,0]])`
 
+以上说明：
+
+* 选取第0,1,3行的对应的第0,1,0列的元素
+* 也就是说选取坐标为(0,0),(1,1),(2,0)的元素
+* 等价于`np.array([x[0,0],x[1,1],x[2,0]])`
 
 *例子2*
+
 ```py
 x = np.array([[ 0,  1,  2],
            [ 3,  4,  5],
            [ 6,  7,  8],
            [ 9, 10, 11]])
-rows = [[0, 0], 
+rows = [[0, 0],
         [3, 3]]
-columns = [[0, 2], 
+columns = [[0, 2],
            [0, 2]]
 x[rows, columns] #array([[ 0,  2], [ 9, 11]])
 ```
+
 等价于
+
 ```py
 np.array([[ x[0,0], x[0,2] ],
           [ x[3,0], x[3,2] ]])
 ```
+
 等价于
+
 ```py
 x[[[0],[3]], [0,2]]
 ```
+
 等价于
+
 ```py
 x[np.ix_([0,3], [0,2])]
 ```
 
 *综合应用高级索引和基本索引*
+
 ```py
 x[1:2, 1:3] #array([[4, 5]])
 # 等价于 x[1:2, [1, 2]]
 ```
 
-
 **bool数组索引**
+
 类似于一种过滤器,True的元素被选中，False的元素被剔除
+
 ```py
 x = np.array([[1., 2.], [np.nan, 3.], [np.nan, np.nan]])
 x[~np.isnan(x)] #array([ 1.,  2.,  3.])
@@ -305,9 +336,8 @@ x[np.ix_(rows, columns)] #array([[ 3,  5], [ 9, 11]])
 # 等价于 x[rows[:, np.newaxis], columns]
 ```
 
-
-
 ### 4、array的属性
+
 * `ndarray.flags` Information about the memory layout of the array
 * **`ndarray.shape`** 数组的形状，返回数组各个维度的大小的元组
 * `ndarray.strides` 遍历数组时在每个维中步进的字节数。
@@ -319,8 +349,8 @@ x[np.ix_(rows, columns)] #array([[ 3,  5], [ 9, 11]])
 * `ndarray.base` 内存来自某个其他对象的基础对象
 * **`ndarray.dtype`** 数组的元素数据类型
 
-
 ### 5、array元素的类型
+
 > https://docs.scipy.org/doc/numpy/reference/arrays.scalars.html
 
 | np.类型名 |	对应于别的语言的类型 |	字符简称 |
@@ -371,12 +401,14 @@ x[np.ix_(rows, columns)] #array([[ 3,  5], [ 9, 11]])
 |np.complex256 |	two 128-bit floats, platform?	 ||
 
 ### 6、array的重载运算符方法
+
 **比较运算符：**
+
 * `<`
-* `<=` 
-* `>` 
-* `>=` 
-* `==` 
+* `<=`
+* `>`
+* `>=`
+* `==`
 * `!=`
 
 ```py
@@ -384,20 +416,23 @@ x = np.array([[ 0,  1,  2],
            [ 3,  4,  5],
            [ 6,  7,  8],
            [ 9, 10, 11]])
-					 
+
 x < 1
 x < x
 x <= x
 ```
+
 参数为 标量或者 形状相同的矩阵，返回一个形状相同的bool数组，表示**按元素比较的结果**
 
 **一元运算符：**
+
 * `-x` 元素取反
 * `+x` 不变
 * `abs(x)`  元素取非
 * `~x` 元素按位取非
 
 **算数运算符（二元运算符）：**
+
 * `a+b`
 * `a-b`
 * `a*b`
@@ -405,7 +440,7 @@ x <= x
 * `a//b`
 * `a%b`
 * `divmod(x, y)` 同时返回除数和余数
-* `pow(x, y[, z])	`或者 `x**y`
+* `pow(x, y[, z])`或者 `x**y`
 * `x<<y`
 * `x>>y`
 * `x&y`
@@ -415,6 +450,7 @@ x <= x
 第二操作数为标量或者和第一操作数相同的尺寸的数组，**按元素运算**
 
 **赋值运算符**
+
 * `x+=y`
 * `x-=y`
 * `x*=y`
@@ -427,16 +463,18 @@ x <= x
 * `x&=y`
 * `x|=y`
 * `x^=y`
+
 第二操作数为标量或者和第一操作数相同的尺寸的数组，**按元素运算**
 
 **矩阵乘法**（python3.5 和NumPy1.10.0）
+
 * `x@y` x乘以y
 * `x@=y` x乘以y赋值给x
 
-
-
 ### 7、array的成员方法
+
 #### （1）数组转换
+
 * `ndarray.item(*args)`	将数组的元素复制到标准的Python标量并返回
 * **`ndarray.tolist()`**	将数组作为（可能嵌套的）python列表返回
 * **`ndarray.itemset(*args)`**	将标量插入数组（如果可能，标量被转换为数组的dtype），至少两个参数，最后一个参数为插入值，前几个参数为索引
@@ -470,6 +508,7 @@ x.fill(1)
 ```
 
 #### （2）形状操纵
+
 * **`ndarray.reshape(shape[, order])`**	返回包含新形状的相同数据的数组，传入一个列表
 * `ndarray.resize(new_shape[, refcheck])`	改变数组本身的形状和尺寸
 * `ndarray.transpose(*axes)`	返回一个转置的结果，不填表示各个维度逆序，否则填写n个整数
@@ -498,7 +537,8 @@ x3.squeeze(1)
 ```
 
 #### （3）元素的选择和操作
-* `ndarray.take(indices[, axis, out, mode])`	**取**，返回一个数组的切片，根据索引和轴 
+
+* `ndarray.take(indices[, axis, out, mode])`	**取**，返回一个数组的切片，根据索引和轴
 * `ndarray.put(indices, values[, mode])` **放**，将索引位置的值设置为values的值
 * `ndarray.repeat(repeats[, axis])` 按索引和轴重复元素
 * ndarray.choose(choices[, out, mode])	Use an index array to construct a new array from a set of choices.
@@ -527,11 +567,14 @@ x.repeat([1, 2], axis=0) #第0个轴的元素分别重复1,2次
 ```
 
 #### （4）元素沿轴计算
+
 这里的许多方法都具有`axis`参数
+
 * 如果axis不填（为None），数组将视为1维的进行运算
 * 如果axis是一个整数，将沿着这个轴的每一个子元素展开为1维进行计算
 
 例子：
+
 ```py
 x = np.array([[[1,2],[3,4]],[[5,6],[7,8]]]) #可以想成空间坐标系中的点
 x.sum() #返回一个标量36
@@ -539,7 +582,6 @@ x.sum(0) #按照0轴相加返回一个2*2的数组 array([[ 6,  8],  [10, 12]])
 x.sum(1) #按照1轴相加返回一个2*2的数组 array([[ 4,  6],  [12, 14]])
 x.sum(2) #按照2轴相加返回一个2*2的数组 array([[ 3,  7],  [11, 15]])
 ```
-
 
 * `ndarray.argmax([axis, out])` 返回沿给定轴的最大值的索引
 * ndarray.min([axis, out, keepdims])	返回沿给定轴的最小值
@@ -583,9 +625,11 @@ x.any()
 ```
 
 ### 8、array的广播规则
+
 > https://zhuanlan.zhihu.com/p/24309547
 
 对于array，默认执行对位运算。涉及到多个array的对位运算需要array的维度一致，如果一个array的维度和另一个array的子维度一致，则在没有对齐的维度上分别执行对位运，这种机制叫做广播（broadcasting），言语解释比较难，还是看例子理解：
+
 ```py
 import numpy as np
 
@@ -672,8 +716,8 @@ array([[ 0,  1,  2],
 c - 1
 ```
 
-
 ### 9、随机模块
+
 ```py
 import numpy as np
 import numpy.random as random
@@ -728,13 +772,19 @@ random.bytes(9)
 ```
 
 ## 二、array操作
-***********************************
+
+***
+
 ### 1、数组操作例程
+
 没有前缀的表示`np.函数`，有前缀的`ndarray`表示array成员方法，不带括号的表示array成员的属性
+
 #### （1）基本操作
+
 * `copyto(dst, src[, casting, where])`	将值从一个阵列复制到另一个阵列，并根据需要进行广播
 
 #### （2）改变数组形状
+
 * `reshape(a, newshape[, order])`	给数组赋予一个新的形状，而不改变它的数据
 * `ravel(a[, order])`	返回一个连续的平坦阵列
 * `ndarray.flat`	数组上的1-D迭代器
@@ -746,7 +796,6 @@ np.reshape(x,[2,4])
 x.flat
 x.flatten()
 ```
-
 
 #### （3）转置式操作
 
@@ -765,6 +814,7 @@ np.transpose(x)
 ```
 
 #### （4）更改维度数目
+
 * `atleast_1d(*arys)`	将输入转换为至少有一个维度的数组
 * `atleast_2d(*arys)`	将输入视为具有至少两个维度的数组
 * `atleast_3d(*arys)`	将输入视为具有至少三维的数组
@@ -783,6 +833,7 @@ np.expand_dims(x, 2)
 ```
 
 #### （5）改变阵列的种类
+
 * `asarray(a[, dtype, order])`	将输入转换为数组
 * `asanyarray(a[, dtype, order])`	将输入转换为ndarray，但通过ndarray子类
 * `asmatrix(data[, dtype])`	将输入解释为矩阵
@@ -812,8 +863,8 @@ np.column_stack(([1,1,1,1],x)) #在x前添加一列
 np.row_stack(([1,1,1],x)) #在x前添加一行
 ```
 
-
 #### （7）拆分数组
+
 * `split(ary, indices_or_sections[, axis])`	将数组拆分成多个子数组
 * `array_split(ary, indices_or_sections[, axis])` 将数组拆分成多个子数组
 * `dsplit(ary, indices_or_sections)`	沿着第3轴（深度）将阵列分割成多个子阵列
@@ -835,6 +886,7 @@ np.row_stack(([1,1,1],x)) #在x前添加一行
 * `unique(ar[, return_index, return_inverse, ...])`	查找数组的独特元素
 
 #### （10）重新排列元素
+
 * `flip(m, axis)` 沿着给定的轴反转数组中元素的顺序
 * `fliplr(m)`	在左/右方向翻转数组。
 * `flipud(m)`	在上/下方向翻转数组。
@@ -842,11 +894,12 @@ np.row_stack(([1,1,1],x)) #在x前添加一行
 * `roll(a, shift[, axis])`	沿着给定的轴滚动阵列元素
 * `rot90(m[, k, axes])`	在轴指定的平面内将阵列旋转90度
 
-
 ### 2、线性代数相关操作
+
 > https://docs.scipy.org/doc/numpy/reference/routines.linalg.html
 
 #### （1）矩阵和向量
+
 * `dot(a, b[, out])`	两个数组的点积， 对于二维数组相当于矩阵乘法，对于一维数组相当于向量的内积
 * `vdot(a, b)` 返回两个向量的点积，按位相乘在求和，对于高维的要先展平为1维
 * `inner(a, b)`	用于1-D数组的向量的普通内积，在更高维度上是最后轴上的和积。
@@ -857,9 +910,6 @@ np.row_stack(([1,1,1],x)) #在x前添加一行
 * `linalg.matrix_power(M, n)`	Raise a square matrix to the (integer) power n.
 * `kron(a, b)`	Kronecker product of two arrays.
 * `U, s, V = np.linalg.svd(e)`对不镇定矩阵，进行SVD分解并重建
-
-
-
 
 ```py
 np.dot(3, 4)
@@ -884,5 +934,5 @@ np.matmul(a,b)
 ```
 
 #### （2）其他
-https://docs.scipy.org/doc/numpy/reference/routines.linalg.html
 
+https://docs.scipy.org/doc/numpy/reference/routines.linalg.html

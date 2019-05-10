@@ -2,7 +2,7 @@
 title: scala akka http（一）
 date: 2017-11-16T23:10:08+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/117
@@ -13,38 +13,18 @@ tags:
 
 > [参考1](http://blog.csdn.net/tiger_xc?viewmode=contents)
 
-* [五、http](#五、http)
-	*	[1、介绍](#1、介绍)
-	*	[2、配置](#2、配置)
-	*	[3、通用抽象（客户端和服务器端）](#3、通用抽象（客户端和服务器端）)
-		*	[（1）Http模型](#（1）Http模型)
-		*	[（2）URI模型](#（2）URI模型)
-		*	[（3）Marshalling](#（3）Marshalling)
-		*	[（4）Unmarshalling](#（4）Unmarshalling)
-		*	[（5）编解码](#（5）编解码)
-		*	[（6）JSON支持](#（6）JSON支持)
-		*	[（7）XML支持](#[（7）XML支持)
-		*	[（8）HTTP超时](#（8）HTTP超时)
-	*	[4、请求/响应实体的流式性质的影响](#4、请求/响应实体的流式性质的影响)
-	*	[5、低等级服务端API](#5、低等级服务端API)
-	*	[6、高级别服务端API](#6、高级别服务端API)
-		*	[（1）几个例子](#（7）几个例子)
-		*	[（2）Routing DSL](#（2）Routing DSL)
-		*	[（3）指令](#（3）指令)
-		*	[（4）拒收](#（4）拒收)
-		*	[（5）异常处理](#（5）异常处理)
-		*	[（6）提取case class](#（6）提取case class)
-
-
-
 ## 五、http
-************************************
+
+***
+
 ### 1、介绍
+
 Akka HTTP模块在akka-actor和akka-stream之上实现了完整的服务器端和客户端HTTP栈。这不是一个Web框架，而是提供和使用基于HTTP的服务的更一般的工具包。虽然与浏览器的交互当然也在范围内，但它并不是Akka HTTP的主要关注点。
 
 Akka HTTP遵循相当开放的设计，并且多次提供几个不同的API级别来“做同样的事情”。您可以选择最适合您的应用程序的API抽象级别。这意味着，如果您在使用高级API实现某些功能时遇到困难，那么您很可能可以使用低级API来完成这一任务，这样可以提供更多的灵活性，但可能需要编写更多的应用程序代码。
 
 #### （1）设计哲学
+
 Akka HTTP一直致力于提供构建集成层而不是应用程序内核的工具。因此，它把自己看作是一套库，而不是一个框架。
 
 正如我们想要的那样，框架为您提供了一个“框架”，您可以在其中构建应用程序。它提供了许多已经预先制定的决策，并提供了一个基础，包括支持结构，使您能够快速开始并交付结果。在某种程度上，框架就像是一个框架，为了让它生动起来，应用程序的“肉体”就放在这个框架上。如果您在开始应用程序开发之前选择了这些框架，并且尝试在框架“坚持”做事的方式时，这样的框架效果最佳。
@@ -58,16 +38,19 @@ Akka HTTP被设计为“非框架”，不是因为我们不喜欢框架，而�
 另一方面，如果您更愿意在框架的指导下构建您的应用程序，则应该尝试使用Play Framework或Lagom，这两者都在内部使用Akka。
 
 #### （2）使用Akka Http
+
 引入依赖
+
 ```scala
 // For Akka 2.4.x or 2.5.x
-"com.typesafe.akka" %% "akka-http" % "10.0.10" 
+"com.typesafe.akka" %% "akka-http" % "10.0.10"
 // Only when running against Akka 2.5 explicitly depend on akka-streams in same version as akka-actor
 "com.typesafe.akka" %% "akka-stream" % "2.5.4" // or whatever the latest version is
 "com.typesafe.akka" %% "akka-actor"  % "2.5.4" // or whatever the latest version is
 ```
 
 #### （3）Routing DSL for HTTP servers
+
 高级Api提供了一套DSL来描述Http的路由及处理。每个路由由一个或多个级别的 `Directive` 组成，这些指令缩小到处理一个特定类型的请求。
 
 例如，一个路由可能以匹配请求的路径开始，只有在匹配时才匹配“/hello”，然后将其缩小为只处理HTTP get请求，然后用字符串文本来完成这些请求，这些字符串文本将作为HTTP OK以字符串作为响应主体发回。
@@ -77,6 +60,7 @@ Akka HTTP被设计为“非框架”，不是因为我们不喜欢框架，而�
 默认的marshallers提供了简单的对象如String或ByteString，你可以定义你自己的例子为JSON。另一个模块使用spray-json库提供JSON序列化
 
 例子
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -218,6 +202,7 @@ object WebServer extends App {
 ```
 
 #### （4）低级Api
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -268,6 +253,7 @@ object LowLevelWebServer extends App {
 ```
 
 #### （5）Http客户端Api
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -297,28 +283,32 @@ object HttpClient extends App {
 ```
 
 #### （6）Akka Http 模块
+
 * akka-http http 高级服务端api
 * akka-http-core 低级服务端api
 * akka-http-testkit http测试
 * akka-http-spray-json json序列化与反序列化
 * akka-http-xml xml序列化和反序列化
 
-
 ### 2、配置
+
 [参见](https://doc.akka.io/docs/akka-http/current/scala/http/configuration.html)
 
-
 ### 3、通用抽象（客户端和服务器端）
+
 #### （1）Http模型
+
 参考源码
 
 **概貌**
+
 * `import akka.http.scaladsl.model._` 引入了HttpRequest HttpResponse headers Uri, HttpMethods, MediaTypes, StatusCodes等http模型
 
-
 **HttpRequest**
+
 对http请求的抽象，包含请求方法、url、请求头、请求体、协议号等
 例子：
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -356,13 +346,16 @@ object CommonAbstractions extends App {
 ```
 
 **HttpResponse**
+
 包含
+
 * 状态码
 * 返回头序列
 * 响应体
 * 协议版本
 
 例子
+
 ```scala
 import StatusCodes._
 
@@ -380,32 +373,34 @@ val locationHeader = headers.Location("http://example.com/other")
 HttpResponse(Found, headers = List(locationHeader))
 ```
 
-
 **HttpEntity**
+
 他将设置字节数据消息和Content-Type，如果知道还将设置 Content-Length
 
 * `HttpEntity.Strict` 最简单的实体，当所有的实体在内存中已经可用时使用它。它包装一个普通的ByteString，并表示一个已知Content-Length
-* `HttpEntity.Default` 
+* `HttpEntity.Default`
 * `HttpEntity.Chunked`
 * `HttpEntity.CloseDelimited`
 * `HttpEntity.IndefiniteLength`
 
-
 如何选择
+
 * 如果数据量“很小”并且已经在内存中可用（例如作为String或ByteString），请使用Strict
-* 如果数据是由流式数据源生成的，并且数据的大小已知，则使用`Default `
+* 如果数据是由流式数据源生成的，并且数据的大小已知，则使用`Default`
 * 未知实体长度`Chunked`
 * 如果客户端不支持分块传输编码，请使用CloseDelimited将响应作为Chunk的传统替代方法。否则使用`Chunked`
 * 在`Multipart.Bodypart`中使用`IndefiniteLength`来表示未知长度的内容。
 
 一个例子
+
 ```scala
 val e1:HttpEntity.Strict = HttpEntity("123")
 ```
 
-
 **Header模型**
+
 Akka HTTP包含最常见HTTP标头的丰富模型。解析和渲染是自动完成的，所以应用程序不需要关心Header的实际语法。未明确建模的头文件表示为RawHeader（实质上是一个String / String名/值对）。
+
 ```scala
 	import akka.http.scaladsl.model.headers._
 
@@ -426,10 +421,12 @@ Akka HTTP包含最常见HTTP标头的丰富模型。解析和渲染是自动完�
 ```
 
 **HTTP Headers**
+
 * `Content-Type`
 * `Transfer-Encoding`
 
 例子
+
 ```scala
 	/**
 	  * http header
@@ -440,11 +437,10 @@ Akka HTTP包含最常见HTTP标头的丰富模型。解析和渲染是自动完�
 	val c3 = ContentType(MediaTypes.`application/json`)
 ```
 
-
 其他[参见](https://doc.akka.io/docs/akka-http/current/scala/http/common/http-model.html#http-headers)
 
-
 **自定义Headers**
+
 ```scala
 	/**
 	  * 自定义 header
@@ -474,12 +470,10 @@ Akka HTTP包含最常见HTTP标头的丰富模型。解析和渲染是自动完�
 
 其他[参见](https://doc.akka.io/docs/akka-http/current/scala/http/common/http-model.html)
 
-
-
-
-
 #### （2）URI模型
+
 **解析一个 URI 字符串**
+
 ```scala
 	val uri1 = Uri("http://localhost")
 	println(uri1)
@@ -501,26 +495,29 @@ scheme     authority       path        query   fragment
 ```
 
 对于URI中的“特殊”字符，通常使用下面的百分比编码。在URI中的查询字符串部分更详细地讨论编码百分比。
+
 ```scala
 Uri("%2520").path.head shouldEqual "%20"
 Uri("/%2F%5C").path shouldEqual Path / """/\"""
 ```
 
 处理查询字符串
+
 ```scala
 	def strict(queryString: String): Query = Query(queryString, mode = Uri.ParsingMode.Strict)
 	println(strict("a=b") == ("a", "b") +: Query.Empty)
 	println(Uri("http://localhost?a=b").query() == Query("a=b"))
 ```
 
-
 #### （3）Marshalling
+
 Marshalling是一个过程：将较高级别（对象）结构转换为某种较低级别的表示，这称之为序列化或者pickling
 
 在Akka HTTP中，编组意味着将类型T的对象转换为较低级别的目标类型，例如， MessageEntity（它构成HTTP请求或响应的“实体主体”）或完整的HttpRequest或HttpResponse。
 
 **基本设计**
 将类型A的实例编组到类型B的实例中由Marshaller [A，B]执行。Akka HTTP还预定了大量有用的别名，以便您可能最适合的marshailer类型：
+
 ```scala
 type ToEntityMarshaller[T] = Marshaller[T, MessageEntity]
 type ToByteStringMarshaller[T] = Marshaller[T, ByteString]
@@ -529,9 +526,8 @@ type ToResponseMarshaller[T] = Marshaller[T, HttpResponse]
 type ToRequestMarshaller[T] = Marshaller[T, HttpRequest]
 ```
 
-
-
 **测试：**
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -568,12 +564,13 @@ object MarshallerTest extends App {
 ```
 
 #### （4）Unmarshalling
+
 解组（Unmarshalling）是将某种较低级别的表示转换为一个更高层次（对象）。其他流行的名称是“反序列化”或“Unpickling”。
 
 在Akka HTTP中，“解组”是指转换较低级别的源对象，例如，一个MessageEntity（它构成一个HTTP请求或响应的“实体主体”）或一个完整的HttpRequest或HttpResponse，到一个T类型的实例中。
 
-
 **例子**
+
 ```scala
 	val intFuture = Unmarshal("42").to[Int]
 	val int = Await.result(intFuture, 1.second) // don't block in non-test code!
@@ -584,14 +581,14 @@ object MarshallerTest extends App {
 	println(bool)
 ```
 
-
-
 #### （5）编解码
+
 HTTP规范定义了一个Content-Encoding头，它表示一个HTTP消息的实体主体是否被“编码”，如果是的话，是用哪个算法表示的。唯一常用的内容编码是压缩算法。
 
 目前，Akka HTTP支持使用gzip或deflate编码对HTTP请求和响应进行压缩和解压缩。这个核心逻辑位于akka.http.scaladsl.coding包中。
 
 **例子**
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -648,18 +645,20 @@ object EncodingAndDecodingTest extends App {
 }
 ```
 
-
 #### （6）JSON支持
+
 Akka HTTP的编组和解组基础结构使得将应用程序域对象从JSON无缝地转换为JSON成为一件非常简单的事情。通过akka-http-spray-json模块开箱即可提供与spray-json的集成。与其他JSON库的集成是由社区支持的。
 
 SprayJsonSupport trait为每个类型T提供了一个FromEntityUnmarshaller [T]和ToEntityMarshaller [T]，可以使用隐式的spray.json.RootJsonReader和/或spray.json.RootJsonWriter（分别）。
 
 **引入**
+
 ```scala
-"com.typesafe.akka" %% "akka-http-spray-json" % "10.0.10" 
+"com.typesafe.akka" %% "akka-http-spray-json" % "10.0.10"
 ```
 
 **例子**
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -724,7 +723,9 @@ object JSONSSupportTest extends App {
 ```
 
 **其他json解析库实现**
+
 引入
+
 ```scala
 	"de.heikoseeberger" %% "akka-http-json4s" % "1.18.0",
 	"org.json4s" %% "json4s-jackson" % "3.5.3",
@@ -802,15 +803,19 @@ object OtherJsonSupport extends App {
 ```
 
 #### （7）XML支持
+
 略
 
 #### （8）HTTP超时
+
 Akka HTTP带有各种内置的超时机制，以保护您的服务器免受恶意攻击或编程错误。其中一些只是配置选项（可能会在代码中被覆盖），而另一些则是流API，并且可以直接作为用户代码中的模式来实现。
 
 **常见的超时**
+
 `idle-timeout`（空闲超时）是一个全局设置，用于设置给定连接的最长不活动时间。换句话说，如果一个连接是打开的，但是没有超过空闲超时时间的请求/响应被写入，连接将被自动关闭。
 
 这个设置对于所有的连接都是一样的，无论是服务器端还是客户端，并且可以独立使用以下键来配置：
+
 ```
 akka.http.server.idle-timeout
 akka.http.client.idle-timeout
@@ -821,12 +826,14 @@ akka.http.host-connection-pool.client.idle-timeout
 **服务器超时**
 请求超时
 请求超时是限制从路由产生HttpResponse可能需要的最长时间的机制。如果没有达到最后期限，服务器将自动注入服务不可用的HTTP响应，并关闭连接，以防止漏洞无限期地停留（例如，如果编程错误，Future将永远不会完成，否则不会发送真正的响应）。超过请求超时时写入的默认HttpResponse如下所示：
+
 ```scala
 HttpResponse(StatusCodes.ServiceUnavailable, entity = "The server was not able " +
   "to produce a timely response to your request.\r\nPlease try again in a short while!")
 ```
 
 默认请求超时将全局应用于所有路由，并且可以使用`akka.http.server.request-timeout`设置（缺省值为20秒）进行配置。
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -881,28 +888,31 @@ object TimeoutTest extends App {
 ```
 
 绑定超时
+
 绑定超时是TCP绑定进程必须完成的时间段（使用任何`Http().bind *`方法）。可以使用`akka.http.server.bind-timeout`设置进行配置。
 
-
 延迟超时
+
 延迟超时是HTTP服务器实现将所有数据传送到网络层后保持连接打开的时间段。此设置与SO_LINGER套接字选项类似，但不仅包括OS级套接字，还包含Akka IO / Akka Streams网络堆栈。该设置是一种额外的预防措施，可防止客户端从服务器端保持已经考虑完成的连接。
 
 如果网络级缓冲区（包括Akka Stream / Akka IO网络堆栈缓冲区）包含的数据比在服务器端认为完成此连接的给定时间内可以传输给客户端的数据量多，客户端可能会遇到连接重置。
 
 **客户端超时**
+
 连接超时
 
 连接超时是TCP连接过程必须完成的时间段。调整它应该很少是必需的，但它允许连接错误的情况下连接不能建立一段给定的时间。
 
 可以使用akka.http.client.connecting-timeout设置进行配置。
 
-
 #### 4、请求/响应实体的流式性质的影响
+
 #### （1）客户端http实体流的处理
 
 **处理http响应实体**
 
 例子
+
 ```scala
 import java.io.File
 
@@ -927,6 +937,7 @@ def transformEachLine(line: ByteString): ByteString = ???
 ```
 
 或者使用`toStrict`
+
 ```scala
 import scala.concurrent.Future
 import scala.concurrent.duration._
@@ -958,6 +969,7 @@ val transformedData: Future[ExamplePerson] =
 ```
 
 **丢弃http响应实体**
+
 ```scala
 import akka.actor.ActorSystem
 import akka.http.scaladsl.model.HttpMessage.DiscardedEntity
@@ -975,6 +987,7 @@ discarded.future.onComplete { done => println("Entity discarded completely!") }
 ```
 
 或者使用低等级的api
+
 ```scala
 val response1: HttpResponse = ??? // obtained from an HTTP call (see examples below)
 
@@ -983,7 +996,9 @@ discardingComplete.onComplete(done => println("Entity discarded completely!"))
 ```
 
 #### （2）服务端http实体流的处理
+
 **处理http实体**
+
 ```scala
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives._
@@ -1042,6 +1057,7 @@ val route =
 ```
 
 **丢弃http响应实体**
+
 ```scala
 import akka.actor.ActorSystem
 import akka.http.scaladsl.server.Directives._
@@ -1067,7 +1083,9 @@ val route =
     }
   }
 ```
+
 或者
+
 ```scala
 import akka.actor.ActorSystem
 import akka.stream.scaladsl.Sink
@@ -1098,9 +1116,10 @@ val route =
   }
 ```
 
-
 ### 5、低等级服务端API
+
 AkkaHttp提供http服务端的支持，支持以下特性
+
 * 完全支持HTTP持久连接
 * 完全支持HTTP流水线
 * 完全支持异步HTTP流，包括通过惯用API访问的“分块”传输编码
@@ -1108,6 +1127,7 @@ AkkaHttp提供http服务端的支持，支持以下特性
 * WebSocket支持
 
 低级别服务器的作用范围是明确关注HTTP / 1.1服务器的基本功能：
+
 * 连接管理
 * 分析和渲染消息和Header
 * 超时管理
@@ -1116,16 +1136,18 @@ AkkaHttp提供http服务端的支持，支持以下特性
 典型HTTP服务器的所有非核心功能（如请求路由，文件服务，压缩等）都留给较高层
 
 #### （1）流和Http
+
 Akka HTTP服务器是在Streams之上实现的，并且在其实现以及API的所有级别上大量使用它。
 
 在连接级别上，Akka HTTP提供的基本类似于使用流式IO的接口类型：套接字绑定表示为传入连接流。应用程序从这个流源获取连接，并为它们中的每一个提供Flow [HttpRequest，HttpResponse，_]来将请求“翻译”成响应。
 
 除了在服务器端将一个套接字绑定为Source [IncomingConnection]并将每个连接作为Source [HttpRequest]与一个Sink [HttpResponse]之外，流抽象也存在于单个HTTP消息中：HTTP请求和响应的实体通常被建模为Source[ByteString]。
 
-
 #### （2）启动、处理和停止
+
 在最基本的层次上，Akka HTTP服务器通过调用akka.http.scaladsl.Http扩展的bind方法来绑定：
 总是输出Hello World
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -1159,6 +1181,7 @@ object LowLevelServerSideAPITest extends App {
 ```
 
 #### （3）处理低级API中的HTTP服务器失败
+
 ```scala
 import akka.actor.ActorSystem
 import akka.actor.ActorRef
@@ -1188,6 +1211,7 @@ serverSource
 ```
 
 连接失败
+
 ```scala
 import akka.actor.ActorSystem
 import akka.http.scaladsl.Http
@@ -1223,14 +1247,17 @@ serverSource
 ```
 
 ### 6、高级别服务端API
+
 #### （1）几个例子
+
 参见[1、介绍](#1、介绍)
 
-
 #### （2）Routing DSL
+
 **定义位置**：`import akka.http.scaladsl.server.Directives._`
 
 **常用例子**
+
 ```scala
 	//路由匹配
 	val route =
@@ -1252,7 +1279,7 @@ serverSource
 			path("1"){ //匹配："1"
 				complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "/user/1")) //返回普通字符串
 			} ~
-			path("add"){ 
+			path("add"){
 				//可以获取get查询
 				parameter('name.as[String], 'password.as[String], 'id.as[Int]){ (a,b,c) =>
 					complete("信息为" + a + b + c)
@@ -1261,10 +1288,11 @@ serverSource
 			get { //匹配其他
 				complete(HttpEntity(ContentTypes.`text/html(UTF-8)`, "/user")) //返回普通字符串
 			}
-		} 
+		}
 ```
 
 **路由树**
+
 ```scala
 val route =
   a {
@@ -1282,20 +1310,23 @@ val route =
     }
   }
 ```
+
 * 只有在指令a，b和c都让请求通过的情况下才能到达路由1。
 * 如果a和b通过，c拒绝和d通过，则路线2将运行。
 * 如果a和b通过，则路线3将运行，但c和d拒绝。
 
-
-
 #### （3）指令
+
 **基本结构**
+
 ```scala
 name(arguments) { extractions =>
   ... // inner route
 }
 ```
+
 例如
+
 ```scala
 	val route1 =
 		path("hello"){
@@ -1304,7 +1335,9 @@ name(arguments) { extractions =>
 			}
 		}
 ```
+
 解构
+
 ```scala
 //同时查看源码
 	val directive1:Directive[Unit] = path("hello")
@@ -1314,6 +1347,7 @@ name(arguments) { extractions =>
 ```
 
 **指令能做什么**
+
 * 将传入的RequestContext转换到其内部路由之前转换（即修改请求）
 * 根据某些逻辑过滤RequestContext，即只传递某些请求并拒绝其他请求
 * 从RequestContext中提取值并将其作为“提取”提供给其内部路由
@@ -1323,6 +1357,7 @@ name(arguments) { extractions =>
 这意味着一个指令完全包装了其内部路由的功能，并可以在请求和响应端应用任意复杂的转换（或两者）
 
 **编写指令**
+
 ```scala
 	//编写指令
 	// 指令类型Directive内置了 `/`， `/ IntNumber` 转换为数字 类似的对象还有Remaining LongNumber
@@ -1400,7 +1435,7 @@ name(arguments) { extractions =>
 			})
 
 	val route7: Route = path("order" / IntNumber) { id => innerRoute(id) }
-	
+
 	val route8: Route = path("order" / IntNumber) { id => innerRoute(id) }
 
 
@@ -1413,7 +1448,9 @@ name(arguments) { extractions =>
 ```
 
 **指令是类型安全**
+
 可以在编译器指出错误
+
 ```scala
 	val route9 = path("order" / IntNumber) | get // doesn't compile
 	val route = path("order" / IntNumber) | path("order" / DoubleNumber)   // doesn't compile
@@ -1426,6 +1463,7 @@ name(arguments) { extractions =>
 ```
 
 **自动元组提取（展平）**
+
 ```scala
 val futureOfTuple2: Future[Tuple2[Int,Int]] = Future.successful( (1,2) )
 val route =
@@ -1436,8 +1474,8 @@ val route =
   }
 ```
 
-
 **常用指令总结**
+
 * 产生指令的方法
 	* `path`、`pathPrefix`、内部使用 `/ IntNumber`等
 	* `get`、`post`、`put`等http方法过滤
@@ -1451,18 +1489,20 @@ val route =
 * 对于Route可以使用以下操作符
 	* `~` 连接多个路由
 
-
 其他内置指令文档[参见1](https://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/directives/alphabetically.html)、[参见2](https://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/directives/by-trait.html)
 
 **自定义指令**
+
 [参见](https://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/directives/custom-directives.html)
 
-
 #### （4）拒收
+
 拒收含有失配的意思，表示当前路由失配，可能会继续执行其他路由路径
 
 **拒绝处理**
+
 一个例子
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -1526,12 +1566,15 @@ object RejectionsTest extends App {
 ```
 
 **说明**
+
 * 访问`/`， 返回正常
 * 访问`/fadsfads`，返回 `页面不存在`
 * 访问`/missingCookie`，返回 `没有 sessionid cookies, 无法提供服务!!!`
 
 **处理对拒绝响应做处理**
+
 在`implicit def myRejectionHandler`函数最后添加
+
 ```scala
 	implicit def myRejectionHandler =
 //....省略
@@ -1550,12 +1593,15 @@ object RejectionsTest extends App {
 ```
 
 此时请求`/fadsfads`将返回200
+
 ```json
 {"rejection": "页面不存在"}
 ```
 
 #### （5）异常处理
+
 异常的处理类似于拒绝的处理
+
 ```scala
 //通过隐式转换
 implicit def myExceptionHandler: ExceptionHandler =
@@ -1566,12 +1612,12 @@ implicit def myExceptionHandler: ExceptionHandler =
         complete(HttpResponse(InternalServerError, entity = "Bad numbers, bad result!!!"))
       }
   }
-	
+
 val router2 = path("ArithmeticException"){
 			throw new ArithmeticException
 		}
-		
-		
+
+
 //使用路由
 val myExceptionHandler = ExceptionHandler {
   case _: ArithmeticException =>
@@ -1588,11 +1634,13 @@ val myExceptionHandler = ExceptionHandler {
       null // hide
     }
 ```
+
 请求`/ArithmeticException` 返回 `Bad numbers, bad result!!!`
 
-
 #### （6）提取case class
+
 方式1：手动拼接
+
 ```scala
 case class Color(red: Int, green: Int, blue: Int)
 
@@ -1608,6 +1656,7 @@ Get("/color?red=1&green=2&blue=3") ~> route ~> check { responseAs[String] should
 ```
 
 手动提取+自动构造
+
 ```scala
 case class Color(red: Int, green: Int, blue: Int)
 
@@ -1633,6 +1682,7 @@ Get("/color/abc?r=1&g=2&b=3") ~> route ~> check { responseAs[String] shouldEqual
 ```
 
 **参数验证**
+
 ```scala
 case class Color(name: String, red: Int, green: Int, blue: Int) {
   require(!name.isEmpty, "color name must not be empty")

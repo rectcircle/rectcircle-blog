@@ -2,7 +2,7 @@
 title: scala 深入理解
 date: 2017-04-06T22:37:17+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/58
@@ -14,47 +14,25 @@ tags:
 > 《深入理解Scala （Scala IN DEPTH）》读书笔记
 > https://github.com/jsuereth/scala-in-depth-source
 
-## 目录
-* [一、隐式转换](#一、隐式转换)
-	* [1、隐式参数](#1、隐式参数)
-		* [（1）绑定优先级](#（1）绑定优先级)
-		* [（2）隐式解析](#（2）隐式解析)
-		* [（3）通过类型参数获得隐式作用域](#3、隐式参数结合默认参数)
-		* [（4）通过嵌套获取隐式作用域](#（4）通过嵌套获取隐式作用域)
-		* [（5）隐式参数结合默认参数](#（5）隐式参数结合默认参数)
-	* [2、隐式视图](#2、隐式视图)
-	* [3、隐式参数结合默认参数](#3、隐式参数结合默认参数)
-	* [4、限制隐式系统的作用域](#4、限制隐式系统的作用域)
-		* [（1）为导入创建隐式转换](#（1）为导入创建隐式转换)
-		* [（2）没有导入税的隐式转换](#（2）没有导入税的隐式转换)
-* [二、类型系统](#二、类型系统)
-	* [1、类型](#1、类型)
-		* [（1）类型和路径](#（1）类型和路径)
-		* [（2）type关键字](#（2）type关键字)
-		* [（3）结构化类型](#（3）结构化类型)
-	* [2、类型约束](#2、类型约束)
-	* [3、类型参数和高阶类型](#3、类型参数和高阶类型)
-	* [4、型变](#4、型变)
-	* [5、存在类型](#5、存在类型)
-* [三、隐式转换和类型系统结合](#三、隐式转换和类型系统结合)
-	* [1、上下文边界和视图边界](#1、上下文边界和视图边界)
-	* [2、用隐式转换来捕捉类型](#2、用隐式转换来捕捉类型)
-
-
-
 ## 一、隐式转换
-***********************************
+
+***
+
 ### 1、隐式参数
+
 #### （1）绑定优先级
+
 > 同名标识符的查找优先级
 
 优先级由高到低：
+
 * 本地的、继承的、或者通过定义所在的源代码文件里的package语句所导入的、定义和声明——具有最高优先级
 * 显示导入具有此优先级
 * 通配导入具有次高优先级
 * 非定义所在的源文件里的package语句引入的定义优先级最低
 
 `externalbindings.scala`文件
+
 ```scala
 package test
 
@@ -64,42 +42,43 @@ object x {
 ```
 
 `testbindings.scala`文件
+
 ```scala
 package test
 
 object Test {
-	
+
 	object Explicit {
 		def x = "显示导入具有此优先级"
 	}
-	
+
 	def testSamePackage() {
-		println(x)  
+		println(x)
 	}
-	
+
 	object Wildcard {
 		def x = "通配导入具有次高优先级"
 	}
-	
+
 	def testWildcardImport() {
 		import Wildcard._
-		println(x)  
+		println(x)
 	}
-	
+
 
 	def testExplicitImport() {
 		import Explicit.x
 		import Wildcard._
-		println(x)  
+		println(x)
 	}
-	
+
 	def testInlineDefinition() {
 		val x = "本地的、继承的、或者通过定义所在的源代码文件里的package语句所导入的、定义和声明——具有最高优先级"
 		import Explicit.x
 		import Wildcard._
-		println(x)  
+		println(x)
 	}
-	
+
 	def main(arg : Array[String]) : Unit = {
 		testSamePackage()
 		testWildcardImport()
@@ -110,6 +89,7 @@ object Test {
 ```
 
 输出
+
 ```
 非定义所在的源文件里的package语句引入的定义优先级最低
 通配导入具有次高优先级
@@ -118,7 +98,9 @@ object Test {
 ```
 
 #### （2）隐式解析
+
 scala查找标记为implicit的实体规则：
+
 * **规则1**：隐式实体在查找发生的地点可见（不能有前缀，如foo.x）
 * **规则2**：如果按照以上没有找到，那么会在隐式参数的类型的隐式作用域所包含的所有隐式实体里查找
 	* 对于`T`类型的隐式作用域指与`T`类型`关联`的所有类型的伴生对象的集合
@@ -128,20 +110,21 @@ scala查找标记为implicit的实体规则：
 		 若T是一个单例类型`p.T`，那么类型`p`的部分也包含在`T`的部分里。也就是说，`p`也会被搜索——***通过嵌套获取隐式作用域***（详见[第（4）点](#（4）通过嵌套获取隐式作用域)）
 		* `T`是`S#T`类型那么`T S`都会被搜索
 
-
-
-
 **规则1实例**
+
 ```scala
 def findAtInt(implicit x: Int) = x
 implicit val test = 5
 findAtInt
 //res0: Int = 5
 ```
+
 **规则2实例**
+
 > 以下方式用于提供默认实现，供用户覆盖
 
 **例1**
+
 ```scala
 object holder { //包装对象
 	trait Foo
@@ -156,7 +139,9 @@ import holder.Foo
 def method(implicit foo: Foo) = println(foo)
 method
 ```
+
 **例2**
+
 ```scala
 object holder { //包装对象
 	trait Foo
@@ -167,12 +152,14 @@ object holder { //包装对象
 	}
 	class Bar extends Foo
 }
-	
+
 import holder.Foo
 def method(implicit foo: Foo) = println(foo)
 method
 ```
+
 **例3**
+
 ```scala
 object holder { //包装对象
 	trait Foo
@@ -197,6 +184,7 @@ method
 ```
 
 #### （3）通过类型参数获得隐式作用域
+
 ```scala
 object holder { //包装对象
 	trait Foo
@@ -216,6 +204,7 @@ implicitly[List[holder.Foo]]
 > `implicitly[T]`将会查找T的隐式作用域
 
 #### （4）通过嵌套获取隐式作用域
+
 ```scala
 object Foo{
 	trait Bar
@@ -229,16 +218,20 @@ implicitly[Foo.Bar]
 ```
 
 ### 2、隐式视图
+
 > 包装java类，使之适用于scala的习惯、或增强
 > 如scala的String
 
 #### （1）简单示例
+
 ```scala
 def foo(msg:String) = println(msg)
 
 foo(5) //报错
 ```
+
 定义一个隐式转换方法（`隐式视图`）
+
 ```scala
 def foo(msg:String) = println(msg)
 //隐式视图
@@ -247,6 +240,7 @@ foo(5) //正确
 ```
 
 #### （2）隐式视图使用场景
+
 * 表达式的类型不符合类型要求，编译器会试图找到一个隐式视图是表达式正确
 * 给定`e.t`（`t`为`e`的方法或者成员），若`e`中没有成员`t`，则编译器会查找能应用到`e`类型并返回类型包含`t`类型的隐式视图。举例：
 
@@ -259,8 +253,8 @@ implicit def str2Foo(x:String) = new {
 //输出foo from:f
 ```
 
-
 #### （3）隐式视图的隐式作用域
+
 ```scala
 object test{
 	trait Foo
@@ -279,7 +273,9 @@ bar(x)
 ```
 
 #### （4）样例
+
 假设为java.io.File 提供一个 操作符 `/` 来创建新的文件对象
+
 ```scala
 class FileWrapper(val file:java.io.File){
 	def / (next:String) = new FileWrapper(new java.io.File(file,next))
@@ -301,7 +297,9 @@ useFile(wrapper) //将包装类型转换为原始类型，会自动查找隐式�
 ```
 
 ### 3、隐式参数结合默认参数
+
 实现一组方法实现矩阵乘法运算，默认选择当先单线程，使用多线程方式
+
 ```scala
 import scala.collection.mutable.ArrayBuffer
 
@@ -317,11 +315,11 @@ class Matrix (private val repr:Array[Array[Double]]){
 				buffer
 		}.toArray
 	}
-	
+
 	lazy val rowRank = repr.length
 	lazy val colRank = if(rowRank > 0) repr(0).length else 0
-	
-	 
+
+
 	override def toString = "Matrix" + repr.foldLeft(""){
 		(msg, row) => msg + row.mkString("\n|"," | ", "|")
 	}
@@ -343,20 +341,20 @@ object MatrixUtils{
 	def mutiply(a:Matrix, b:Matrix)(implicit threading:ThreadStrategy=SameThreadStrategy) = {
 		assert(a.colRank == b.rowRank)
 		val buffer = new Array[Array[Double]](a.rowRank)
-	
+
 		for (i <- 0 until a.rowRank) {
 			buffer(i) = new Array[Double](b.colRank)
 		}
-	
+
 		def computeValue(row: Int, col: Int) = {
 			val pairwiseElements = a.row(row).zip(b.col(col))
 			val products = for (
 				(x, y) <- pairwiseElements
 			) yield x * y
-			
+
 			buffer(row)(col) = products.sum
 		}
-		
+
 		val computations = for {
 			i <- 0 until a.rowRank
 			j <- 0 until b.colRank
@@ -379,7 +377,7 @@ object ThreadPoolStrategy extends ThreadStrategy{
 	val pool = Executors.newFixedThreadPool(
 		java.lang.Runtime.getRuntime.availableProcessors
 	)
-	
+
 	def execute[A](func:()=>A) = {
 		val future = pool.submit(new Callable[A] {
 			def call():A = {
@@ -396,15 +394,18 @@ implicit val ts = ThreadPoolStrategy
 MatrixUtils.mutiply(x,y)
 ```
 
-
 ### 4、限制隐式系统的作用域
+
 隐式绑定可能出现的位置
+
 * 关联类型的伴生对象
 * scala.Predef
 * 作用域内又有导入语句
 
 #### （1）为导入创建隐式转换
+
 在定义期望被显示导入的隐式视图或者隐式参数要确保
+
 * 隐式视图或参数和其他隐式值没有冲突
 * 参数名不能和scala.Predef中的冲突
 * 隐式视图或参数用户可发现的，用户可以找到库或者模块的位置和用法，通常把可导入的的隐式转化对象放在以下位置
@@ -412,6 +413,7 @@ MatrixUtils.mutiply(x,y)
 	* 带有Implicits后缀的object
 
 `to`冲突演示
+
 ```scala
 object Time {
 	case class TimeRange(start : Long, end : Long)
@@ -438,7 +440,9 @@ object Test {
 ```
 
 #### （2）没有导入税的隐式转换
+
 样例实现复数运算
+
 ```scala
 //complexmath/ComplexNumber.scala
 package complexmath
@@ -447,7 +451,7 @@ case class ComplexNumber(real:Double, imaginary:Double){
 	def *(other : ComplexNumber) = ComplexNumber( (real*other.real) + (imaginary * other.imaginary),
 		(real*other.imaginary) + (imaginary * other.real) )
 	def +(other : ComplexNumber) = ComplexNumber( real + other.real, imaginary + other.imaginary )
-	
+
 	override def toString: String = this match {
 			case ComplexNumber(0,0) => "0"
 			case ComplexNumber(0,i) => s"${i}i"
@@ -471,19 +475,21 @@ package main
 import complexmath.i
 
 object Test extends App{
-	
+
 	val x = i * 5.0 + 1.0
 	val y = 5.0 * i + 1.0
 	val z = 1.0 + 5.0*i
 }
-
 ```
 
-
 ## 二、类型系统
-***********************************
+
+***
+
 ### 1、类型
+
 通过关键字定义一个类型（`class`、`trait`、`object`类型）
+
 ```scala
 class ClassName
 trait TraitName
@@ -493,7 +499,9 @@ def foo(x:ClassName) = x
 def bar(x:TraitName) = x
 def baz(x:ObjectName.type) = x
 ```
+
 **注**：使用对象做参数，定义DSL
+
 ```scala
 //定义领域专用语言DSL语法
 object  Now
@@ -507,12 +515,13 @@ simulate once{()=>{}} right Now
 ```
 
 #### （1）类型和路径
+
 ```scala
 //类型和路径
 class Outer{
 	trait Inner
 	def in = new Inner {}
-	def foo(x:this.Inner) = null 
+	def foo(x:this.Inner) = null
 	def bar(x:Outer#Inner) = null
 }
 
@@ -528,7 +537,9 @@ x.bar(y.in)
 ```
 
 #### （2）type关键字
+
 **`type`用于构造类型**
+
 * 可以定义具体类型
 	* 通过引用具体已存在的类型或则“结构化类型”来构造
 * 可以定义抽象类型
@@ -537,15 +548,17 @@ x.bar(y.in)
 * type写法包含：关键字本身和标识符和（可选的类型约束，提供了表示定义了一个具体类型）
 
 **语法**
+
 ```scala
 type AbstarctType //抽象类型
 type ConcreteType = SomeFooType //
 type ConcreteType = SomeFooType with SomeBarType //
 ```
 
-
 #### （3）结构化类型
+
 **资源处理工具**
+
 ```scala
 object Resources{
 	type Resource = { //定义类型
@@ -559,10 +572,11 @@ Resources.closeResource(System.in) //关闭System.in流对象
 ```
 
 **嵌套结构化类型**
+
 ```scala
 type T = {
 	type X = Int //定义类型别名
-	def x:X 
+	def x:X
 	type Y  //定义了抽象类型
 	def y:Y
 }
@@ -601,6 +615,7 @@ test5(Foo)
 ```
 
 **路径依赖和结构化类型**
+
 ```scala
 object Foo{
 	type T = {
@@ -611,7 +626,7 @@ object Foo{
 		type U = String
 		def Bar = "Hello World!"
 	}
-	
+
 }
 
 def test(f:Foo.baz.U) = f
@@ -619,33 +634,35 @@ def test(f:Foo.baz.U) = f
 test(Foo.baz.Bar)
 //res0: Foo.baz.U = Hello World!
 ```
+
 **实现观察者模式（事件模型）**
+
 ```scala
 trait Observable { //创建可观察的接口
 	type Handle //处理器类型
 	//处理器集合
 	protected var callbacks = Map[Handle, this.type => Unit]()
-	
+
 	//注册事件回调函数
 	def observe(callback : this.type => Unit) : Handle = {
 		val handle = createHandle(callback)
 		callbacks += (handle -> callback)
 		handle
 	}
-	
+
 	//取消订阅此事件的某回调函数
 	def unobserve(handle : Handle) : Unit = {
 		callbacks -= handle
 	}
-	
+
 	//执行回调函数，（通知监听器）
 	protected def notifyListeners() : Unit =
 		for(callback <- callbacks.values) callback(this)
-	
+
 	//Subclasses override this to provide their own callback disambiguation scheme.
 	//子类覆此方法；来提供他们的自己的回调来消除歧义，用到类型依赖，必须是本类型的才可以
 	protected def createHandle(callback : this.type => Unit) : Handle
-	
+
 }
 
 //实现handle的默认实现
@@ -661,7 +678,7 @@ class IntStore(private var value:Int) extends Observable with DefaultHandles{
 		value = newValue
 		notifyListeners
 	}
-	
+
 	override def toString: String = s"IntStore(${value})"
 }
 
@@ -700,13 +717,15 @@ handley==handlez
 z.unobserve(handlez)
 ```
 
-
 ### 2、类型约束
+
 * 下界（子类型约束）`>:`
 * 上界（超类型约束，也称一致性约束） `<:`
 
 **下界**
+
 所选类型必须是等于下界或者下界的父类型
+
 ```scala
 class A {
 	type B >: List[Int]
@@ -719,6 +738,7 @@ val y = new A{type B = Set[Int]} //报错，违反下界约束
 ```
 
 **上界**
+
 ```scala
 class A {
 	type B <: Traversable[Int]
@@ -730,15 +750,18 @@ x.count(List(1,2))
 //x.count(Set(1,2)) //报错
 
 //val y = new A{type B = Set[Int]} //报错，违反下界约束
-y.count(Set(1,2)) 
+y.count(Set(1,2))
 ```
 
 > 最大上界是`Any`
 > 最大下界是`Nothing`
 
 ### 3、类型参数和高阶类型
+
 #### （1）类型参数的约束
+
 相当于泛型
+
 ```scala
 def randomElement[A](x:Seq[A]):A = x.last
 
@@ -749,8 +772,11 @@ randomElement[Int](List(1,2,3))
 ```
 
 #### （2）高阶类型
+
 使用type关键字构造高阶类型
+
 **用于简化类型签名**
+
 ```scala
 type Callback[T] = Function1[T,Unit]
 val x:Callback[Int] = y => println(y+2)
@@ -759,6 +785,7 @@ x(1)
 ```
 
 **使复杂类型符合想调用的方法所要求的简单类型签名**
+
 ```scala
 def foo[M[_]](f:M[Int]) = f
 
@@ -767,34 +794,39 @@ foo[Callback](x)
 ```
 
 **类型lambda**
+
 ```scala
 foo[Callback](x)
 等价于
 foo[({type X[Y] = Function1[Y,Unit]})#X]((x:Int)=>println(x))
 ```
 
-
-
 ### 4、型变
+
 #### （1）简介
+
 **分类**
+
 * 不变（Invariance）默认规则
 * 协变（Covariance）
 * 逆变（Contravariance）
 
 **术语**
+
 如果能把高阶类型`T[B]`赋值给`T[A]`，就说**T[A]顺应T[B]**
 
 #### （2）不变
+
 若T[A]顺应于T[B]，那么A就一定等于B
 
-
 #### （3）协变
+
 指的是可以将类型参数替换为其父类的能力，
 类似于父类引用可以接收子类对象
 若`T[A]`顺应`T[B]`，那么`A`是`B`的父类，`A`也用该顺应`B`
 
 一般用于**方法的返回值**
+
 ```scala
 class T[+A]{}
 
@@ -809,16 +841,18 @@ val z = new T[A]
 ```
 
 声明为协变的类型参数不能用于**方法的参数**
+
 ```scala
 trait T[+A]{
 	def thisWilNotWork(a:A)=a //报错
 }
 ```
 
-
 #### （4）逆变
+
 若`T[A]`顺应`T[B]`，那么`A`是`B`的子类，`B`应该顺应`A`
 一般用于**方法的参数**
+
 ```scala
 class T[-A]{}
 
@@ -831,7 +865,9 @@ val x = new T[B]
 val z = new T[A]
 val s:T[B] = z
 ```
+
 方法中的隐式型变
+
 ```scala
 def foo(x:Any):Unit = println("foo 接收 Any类型参数")
 
@@ -840,11 +876,12 @@ def bar(x:String):Unit = foo(x)
 bar("this")
 ```
 
-
-
 #### （5）综合样例
+
 定义一个函数对象
+
 **版本1**
+
 ```scala
 trait Function[Arg,Return]
 
@@ -855,16 +892,18 @@ val x = new Function[Any,String]{}
 ```
 
 **版本2**
+
 ```scala
 trait Function[Arg,+Return]
 
 val x = new Function[Any,String]{}
 
 //val y:Function[String,Any] = x // 报错
-val y:Function[Any,Any] = x 
+val y:Function[Any,Any] = x
 ```
 
 **版本3**
+
 ```scala
 trait Function[-Arg,+Return]
 
@@ -875,6 +914,7 @@ val z:Function[Any,Any] = x
 ```
 
 **完整版本**
+
 ```scala
 trait Function[-Arg,+Return]{
 	def apply(arg:Arg):Return
@@ -888,7 +928,9 @@ val bar:Function[String, Any] = foo
 
 bar("test") //输出：你好，我收到了一个参数test
 ```
+
 比较
+
 ```scala
 def foo(x:Any):String = s"你好，我收到了一个参数${x}"
 
@@ -898,11 +940,13 @@ bar("this") //输出：你好，我收到了一个参数test
 ```
 
 #### （6）总结
+
 * 逆变不能用于函数的返回值类型或高阶类型，逆变会推导子类型
 * 协变不能用于函数参数的类型或高阶类型，协变会推导父类型
 
 #### （7）高级型变注解
-```
+
+```scala
 trait List[+ItemType] {
 	def ++[otherItemType>:ItemType](other:List[otherItemType]):List[otherItemType]
 }
@@ -922,15 +966,17 @@ strings ++ ints
 strings ++ anyRefs
 strings ++ strings
 ```
+
 对于上例，编译器会自动查找父类型，并保留下来。
 
 当遇到协变逆变故障时，可以通过引入一个新的类型参数类解决，把故障类型作为上界或者下界
 
-
 ### 5、存在类型
+
 为了和java没有使用泛型的集合交互，scala使用存在类型
 
 在java中定义
+
 ```java
 public class Test{
 	public static List makeList(){
@@ -938,18 +984,24 @@ public class Test{
 	}
 }
 ```
+
 在scala中调用
+
 ```scala
 Test.makeList
 //返回类型为res0: java.util.List[_] = []
 
 //不能再里面添加元素
 ```
+
 #### （1）正式语法
+
 ```
 T forSome(Q) //Q为一组类型的声明
 ```
+
 简写与正式语法对比
+
 ```scala
 val y:List[_] = List()
 val x:List[X forSome {type X}] = y
@@ -959,13 +1011,16 @@ val x:List[X forSome {type X <: AnyRef }] = y
 ```
 
 #### （2）使用存在类型改进事件系统
-参见[（3）结构化类型]()
+
+参见 （3）结构化类型
+
 我们希望维护一个包含所有事件回调函数的列表叫做`Dependencies`
+
 ```scala
 trait Dependencies{
 	type Ref = x.Handle forSome {val x:Observable}
 	var handles = List[Ref]()
-	
+
 	//一些操作函数
 	def add(h:Ref) = handles :+ h
 	//......
@@ -984,39 +1039,52 @@ d.observe(zz)(cb)
 ```
 
 ## 三、隐式转换和类型系统结合
-***************************************************
+
+***
+
 ### 1、上下文边界和视图边界
+
 **视图边界**
+
 要求必须存在一个隐式类型来转换类型
+
 ```scala
 class B
 def foo[A <% B](x:A) = x
 ```
+
 等价形式——显示隐式参数列表
+
 ```scala
 class B
 def foo[A](x:A)(implicit $ev0:A=>B) =x
 ```
 
 **上下文边界**
+
 ```scala
 class B[A]
 def foo[A : B](x:A) = x
 ```
+
 等价形式——显示隐式参数列表
+
 ```scala
 class B[A]
 def foo[A](x:A)(implicit $ev0:B[A])
 ```
 
 以上两种形式如何选择，以下情况使用视图边界\上下文边界
+
 * 方法代码不需要直接访问隐式参数，但是依赖隐式解析机制（也就是说需要隐式转换的结），也就是说你需要隐式参数以便另一个操作自动调用
 * 类型参数的表达力更强的时候
 
 #### （1）何时使用隐式类型约束
+
 在使用多态时，尽量减少类型信息的丢失
 
 要求方法的参数可以被序列化
+
 ```scala
 trait Receiver[A]{
 	def send(x:A) = println(x)
@@ -1028,12 +1096,15 @@ def sendMsgToMsg[A:Serializable](receivers:Seq[Receiver[A]], a:A) = {
 ```
 
 ### 2、用隐式转换来捕捉类型
+
 #### （1）捕获类型用于运行时
+
 * `Manifest`（TypeTag）：保存了类型`T`的反射实例和所有类型参数的类型信息
 * `OptManifest`：
 * `ClassManifest`（ClassTag）：对于ClassTag[T[A]]只保留类型`T`，不保留A类型
 
 #### （2）使用Manifest
+
 ```scala
 import scala.reflect.ClassTag
 
@@ -1046,9 +1117,10 @@ def first2[A:ClassTag](s:Array[A]) = Array(s(0))
 def first3[A](s: Array[A])(implicit evidence$2: ClassTag[A]) = Array(s(0))
 ```
 
-
 #### （3）捕获输入类型
+
 自动类型推断右边的依赖左边的推断结果
+
 ```scala
 def foo[A](col:List[A])(f:A=>Boolean) = null
 foo(List("string"))(_.isEmpty)
@@ -1058,32 +1130,37 @@ foo(List("string"))(_.isEmpty)
 ```
 
 推断类型参数的类型参数的推断失败
+
 ```scala
 def peek[A, C <: Traversable[A]] (col:C) = (col.head,col)
 //peek(List(1,2,3)) //报错，无法推断出A的类型
 ```
+
 使用`<:<`
+
 ```scala
 def peek[A, C] (col:C)(implicit ev: C <:< Traversable[A]) = (col.head,col)
 peek(List(1,2,3))
 ```
 
 `<:<`的定义
+
 ```scala
 sealed abstract class <:<[-From, +To]() extends scala.AnyRef with scala.Function1[From, To] with scala.Serializable {
 
 }
 
-implicit def $conforms[A] : Predef.<:<[A, A] = { 
+implicit def $conforms[A] : Predef.<:<[A, A] = {
 	def apply(x:A) = x
 }
 ```
 
 `A <:< B` 含义，用于使用`<:`无法推断出类型，表示A必须是B的子类
 
-
 #### （4）特定方法
+
 使用隐式转换，限制某些方法的使用，仅某些类型参数可以使用
+
 ```scala
 //在List中实现了一个“特定方法”，仅对于实现了Numeric[B]的参数可用
 def sum[B >: A](implicit num: Numeric[B]): B = foldLeft(num.zero)(num.plus)
@@ -1096,13 +1173,9 @@ implicit object stringNumber extends Numeric[String] {
 
 List("1","2","3").sum
 ```
+
 执行流程
+
 * List检查`sum`方法，发现没有提供隐式参数
 * 进行隐式搜索，在当前隐式作用域中查找`Numeric[T]`类型（`T>:String`）的隐式变量
 * 将隐式变量注入隐式参数列表
-
-
-
-
-
-

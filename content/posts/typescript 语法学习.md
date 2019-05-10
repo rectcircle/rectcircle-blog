@@ -2,7 +2,7 @@
 title: typescript 语法学习
 date: 2019-04-05T00:44:35+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/189
@@ -40,7 +40,7 @@ type I00= typeof i0
 /**
  * **获取一个类的类型（也就是构造函数类型）（不是实例）**
  */
-class A { 
+class A {
 	public a : number;
 	constructor(a: number) {
 		this.a = a
@@ -95,12 +95,12 @@ interface IB {
  * **交叉类型**
  * 若IA、IB存在相同的成员b，则IAB中b的类型为 `IA['b'] & IB['b']`
  */
-type IAandB = IA & IB 
+type IAandB = IA & IB
 
 const ab: IAandB = {
 	a: 'a',
 	b: 2,
-	// b: 'b', 
+	// b: 'b',
 	c: 3,
 }
 
@@ -119,7 +119,7 @@ let aOrB: IAOrB = {
 function handleAOrB(aOrb: IAOrB) {
 	// 只能读取IA和IB共有的值
 	// aOrb.
-	
+
 	// 如果需要使用，最好要进行类型判断
 	if ((aOrb as IA).a !== undefined) {
 		// do something
@@ -355,7 +355,7 @@ type MyRequired<T> = {
  * * Required<T> 将T的所有属性设为必填
  * * Pick<T, K extends keyof T> 从T中选取指定的属性声明
  * * Record<K extends keyof any, T> 创建一个属性值同一类型的声明
- * 
+ *
  * **预定义的有条件类型**
  * * Exclude<T, U> -- 从T中剔除可以赋值给U的类型。
  * * Extract<T, U> -- 提取T中可以赋值给U的类型。

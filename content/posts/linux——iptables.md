@@ -1,8 +1,8 @@
 ---
-title: linux——iptables
+title: Linux——iptables
 date: 2016-11-19T22:14:56+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/23
@@ -12,32 +12,39 @@ tags:
 ---
 
 ## 规则组成及原理
+
 ### 1、iptables的四表五链
+
 四张表规则表
+
 * filter 访问控制，规则匹配
 * nat 地址转发
-* mangle 
+* mangle
 * raw
 
 五条链
-* input 
-* output 
-* forword 
-* pre_routing 
+
+* input
+* output
+* forword
+* pre_routing
 * post_routing
 
-
 ### 2、iptables规则组成
+
 数据包访问控制
+
 * accept 允许通过
 * drop 丢弃，不会通知客户端
 * reject 拒绝、返回客户端消息
 
 数据表改写
+
 * snat 源地址改写
 * dnet 目的地址改写
 
 信息记录
+
 * log
 
 ![iptables命令组成](/res/LGZETqIWcWn1P1nuPGgAucHL.png)
@@ -49,18 +56,18 @@ tags:
  -F 清除现有规则
  -P 默认iptables
  -I 插入到第一条规则
- -R 
+ -R
  -n
- 
+
 	-p tcp 协议
 	-s 发起源
 	-d 目标地址
 	-sport 源端口
 	-dport 目标端口
-	-dports 目标端口段 
-	-m 
- 
-	 -j 
+	-dports 目标端口段
+	-m
+
+	 -j
 		 ACCEPT
 		 DROP
 		 REJECT
@@ -68,10 +75,12 @@ tags:
 		 SNAT
 ```
 
-
 ### 3、实战场景
+
 #### 场景一
+
 ##### （1）开放所有地址本机端口tcp 80,22,10-21端口访问
+
 ```bash
 #查看现有规则
 iptables -nL
@@ -90,12 +99,15 @@ iptables -I INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT #允许访问�
 #删除记录
 iptables -D INPUT -p tcp --dport 80 -j ACCEPT
 ```
+
 ##### （2）允许ping
+
 ```bash
 iptables -I INPUT -p icmp -j ACCEPT
 ```
 
 ##### （3）禁用所有其他端口
+
 ```bash
 #先执行开放端口命令
 iptables -A INPUT -j REJECT
@@ -103,6 +115,7 @@ iptables -A INPUT -j REJECT
 ```
 
 ##### 命令汇总
+
 ```
 iptables -F
 iptables -I INPUT -p tcp --dport 80 -j ACCEPT
@@ -126,10 +139,12 @@ iptables -I INPUT -p tcp -s ip地址 --dport 80 -j ACCEPT
 ```
 
 #### 场景二
+
 * ftp主动模式下iptables的规则配置
 * ftp被动模式下配置
 
 ##### （1）ftp主动模式下iptables的规则配置
+
 ```bash
 #下载安装vsftpd
 #开启主动模式支持
@@ -146,6 +161,7 @@ FTP切换主动模式 passive(匿名者登陆anonymous)
 ```
 
 ##### （2）ftp被动模式下iptables的规则配置
+
 ```bash
 
 ```

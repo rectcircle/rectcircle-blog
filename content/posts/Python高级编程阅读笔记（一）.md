@@ -2,7 +2,7 @@
 title: Python高级编程阅读笔记（一）
 date: 2017-09-24T00:45:30+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/97
@@ -11,38 +11,13 @@ tags:
   - python
 ---
 
-
-## 目录
-* [一、装饰器](#一、装饰器)
-    * [1、理解装饰器](#1、理解装饰器)
-    * [2、python中的语法](2、python中的语法)
-    * [3、装饰器的用途](3、装饰器的用途)
-    * [4、装饰器的一些例子](4、装饰器的一些例子)
-    * [5、装饰器参数](5、装饰器参数)
-    * [6、装饰类](#6、装饰类)
-    * [7、类型转换](#7、类型转换)
-    * [8、装饰器总结](#8、装饰器总结)
-* [二、上下文管理器](#二、上下文管理器)
-    * [1、理解上下文管理器](#1、理解上下文管理器)
-    * [2、上下文管理器语法](2、上下文管理器语法)
-    * [3、何时编写上下文管理器](#3、何时编写上下文管理器)
-    * [4、更简单是实现上下文管理器](#4、更简单是实现上下文管理器)
-* [三、生成器](#三、生成器)
-    * [1、理解生成器](#1、理解生成器)
-    * [2、生成器语法](2、生成器语法)
-    * [3、生成器间交互](#3、生成器间交互)
-    * [4、迭代对象与迭代器](#4、迭代对象与迭代器)
-    * [5、标准库中的生成器](#5、标准库中的生成器)
-    * [6、何时编写生成器](#6、何时编写生成器)
-    * [7、单例模式生成器](#7、单例模式生成器)
-    * [8、生成器内部的生成器](#8、生成器内部的生成器)
-
-
 ## 一、装饰器
-****************************************
-### 1、理解装饰器
-以下为定义装饰器函数
 
+***
+
+### 1、理解装饰器
+
+以下为定义装饰器函数
 
 ```python
 def decorated_by(func):
@@ -60,19 +35,17 @@ help(add)
 ```
 
     Help on function add in module __main__:
-    
     add(a, b)
         返回a+b的值
         通过decorated_by装饰进行装饰。
-    
-
 
 ### 2、python中的语法
+
 #### （1）定义
+
 就是普通的python函数或者对象的方法；函数的第一个参数、对象的方法的第二个参数要当做函数类型来处理
 
 #### （2）使用
-
 
 ```python
 @decorated_by
@@ -84,16 +57,14 @@ help(add1)
 ```
 
     Help on function add1 in module __main__:
-    
+
     add1(a, b)
         返回a+b的值
         通过decorated_by装饰进行装饰。
-    
-
 
 #### （3）多个装饰器的调用顺序
-自低而上
 
+自低而上
 
 ```python
 def alse_decorated_by(func):
@@ -111,15 +82,14 @@ help(add2)
 ```
 
     Help on function add2 in module __main__:
-    
+
     add2(a, b)
         返回a+b的值
         通过decorated_by装饰进行装饰。
         通过alse_decorated_by装饰进行装饰。
-    
-
 
 ### 3、装饰器的用途
+
 * python创建类方法`@classmethod`或`@staticmethod`
 * 单元测试，`@mock.patch`
 * web框架登录验证Django的`@login_required`
@@ -127,8 +97,8 @@ help(add2)
 * 表示是否为异步Celery的`@task`
 
 ### 4、装饰器的一些例子
-#### （1）一个函数注册表
 
+#### （1）一个函数注册表
 
 ```python
 registry = []
@@ -153,25 +123,23 @@ print(answers)
 
     [3, 5]
 
-
 实际应用测试
-
 
 ```python
 class Registry(object):
     def __init__(self):
         self._functions = []
-        
+
     def register(self, decorated):
         self._functions.append(decorated)
         return decorated
-    
+
     def run_all(self, *args, **kwargs):
         return_values = []
         for func in self._functions:
             return_values.append(func(*args, **kwargs))
         return return_values
-    
+
 a = Registry()
 b = Registry()
 
@@ -194,15 +162,9 @@ b.run_all() # [5, 7]
 a.run_all(x=4) # [4, 4]
 ```
 
-
-
-
     [4, 4]
 
-
-
 #### （2）类型检查器
-
 
 ```python
 def requires_ints(decorated):
@@ -226,13 +188,10 @@ help(foo)
 ```
 
     Help on function inner in module __main__:
-    
-    inner(*args, **kwargs)
-    
 
+    inner(*args, **kwargs)
 
 此时出现了一个问题，help查不到该函数的文档，使用`@functools.wraps(decorated)`解决
-
 
 ```python
 import functools
@@ -257,15 +216,13 @@ help(foo)
 ```
 
     Help on function foo in module __main__:
-    
+
     foo(x, y)
         Return the sum of x and y.
-    
-
 
 #### （3）用户验证
-检验函数的第一个对象是否是指定类的实例（用于类型检测）
 
+检验函数的第一个对象是否是指定类的实例（用于类型检测）
 
 ```python
 class User(object):
@@ -273,7 +230,7 @@ class User(object):
     def __init__(self, username, email):
         self.username = username
         self.email = email
-        
+
 class AnonymousUser(User):
     """匿名用户类"""
     def __init__(self):
@@ -282,7 +239,7 @@ class AnonymousUser(User):
     #def __nonzero__(self): #python2
     def __bool__(self):
         return False
-    
+
 import functools
 def requires_user(func):
     @functools.wraps(func)
@@ -298,7 +255,7 @@ def requires_user(func):
             return func(user, *args, **kwargs)
         else:
             raise ValueError('A valid user is required to run this.')
-    
+
     return inner
 
 @requires_user
@@ -306,16 +263,13 @@ def login(u):
     pass
 ```
 
-
 ```python
 login(User('name','email'))
 ```
 
-
 ```python
 login(AnonymousUser())
 ```
-
 
     ---------------------------------------------------------------------------
 
@@ -323,24 +277,21 @@ login(AnonymousUser())
 
     <ipython-input-12-83a4ec01f1d0> in <module>()
     ----> 1 login(AnonymousUser())
-    
+
 
     <ipython-input-10-05cf3cf34ebe> in inner(user, *args, **kwargs)
          28             return func(user, *args, **kwargs)
          29         else:
     ---> 30             raise ValueError('A valid user is required to run this.')
-         31 
+         31
          32     return inner
 
 
     ValueError: A valid user is required to run this.
 
-
-
 ```python
 login(1)
 ```
-
 
     ---------------------------------------------------------------------------
 
@@ -348,21 +299,19 @@ login(1)
 
     <ipython-input-13-f3ac46340d07> in <module>()
     ----> 1 login(1)
-    
+
 
     <ipython-input-10-05cf3cf34ebe> in inner(user, *args, **kwargs)
          28             return func(user, *args, **kwargs)
          29         else:
     ---> 30             raise ValueError('A valid user is required to run this.')
-         31 
+         31
          32     return inner
 
 
     ValueError: A valid user is required to run this.
 
-
 #### （4）Json格式化输出
-
 
 ```python
 import functools
@@ -385,15 +334,9 @@ def do_nothing():
 do_nothing()
 ```
 
-
-
-
     '{"status": "done"}'
 
-
-
 同时捕获特定异常并序列化
-
 
 ```python
 import functools
@@ -424,20 +367,15 @@ def json_output(decorated):
 @json_output
 def error():
     raise JSONOutputError('This function is erratic.')
-    
+
 error()
 ```
 
-
-
-
     '{"status": "error", "message": "This function is erratic."}'
 
-
-
 #### （5）日志管理
-将函数执行时间记录到日志
 
+将函数执行时间记录到日志
 
 ```python
 import functools
@@ -477,16 +415,9 @@ sleep_and_return(1)
     /root/anaconda3/lib/python3.6/site-packages/ipykernel_launcher.py:22: DeprecationWarning: The 'warn' method is deprecated, use 'warning' instead
     Called method sleep_and_return at 1506232994.18; execution time 2.00 seconds; result 1.
 
-
-
-
-
     1
 
-
-
 ### 5、装饰器参数
-
 
 ```python
 import functools
@@ -519,7 +450,6 @@ def json_output(indent=None, sort_keys=False):
     return actual_decorator
 ```
 
-
 ```python
 @json_output(indent=4)
 def do_nothing():
@@ -528,13 +458,7 @@ def do_nothing():
 do_nothing()
 ```
 
-
-
-
     '{\n    "staus": "done"\n}'
-
-
-
 
 ```python
 @json_output()
@@ -544,13 +468,7 @@ def do_nothing1():
 do_nothing1()
 ```
 
-
-
-
     '{"staus": "done"}'
-
-
-
 
 ```python
 @json_output
@@ -560,21 +478,19 @@ def do_nothing2():
 do_nothing2()
 ```
 
-
     ---------------------------------------------------------------------------
 
     TypeError                                 Traceback (most recent call last)
 
     <ipython-input-20-6ca3e34af532> in <module>()
           3     return {'staus':'done'}
-          4 
+          4
     ----> 5 do_nothing2()
-    
 
     TypeError: actual_decorator() missing 1 required positional argument: 'decorated'
 
-
 #### （1）带参数（包括空参数）装饰器的执行原理
+
 * 首先执行装饰器函数，并获得返回值`decorator`
 * 执行`decorator(函数)`获得返回值target
 * 执行`target(参数)`
@@ -582,7 +498,6 @@ do_nothing2()
 而不带参数的装饰器仅执行后两步，所以导致`@json_output`报错
 
 **执行流程模拟：**
-
 
 ```python
 # 对以下代码模拟
@@ -599,13 +514,7 @@ do_nothing = decorator(do_nothing)
 do_nothing()
 ```
 
-
-
-
     '{\n    "staus": "done"\n}'
-
-
-
 
 ```python
 # 对以下代码模拟
@@ -621,22 +530,19 @@ do_nothing2 = json_output(do_nothing2)
 do_nothing2()
 ```
 
-
     ---------------------------------------------------------------------------
 
     TypeError                                 Traceback (most recent call last)
 
     <ipython-input-22-c041282b9566> in <module>()
-          9 
+          9
          10 do_nothing2 = json_output(do_nothing2)
     ---> 11 do_nothing2()
-    
+
 
     TypeError: actual_decorator() missing 1 required positional argument: 'decorated'
 
-
 #### （2）修正，使代码可以向前兼容
-
 
 ```python
 import functools
@@ -656,7 +562,7 @@ def json_output(decorated_=None, indent=None, sort_keys=False):
     # That should not happen.
     if decorated_ and (indent or sort_keys):
         raise RuntimeError('Unexpected arguments.')
-    
+
     # Define the actual decorator function.
     def actual_decorator(func):
         @functools.wraps(func)
@@ -678,7 +584,6 @@ def json_output(decorated_=None, indent=None, sort_keys=False):
         return actual_decorator
 ```
 
-
 ```python
 @json_output(indent=4)
 def do_nothing():
@@ -687,13 +592,7 @@ def do_nothing():
 do_nothing()
 ```
 
-
-
-
     '{\n    "staus": "done"\n}'
-
-
-
 
 ```python
 @json_output()
@@ -703,13 +602,7 @@ def do_nothing1():
 do_nothing1()
 ```
 
-
-
-
     '{"staus": "done"}'
-
-
-
 
 ```python
 @json_output
@@ -719,16 +612,11 @@ def do_nothing2():
 do_nothing2()
 ```
 
-
-
-
     '{"staus": "done"}'
 
-
-
 ### 6、装饰类
-添加对象的创建时间并添加排序的支持
 
+添加对象的创建时间并添加排序的支持
 
 ```python
 import functools
@@ -744,7 +632,7 @@ def sortable_by_creation_time(cls):
     def new_init(self, *args, **kwargs):
         original_init(self, *args, **kwargs)
         self._created = time.time()
-    
+
     cls.__init__ = new_init
     cls.__lt__ = lambda self, other: self._created < other._created
     cls.__gt__ = lambda self, other: self._created > other._created
@@ -755,7 +643,7 @@ def sortable_by_creation_time(cls):
 class Sortable(object):
     def __init__(self, identifier):
         self.identifier = identifier
-    
+
     def __repr__(self):
         return self.identifier
 
@@ -767,35 +655,30 @@ sortables = [second, first, third]
 sorted(sortables)
 ```
 
-
-
-
     [first, second, third]
 
-
-
 ### 6、类型转换
+
 装饰器装饰一个函数后，返回一个类实例，添加很多样板代码
 例如一个简单的任务执行器
-
 
 ```python
 class Task(object):
     """一个task基类，拥有一个运行任务的run方法"""
-    
+
     def run(self, *args, **kwargs):
         raise NotImplementedError('Subclasses must implement `run`.')
-        
+
     def identify(self):
         return 'I am a task.'
 
-    
+
 def task(decorated):
     """返回一个运行decorated方法的Task派生类"""
     class TaskSubclass(Task):
         def run(self, *args, **kwargs):
             return decorated(*args, **kwargs)
-        
+
     return TaskSubclass
 
 @task
@@ -807,15 +690,9 @@ f.run()
 f.identify()
 ```
 
-
-
-
     'I am a task.'
 
-
-
 此时直接执行`foo()`，不会只执行foo，而是返回一个task派生类的实例，这使编程变得很复杂，修改如下
-
 
 ```python
 class Task(object):
@@ -838,47 +715,48 @@ def task(decorated):
 @task
 def foo():
     return 2 + 2
-                                  
+
 foo()
 ```
 
-
-
-
     4
-
-
 
 ### 8、装饰器总结
 
 优点：
+
 * 带来显示的代码可充用性
 * 提供了一种完美的方式使用样板代码
 
 问题：
+
 * 模糊了函数被封装于另一个函数的事实
 * 不便于调试
 * 执行效率的下降
 
-
-
 ## 二、上下文管理器
-********************************************
+
+***
+
 ### 1、理解上下文管理器
 
 上下文管理器是一个包装任意代码块的对象。上下文管理器保证进入上下文管理器时，每次代码执行的一致性；当退出时，相关资源会被回收
 
 ### 2、上下文管理器语法
+
 #### （1）`with`关键字
+
 ```python
 with open('/path/to/filename', 'r') as my_file:
     contents = my_file.read()
 ```
+
 `as`子句是可选的
 
 当调用`open`方法时，返回一个对象，该对象包含两个特殊方法`__enter__`和`__exit__`，首先执行`__enter__`并将其的返回值赋给`as`后的关键字，在执行完`with`代码块内的内容后，将会执行`__exit__`方法
 
 #### （2）`enter`和`exit`方法
+
 * `__enter__`方法除了self不接受任何参数
 * `__exit__`方法除了self外，还接受三个参数：异常类型、异常实例、回溯
     * 实现异常传播，该方法返回一个False
@@ -887,22 +765,20 @@ with open('/path/to/filename', 'r') as my_file:
 
 例子
 
-
 ```python
 class ContextManager(object):
     def __init__(self):
         self.entered = False
         print("__init__")
-        
+
     def __enter__(self):
         self.entered = True
         print("__enter__")
         return self
-    
+
     def __exit__(self, exc_type, exc_instance, traceback):
         self.entered = False
 ```
-
 
 ```python
 cm = ContextManager()
@@ -911,14 +787,7 @@ cm.entered
 
     __init__
 
-
-
-
-
     False
-
-
-
 
 ```python
 with cm as cm:
@@ -927,8 +796,6 @@ with cm as cm:
 
     __enter__
     True
-
-
 
 ```python
 with ContextManager() as cm:
@@ -939,10 +806,12 @@ with ContextManager() as cm:
     __enter__
     True
 
-
 ### 3、何时编写上下文管理器
+
 #### （1）资源清理
+
 一个数据库连接上下文管理器
+
 ```python
 import psycopg2
 
@@ -953,7 +822,7 @@ class DBConnection(object):
         self.dbname = dbname
         self.user = user
         self.password = password
-        
+
     def __enter__(self):
         self.connection = psycopg2.connect(
             dbname=self.dbname,
@@ -962,18 +831,18 @@ class DBConnection(object):
             password=self.password,
         )
     return self.connection.cursor()
-    
+
     def __exit__(self, exc_type, exc_instance, traceback):
         self.connection.close()
-        
+
 with DBConnection(user='luke', dbname='foo') as db:
     db.execute('SELECT 1 + 1')
     db.fetchall()
 ```
 
 #### （2）避免重复
-**传播异常**
 
+**传播异常**
 
 ```python
 class BubbleExceptions(object):
@@ -986,30 +855,26 @@ class BubbleExceptions(object):
 
 with BubbleExceptions():
     5+5
-    
+
 with BubbleExceptions():
     5/0
 ```
 
     Bubbling up exception: division by zero.
 
-
-
     ---------------------------------------------------------------------------
 
     ZeroDivisionError                         Traceback (most recent call last)
 
     <ipython-input-9-abae51d6cf71> in <module>()
-         11 
+         11
          12 with BubbleExceptions():
     ---> 13     5/0
-    
+
 
     ZeroDivisionError: division by zero
 
-
 **中止异常**
-
 
 ```python
 class BubbleExceptions(object):
@@ -1022,20 +887,20 @@ class BubbleExceptions(object):
 
 with BubbleExceptions():
     5+5
-    
+
 with BubbleExceptions():
     5/0
 ```
 
     Bubbling up exception: division by zero.
 
-
 **处理特定异常**
+
 略
 
 ### 4、更简单是实现上下文管理器
-使用上下文管理器生成器
 
+使用上下文管理器生成器
 
 ```python
 import contextlib
@@ -1053,17 +918,18 @@ def acceptable_error_codes(*codes):
     pass
 ```
 
-
 ## 三、生成器
-******************************
+
+***
+
 ### 1、理解生成器
 
 生成器是一个函数，他并不执行并返回一个值，而是按照顺序返回一个或者多个值。
 
 ### 2、生成器语法
+
 #### （1）`yield`关键字
 
-
 ```python
 def fibonacci():
     yield 1
@@ -1072,7 +938,7 @@ def fibonacci():
     yield 3
     yield 5
     yield 8
-    
+
 for i in fibonacci():
     print(i)
 ```
@@ -1084,8 +950,6 @@ for i in fibonacci():
     5
     8
 
-
-
 ```python
 def fibonacci():
     yield 1
@@ -1094,7 +958,7 @@ def fibonacci():
     yield 3
     yield 5
     yield 8
-    
+
 for i in fibonacci():
     print(i)
 ```
@@ -1105,10 +969,8 @@ for i in fibonacci():
     3
     5
     8
-
 
 #### （2）`next`函数
-
 
 ```python
 def fibonacci():
@@ -1120,40 +982,30 @@ def fibonacci():
             numbers.append(sum(numbers))
             numbers.pop(0)
         yield numbers[-1]
-        
+
 gen = fibonacci()
 gen
 ```
 
-
-
-
     <generator object fibonacci at 0x7f9a440c96d0>
-
-
-
 
 ```python
 next(gen)
 next(gen)
 ```
 
-
-
-
     2
 
-
-
 #### （3）执行分析
+
 * 调用带有`yield`的函数时，解释器会自动生成一个生成器对象
 * 首次`next`函数时，从头开始执行生成器函数到yield，将其后面的值返回，并暂停（类似于挂起）
 * 其他时候，从上次的yield语句的下一条语句开始执行，再到yield后返回并暂停
 
 #### （4）生成器退出
+
 * python2 使用`raise StopIteraton`异常中止
 * python3 使用`return` 同时兼容py2的写法
-
 
 ```python
 def my_generator():
@@ -1161,17 +1013,11 @@ def my_generator():
     yield 2
     return
     yield 3
-    
+
 [i for i in my_generator()]
 ```
 
-
-
-
     [1, 2]
-
-
-
 
 ```python
 gen = my_generator()
@@ -1179,7 +1025,6 @@ next(gen)
 next(gen)
 next(gen)
 ```
-
 
     ---------------------------------------------------------------------------
 
@@ -1189,16 +1034,14 @@ next(gen)
           2 next(gen)
           3 next(gen)
     ----> 4 next(gen)
-    
 
-    StopIteration: 
-
+    StopIteration:
 
 ### 3、生成器间交互
+
 给生成器传递参数，使用`gen.send()`
 
 例子：按顺序返回完全平方数
-
 
 ```python
 def squares(cursor = 1):
@@ -1208,34 +1051,32 @@ def squares(cursor = 1):
             cursor = int(response)
         else:
             cursor += 1
-            
+
 sq = squares()
 print(next(sq))
 print(next(sq))
 sq.send(7)
-print(next(sq))            
+print(next(sq))
 ```
 
     1
     4
     64
 
-
 ### 4、迭代对象与迭代器
+
 * 生成器是一种迭代器
 * 迭代器是一种包含`__next__`方法的对象
 * 迭代对象是一种包含了`__iter__`方法的对象，该方法负责返回一个迭代器
-* `for in `可以相应迭代对象和迭代器
+* `for in`可以相应迭代对象和迭代器
 * `next`只能相应迭代器
 
 `range`（python3）或者`xrange`（python2）是一种迭代对象
-
 
 ```python
 r = range(1,3)
 next(r)
 ```
-
 
     ---------------------------------------------------------------------------
 
@@ -1244,33 +1085,28 @@ next(r)
     <ipython-input-19-7cb3a8583905> in <module>()
           1 r = range(1,3)
     ----> 2 next(r)
-    
+
 
     TypeError: 'range' object is not an iterator
-
-
 
 ```python
 it = r.__iter__()
 next(it)
 ```
 
-
-
-
     1
 
-
-
 ### 5、标准库中的生成器
+
 #### （1）`range`
+
 该对象返回的迭代器实际上是一个生成器
 
 #### （2）`dict.items`及其家族
-* `dict.keys` 
+
+* `dict.keys`
 * `dict.valuse`
 * `dict.items`
-
 
 ```python
 d = {'foo':'bar', 'baz':'bacon'}
@@ -1279,16 +1115,10 @@ next(it)
 next(it)
 ```
 
-
-
-
     ('baz', 'bacon')
-
-
 
 使用生成器的原因是防止创建额外的字典副本，节约内存。
 在迭代期间修改字典可能出现副作用
-
 
 ```python
 d = {'foo':'bar', 'baz':'bacon'}
@@ -1298,7 +1128,6 @@ d['spam'] = 'eggs'
 next(it)
 ```
 
-
     ---------------------------------------------------------------------------
 
     RuntimeError                              Traceback (most recent call last)
@@ -1307,14 +1136,12 @@ next(it)
           3 next(it)
           4 d['spam'] = 'eggs'
     ----> 5 next(it)
-    
 
     RuntimeError: dictionary changed size during iteration
 
-
 #### （3）`zip`
-将两个列表依次组成元组返回，直到达到最短的停止
 
+将两个列表依次组成元组返回，直到达到最短的停止
 
 ```python
 z = zip(['a','b','c','d'], ['x','y','z'])
@@ -1324,7 +1151,6 @@ next(z)
 next(z)
 ```
 
-
     ---------------------------------------------------------------------------
 
     StopIteration                             Traceback (most recent call last)
@@ -1333,14 +1159,12 @@ next(z)
           3 next(z)
           4 next(z)
     ----> 5 next(z)
-    
 
-    StopIteration: 
-
+    StopIteration:
 
 #### （4）`map`
-接受一个能接受N参数的函数对象 和 N个参数列表 的对象，依次将参数列表的参数依次传入函数对象并执行并返回返回值
 
+接受一个能接受N参数的函数对象 和 N个参数列表 的对象，依次将参数列表的参数依次传入函数对象并执行并返回返回值
 
 ```python
 m = map(lambda x,y: max([x,y]),[4,1,7],[3,4,5])
@@ -1350,7 +1174,6 @@ next(m)
 next(m)
 ```
 
-
     ---------------------------------------------------------------------------
 
     StopIteration                             Traceback (most recent call last)
@@ -1359,13 +1182,14 @@ next(m)
           3 next(m)
           4 next(m)
     ----> 5 next(m)
-    
 
-    StopIteration: 
 
+    StopIteration:
 
 #### （5）文件对象
+
 `open()`返回的对象
+
 ```python
 f = open('lines.txt')
 next(f)
@@ -1373,12 +1197,13 @@ next(f)
 ```
 
 ### 6、何时编写生成器
+
 * 分块访问数据
 * 分块计算数据
 
 ### 7、单例模式生成器
-指的是该对象既是迭代对象又是生成器，例子：
 
+指的是该对象既是迭代对象又是生成器，例子：
 
 ```python
 class Fibonacci(object):
@@ -1399,38 +1224,26 @@ class Fibonacci(object):
     next = __next__
 ```
 
-
 ```python
 f = Fibonacci()
 it1 = iter(f)
 next(it1),next(it1),next(it1),next(it1),next(it1)
 ```
 
-
-
-
     (1, 1, 2, 3, 5)
-
-
-
 
 ```python
 it2 = iter(f)
 next(it2)
 ```
 
-
-
-
     8
-
-
 
 搞清楚是否有些对象可以有多个迭代器，而有些对象则不可以
 
 ### 8、生成器内部的生成器
-对生成器进行组合
 
+对生成器进行组合
 
 ```python
 def gen1():
@@ -1439,7 +1252,7 @@ def gen1():
 def gen2():
     yield 'spam'
     yield 'eggs'
-    
+
 #组合使用python3.3之前
 def full_gen():
     for word in gen1():
@@ -1457,7 +1270,7 @@ def full_gen():
         yield word
 for s in full_gen():
     print(s)
-    
+
 #组合使用python3.3及更新
 def full_gen():
     yield from gen1()
@@ -1479,7 +1292,3 @@ for s in full_gen():
     bar
     spam
     eggs
-
-
-
-

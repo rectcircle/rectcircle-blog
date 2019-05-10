@@ -2,37 +2,32 @@
 title: 命令行编译运行Java程序
 date: 2018-08-02T16:20:03+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/160
   - /detail/160/
 tags:
-  - java
+  - Java
 ---
 
-## 目录
-* [0、命令行的重要性](#0、命令行的重要性)
-* [1、单源文件文件无包声明Java程序](#1、单源文件文件无包声明Java程序)
-* [2、多文件有包声明Java程序](#2、多文件有包声明Java程序)
-* [3、有外部Jar依赖的Java程序](#3、有外部Jar依赖的Java程序)
-* [4、生成Jar](#4、生成Jar)
-
-
-
 ### 0、命令行的重要性
+
 虽然有了强大智能的IDE，但是如果不了解Java程序如何通过命令行来运行，那么IDE就相当于一个黑盒，你将不会了解Java程序是如何在IDE中编译运行的，对于一些错误你将很难排除。
 
 在现实中，自动化越来越重要，自动化的基石就是各种脚本，脚本就是一堆命令的集合。所以了解命令行非常重要。
 
 ### 1、单源文件文件无包声明Java程序
+
 #### （1）目录结构
+
 ```
 .
 └── Hello.java
 ```
 
 #### （2）源码
+
 ```java
 public class Hello{
 	public static void main(String[] args) {
@@ -42,6 +37,7 @@ public class Hello{
 ```
 
 #### （3）编译
+
 ```bash
 # 不指定输出目录
 javac Hello.java
@@ -51,6 +47,7 @@ javac -d target/classes Hello.java
 ```
 
 编译后目录结构
+
 ```
 .
 ├── Hello.class
@@ -61,6 +58,7 @@ javac -d target/classes Hello.java
 ```
 
 #### （4）运行
+
 ```bash
 # 后面直接跟的是要运行的类的类的全类名（必须包含main函数），java指令会到classpath中去查找该类
 $ java Hello
@@ -74,9 +72,10 @@ $ java -classpath target/classes/ Hello
 Hello World
 ```
 
-
 ### 2、多文件有包声明Java程序
+
 #### （1）目录结构
+
 ```
 .
 ├── make.config
@@ -89,12 +88,15 @@ Hello World
 ```
 
 #### （2）源码
+
 `make.config`
+
 ```
-src/cn/rectcircle/javacmd/Main.java src/cn/rectcircle/javacmd/Person.java 
+src/cn/rectcircle/javacmd/Main.java src/cn/rectcircle/javacmd/Person.java
 ```
 
 `Person.java`
+
 ```java
 package cn.rectcircle.javacmd;
 
@@ -119,6 +121,7 @@ public class Person {
 ```
 
 `Main.java`
+
 ```java
 package cn.rectcircle.javacmd;
 
@@ -131,8 +134,8 @@ public class Main {
 }
 ```
 
-
 #### （3）编译
+
 ```bash
 # 不指定输出目录，-sourcepath指明查找依赖的源文件的目录
 # -encoding utf-8 指明源文件编码
@@ -159,6 +162,7 @@ javac @make.config  -encoding utf-8
 ```
 
 编译后目录结构
+
 ```
 .
 ├── make.config
@@ -181,6 +185,7 @@ javac @make.config  -encoding utf-8
 ```
 
 #### （4）运行
+
 ```bash
 # 运行
 $ java -cp target/classes cn.rectcircle.javacmd.Main
@@ -190,9 +195,10 @@ $ java -classpath src cn.rectcircle.javacmd.Main
 小明
 ```
 
-
 ### 3、有外部Jar依赖的Java程序
+
 #### （1）目录结构
+
 ```
 .
 ├── lib
@@ -208,6 +214,7 @@ $ java -classpath src cn.rectcircle.javacmd.Main
 #### （2）源码
 
 `Main.java`
+
 ```java
 package cn.rectcircle.javacmd;
 
@@ -227,8 +234,8 @@ public class Main {
 }
 ```
 
-
 #### （3）编译
+
 ```bash
 # 编译，指定classpath，多个路径，windows使用;分隔、Linux使用:分隔，windows git bash要加引号
 javac -classpath "lib/guava-18.0.jar;lib/commons-lang3-3.3.2.jar" src/cn/rectcircle/javacmd/Main.java -encoding utf-8
@@ -239,6 +246,7 @@ javac -d target/classes -cp "lib/guava-18.0.jar;lib/commons-lang3-3.3.2.jar" src
 ```
 
 编译后目录结构
+
 ```
 .
 ├── lib
@@ -259,6 +267,7 @@ javac -d target/classes -cp "lib/guava-18.0.jar;lib/commons-lang3-3.3.2.jar" src
 ```
 
 #### （4）运行
+
 ```bash
 # 运行 ，指定classpath，多个路径，windows使用;分隔、Linux使用:分隔，windows git bash要加引号
 $ java -classpath "src;lib/guava-18.0.jar;lib/commons-lang3-3.3.2.jar" cn.rectcircle.javacmd.Main
@@ -270,10 +279,12 @@ a,b,c
 a,b,c
 ```
 
-
 ### 4、生成Jar
+
 #### （1）目录结构
-使用[3、有外部Jar依赖的Java程序](#3、有外部Jar依赖的Java程序)已完成的情况
+
+使用[3、有外部Jar依赖的Java程序](#3-有外部Jar依赖的Java程序)已完成的情况
+
 ```
 .
 ├── manifest.txt
@@ -295,12 +306,11 @@ a,b,c
 ```
 
 添加清单文件
+
 ```
 Manifest-Version: 1.0
 Main-Class: cn.rectcircle.javacmd.Main
 Class-Path: lib/guava-18.0.jar lib/commons-lang3-3.3.2.jar
-
-
 ```
 
 #### （2）生成Jar
@@ -313,6 +323,7 @@ Class-Path: lib/guava-18.0.jar lib/commons-lang3-3.3.2.jar
 
 用法: `jar {ctxui}[vfmn0PMe] [jar-file] [manifest-file] [entry-point] [-C dir] files ...`
 选项:
+
 * -c  创建新档案
 * -t  列出档案目录
 * -x  从档案中提取指定的 (或所有) 文件
@@ -322,13 +333,13 @@ Class-Path: lib/guava-18.0.jar lib/commons-lang3-3.3.2.jar
 * -m  包含指定清单文件中的清单信息
 * -n  创建新档案后执行 Pack200 规范化
 * -e  为捆绑到可执行 jar 文件的独立应用程序
-*     指定应用程序入口点
+* 指定应用程序入口点
 * -0  仅存储; 不使用任何 ZIP 压缩
 * -P  保留文件名中的前导 '/' (绝对路径) 和 ".." (父目录) 组件
 * -M  不创建条目的清单文件
 * -i  为指定的 jar 文件生成索引信息
 * -C  更改为指定的目录并包含以下文件
-* 
+
 如果任何文件为目录, 则对其进行递归处理。
 清单文件名, 档案文件名和入口点名称的指定顺序
 与 'm', 'f' 和 'e' 标记的指定顺序相同。
@@ -379,6 +390,7 @@ jar -cvf target/javacmd4.jar -C target/classes .
 ```
 
 **执行之后的目录结构**
+
 ```
 .
 ├── javacmd1.jar
@@ -427,5 +439,3 @@ jar -cvf target/javacmd4.jar -C target/classes .
 * jar包内包含jar包，内部的jar将不会解析
 * `java -jar`再指定`-cp`将失效，系统的环境变量也会失效
 * 当指定`-cp`或`-classpath`，系统的环境变量将失效
-
-

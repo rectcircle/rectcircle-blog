@@ -2,7 +2,7 @@
 title: Hadoop 笔记（二）
 date: 2019-04-19T13:50:11+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/191
@@ -15,20 +15,7 @@ tags:
 > 《Hadoop权威指南》
 > [配置列表](http://hadoop.apache.org/docs/current/hadoop-mapreduce-client/hadoop-mapreduce-client-core/mapred-default.xml)
 
-## 目录
-* [五、MR使用与原理](#五、MR使用与原理)
-	* [8、MR工作机制](#8、MR工作机制)
-	* [9、Configuration](#9、Configuration)
-	* [10、MR单元测试](#10、MR单元测试)
-	* [11、Hadoop MR日志](#11、Hadoop MR日志)
-	* [12、MR的类型与格式](#12、MR的类型与格式)
-	* [13、其他特性](#13、其他特性)
-* [六、集群管理](#六、集群管理)
-	* [1、集群安全性](#1、集群安全性)
-	* [2、HDFS管理](#2、HDFS管理)
-	* [3、监控](#3、监控)
-	* [4、维护](#4、维护)
-
+## 五、MR使用与原理
 
 ### 8、MR工作机制
 
@@ -39,7 +26,7 @@ tags:
 * Hadoop客户端
 * YARN 资源管理器
 * YARN 节点管理器
-* MR 的 application master 
+* MR 的 application master
 * HDFS
 
 图示参见《Hadoop权威指南》P185
@@ -65,9 +52,9 @@ tags:
 		* 在任务运行之前，调用setupJob设置OutputCommitter（默认值为：FileOutputCommitter），来建立作业的最终输出目录和输出的临时工作空间
 
 在非uber默认，MRAppMaster将先申请map任务的容器（考虑到数据本地化），当map完成率达到5%，开始申请Reduce任务容器。这些任务由名为YarnChild的Java程序运行任务：
+
 * YarnChild都能执行任务OutputCommitter中的setup（搭建）和commit（提交）方法
 * commit将会保证当启用推测使执行被启用时，只有一个副本被提交，其他的都会被取消
-
 
 **MR分配的内存和CPU通过如下配置**
 
@@ -108,7 +95,6 @@ tags:
 * MRAppMaster在恢复过程中会通过作业历史来恢复Job状态而不是重新运行
 	* `yarn.app.mapreduce.am.job.recovery.enbale` 默认为true
 
-
 **节点管理器运行失败**
 
 * 心跳超时（yarn.resourcemanager.nm.liveness-monitor.expiry-interval.ms），默认10分钟
@@ -116,7 +102,6 @@ tags:
 **资源管理器运行失败**
 
 * 属于单点故障（YARN高可用部署）
-
 
 #### （3） Shuffle和排序
 
@@ -138,7 +123,6 @@ Shuffle 表示Map端输出到Reduce端输入的过程。涉及多次排序。图
 * 同时，Map任务完成后，也会通知Application Master，以便Reducer能够及时来拉取数据。
 * Map端输出的文件不会再Reducer拉取后就立即删除，因为Reduce可能失败，直到任务彻底完成，才会删除任务
 
-
 **Reduce端过程**
 
 * 复制阶段：Reduce会启动`mapreduce.reduce.shuffle.parallelcopise`默认为5个复制进程进程
@@ -151,7 +135,6 @@ Shuffle 表示Map端输出到Reduce端输入的过程。涉及多次排序。图
 **相关调优参数**
 
 参见《Hadoop权威指南》P199
-
 
 #### （4）任务执行
 
@@ -177,10 +160,10 @@ Mapper和Reducer可以通过`context.getConfiguration()`获取配置信息
 * 作业完成后进行作业清理
 * 其他参见《Hadoop权威指南》P204
 
-
 ### 9、Configuration
 
 #### （1）介绍
+
 Hadoop 所有配置 通过 Configuration 类来实现。Configuration可以理解为一个Map，key为配置项，value为值。可以通过配置文件（XML）和编程方式配置或者环境变量或者命令行参数
 
 * XML中支持使用${属性名}插值
@@ -189,6 +172,7 @@ Hadoop 所有配置 通过 Configuration 类来实现。Configuration可以理�
 Hadoop 启动过程中，将使用addResource将conf目录下的所有文件读取进入conf中
 配置文件的位置可以通过 HADOOP_CONF_DIR 环境变量配置
 配置属性一般分为两类：
+
 * 集群属性，只能通过配置文件改变
 * 任务属性，可以通过提交的程序修改
 
@@ -272,20 +256,20 @@ reduce测试
     conf.set("fs.defaultFS", "file:///");
     conf.set("mapreduce.framework.name", "local");
     conf.setInt("mapreduce.task.io.sort.mb", 1);
-    
+
     Path input = new Path("input/ncdc/micro");
     Path output = new Path("output");
-    
+
     FileSystem fs = FileSystem.getLocal(conf);
     fs.delete(output, true); // delete old output
 
     MaxTemperatureDriver driver = new MaxTemperatureDriver();
     driver.setConf(conf);
-    
+
     int exitCode = driver.run(new String[] {
         input.toString(), output.toString() });
     assertThat(exitCode, is(0));
-    
+
     checkOutput(conf, output);
   }
 //^^ MaxTemperatureDriverTestV2
@@ -295,7 +279,7 @@ reduce测试
     Path[] outputFiles = FileUtil.stat2Paths(
         fs.listStatus(output, new OutputLogFilter()));
     assertThat(outputFiles.length, is(1));
-    
+
     BufferedReader actual = asBufferedReader(fs.open(outputFiles[0]));
     BufferedReader expected = asBufferedReader(
         getClass().getResourceAsStream("/expected.txt"));
@@ -344,7 +328,7 @@ public class MaxTemperatureMapper
   @Override
   public void map(LongWritable key, Text value, Context context)
       throws IOException, InterruptedException {
-    
+
     parser.parse(value);
     if (parser.isValidTemperature()) {
       int airTemperature = parser.getAirTemperature();
@@ -383,12 +367,14 @@ hadoop fs -conf src/main/resources/conf/hadoop-localhost.xml  -rm -r max-temp
 #### （1）MapReduce的类型
 
 不包含Combiner
+
 ```
 map: (K1, V1) -> list(K2, V2)
 reduce: (K2, list(V2)) -> list(K3, V3)
 ```
 
 包含Combiner
+
 ```
 map: (K1, V1) -> list(K2, V2)
 combiner: (K2, list(V2)) -> list(K2, V2)
@@ -499,11 +485,12 @@ HBase输入使用TableInputFormat
 **多个输出**
 
 默认情况下每个reduce任务对应一个文件。现在考虑每个reduce输出的文件名是有意义的，做法一如下：自定义分区器，但是这样做有如下问题：
+
 * 分区需要一个列表，不利于扩展性
 * 数据可能倾斜
 
-
 做法二：使用MultipleOutput
+
 * 使用MultipleOutput实例在reduce中写入，而不是用context，做法如下
 
 ```java
@@ -537,8 +524,7 @@ HBase输入使用TableInputFormat
 
 HBase输出使用TableOutputFormat
 
-
-## 13、其他特性
+### 13、其他特性
 
 ***
 
@@ -576,9 +562,9 @@ sys.stderr.write('reporter:counter:group,counter,amount')
 利用HadoopKey全局有序性排序
 
 比较器设置方式：
+
 * conf.setSortComparatorClass(RawComparator)
 * 序列化类型实现WritableComparable
-
 
 **部分排序**
 
@@ -614,9 +600,9 @@ streaming也支持此方式 参见 《Hadoop权威指南》 P263
 
 方式1：小表先Load到内存中（map的setup函数），然后map输出
 方式2：使用`org.apache.hadoop.mapreduce.joib`包，参见`org.apache.examples.Join`，前提条件如下：
+
 * 两个数据源必须有序（按照连接键进行排序）
 * 且两个数据源分区必须相同
-
 
 **reduce端连接**
 
@@ -673,7 +659,7 @@ Kerberos是一个成熟的开源网络认证协议。Hadoop支持与Kerberos集�
 
 配置：
 
-* 修改coresite.xml 
+* 修改coresite.xml
 	* 修改 `hadoop.security.authentication` 设置为kerberos（默认为simaple）
 	* 修改 `hadoop.security.authorization` 设置为true
 * 可以配置`hadoop-policy`确定哪些用户组能访问哪些hadoop服务
@@ -685,7 +671,7 @@ Kerberos是一个成熟的开源网络认证协议。Hadoop支持与Kerberos集�
 
 略
 
-#### 2、HDFS管理
+### 2、HDFS管理
 
 #### （1）namenode目录结构
 
@@ -704,6 +690,7 @@ ${dfs.namenode.name.dir}
 ```
 
 VERSION
+
 ```
 #Thu Apr 25 14:10:38 CST 2019
 namespaceID=1023481244
@@ -743,10 +730,10 @@ layoutVersion=-60
 			* `dfs.namenode.checkpoint.txns`  事务数，默认100万个事务，检查频率`dfs.namenode.checkpoint.checkperiod`默认为1分钟单位秒
 	* name处于安全模式下可以通过`hdfs dfsadmin -saveNamespace`创建检查点
 
-
 #### （2）辅助namenode的结构
 
 和主namenode结构相同目录`dfs.namenode.checkout.dir`，这样可以在主namenode挂掉后，重新启动
+
 * 方法一：将辅助namenode复制到新的主namenode中
 * 方法二：在辅助namenode节点使用`-importCheckout`启用namenode
 
@@ -790,13 +777,12 @@ ${dfs.datanode.data.dir}
 
 默认关闭，通过环境变量`HDFS_AUDIT_LOGGER="INFO,RFAAUDIT"`，日志文件在`hdfs-audit.log`
 
-
 #### （5）相关命令行工具
 
 dfsadmin以`hdfs dfsadmin`方式使用，常用命令：
 
 * `-help` 帮助
-* `-report` 显示文件系统信息 
+* `-report` 显示文件系统信息
 * `-metasave` 将某些信息存储在Hadoop日志目录的一个文件中，包括正在被复制或删除的信息以及已连接的datanode列表
 * `-savemode` 安全模式相关
 * `-saveNamespace` 安全模式可用，将当前文件系统状态保存为fsimage
@@ -820,15 +806,14 @@ fsck工具，用于检查HDFS中文件健康状态
 块扫描器检查周期为`dfs.datanode.scan.period.hours` 默认为504小时
 
 均衡器：
-* 通过`start-balancer.sh` 启动
 
+* 通过`start-balancer.sh` 启动
 
 ### 3、监控
 
-
 设置日志级别
 
-* http://localhost:8088/logLevel 
+* http://localhost:8088/logLevel
 * `hadoop daemonlog -setlevel localhost:8088 日志名 级别`
 * 永久修改：log4j.properties文件中添加记录
 
@@ -836,8 +821,4 @@ fsck工具，用于检查HDFS中文件健康状态
 
 量度：http://localhost:50070/jmx
 
-
-
 ### 4、维护
-
-

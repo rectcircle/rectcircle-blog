@@ -2,62 +2,67 @@
 title: jsp速查
 date: 2016-11-16T10:57:17+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/17
   - /detail/17/
 tags:
-  - java
+  - Java
   - 后端
 ---
 
 ## 一、jsp简介
+
 > jsp--java server page
 
 jsp拥有servlet的优点：
+
 * jsp就是servlet，当用户第一次访问jsp时，容器根据jsp生成.java并编译
 * 只有当客户端第一次请求JSP时，才需要将其转换、编译
 * 优良的性能优于CGI，PHP，ASP
 * 平台无关性操作系统无关，Web服务器无关
 * 可扩展性tag的扩展机制，简化页面开发
 
-
 ## 二、jsp编程--基本语法
+
 ### 1、概念
+
 #### JSP传统语法
+
 > Declaration
 > Scriptlet
 > Expression
 > Comment
 > Directives
-> 	Action动作指令
-	内置对象
-JSTL
-JSF
-
+> Action动作指令
+> 内置对象
+> JSTL
+> JSF
 
 ### 2、Scriptlet
+
 ```java
 <%程序代码块%>
 ```
+
 不能够定义方法
 
-
 ### 3、表达式
+
 ```java
 <%=字符串格式%>
 //等价于servlet的输出out.println()；
 ```
 
+### 4、Declaration
 
-4、Declaration
 <%! 全局代码区 %>
 	等价于servlet的成员变量和成员函数
 	尽量不要设计成员变量
-	
-	
-5、Directives	编译指令
+
+### 5、Directives	编译指令
+
 ```
 <%@Directive 属性='属性值' %>
 常见的directive
@@ -75,16 +80,18 @@ JSF
 			contentType="text/html;charset=utf-8"|	--设置字符集
 			pageEncoding="gb2312"
 	%>
-	
+
 	include:
 	<%@include file="URL.jsp" %>
 	--将url里面的内容拷贝到当前位置（静态包含编译期间包含，无法传参，字符集要相同且两边都要写）
-	
+
 	tarlib
 ```
-	
+
 ### 6、action（动态指令--运行期的命令）
+
 #### (1)动态包含：`<jsp:include page="URL.jsp" flush="true"/>`
+
 ```java
 //包含与被包含的两个jsp产生两个对象，其内置对象也不同但是内容一样
 //可以传参数 <jsp:include page="URL.jsp?user=1234" flush="true"/>
@@ -93,8 +100,9 @@ JSF
 	<jsp:param name="参数名" value="<%=对象%>">
 </jsp:include>
 ```
-	
+
 #### (2)转向
+
 ```java
 	response.sendRedirect("url");//将url发还给客户端并转向"url"的地址
 		/*
@@ -106,7 +114,7 @@ JSF
 		可以传参数，直接写在url后面
 		"URL"中:/代表域名，不加/代表当前文件路径
 		*/
-	
+
 	<jsp:forward page="URL"/>
 		/*浏览器地址栏不变
 		虽然不是同一个request但是参数相同甚至更多
@@ -119,6 +127,7 @@ JSF
 ```
 
 ### 7、使用javaBean重要（面向对象的编程）
+
 ```
 jsp:useBean 的参数及含义
 	id:对象实例名称
@@ -128,6 +137,7 @@ jsp:useBean 的参数及含义
 ```
 
 #### 例子0、bean的测试代码
+
 ```java
 package bean;
 import java.io.Serializable;
@@ -140,9 +150,8 @@ public class CounterBean implements java.io.Serializable
 }
 ```
 
-
-
 #### 例子1、scope="request"
+
 ```java
 <jsp:useBean id="cb" class="带包名的类名">
 </jsp:useBean>
@@ -153,8 +162,8 @@ public class CounterBean implements java.io.Serializable
 //等价于out.print(cd.get成员变量());
 ```
 
-	
 #### 例子2、`scope="request"`（（本例与以下例子）上下两段代码等价，在`<jsp:forward page="RequestBean2.jsp" />`的转向可以访问javabean）
+
 ```java
 <jsp:useBean id="counterBean"
              scope="request"
@@ -169,8 +178,9 @@ public class CounterBean implements java.io.Serializable
 %>
 --%>
 ```
-	
+
 #### 例子3、`scope="session"`
+
 ```java
 <jsp:useBean id="counterBean"
              scope="session"
@@ -187,13 +197,14 @@ if(counterBean == null) {
 ```
 
 #### 例子4、`scope="application"`
+
 ```java
 <%--
 <jsp:useBean id="counterBean"
              scope="application"
-             class="bean.CounterBean" />    
+             class="bean.CounterBean" />
 --%>
- 
+
 <%
 bean.CounterBean counterBean = (bean.CounterBean)application.getAttribute("counterBean");
 if(counterBean == null) {
@@ -204,6 +215,7 @@ if(counterBean == null) {
 ```
 
 #### 例子5、传参
+
 ```java
 <jsp:setProperty
  name="cd"
@@ -214,7 +226,7 @@ if(counterBean == null) {
 	name="javabean对象名或id"
 	Property="成员变量名"
 	param="用户请求的参数"/>
-	
+
 或者（用户传递的参数名必须与对象的成员属性一直才能一次性设置参数）
 <jsp:useBean id="对象名" class="类全名" scope="request" >
 	<jsp:setProperty
@@ -224,20 +236,20 @@ if(counterBean == null) {
 </jsp:useBean>
 ```
 
-	
 #### 例子6、获得参数
+
 ```java
 <jsp:getProperty name="对象名" property="成员变量名"/>
 ```
-	
-
 
 ### 7、内置对象
+
 > out（打印输出）
 > request（请求）
 > response（响应）
 
 ### 8、注释
+
 ```
 html注释<!-- -->
 	注意<!-- <%代码%>-->代码会被执行；

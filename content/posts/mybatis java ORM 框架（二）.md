@@ -2,47 +2,41 @@
 title: mybatis java ORM 框架（二）
 date: 2017-10-25T00:14:18+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/108
   - /detail/108/
 tags:
-  - java
+  - Java
 ---
 
 > http://www.mybatis.org/mybatis-3/zh/index.html
 > http://blog.csdn.net/gebitan505/article/details/54929287
 
-## 目录
-
-* [上一篇](107)
-* [五、官方文档摘要](#五、官方文档摘要)
-	* [3、XML映射文件](#3、XML映射文件)
-	* [4、动态SQL](#4、动态SQL)
-	* [5、Java API](#5、Java API)
-	* [6、SQL语句构建器](#6、SQL语句构建器)
-* [六、MyBatis-Spring-Boot-Starter](#六、MyBatis-Spring-Boot-Starter)
-
-
-
-
 ## 五、官方文档摘要
-*********************************
+
+***
+
 ### 3、XML映射文件
+
 #### （1）select
+
 **简单的例子**
+
 ```xml
 <select id="selectPerson" parameterType="int" resultType="hashmap">
   SELECT * FROM PERSON WHERE ID = #{id}
 </select>
 ```
+
 这个语句被称作 selectPerson，接受一个 int（或 Integer）类型的参数，并返回一个 HashMap 类型的对象，其中的键是列名，值便是结果行中的对应值。
 
 **select节点的属性**
+
 ```xml
 <select
-  id="selectPerson" 
+  id="selectPerson"
   parameterType="int"
   parameterMap="deprecated"
   resultType="hashmap"
@@ -71,6 +65,7 @@ tags:
 	<!--resultSets	这个设置仅对多结果集的情况适用，它将列出语句执行后返回的结果集并每个结果集给一个名称，名称是逗号分隔的。-->
 
 #### （2）insert, update 和 delete
+
 ```xml
 <insert
   id="insertAuthor"
@@ -95,7 +90,7 @@ tags:
   flushCache="true"
   statementType="PREPARED"
   timeout="20">
-	
+
 	<!--id	命名空间中的唯一标识符，可被用来代表这条语句。-->
 	<!--parameterType	将要传入语句的参数的完全限定类名或别名。这个属性是可选的，因为 MyBatis 可以通过 TypeHandler 推断出具体传入语句的参数，默认值为 unset。-->
 	<!--parameterMap	这是引用外部 parameterMap 的已经被废弃的方法。使用内联参数映射和 parameterType 属性。-->
@@ -107,7 +102,9 @@ tags:
 	<!--keyColumn	（仅对 insert 和 update 有用）通过生成的键值设置表中的列名，这个设置仅在某些数据库（像 PostgreSQL）是必须的，当主键列不是表中的第一列的时候需要设置。如果希望得到多个生成的列，也可以是逗号分隔的属性名称列表。-->
 	<!--databaseId	如果配置了 databaseIdProvider，MyBatis 会加载所有的不带 databaseId 或匹配当前 databaseId 的语句；如果带或者不带的语句都有，则不带的会被忽略。-->
 ```
+
 **例子**
+
 ```xml
 <insert id="insertAuthor">
   insert into Author (id,username,password,email,bio)
@@ -129,7 +126,9 @@ tags:
 ```
 
 **关于插入、更新获取主键问题**
+
 对于支持主键自动生成的数据库而言
+
 ```xml
 <insert id="insertAuthor" useGeneratedKeys="true"
     keyProperty="id">
@@ -145,9 +144,11 @@ tags:
   </foreach>
 </insert>
 ```
+
 这样主键将会自动设置到实例中
 
 对于不支持自动生成类型的数据库或可能不支持自动生成主键 JDBC 驱动来说
+
 ```xml
 <insert id="insertAuthor">
   <selectKey keyProperty="id" resultType="int" order="BEFORE">
@@ -159,14 +160,19 @@ tags:
     (#{id}, #{username}, #{password}, #{email}, #{bio}, #{favouriteSection,jdbcType=VARCHAR})
 </insert>
 ```
+
 在上面的示例中，selectKey 元素将会首先运行，Author 的 id 会被设置，然后插入语句会被调用。这给你了一个和数据库中来处理自动生成的主键类似的行为，避免了使 Java 代码变得复杂。
 
 #### （3）sql
+
 这个元素可以被用来定义可重用的 SQL 代码段，可以包含在其他语句中。它可以被静态地(在加载参数) 参数化. 不同的属性值通过包含的实例变化. 比如：
+
 ```xml
 <sql id="userColumns"> ${alias}.id,${alias}.username,${alias}.password </sql>
 ```
+
 这个 SQL 片段可以被包含在其他语句中，例如：
+
 ```xml
 <select id="selectUsers" resultType="map">
   select
@@ -176,7 +182,9 @@ tags:
     cross join some_table t2
 </select>
 ```
+
 属性值可以用于包含的refid属性或者包含的字句里面的属性值，例如：
+
 ```xml
 <sql id="sometable">
   ${prefix}Table
@@ -198,19 +206,23 @@ tags:
 ```
 
 #### （4）参数（Parameters）
+
 ```
 #{id}
 #{property,javaType=int,jdbcType=NUMERIC} 指定类型
 #{age,javaType=int,jdbcType=NUMERIC,typeHandler=MyTypeHandler} #指定处理器
 #{height,javaType=double,jdbcType=NUMERIC,numericScale=2} #确定小数点后保留的位数
-#{department, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=departmentResultMap} 
+#{department, mode=OUT, jdbcType=CURSOR, javaType=ResultSet, resultMap=departmentResultMap}
 ORDER BY ${columnName} 字符串替换
 ```
 
 #### （5）Result Maps
+
 当返回的列名和javabean的属性名一致的时候不用显示的定义ResultMaps。
 对于复杂的语句段提供映射
+
 **查询语句**
+
 ```xml
 <select id="selectBlogDetails" resultMap="detailedBlogResultMap">
   select
@@ -246,7 +258,9 @@ ORDER BY ${columnName} 字符串替换
   where B.id = #{id}
 </select>
 ```
+
 **定义映射**
+
 ```xml
 <!-- Very Complex Result Map -->
 <resultMap id="detailedBlogResultMap" type="Blog">
@@ -278,7 +292,9 @@ ORDER BY ${columnName} 字符串替换
   </collection>
 </resultMap>
 ```
+
 **该映射的概念图**
+
 * constructor - 类在实例化时,用来注入结果到构造方法中
 	* idArg - ID 参数;标记结果作为 ID 可以帮助提高整体效能
 	* arg - 注入到构造方法的一个普通结果
@@ -293,11 +309,13 @@ ORDER BY ${columnName} 字符串替换
 		* 嵌入结果映射 – 这种情形结果也映射它本身,因此可以包含很多相 同的元素,或者它可以参照一个外部的结果映射。
 
 **ResultMap属性**
+
 * id	当前命名空间中的一个唯一标识，用于标识一个result map.
 * type	类的全限定名, 或者一个类型别名 (内置的别名可以参考上面的表格).
 * autoMapping	如果设置这个属性，MyBatis将会为这个ResultMap开启或者关闭自动映射。这个属性会覆盖全局的属性autoMappingBehavior。默认值为：unset。
 
 **Id和Result的属性**
+
 * property	映射到列结果的字段或属性。如果匹配的是存在的,和给定名称相同 的 JavaBeans 的属性,那么就会使用。否则 MyBatis 将会寻找给定名称 property 的字段。这两种情形你可以使用通常点式的复杂属性导航。比如,你 可以这样映射一些东西: “username” ,或者映射到一些复杂的东西: “address.street.number” 。
 * column	从数据库中得到的列名,或者是列名的重命名标签。这也是通常和会 传递给 resultSet.getString(columnName)方法参数中相同的字符串。
 * javaType	一个 Java 类的完全限定名,或一个类型别名(参考上面内建类型别名 的列表) 。如果你映射到一个 JavaBean,MyBatis 通常可以断定类型。 然而,如果你映射到的是 HashMap,那么你应该明确地指定 javaType 来保证所需的行为。
@@ -305,6 +323,7 @@ ORDER BY ${columnName} 字符串替换
 * typeHandler	我们在前面讨论过默认的类型处理器。使用这个属性,你可以覆盖默 认的类型处理器。这个属性值是类的完全限定名或者是一个类型处理 器的实现,或者是类型别名。
 
 **支持的 JDBC 类型**
+
 BIT	FLOAT	CHAR	TIMESTAMP	OTHER	UNDEFINED
 TINYINT	REAL	VARCHAR	BINARY	BLOB	NVARCHAR
 SMALLINT	DOUBLE	LONGVARCHAR	VARBINARY	CLOB	NCHAR
@@ -312,7 +331,9 @@ INTEGER	NUMERIC	DATE	LONGVARBINARY	BOOLEAN	NCLOB
 BIGINT	DECIMAL	TIME	NULL	CURSOR	ARRAY
 
 **构造方法**
+
 对于
+
 ```java
 public class User {
    //...
@@ -322,7 +343,9 @@ public class User {
 //...
 }
 ```
+
 映射
+
 ```xml
 <!-- 参数顺序一致 -->
 <constructor>
@@ -337,7 +360,9 @@ public class User {
    <arg column="username" javaType="String" name="username" />
 </constructor>
 ```
+
 属性
+
 * column	来自数据库的类名,或重命名的列标签。这和通常传递给 resultSet.getString(columnName)方法的字符串是相同的。
 * javaType	一个 Java 类的完全限定名,或一个类型别名(参考上面内建类型别名的列表)。 如果你映射到一个 JavaBean,MyBatis 通常可以断定类型。然而,如 果你映射到的是 HashMap,那么你应该明确地指定 javaType 来保证所需的 行为。
 * jdbcType	在这个表格之前的所支持的 JDBC 类型列表中的类型。JDBC 类型是仅仅 需要对插入, 更新和删除操作可能为空的列进行处理。这是 JDBC 的需要, jdbcType 而不是 MyBatis 的。如果你直接使用 JDBC 编程,你需要指定这个类型-但 仅仅对可能为空的值。
@@ -346,9 +371,10 @@ public class User {
 * resultMap	ResultMap的ID，可以将嵌套的结果集映射到一个合适的对象树中，功能和select属性相似，它可以实现将多表连接操作的结果映射成一个单一的ResultSet。这样的ResultSet将会将包含重复或部分数据重复的结果集正确的映射到嵌套的对象树中。为了实现它, MyBatis允许你 “串联” ResultMap,以便解决嵌套结果集的问题。想了解更多内容，请参考下面的Association元素。
 * name	构造方法形参的名字。通过指定具体的名字你可以以任意顺序写入arg元素。参看上面的解释。从3.4.3版本起。
 
-
 **关联（association）**
+
 支持三种方式写法：
+
 * 直接定义详细的映射使用类似`Result`的属性
 	* property	映射到列结果的字段或属性。如果匹配的是存在的,和给定名称相同的 property JavaBeans 的属性, 那么就会使用。 否则 MyBatis 将会寻找给定名称的字段。 这两种情形你可以使用通常点式的复杂属性导航。比如,你可以这样映射 一 些 东 西 :“ username ”, 或 者 映 射 到 一 些 复 杂 的 东 西 : “address.street.number” 。
 	* javaType	一个 Java 类的完全限定名,或一个类型别名(参考上面内建类型别名的列 表) 。如果你映射到一个 JavaBean,MyBatis 通常可以断定类型。然而,如 javaType 果你映射到的是 HashMap,那么你应该明确地指定 javaType 来保证所需的 行为。
@@ -365,7 +391,9 @@ public class User {
 autoMapping	如果使用了，当映射结果到当前属性时，Mybatis将启用或者禁用自动映射。 该属性覆盖全局的自动映射行为。 注意它对外部结果集无影响，所以在select or resultMap属性中这个是毫无意义的。 默认值：未设置(unset)。
 
 **集合**
+
 对于JavaBean属性`private List<Post> posts;`的写法
+
 ```xml
 <collection property="posts" ofType="domain.blog.Post">
   <id property="id" column="post_id"/>
@@ -377,12 +405,15 @@ autoMapping	如果使用了，当映射结果到当前属性时，Mybatis将启�
 类似的集合也支持三种写法类似于关联
 
 **鉴别器（类似于case）**
+
 ```xml
 <discriminator javaType="int" column="draft">
   <case value="1" resultType="DraftPost"/>
 </discriminator>
 ```
+
 使一个resultMap具有更加通用，例子
+
 ```xml
 <resultMap id="vehicleResult" type="Vehicle">
   <id property="id" column="id" />
@@ -428,11 +459,14 @@ autoMapping	如果使用了，当映射结果到当前属性时，Mybatis将启�
 
 
 #### （6）自动映射
+
 mapUnderscoreToCamelCase 设置 两种自动映射方式：
-* false 直接映射 
+
+* false 直接映射
 * true 下划线映射驼峰表识
 
 autoMappingBehavior设置 自动映射等级
+
 * NONE - 禁用自动映射。仅设置手动映射属性。
 * PARTIAL - 将自动映射结果除了那些有内部定义内嵌结果映射的(joins). （**默认**）
 * FULL - 自动映射所有。
@@ -440,6 +474,7 @@ autoMappingBehavior设置 自动映射等级
 FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设错同名列
 
 通过添加autoMapping属性可以忽略自动映射等级配置，你可以启用或者禁用自动映射指定的ResultMap。
+
 ```xml
 <resultMap id="userResultMap" type="User" autoMapping="false">
   <result property="password" column="hashed_password"/>
@@ -448,10 +483,13 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
 
 
 #### （7）缓存
+
 在mapper文件添加
+
 ```xml
 <cache/>
 ```
+
 这个简单语句的效果如下:
 
 * 映射语句文件中的所有 select 语句将会被缓存。
@@ -462,6 +500,7 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
 * 缓存会被视为是 read/write(可读/可写)的缓存,意味着对象检索不是共享的,而 且可以安全地被调用者修改,而不干扰其他调用者或线程所做的潜在修改。
 
 所有的这些属性都可以通过缓存元素的属性来修改。比如:
+
 ```xml
 <cache
   eviction="FIFO"
@@ -469,6 +508,7 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
   size="512"
   readOnly="true"/>
 ```
+
 可用的收回策略有:
 
 * LRU – 最近最少使用的:移除最长时间不被使用的对象。**默认**
@@ -476,21 +516,18 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
 * SOFT – 软引用:移除基于垃圾回收器状态和软引用规则的对象。
 * WEAK – 弱引用:更积极地移除基于垃圾收集器状态和弱引用规则的对象。
 
-
 **使用自定义缓存**
+
 略
 
-
-
-
-
-
 ### 4、动态SQL
+
 #### （1）if
+
 ```xml
 <select id="findActiveBlogWithTitleLike"
      resultType="Blog">
-  SELECT * FROM BLOG 
+  SELECT * FROM BLOG
   WHERE state = 'ACTIVE'
   <if test="title != null">
     AND title like #{title}
@@ -499,6 +536,7 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
 ```
 
 #### （2）choose, when, otherwise
+
 ```xml
 <select id="findActiveBlogLike"
      resultType="Blog">
@@ -518,14 +556,15 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
 ```
 
 #### （3）trim, where, set
+
 ```xml
 <select id="findActiveBlogLike"
      resultType="Blog">
-  SELECT * FROM BLOG 
-  WHERE 
+  SELECT * FROM BLOG
+  WHERE
   <if test="state != null">
     state = #{state}
-  </if> 
+  </if>
   <if test="title != null">
     AND title like #{title}
   </if>
@@ -534,15 +573,17 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
   </if>
 </select>
 ```
+
 更好的实现
+
 ```xml
 <select id="findActiveBlogLike"
      resultType="Blog">
-  SELECT * FROM BLOG 
-  <where> 
+  SELECT * FROM BLOG
+  <where>
     <if test="state != null">
          state = #{state}
-    </if> 
+    </if>
     <if test="title != null">
         AND title like #{title}
     </if>
@@ -552,14 +593,19 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
   </where>
 </select>
 ```
+
 等价于
+
 ```xml
 <trim prefix="WHERE" prefixOverrides="AND |OR ">
-  ... 
+  ...
 </trim>
 ```
+
 开头添加前缀，在最后一条语句开头去掉`AND |OR `
+
 **set**
+
 ```xml
 <update id="updateAuthorIfNecessary">
   update Author
@@ -572,7 +618,9 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
   where id=#{id}
 </update>
 ```
+
 等价于
+
 ```xml
 <trim prefix="SET" suffixOverrides=",">
   ...
@@ -580,6 +628,7 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
 ```
 
 #### （4）foreach
+
 ```xml
 <select id="selectPostIn" resultType="domain.blog.Post">
   SELECT *
@@ -591,9 +640,11 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
   </foreach>
 </select>
 ```
+
 当使用可迭代对象或者数组时，index是当前迭代的次数，item的值是本次迭代获取的元素。当使用字典（或者Map.Entry对象的集合）时，index是键，item是值
 
 #### （5）bind
+
 ```xml
 <select id="selectBlogsLike" resultType="Blog">
   <bind name="pattern" value="'%' + _parameter.getTitle() + '%'" />
@@ -601,7 +652,9 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
   WHERE title LIKE #{pattern}
 </select>
 ```
+
 #### （6）Multi-db vendor support
+
 ```xml
 <insert id="insert">
   <selectKey keyProperty="id" resultType="int" order="BEFORE">
@@ -617,21 +670,26 @@ FULL慎用，对于Join的语句可能出现列同名的情况，这是可能设
 ```
 
 #### （7）动态 SQL 中可插拔的脚本语言
+
 略
 
 
 ### 5、Java API
+
 #### （1）项目结构
+
 略
 
-
 #### （2）SqlSession
+
 使用 MyBatis 的主要 Java 接口就是 SqlSession。尽管你可以使用这个接口执行命令,获 取映射器和管理事务。我们会讨论 SqlSession 本身更多,但是首先我们还是要了解如何获取 一个 SqlSession 实例。SqlSessions 是由 SqlSessionFactory 实例创建的。SqlSessionFactory 对 象 包 含 创 建 SqlSession 实 例 的 所 有 方 法 。 而 SqlSessionFactory 本 身 是 由 SqlSessionFactoryBuilder 创建的,它可以从 XML 配置,注解或手动配置 Java 来创建 SqlSessionFactory。
 
 当Mybatis与一些依赖注入框架（如Spring或者Guice）同时使用时，SqlSessions将被依赖注入框架所创建，所以你不需要使用SqlSessionFactoryBuilder或者SqlSessionFactory，可以直接看SqlSession这一节。
 
 **SqlSessionFactoryBuilder**
+
 SqlSessionFactoryBuilder 有五个 build()方法
+
 ```java
 SqlSessionFactory build(InputStream inputStream)
 SqlSessionFactory build(InputStream inputStream, String environment)
@@ -639,14 +697,18 @@ SqlSessionFactory build(InputStream inputStream, Properties properties)
 SqlSessionFactory build(InputStream inputStream, String env, Properties props)
 SqlSessionFactory build(Configuration config)
 ```
+
 给出一个例子
+
 ```java
 String resource = "org/mybatis/builder/mybatis-config.xml";
 InputStream inputStream = Resources.getResourceAsStream(resource);
 SqlSessionFactoryBuilder builder = new SqlSessionFactoryBuilder();
 SqlSessionFactory factory = builder.build(inputStream);
 ```
+
 注意这里我们使用了 Resources 工具类,这个类在 org.mybatis.io 包中。Resources 类正 如其名,会帮助你从类路径下,文件系统或一个 web URL 加载资源文件。看一下这个类的 源代码或者通过你的 IDE 来查看,就会看到一整套有用的方法。这里给出一个简表:
+
 ```java
 URL getResourceURL(String resource)
 URL getResourceURL(ClassLoader loader, String resource)
@@ -663,9 +725,11 @@ Reader getUrlAsReader(String urlString)
 Properties getUrlAsProperties(String urlString)
 Class classForName(String className)
 ```
+
 其他略
 
 **SqlSessionFactory**
+
 SqlSessionFactory 有六个方法可以用来创建 SqlSession 实例。通常来说,如何决定是你 选择下面这些方法时:
 
 * Transaction (事务): 你想为 session 使用事务或者使用自动提交(通常意味着很多 数据库和/或 JDBC 驱动没有事务)?
@@ -673,6 +737,7 @@ SqlSessionFactory 有六个方法可以用来创建 SqlSession 实例。通常�
 * Execution (执行): 你想 MyBatis 复用预处理语句和/或批量更新语句(包括插入和 删除)?
 
 重载的 openSession()方法签名设置允许你选择这些可选中的任何一个组合。
+
 ```xml
 SqlSession openSession()
 SqlSession openSession(boolean autoCommit)
@@ -700,12 +765,12 @@ ExecutorType.SIMPLE: 这个执行器类型不做特殊的事情。它为每个�
 ExecutorType.REUSE: 这个执行器类型会复用预处理语句。
 ExecutorType.BATCH: 这个执行器会批量执行所有更新语句,如果 SELECT 在它们中间执行还会标定它们是 必须的,来保证一个简单并易于理解的行为。
 
-
-
 **SqlSession**
 
 *语句执行方法*
+
 这些方法被用来执行定义在 SQL 映射的 XML 文件中的 SELECT,INSERT,UPDA E T 和 DELETE 语句。它们都会自行解释,每一句都使用语句的 ID 属性和参数对象,参数可以 是原生类型(自动装箱或包装类) ,JavaBean,POJO 或 Map。
+
 ```java
 <T> T selectOne(String statement, Object parameter)
 <E> List<E> selectList(String statement, Object parameter)
@@ -714,9 +779,11 @@ int insert(String statement, Object parameter)
 int update(String statement, Object parameter)
 int delete(String statement, Object parameter)
 ```
+
 略
 
 *事务控制方法*
+
 ```java
 void commit()
 void commit(boolean force)
@@ -725,25 +792,31 @@ void rollback(boolean force)
 ```
 
 *清理 Session 级的缓存*
+
 ```java
 void clearCache()
 ```
+
 SqlSession 实例有一个本地缓存在执行 update,commit,rollback 和 close 时被清理。要 明确地关闭它(获取打算做更多的工作) ,你可以调用 clearCache()。
 
 *确保 SqlSession 被关闭*
+
 ```java
 void close()
 ```
 
 *使用映射器*
+
 ```java
 <T> T getMapper(Class<T> type)
 ```
+
 定义接口
+
 ```java
 public interface AuthorMapper {
   // (Author) selectOne("selectAuthor",5);
-  Author selectAuthor(int id); 
+  Author selectAuthor(int id);
   // (List<Author>) selectList(“selectAuthors”)
   List<Author> selectAuthors();
   // (Map<Integer,Author>) selectMap("selectAuthors", "id")
@@ -757,8 +830,11 @@ public interface AuthorMapper {
   int deleteAuthor(int id);
 }
 ```
+
 *映射器注解*
+
 例子
+
 ```java
 @Insert("insert into table3 (id, name) values(#{nameId}, #{name})")
 @SelectKey(statement="call next value for TestSequence", keyProperty="nameId", before=true, resultType=int.class)
@@ -831,12 +907,14 @@ class UserSqlBuilder {
     }}.toString();
   }
 }
-
 ```
 
 ### 6、SQL语句构建器
+
 #### （1）问题
+
 Java程序员面对的最痛苦的事情之一就是在Java代码中嵌入SQL语句。这么来做通常是由于SQL语句需要动态来生成-否则可以将它们放到外部文件或者存储过程中。正如你已经看到的那样，MyBatis在它的XML映射特性中有一个强大的动态SQL生成方案。但有时在Java代码内部创建SQL语句也是必要的。此时，MyBatis有另外一个特性可以帮到你，在减少典型的加号,引号,新行,格式化问题和嵌入条件来处理多余的逗号或 AND 连接词之前。事实上，在Java代码中来动态生成SQL代码就是一场噩梦。例如：
+
 ```java
 String sql = "SELECT P.ID, P.USERNAME, P.PASSWORD, P.FULL_NAME, "
 "P.LAST_NAME,P.CREATED_ON, P.UPDATED_ON " +
@@ -850,8 +928,11 @@ String sql = "SELECT P.ID, P.USERNAME, P.PASSWORD, P.FULL_NAME, "
 "OR (P.FIRST_NAME like ?) " +
 "ORDER BY P.ID, P.FULL_NAME";
 ```
+
 #### （2）解决方案
+
 MyBatis 3提供了方便的工具类来帮助解决该问题。使用SQL类，简单地创建一个实例来调用方法生成SQL语句。上面示例中的问题就像重写SQL类那样：
+
 ```java
 private String selectPersonSql() {
   return new SQL() {{
@@ -876,6 +957,7 @@ private String selectPersonSql() {
 ```
 
 #### （3）例子
+
 ```java
 // Anonymous inner class
 public String deletePersonSql() {
@@ -934,5 +1016,5 @@ public String updatePersonSql() {
     SET("FIRST_NAME = #{firstName}");
     WHERE("ID = #{id}");
   }}.toString();
-}	
+}
 ```

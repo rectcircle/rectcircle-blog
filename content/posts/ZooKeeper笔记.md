@@ -13,32 +13,13 @@ tags:
 
 > https://zookeeper.apache.org/
 
-## 目录
-
-* [一、介绍](#一、介绍)
-* [二、安装配置](#二、安装配置)
-	* [1、下载安装](#1、下载安装)
-	* [2、单机配置](#2、单机配置)
-	* [3、集群配置](#3、集群配置)
-	* [4、配置清单](#4、配置清单)
-* [三、使用](#三、使用)
-	* [1、zkshell](#1、zkshell)
-	* [2、Java编程接口](#2、Java编程接口)
-* [四、常见用法](#四、常见用法)
-	* [1、统一命名服务](#1、统一命名服务)
-	* [2、分布式锁服务](#2、分布式锁服务)
-	* [3、配置管理](#3、配置管理)
-	* [4、集群管理与Master选举](#4、集群管理与Master选举)
-	* [5、负载均衡](#5、负载均衡)
-	* [6、分布式通知协调](#6、分布式通知协调)
-	* [7、分布式队列](#7、分布式队列)
-
-
-## [一、介绍]
+## 一、介绍
 
 ***
 
-#### （1）Zookeeper官方简介：
+### 1
+
+#### （1）Zookeeper官方简介
 
 ZooKeeper是一个分布式的开源协调服务，用于分布式应用程序。它公开了一组简单的原语，分布式应用程序可以基于这些原语实现更高级别的同步、配置维护、组和命名服务。它被设计成易于编程，并使用按照文件系统的常见目录树结构样式化的数据模型。它在Java运行，并对Java和C都有绑定。
 
@@ -69,7 +50,6 @@ ZooKeeper是一个分布式的开源协调服务，用于分布式应用程序�
 * ZooKeeper支持类似文件系统的watch（监听回调）
 * 客户端对某个节点进行监听，当该节点发生更新、删除，客户端将受到相应事件
 
-
 #### （4）基本原语
 
 * create 创建一个节点
@@ -79,8 +59,6 @@ ZooKeeper是一个分布式的开源协调服务，用于分布式应用程序�
 * set data 向一个节点写数据
 * get children 获取一个节点的孩子节点
 * sync waits for data to be propagated
-
-
 
 ## 二、安装配置
 
@@ -129,6 +107,7 @@ bin/zkServer.sh start
 ```
 
 配置ZooKeeper `vim etc/zoo.cfg`
+
 ```cfg
 tickTime=2000
 dataDir=/home/rectcircle/zookeeper/default/data
@@ -136,7 +115,7 @@ dataDir=/home/rectcircle/zookeeper/default/data
 dataLogDir=/home/rectcircle/zookeeper/default/log
 # 客户端连接端口
 clientPort=2181
-# 单位tickTime倍数：initLimit is timeouts ZooKeeper uses to limit the length of time the ZooKeeper servers in quorum have to connect to a leader. 
+# 单位tickTime倍数：initLimit is timeouts ZooKeeper uses to limit the length of time the ZooKeeper servers in quorum have to connect to a leader.
 initLimit=5
 # 单位tickTime倍数：The entry syncLimit limits how far out of date a server can be from a leader.
 syncLimit=2
@@ -186,8 +165,6 @@ bin/zkServer.sh start
 * `syncLimit` leader与follower发送消息和应答的超时时间，表示tickTime的倍数
 * `server.id` 集群的地址信息
 
-
-
 ## 三、使用
 
 ***
@@ -199,6 +176,7 @@ bin/zkCli.sh -server zoo1:2181
 ```
 
 命令列表：
+
 ```
 ZooKeeper -server host:port cmd args
 	stat path [watch]
@@ -240,7 +218,6 @@ set /zk 这是该节点的值2
 delete /zk
 ls /
 ```
-
 
 ### 2、Java编程接口
 
@@ -311,7 +288,6 @@ public class ZKHelloWorld {
 }
 ```
 
-
 #### （2）使用ZooKeeper实现分布式锁
 
 算法步骤：
@@ -320,7 +296,6 @@ public class ZKHelloWorld {
 * 客户端获取`/locks`下的子节点列表，判断自己创建的子节点是否为当前子节点列表中序号最小的子节点，如果是则认为获得锁，否则监听刚好在自己之前一位的子节点删除消息，获得子节点变更通知后重复此步骤直至获得锁；
 * 执行业务代码；
 * 完成业务流程后，删除对应的子节点释放锁。
-
 
 以下为一个实现
 
@@ -375,7 +350,7 @@ class ZKProcessLock implements Lock {
 
 	/**
 	 * 配置分布式锁
-	 * 
+	 *
 	 * @param addr     连接的url
 	 * @param lockName 锁名
 	 * @throws IOException
@@ -445,7 +420,7 @@ class ZKProcessLock implements Lock {
 		} catch (Exception e) {
 			unlock();
 			throw e;
-		} 
+		}
 	}
 
 	private boolean writeAndCheckZK(){
@@ -583,7 +558,7 @@ public class ZKReentrantLock implements Lock {
 			} else {
 				this.unlock();
 			}
-		} 
+		}
 		return false;
 	}
 
@@ -662,7 +637,6 @@ public class ZKReentrantLock implements Lock {
 }
 ```
 
-
 ZKLockException.java
 
 ```java
@@ -686,6 +660,7 @@ public class ZKLockException extends RuntimeException{
 ```
 
 ## 四、常见用法
+
 ***
 
 ### 1、统一命名服务
@@ -704,9 +679,7 @@ public class ZKLockException extends RuntimeException{
 
 另外，Dubbo还有针对服务粒度的监控，方法是订阅/dubbo/${serviceName}目录下所有提供者和消费者的信息。
 
-
 类似的服务还有：consul
-
 
 ### 2、分布式锁服务
 
@@ -726,12 +699,12 @@ public class ZKLockException extends RuntimeException{
 
 在分布式系统里，我们会把一个服务应用分别部署到n台服务器上，这些服务器的配置文件是相同的（例如：我设计的分布式网站框架里，服务端就有4台服务器，4台服务器上的程序都是一样，配置文件都是一样），如果配置文件的配置选项发生变化，那么我们就得一个个去改这些配置文件，如果我们需要改的服务器比较少，这些操作还不是太麻烦，如果我们分布式的服务器特别多，比如某些大型互联网公司的hadoop集群有数千台服务器，那么更改配置选项就是一件麻烦而且危险的事情。这时候zookeeper就可以派上用场了，我们可以把zookeeper当成一个高可用的配置存储器，把这样的事情交给zookeeper进行管理，我们将集群的配置文件拷贝到zookeeper的文件系统的某个节点上，然后用zookeeper监控所有分布式系统里配置文件的状态，一旦发现有配置文件发生了变化，每台服务器都会收到zookeeper的通知，让每台服务器同步zookeeper里的配置文件，zookeeper服务也会保证同步操作原子性，确保每个服务器的配置文件都能被正确的更新。
 
-
 ### 4、集群管理与Master选举
 
 #### （1）集群机器监控：
 
 这通常用于那种对集群中机器状态，机器在线率有较高要求的场景，能够快速对集群中机器变化作出响应。这样的场景中，往往有一个监控系统，实时检测集群机器是否存活。过去的做法通常是：
+
 * 监控系统通过某种手段（比如ping）定时检测每个机器，
 * 或者每个机器自己定时向监控系统汇报“我还活着”。 这种做法可行，但是存在两个比较明显的问题：
 	* 集群中机器有变动的时候，牵连修改的东西比较多。
@@ -758,8 +731,6 @@ Master选举则是zookeeper中最为经典的应用场景了。 在分布式环�
 
 在Hbase中，也是使用ZooKeeper来实现动态HMaster的选举。在Hbase实现中，会在ZK上存储一些ROOT表的地址和HMaster的地址，HRegionServer也会把自己以临时节点（Ephemeral）的方式注册到Zookeeper中，使得HMaster可以随时感知到各个HRegionServer的存活状态，同时，一旦HMaster出现问题，会重新选举出一个HMaster来运行，从而避免了HMaster的单点问题
 
-
-
 ### 5、负载均衡
 
 这里说的负载均衡是指软负载均衡。在分布式环境中，为了保证高可用性，通常同一个应用或同一个服务的提供方都会部署多份，达到对等服务。而消费者就须要在这些对等的服务器中选择一个来执行相关的业务逻辑，其中比较典型的是消息中间件中的生产者，消费者负载均衡。
@@ -776,7 +747,6 @@ Master选举则是zookeeper中最为经典的应用场景了。 在分布式环�
 如果同一个group的消费者数目小于分区数目，则有部分消费者需要额外承担消费任务。
 在某个消费者故障或者重启等情况下，其他消费者会感知到这一变化（通过 zookeeper watch消费者列表），然后重新进行负载均衡，保证所有的分区都有消费者进行消费。
 
-
 ### 6、分布式通知协调
 
 利用 watcher 功能
@@ -786,4 +756,3 @@ Master选举则是zookeeper中最为经典的应用场景了。 在分布式环�
 队列方面，简单地讲有两种，一种是常规的先进先出队列，另一种是要等到队列成员聚齐之后的才统一按序执行。对于第一种先进先出队列，和分布式锁服务中的控制时序场景基本原理一致，这里不再赘述。
 
 第二种队列其实是在FIFO队列的基础上作了一个增强。通常可以在 /queue 这个znode下预先建立一个/queue/num 节点，并且赋值为n（或者直接给/queue赋值n），表示队列大小，之后每次有队列成员加入后，就判断下是否已经到达队列大小，决定是否可以开始执行了。这种用法的典型场景是，分布式环境中，一个大任务Task A，需要在很多子任务完成（或条件就绪）情况下才能进行。这个时候，凡是其中一个子任务完成（就绪），那么就去 /taskList 下建立自己的临时时序节点 （CreateMode.EPHEMERAL_SEQUENTIAL），当 /taskList 发现自己下面的子节点满足指定个数，就可以进行下一步按序进行处理了。
-

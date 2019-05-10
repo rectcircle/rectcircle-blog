@@ -8,7 +8,7 @@ aliases:
   - /detail/61
   - /detail/61/
 tags:
-  - java
+  - Java
 ---
 
 > https://spring.io/guides/gs/sts/

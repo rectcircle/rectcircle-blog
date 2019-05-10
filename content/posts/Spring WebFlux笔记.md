@@ -2,13 +2,13 @@
 title: Spring WebFlux笔记
 date: 2018-07-25T14:40:58+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/159
   - /detail/159/
 tags:
-  - java
+  - Java
   - sql
 ---
 
@@ -16,42 +16,18 @@ tags:
 > [博客1](https://blog.csdn.net/get_set/article/details/79466657)
 > [Reactor](https://htmlpreview.github.io/?https://github.com/get-set/reactor-core/blob/master-zh/src/docs/index.html)
 
-## 目录
-
-* [一、Reactor3](#一、Reactor3)
-	* [1、Reactor介绍](#1、Reactor介绍)
-	* [2、Reactor依赖](#2、Reactor依赖)
-	* [3、Reactor基本概念](#3、Reactor基本概念)
-	* [4、发布者](#4、发布者)
-	* [5、订阅](#5、订阅)
-	* [6、运算符](#6、运算符)
-	* [7、并发](#7、并发)
-	* [8、错误处理](#8、错误处理)
-	* [9、背压](#9、背压)
-	* [10、单元测试支持](#10、单元测试支持)
-	* [11、Reactor3简单模拟](#11、Reactor3简单模拟)
-	* [12、自定义数据流](#12、自定义数据流)
-* [二、Spring WebFlux入门](#二、Spring WebFlux入门)
-	* [1、HelloWorld](#1、HelloWorld)
-	* [2、WebFlux函数式开发模式](#2、WebFlux函数式开发模式)
-	* [3、服务器推送](#3、服务器推送)
-	* [4、响应式Spring Data](#4、响应式Spring Data)
-	* [5、使用WebClient开发响应式Http客户端](#5、使用WebClient开发响应式Http客户端)
-	* [6、让数据在Http上双向无限流动起来](#6、让数据在Http上双向无限流动起来)
-
-
 ## 一、Reactor3
-***
-Spring WebFlux 依赖于 Reactor3
 
+***
+
+Spring WebFlux 依赖于 Reactor3
 
 ### 1、Reactor介绍
 
 一个响应式编程库、类似于Rxjava，专注于服务端开发。提供类似发布订阅、基于数据/事件流的模型
 
-
-
 ### 2、Reactor依赖
+
 ```xml
     <dependency>
         <groupId>io.projectreactor</groupId>
@@ -72,8 +48,8 @@ Spring WebFlux 依赖于 Reactor3
     </dependency>
 ```
 
-
 ### 3、Reactor基本概念
+
 * Publisher：发布者，数据流的发布者，承载着数据，
 	* 包含两类
 		* Flux
@@ -85,7 +61,9 @@ Spring WebFlux 依赖于 Reactor3
 * Subscribe：一个对信号的处理的操作，可以通过方法和实现`Subscriber`接口实现
 
 ### 4、发布者
-发布者对象：Flux、Mono 
+
+发布者对象：Flux、Mono
+
 * 一个Flux对象代表一个包含0..N个元素的响应式序列
 * 一个Mono对象代表一个包含零或一个（0..1）元素的结果
 
@@ -95,6 +73,7 @@ Mono.just(1);
 ```
 
 从其他容器创建发布者
+
 ```java
 Integer[] array = new Integer[] { 1, 2, 3, 4, 5, 6 };
 Flux.fromArray(array);
@@ -105,6 +84,7 @@ Flux.fromStream(stream);
 ```
 
 发出中止信号的方法
+
 ```java
 // 只有完成信号的空数据流
 Flux.just();
@@ -115,7 +95,6 @@ Mono.justOrEmpty(Optional.empty());
 Flux.error(new Exception("some error"));
 Mono.error(new Exception("some error"));
 ```
-
 
 ### 5、订阅
 
@@ -131,7 +110,7 @@ Mono.error(new Exception("some error"));
 				() -> System.out.println("Completed!")); //监听完成信号，正常处理完成后执行（错误不处理）
 		Mono.error(new Exception("some error"))
 			.subscribe(
-				System.out::println, 
+				System.out::println,
 				System.err::println,
 				() -> System.out.println("Completed!")); //没有输出Completed!
 ```
@@ -141,6 +120,7 @@ Mono.error(new Exception("some error"));
 运算符就是一系列方便的高阶函数（参数为函数类型的函数）
 
 常用的如下
+
 ```java
 		// Flux<E2> = Flux<E1>.map(E1 -> E2)
 		Flux.range(1, 6)
@@ -157,7 +137,7 @@ Mono.error(new Exception("some error"));
 		Flux.just(1,2).zipWith(Flux.just(3,4));
 ```
 
-其他操作符： 
+其他操作符：
 
 * 用于编程方式自定义生成数据流的create和generate等及其变体方法；
 * 用于“无副作用的peek”场景的doOnNext、doOnError、doOncomplete、doOnSubscribe、doOnCancel等及其变体方法；
@@ -166,21 +146,21 @@ Mono.error(new Exception("some error"));
 * 用于错误处理的timeout、onErrorReturn、onErrorResume、doFinally、retryWhen等及其变体方法；
 * 用于分批的window、buffer、group等及其变体方法； 用于线程调度的publishOn和subscribeOn方法。
 
-
-
 ### 7、并发
 
- 提供Schedulers，提供对线程池的封装，可以方便的实现异步 
- * 当前线程（Schedulers.immediate()）；
- * 可重用的单线程（Schedulers.single()）。注意，这个方法对所有调用者都提供同一个线程来使用，
- * 直到该调度器被废弃。如果你想使用独占的线程，请使用Schedulers.newSingle()；
- * 弹性线程池（Schedulers.elastic()）。它根据需要创建一个线程池，重用空闲线程。线程池如果空闲时间过长 （默认为 60s）就会被废弃。对于
- * I/O 阻塞的场景比较适用。Schedulers.elastic()能够方便地给一个阻塞 的任务分配它自己的线程，从而不会妨碍其他任务和资源；
- * 固定大小线程池（Schedulers.parallel()），所创建线程池的大小与CPU个数等同；
- * 自定义线程池（Schedulers.fromExecutorService(ExecutorService)）
- * 基于自定义的ExecutorService创建 Scheduler（虽然不太建议，不过你也可以使用Executor来创建）。
+提供Schedulers，提供对线程池的封装，可以方便的实现异步
+
+* 当前线程（Schedulers.immediate()）；
+* 可重用的单线程（Schedulers.single()）。注意，这个方法对所有调用者都提供同一个线程来使用，
+* 直到该调度器被废弃。如果你想使用独占的线程，请使用Schedulers.newSingle()；
+* 弹性线程池（Schedulers.elastic()）。它根据需要创建一个线程池，重用空闲线程。线程池如果空闲时间过长 （默认为 60s）就会被废弃。对于
+* I/O 阻塞的场景比较适用。Schedulers.elastic()能够方便地给一个阻塞 的任务分配它自己的线程，从而不会妨碍其他任务和资源；
+* 固定大小线程池（Schedulers.parallel()），所创建线程池的大小与CPU个数等同；
+* 自定义线程池（Schedulers.fromExecutorService(ExecutorService)）
+* 基于自定义的ExecutorService创建 Scheduler（虽然不太建议，不过你也可以使用Executor来创建）。
 
 与Publisher关联： 使用subscribeOn、publishOn可以更改执行环境
+
 * publishOn会影响链中其后的操作符
 * subscribeOn无论出现在什么位置，都只影响源头的执行环境
 
@@ -199,7 +179,6 @@ Mono.error(new Exception("some error"));
 				.subscribe(System.out::println, null, countDownLatch::countDown);
 		countDownLatch.await(10, TimeUnit.SECONDS);
 ```
-
 
 ### 8、错误处理
 
@@ -275,6 +254,7 @@ Mono.error(new Exception("some error"));
 ```
 
 ### 10、单元测试支持
+
 ```java
 public class ReactorLearnTest {
 	private Flux<Integer> generateFluxFrom1To6() {
@@ -293,12 +273,12 @@ public class ReactorLearnTest {
 }
 ```
 
-
 ### 11、Reactor3简单模拟
+
 ```java
 
 abstract class Flux<T> implements Publisher<T> {
-	
+
 	public abstract void subscribe(Subscriber<? super T> s);
 
 	//工具方法，从参数列表中生成发布者
@@ -355,9 +335,9 @@ abstract class Flux<T> implements Publisher<T> {
 	}
 
 	static class FluxMap<T, R> extends Flux<R>{
-		private final Flux<? extends T> source; 
+		private final Flux<? extends T> source;
 		private final Function<?super T,?extends R>mapper;
-		
+
 		public FluxMap(Flux<? extends T> source, Function<? super T, ? extends R> mapper){
 			this.source = source;
 			this.mapper = mapper;
@@ -453,8 +433,8 @@ public class ReactiveSimulation {
 }
 ```
 
-
 ### 12、自定义数据流
+
 ```java
 package cn.rectcircle.reactivelearn.reactorlearn;
 
@@ -524,7 +504,7 @@ class MyEventSource {
 		public void setTimeStemp(Date timeStemp) {
 			this.timeStemp = timeStemp;
 		}
-		
+
 		@Override
 		public String toString() {
 			return "MyEvent["+"timeStemp="+timeStemp+", message="+message+"]";
@@ -608,7 +588,7 @@ public class DataStreamLearn {
         for (int i = 0; i < 20; i++) {  // 向事件源中添加20个事件
             Random random = new Random();
             TimeUnit.MILLISECONDS.sleep(random.nextInt(1000));
-            eventSource.newEvent(new MyEventSource.MyEvent(new Date(), "Event-" + i));  
+            eventSource.newEvent(new MyEventSource.MyEvent(new Date(), "Event-" + i));
         }
         eventSource.eventStopped(); // 停止事件
 	}
@@ -623,12 +603,16 @@ public class DataStreamLearn {
 }
 ```
 
-
 ## 二、Spring WebFlux入门
+
 ***
+
 ### 1、HelloWorld
+
 #### （1）创建一个简单的传统MVC项目
+
 初始化Spring-Boot项目，依赖Web模块
+
 ```xml
     <dependency>
         <groupId>org.springframework.boot</groupId>
@@ -653,6 +637,7 @@ public class HelloController {
 #### （2）修改为WebFlux项目
 
 修改依赖
+
 ```xml
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -661,6 +646,7 @@ public class HelloController {
 ```
 
 修改Controller
+
 ```java
 @RestController
 public class HelloController {
@@ -672,20 +658,23 @@ public class HelloController {
 ```
 
 #### （3）总结
+
 从 WebMVC 到 WebFlux 迁移，仅需引入 Webflux 包，将返回类型改为 Publisher 即可。同时 Webflux 还提供了函数式风格的API
 其他变更：
+
 * 技术栈从 spring-webmvc + servlet + Tomcat 变更为： spring-webflux + Reactor + Netty
 
-
 ### 2、WebFlux函数式开发模式
+
 与传统方式的区别
+
 * 使用`ServerRequest`和`ServerResponse`替代`ServletRequest`和`ServletResponse`
 * 使用`HandlerFunction`和`RouterFunction`替代 Controller函数 和 @RequestMapping
 	* HandlerFunction的声明为：`ServerRequest  -> Mono<T extends ServerResponse>` 由 request 推导出 response
 	* RouterFunction的声明为：`Mono<HandlerFunction<T>> route(ServerRequest request)` 由 request -> HandlerFunction
 
-
 #### （1）例子：开发获取时间和日期的端点
+
 创建业务逻辑包`handler`，并创建类`TimerHandler`，定义一系列处理函数，`ServerRequest -> Mono<ServerResponse>`
 
 （相当于Service）
@@ -700,8 +689,8 @@ public class TimerHandler {
 				.contentType(MediaType.TEXT_PLAIN)
 				.body(
 					Mono.just(
-						"Now is " + 
-							new SimpleDateFormat("HH:mm:ss").format(new Date())), 
+						"Now is " +
+							new SimpleDateFormat("HH:mm:ss").format(new Date())),
 						String.class);
 	}
 
@@ -710,8 +699,8 @@ public class TimerHandler {
 				.contentType(MediaType.TEXT_PLAIN)
 				.body(
 					Mono.just(
-						"Today is " + 
-							new SimpleDateFormat("yyyy-MM-dd").format(new Date())), 
+						"Today is " +
+							new SimpleDateFormat("yyyy-MM-dd").format(new Date())),
 						String.class);
 	}
 }
@@ -734,26 +723,28 @@ public class RouterConfig {
 		return route(GET("/time"), timeHandler::getTime)
 				.andRoute(GET("/date"), timeHandler::getDate);
 	}
-	
+
 }
 ```
 
 ### 3、服务器推送
+
 一般的推送实现方式：
+
 * 短轮询：利用ajax定期向服务器请求，无论数据是否更新立马返回数据，高并发情况下可能会对服务器和带宽造成压力；
 * 长轮询：利用comet不断向服务器发起请求，服务器将请求暂时挂起，直到有新的数据的时候才返回，相对短轮询减少了请求次数；
 * SSE：服务端推送（Server Send Event），在客户端发起一次请求后会保持该连接，服务器端基于该连接持续向客户端发送数据，从HTML5开始加入。
 * Websocket：这是也是一种保持连接的技术，并且是双向的，从HTML5开始加入，并非完全基于HTTP，适合于频繁和较大流量的双向通讯场景。
 
-
 例子：实现每秒推送一次时间
 
 `TimeHandler.java`
+
 ```java
 	public Mono<ServerResponse> sendTimePerSec(ServerRequest serverRequest) {
 		return ok()
 				.contentType(MediaType.TEXT_EVENT_STREAM) // 使用SSE技术，MediaType.TEXT_EVENT_STREAM表示Content-Type为text/event-stream
-				.body( 
+				.body(
 					Flux.interval(Duration.ofSeconds(1)) // 利用interval生成每秒一个数据的流
 						.map(l -> new SimpleDateFormat("HH:mm:ss").format(new Date())),
 					String.class);
@@ -761,6 +752,7 @@ public class RouterConfig {
 ```
 
 `RouterConfig.java`
+
 ```java
 	@Bean
 	public RouterFunction<ServerResponse> timeRouter() {
@@ -773,21 +765,22 @@ public class RouterConfig {
 引申WebMVC实现服务器推送SSE：
 参见[github](https://github.com/aliakh/demo-spring-sse)，主要是使用 `SseEmitter` 和 `@Scheduled` 实现异步推送
 
-
 ### 4、响应式Spring Data
 
 使用传统的MVC写法
 
 #### （1）配置连接MongoDB
+
 目前，响应式API仅支持MongoDB、Redis少数几个数据源
 
 ```
 spring.data.mongodb.host=127.0.0.1
 ```
 
-
 #### （2）创建Model和DAO
+
 Model
+
 ```java
 @Document
 public class User{
@@ -812,6 +805,7 @@ public interface UserRepository extends ReactiveCrudRepository<User, String> { /
 ```
 
 #### （2）创建Service
+
 ```java
 
 @Service
@@ -847,9 +841,10 @@ public class UserService {
 }
 ```
 
-
 #### （3）创建Controller
+
 针对大量的数据返回可以使用`MediaType.APPLICATION_STREAM_JSON_VALUE`方式响应式的返回
+
 ```java
 @RestController
 @RequestMapping("/user")
@@ -885,7 +880,9 @@ public class UserController {
 ```
 
 ### 5、使用WebClient开发响应式Http客户端
+
 #### （1）普通GET请求
+
 ```java
 	public void webClientTest1() throws InterruptedException {
 		WebClient webClient = WebClient.create("http://localhost:8080"); // 创建一个web client
@@ -900,6 +897,7 @@ public class UserController {
 ```
 
 #### （2）获取流式数据
+
 ```java
 	public void webClientTest2() throws InterruptedException {
 		WebClient webClient = WebClient
@@ -916,8 +914,8 @@ public class UserController {
 	}
 ```
 
-
 #### （3）SSE请求
+
 ```java
 	public void webClientTest3() throws InterruptedException {
 		WebClient webClient = WebClient.create("http://localhost:8080");
@@ -932,13 +930,15 @@ public class UserController {
 	}
 ```
 
-
 ### 6、让数据在Http上双向无限流动起来
-实现两个Endpoint： 
-* POST方法的/events，“源源不断”地收集数据，并存入数据库； 
+
+实现两个Endpoint：
+
+* POST方法的/events，“源源不断”地收集数据，并存入数据库；
 * GET方法的/events，“源源不断”将数据库中的记录发出来。
 
 #### （1）Model
+
 ```java
 @Document(collection = "event")
 public class MyEvent {
@@ -949,6 +949,7 @@ public class MyEvent {
 ```
 
 #### （2）DAO
+
 ```java
 
 public interface MyEventRepository extends ReactiveMongoRepository<MyEvent, Long> {
@@ -958,7 +959,9 @@ public interface MyEventRepository extends ReactiveMongoRepository<MyEvent, Long
 ```
 
 #### （3）Controller
+
 简单起见，省略Service
+
 ```java
 @RestController
 @RequestMapping("/events")
@@ -982,6 +985,7 @@ public class MyEventController {
 ```
 
 #### （4）数据源配置
+
 ```java
 
 	@Bean
@@ -989,8 +993,8 @@ public class MyEventController {
 		return (String... args) -> { // 命令行参数
 			mongo.dropCollection(MyEvent.class); // 首先删除集合中的全部数据
 			mongo.createCollection(
-				MyEvent.class, 
-				CollectionOptions 
+				MyEvent.class,
+				CollectionOptions
 					.empty() //创建一个空集合
 					.maxDocuments(10) //最多10条记录
 					.size(100000) //限制总大小
@@ -999,8 +1003,8 @@ public class MyEventController {
 	}
 ```
 
-
 #### （5）测试
+
 ```java
 	public void webClientTest4() {
 		Flux<MyEvent> eventFlux = Flux.interval(Duration.ofSeconds(1))

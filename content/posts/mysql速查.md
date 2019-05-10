@@ -2,7 +2,7 @@
 title: mysql速查
 date: 2017-03-27T20:58:36+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/52
@@ -11,27 +11,13 @@ tags:
   - sql
 ---
 
->  代码优于描述
+> 代码优于描述
 
 ## 目录
-* [安装配置](#安装配置)
-* [数据类型](#数据类型)
-* [增删改查](#增删改查)
-* [约束](#约束)
-* [函数](#函数)
-* [存储过程](#存储过程)
-* [存储引擎](#存储引擎)
-* [索引](#索引)
-* [视图](#视图)
-* [导入导出](#导入导出)
-* [备份恢复](#备份恢复)
-* [用户管理](#用户管理)
-* [排错](#排错)
-
-
 
 ## 安装配置
-********************************
+
+***
 
 ### 1、安装（centos 6.5）
 
@@ -40,19 +26,21 @@ yum -y install mysql  mysql-server  mysql-devel
 ```
 
 ### 2、配置
+
 #### 配置文件
+
 ```shell
-vim /etc/my.cnf 
+vim /etc/my.cnf
 
 #添加配置字符集和最大查询语句大小
-[mysqld] 
-init_connect='SET collation_connection = utf8_unicode_ci' 
-init_connect='SET NAMES utf8' 
-character-set-server=utf8 
-collation-server=utf8_unicode_ci 
+[mysqld]
+init_connect='SET collation_connection = utf8_unicode_ci'
+init_connect='SET NAMES utf8'
+character-set-server=utf8
+collation-server=utf8_unicode_ci
 skip-character-set-client-handshake
 
-max_allowed_packet=20M 
+max_allowed_packet=20M
 # MySQL 5.7 之后MySQL不能DISTINCT和ORDER BY同时使用
 sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES
 
@@ -65,11 +53,13 @@ default-character-set=utf8
 ```
 
 #### 配置开启启动
+
 ```
 chkconfig mysqld on
 ```
 
 #### mysql服务启动、停止、重启、状态
+
 ```
 service mysqld start
 service mysqld stop
@@ -78,11 +68,13 @@ service mysqld status
 ```
 
 #### 配置root密码
+
 ```
 mysqladmin -u root password 123456
 ```
 
 #### 登录mysql
+
 ```
 mysql -uroot -p123456
 ```
@@ -98,6 +90,7 @@ flush privileges;
 ```
 
 #### 配置远程访问数据库
+
 ```sql
 use mysql;
 SELECT DISTINCT CONCAT('User: ''',user,'''@''',host,''';') AS query FROM mysql.user; #查看权限
@@ -106,12 +99,14 @@ flush privileges; #应用配置
 ```
 
 #### 配置查询语句大小限制
+
 ```sql
 show VARIABLES like '%max_allowed_packet%'; #查看
 set global max_allowed_packet = 2*1024*1024*10配置为20M
 ```
 
 #### 常用命令
+
 ```sql
 select version(); #显示版本
 select now(); #显示当前时间
@@ -161,10 +156,12 @@ ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '123456';
 flush privileges;
 ```
 
-
 ## 数据类型
-********************************
+
+***
+
 ### 1、数值类型
+
 | MySQL数据类型 |	含义（有符号）           |
 |--------------|-------------------------|
 | tinyint      |	1字节，范围（-128~127） |
@@ -176,8 +173,8 @@ flush privileges;
 | double(m, d) |	8字节，双精度浮点型，m总个数，d小数位 |
 | decimal(m, d) |	decimal是存储为字符串的浮点数 |
 
-
 ### 2、字符串类型
+
 | MySQL数据类型 |	含义（有符号）           |
 |--------------|-------------------------|
 | char(n)      |	固定长度，最多255个字符 |
@@ -187,8 +184,8 @@ flush privileges;
 | mediumtext   |	可变长度，最多2的24次方-1个字符 |
 | longtext     |	可变长度，最多2的32次方-1个字符 |
 
-
 ### 3、日期时间类型
+
 | MySQL数据类型 |	含义（有符号）           |
 |--------------|-------------------------|
 | date |	3字节，日期，格式：2014-09-18 |
@@ -198,22 +195,26 @@ flush privileges;
 | year |	1字节，年份 |
 
 ### 4、枚举与集合
+
 1. enum("member1", "member2", … "member65535")
 2. set("member", "member2", … "member64")
-  
-
 
 ## 增删改查
-********************************
+
+***
+
 ### 1、数据库操作
+
 #### 创建
+
 ```sql
-create database db_name; 
+create database db_name;
 create database if not exists db_name character set utf8; #存在不报错，字符集utf8
 
 ```
 
 #### 查看
+
 ```sql
  show databases; #查看所有数据库
  show create database db_name; #查看数据库创建信息
@@ -221,20 +222,22 @@ create database if not exists db_name character set utf8; #存在不报错，字
 ```
 
 #### 修改
+
 ```sql
 alter database dbname character set utf8 #修改数据库编码
 ```
 
 #### 删除
+
 ```sql
-drop database db_name; 
+drop database db_name;
 drop database if exists db_name; #不存在不报错
 ```
 
-
-
 ### 2、表操作
+
 #### 创建
+
 ```sql
 use db_name;
 # 最简写法
@@ -272,15 +275,16 @@ CREATE TABLE TC(
 
 
 #创建过程中插入
-create table xxx( 
+create table xxx(
 	...
 )
 select ...
-	
+
 
 ```
 
 #### 查看
+
 ```sql
 #查看所有数据表
 show tables;
@@ -294,6 +298,7 @@ show create table user;
 ```
 
 #### 修改
+
 ```sql
 #添加列
 alter table user add password varchar(20) not null after username;
@@ -316,6 +321,7 @@ rename table user2 to user;
 ```
 
 #### 删除
+
 ```sql
 #删除列
 alter table user drop password;
@@ -328,20 +334,22 @@ alter table user drop foreign key fk_name; #删除外键
 
 ```
 
-
 ### 3、记录操作
+
 #### 插入
+
 ```sql
 #1
 insert into user values(null,'tom', 25, 10245.25,md5('123456')), (default,'john', default, 10245.25,md5('123456')); #全部必须赋值
 insert user(username, salary) values('jackson', 45666.5);
 #2 可以使用子查询
-insert user set username='tom', password=md5('123456'); 
+insert user set username='tom', password=md5('123456');
 #3 将select结果插入
 insert user(username) select username from user1 where id=1;
 ```
 
 #### 查找（重要）
+
 ```sql
 #用法
 SELECT select_expr [,select_expr...]
@@ -377,12 +385,12 @@ select * from user limit 10,5; #[偏移量,]每页数目
 #8、子查询（必须在小括号内），返回结果可以是标量、列、行或者子查询
 select * from student where classId=(select id from class where name="计算机科学与技术");
 select * from goods where price >= (select round(avg(price),2) from goods);
-#any，any满足子查询的一个结果，all满足子查询全部结果 
-select * from goods where price >= any (select price from goods where type="笔记本"); 
-select * from goods where typeId in (select id from goods where type="笔记本"); 
+#any，any满足子查询的一个结果，all满足子查询全部结果
+select * from goods where price >= any (select price from goods where type="笔记本");
+select * from goods where typeId in (select id from goods where type="笔记本");
 
 /*
-9、表连接 join ... on ... 
+9、表连接 join ... on ...
 inner join 查询满足on的两表中交集，仅显示满足on件的记录，公共记录
 left join 左表中的全部和左右表满足on的交集，对于左表中记录按照on连接右表，右表查不到记录的的为null
 right join 类似上
@@ -390,30 +398,30 @@ full join mysql 不支持，相当于left + right并去重的结果
 cross join 笛卡尔连接 左右叉乘
 */
 select goods.name, category.name from goods inner join category where goods.category = category.id;
-
-
 ```
 
 #### 更新
+
 ```sql
 update user set age = age+5 where id = 1; #单表更新
 #多表更新，
 update goods inner join category on goods.category = category.name set category = category.id;
-
 ```
 
 #### 删除
+
 ```sql
 delete from user where id = 1; #单表删除
 #多表删除
 
-
 ```
 
-
 ## 约束
-********************************
+
+***
+
 ### 0、测试准备
+
 ```sql
 create table provinces( #创建参考表
 id int auto_increment primary key,
@@ -422,6 +430,7 @@ pname varchar(20) not null
 ```
 
 ### 1、外键约束
+
 ```sql
 create table users(
 id int unsigned primary key auto_increment,
@@ -442,12 +451,15 @@ no action ： 类似restrict
 ```
 
 ### 2、非空、主键、唯一、默认
+
 略
 
-
 ## 函数
-********************************
+
+***
+
 ### 1、字符函数
+
 ```sql
 select concat('姓','名');
 select concat_ws('-','a','b','c'); #输出 a-b-c
@@ -477,6 +489,7 @@ select 'MySql' like '_y%'; #输出1表示true,_任意1个字符，任意字符�
 ```
 
 ### 2、数值运算符
+
 ```sql
 select seil(3.01); #4
 select seil(3.99); #3
@@ -488,6 +501,7 @@ select truncate(125.89, -1); #120数字截取
 ```
 
 ### 3、比较运算符与函数
+
 ```sql
 select 35 between 1 and 35; #true，闭区间
 select 35 in(1,23,35); #true
@@ -495,6 +509,7 @@ select null is null; #true，判断是否为空
 ```
 
 ### 4、日期时间函数
+
 ```sql
 select now(); #日期时间
 select curdate(); #日期
@@ -507,6 +522,7 @@ select date_format('2014-3-12','%m/%d%Y'); #03/12/2014
 ```
 
 ### 5、信息函数
+
 ```sql
 select connect_id(); #输出线程id
 select database(); #输出打开的数据库
@@ -517,6 +533,7 @@ select row_count(); #上条记录影响多少条记录
 ```
 
 ### 6、聚合函数（输出一个值）
+
 ```sql
 select avg(id) from user; #输出id的平均值
 select count(id) from user; #输出记录数目
@@ -526,21 +543,25 @@ select sum(id) from user; #求和
 ```
 
 ### 7、加密摘要算法
+
 ```sql
-select md5('123456'); 
+select md5('123456');
 set password=password('123456'); #更改mysql数据库当前用户密码，修密码
 ```
 
 ### 8、自定义函数
+
 略
 
-
 ## 存储过程
-********************************
+
+***
+
 ### 1、语法结构
+
 ```sql
 create [define= {user | current_user}]
-procedure sp_name([in | out | inout 参数名 类型[,...]]) 
+procedure sp_name([in | out | inout 参数名 类型[,...]])
 [特性...] 过程体
 /**
 特性
@@ -561,6 +582,7 @@ procedure sp_name([in | out | inout 参数名 类型[,...]])
 ```
 
 ### 2、实例
+
 ```sql
 #无参数存储过程
 create procedure getVersion() select version();
@@ -590,24 +612,28 @@ select @nums; #查看变量
 ```
 
 ### 3、删除
+
 ```sql
 drop procedure getVersion;
 ```
 
-
 ## 存储引擎
-********************************
+
+***
+
 ```sql
 show create table user; #查看表的存储引擎
 ```
 
 ### 1、简介
+
 > MyISAM
 > InnoDB
 > Memory
 > Archive
 
 ### 2、修改存储引擎
+
 ```
 #配置默认的存储引擎
 default-storage-engine = InnoDB
@@ -625,8 +651,11 @@ alter table user engine = InnoDB;
 ```
 
 ## 索引
-********************************
+
+***
+
 ### 1、创建索引
+
 索引是一种与表有关的结构，它的作用相当于书的目录，可以根据目录中的页码快速找到所需的内容。
 
 当表中有大量记录时，若要对表进行查询，没有索引的情况是全表搜索：将所有记录一一取出，和查询条件进行一一对比，然后返回满足条件的记录。这样做会消耗大量数据库系统时间，并造成大量磁盘 I/O 操作。
@@ -634,12 +663,14 @@ alter table user engine = InnoDB;
 而如果在表中已建立索引，在索引中找到符合查询条件的索引值，通过索引值就可以快速找到表中的数据，可以大大加快查询速度。
 
 对一张表中的某个列建立索引，有以下两种语句格式：
+
 ```sql
 ALTER TABLE 表名字 ADD INDEX 索引名 (列名);
 CREATE INDEX 索引名 ON 表名字 (列名);
 ```
 
 我们用这两种语句分别建立索引：
+
 ```sql
 ALTER TABLE employee ADD INDEX idx_id (id);  #在employee表的id列上建立名为idx_id的索引
 
@@ -647,12 +678,15 @@ CREATE INDEX idx_name ON employee (name);   #在employee表的name列上建立�
 ```
 
 ### 2、查看索引
+
 ```sql
 SHOW INDEX FROM 表名字;
 ```
 
 ## 视图
-********************************
+
+***
+
 视图是从一个或多个表中导出来的表，是一种虚拟存在的表。它就像一个窗口，通过这个窗口可以看到系统专门提供的数据，这样，用户可以不用看到整个数据库中的数据，而只关心对自己有用的数据。
 
 注意理解视图是虚拟的表：
@@ -663,13 +697,15 @@ SHOW INDEX FROM 表名字;
 * 在使用视图的时候，可以把它当作一张表。
 
 ### 1、 创建视图
+
 ```sql
 CREATE VIEW 视图名(列a,列b,列c) AS SELECT 列1,列2,列3 FROM 表名字;
 ```
+
 可见创建视图的语句，后半句是一个SELECT查询语句，所以视图也可以建立在多张表上，只需在SELECT语句中使用子查询或连接查询，这些在之前的实验已经进行过。
 
-
 ### 2、修改视图
+
 ```sql
 ALTER [ALGORITHM = {UNDEFINED | MERGE | TEMPTABLE}]
     VIEW view_name [(column_list)]
@@ -678,17 +714,21 @@ ALTER [ALGORITHM = {UNDEFINED | MERGE | TEMPTABLE}]
 ```
 
 ### 3、删除视图
+
 ```sql
 DROP VIEW [IF EXISTS]
     view_name [, view_name] ...
     [RESTRICT | CASCADE]
 ```
 
-
 ## 导入导出
-********************************
+
+***
+
 ### 1、导入操作
+
 导入操作，可以把一个文件里的数据保存进一张表。导入语句格式为：
+
 ```sql
 LOAD DATA INFILE '文件路径' INTO TABLE 表名字
 [FIELDS TERMINATED BY '分隔符']  [OPTIONALLY ENCLOSED BY '数据包裹符']
@@ -697,24 +737,30 @@ LOAD DATA INFILE '文件路径' INTO TABLE 表名字
 ```
 
 ### 2、导出操作
+
 ```sql
 SELECT 列1，列2 INTO OUTFILE '文件路径和文件名'
 [FIELDS TERMINATED BY '分隔符']  [OPTIONALLY ENCLOSED BY '数据包裹符']
  [LINES TERMINATED BY '记录分隔符\n']
 FROM 表名字;
 ```
+
 注意：语句中 “文件路径” 之下不能已经有同名文件。
 
-
 ## 备份恢复
-********************************
+
+***
+
 ### 1、备份
+
 数据库中的数据或许十分重要，出于安全性考虑，在数据库的使用中，应该注意使用备份功能。
+
 > 备份与导出的区别：导出的文件只是保存数据库中的数据；而备份，则是把数据库的结构，包括数据、约束、索引、视图等全部另存为一个文件。
 
 `mysqldump` 是 MySQL 用于备份数据库的实用程序。它主要产生一个 SQL 脚本文件，其中包含从头重新创建数据库所必需的命令CREATE TABLE INSERT 等。
 
 使用 mysqldump 备份的语句：
+
 ```sql
 mysqldump -u root 数据库名>备份文件名;   #备份整个数据库
 
@@ -722,19 +768,22 @@ mysqldump -u root 数据库名 表名字>备份文件名;  #备份整个表
 ```
 
 ### 2、恢复
+
 ```sql
 mysql -u root -p 密码
 source /tmp/SQL6/MySQL-06.sql
 ```
 
-
 ### 3、备份策略
+
 我们都知道必须按计划定期进行备份。可以用一些工具(某个时间点的数据快照)完全备份MySQL。例如，InnoDB Hot Backup为InnoDB数据文件提供在线非数据块物理备份，mysqldump提供在线逻辑备份。
 
 假定我们在星期日下午1点进行了备份，此时负荷较低。下面的命令可以完全备份所有数据库中的所有InnoDB表：
+
 ```bash
 mysqldump --single-transaction --all-databases backup_sunday_1_PM.sql
 ```
+
 以上方法是在线非数据块备份，不会干扰对表的读写。我们假定我们以前的表为InnoDB表，因此--single-transaction一致性地表，并且保证mysqldump所看见的数据不会更改。(其它客户端对InnoDB表进行的更改不会被mysqldump进程看见）。如果我们还有其它类型的表，我们必须假定在备份过程中它们不会更改。例如，对于mysql数据库中的MyISAM表，我们必须假定在备份过程中没有对MySQL账户进行管理更改。
 
 `mysqldump`命令产生的`.sql`文件包含一系列`SQL INSERT`语句，可以用来重载转储的表。
@@ -746,15 +795,19 @@ mysqldump --single-transaction --all-databases backup_sunday_1_PM.sql
 每次重启，MySQL服务器都会使用以上序列中的下一个编号创建一个新的二进制日志文件。当服务器运行时，你还可以通过执行FLUSH LOGS SQL语句或mysqladmin flush-logs命令，告诉服务器关闭当前的二进制日志文件并创建一个新文件。mysqldump也有一个选项来清空日志。数据目录中的.index文件包含该目录下所有MySQL二进制日志的清单，该文件用于复制。
 
 恢复时MySQL二进制日志很重要，因为它们是增量备份。如果进行完全备份时确保清空了日志，则后面创建的二进制日志文件包含了备份后的所有数据更改。让我们稍稍修改前面的mysqldump命令，让它在完全备份时能够清空 MySQL二进制日志，以便转储文件包含包含新的当前二进制日志：
+
 ```bash
 mysqldump --single-transaction --flush-logs --master-data=2
            --all-databases > backup_sunday_1_PM.sql
 ```
+
 执行该命令后，数据目录则包含新的二进制日志文件。产生的.sql文件包含下列行：
+
 ```
 -- Position to start replication or point-in-time recovery from
 -- CHANGE MASTER TO MASTER_LOG_FILE='gbichot2-bin.000007',MASTER_LOG_POS=4;
 ```
+
 * 因为mysqldump命令可以执行完全备份，以上行代表两件事情：
 .sql文件包含所有写入gbichot2-bin.000007二进制日志文件或最新的文件之前的更改。
 * 备份后所记录的所有数据更改不出现在.sql中，但会出现在gbichot2-bin.000007二进制日志文件或最新的文件中。
@@ -767,11 +820,13 @@ MySQL二进制日志占据硬盘空间。要想释放空间，应随时清空。
 mysqldump --single-transaction --flush-logs --master-data=2
        --all-databases --delete-master-logs > backup_sunday_1_PM.sql
 ```
+
 注释：如果你的服务器为复制主服务器，用mysqldump方法中的 --delete-master-logs选项删掉MySQL二进制日志很危险，因为从服务器可能还没有完全处理该二进制日志的内容。关于这一点，PURGE MASTER LOGS语句的描述中解释了为什么在删掉MySQL二进制日志之前应进行确认一下。
 
-
 ### 4、为恢复进行备份
+
 现在假设在星期三上午8点出现了灾难性崩溃，需要使用备份文件进行恢复。恢复时，我们首先恢复最后的完全备份(从星期日下午1点开始)。完全备份文件是一系列SQL语句，因此恢复它很容易：
+
 ```bash
 mysql < backup_sunday_1_PM.sql
 ```
@@ -785,6 +840,7 @@ mysqlbinlog gbichot2-bin.000007 gbichot2-bin.000008 | mysql
 我们现在将数据恢复到星期二下午1点的状态，但是从该时刻到崩溃之间的数据仍然有丢失；要实现恢复，我们需要MySQL服务器将MySQL二进制日志保存到安全的位置(RAID disks, SAN, ...)，应为与数据文件的保存位置不同的地方，保证这些日志不在被毁坏的硬盘上。(也就是，我们可以用--log-bin选项启动服务器，指定一个其它物理设备上的与数据目录不同的位置。这样，即使包含该目录的设备丢失，日志也不会丢失）。如果我们执行了这些操作，我们手头上会有gbichot2-bin.000009文件，我们可以用它来恢复大部分最新的数据更改，而不会丢失星期二下午1点到崩溃时刻之间的数据。
 
 ### 5、备份策略摘要
+
 出现操作系统崩溃或电源故障时，InnoDB自己可以完成所有数据恢复工作。但为了确保你可以睡好觉，应遵从下面的指导：
 
 * 一定用--log-bin或甚至--log-bin=log_name选项启动MySQL服务器，其中日志文件名位于某个安全媒介上，不同于数据目录所在驱动器。如果你有这样的安全媒介，最好进行硬盘负载均衡(这样能够提高性能)。
@@ -793,14 +849,15 @@ mysqlbinlog gbichot2-bin.000007 gbichot2-bin.000008 | mysql
 
 * 用FLUSH LOGS或mysqladmin flush-logs清空日志进行定期增量备份。
 
-
 ### 6、自动恢复
+
 ```bash
 vi /etc/mysql/my.cnf
 #打开log bin行
 ```
 
 修改后然后保存my.cnf文件，重启mysql服务器，并查看日志是否启动：
+
 ```bash
 shell> service mysql restart --log-bin
 shell> mysql -u root
@@ -810,44 +867,58 @@ sql> show variables like 'log_%'; #查看log_bin是否启动
 继续~
 
 要想确定当前的二进制日志文件的文件名，在命令行中加入下面的MySQL语句：
+
 ```bash
 shell> mysql -u root -e 'SHOW BINLOG EVENTS \G'
 ```
 
 #### （1）指定恢复时间
+
 对于MySQL 5，可以在mysqlbinlog语句中通过--start-date和--stop-date选项指定DATETIME格式的起止时间。举例说明，假设在今天上午10:00(今天是2015年8月6日)，执行SQL语句来删除一个大表。要想恢复表和数据，你可以恢复前一晚上的备份，并从命令行输入以下命令：
+
 ```bash
 shell> mysqlbinlog --stop-date="2015-8-6 10:01:00" /var/log/mysql/bin.123456 \
      | mysql -u root -p mypwd
 ```
+
 该命令将恢复截止到在--stop-date选项中以DATETIME格式给出的日期和时间的所有数据。
 
 在以上行中，从上午10:01登录的SQL语句将运行。结合执行前夜的转储文件和mysqlbinlog的两行命令可以将所有数据恢复到上午10:00前一秒钟。你应检查日志以确保时间确切。下一节介绍如何实现。
 
 #### （2）指定恢复位置
+
 也可以不指定日期和时间，而使用mysqlbinlog的选项--start-position和--stop-position来指定日志位置。它们的作用与起止日选项相同，不同的是给出了从日志起的位置号。使用日志位置是更准确的恢复方法，特别是当由于破坏性SQL语句同时发生许多事务的时候。要想确定位置号，可以运行mysqlbinlog寻找执行了不期望的事务的时间范围，但应将结果重新指向文本文件以便进行检查。操作方法为：
+
 ```bash
 shell> mysqlbinlog --start-date="2014-10-29 9:55:00" --stop-date="2014-10-29 10:05:00" \
       /var/log/mysql/bin.123456 > /tmp/mysql_restore.sql
 ```
+
 该命令将在/tmp目录创建小的文本文件，将显示执行了错误的SQL语句时的SQL语句。你可以用文本编辑器打开该文件，寻找你不要想重复的语句。如果二进制日志中的位置号用于停止和继续恢复操作，应进行注释。用`log_pos加一个数字来标记位置。使用位置号恢复了以前的备份文件后，你应从命令行输入下面内容：
+
 ```bash
 shell> mysqlbinlog --stop-position="368312" /var/log/mysql/bin.123456 \
-    | mysql -u root -pmypwd 
+    | mysql -u root -pmypwd
 
 shell> mysqlbinlog --start-position="368315" /var/log/mysql/bin.123456 \
     | mysql -u root -pmypwd \
 ```
+
 上面的第1行将恢复到停止位置为止的所有事务。第二行将恢复从给定的起始位置直到二进制日志结束的所有事务。因为mysqlbinlog的输出包括每个SQL语句记录之前的SET TIMESTAMP语句，恢复的数据和相关MySQL日志将反映事务执行的原时间。
 
 ## 用户管理
-********************************
+
+***
+
 ### 1、添加用户
+
 可以用两种方式创建MySQL账户：
+
 * 使用`GRANT`语句
 * 直接操作MySQL授权表
 
 #### （1）使用`GRANT`语句
+
 最好的方法是使用GRANT语句，因为这样更精确，错误少。
 
 创建账户的其它方法是使用MySQL账户管理功能的第三方程序。phpMyAdmin即是一个第三方程序。
@@ -855,6 +926,7 @@ shell> mysqlbinlog --start-position="368315" /var/log/mysql/bin.123456 \
 下面的示例说明如何使用MySQL客户端程序来设置新用户。
 
 首先，在启动mysql服务后，使用MySQL程序以MySQL的root用户来连接服务器：
+
 ```bash
 shell> mysql -u root
 ```
@@ -872,6 +944,7 @@ GRANT USAGE ON *.* TO 'dummy'@'localhost';
 
 FLUSH PRIVILEGES;
 ```
+
 **GRANT命令说明：**
 
 `ALL PRIVILEGES` 是表示所有权限，你也可以使用`select、update`等权限。
@@ -901,18 +974,18 @@ FLUSH PRIVILEGES;
 第四个账户有用户名dummy，但是也没有密码，该账户只用于本机连接，通过GRANT语句中赋予的USAGE权限，你可以创建账户而不授予任何权限；它可以将所有全局权限设为'N'。假定你将在以后将具体权限授予该账户。
 
 #### （2）直接操作用户表
+
 略
 
 ### 2、移除用户
-要想移除账户，应使用`DROP USER`语句。
 
+要想移除账户，应使用`DROP USER`语句。
 
 ### 3、限制账户资源
 
 限制MySQL服务器资源使用的一个方法是将max_user_connections系统变量设置为非零值。但是，该方法严格限于全局，不允许管理具体的账户。并且，它只限制使用单一账户同时连接的数量，而不是客户端连接后的操作。许多MySQL管理员对两种类型的控制均感兴趣，特别是Internet服务提供者。
 
 在MySQL 5.1中,你可以为具体账户限制下面的服务器资源：
-
 
 * 账户每小时可以发出的查询数
 * 账户每小时可以发出的更新数
@@ -928,7 +1001,6 @@ FLUSH PRIVILEGES;
 
 要想用GRANT语句设置资源限制，使WITH子句来命名每个要限制的资源和根据每小时记数的限制值。例如，要想只以限制方式创建可以访问customer数据库的新账户，执行该语句：
 
-
 ```sql
 GRANT ALL ON customer.* TO 'francis'@'localhost'
 IDENTIFIED BY 'frank'
@@ -941,6 +1013,7 @@ MAX_USER_CONNECTIONS 2;
 限制类型不需要全部在WITH子句中命名，但已经命名的可以按任何顺序。每个每小时限制值均应为整数，代表每小时的记数。如果GRANT语句没有WITH子句，则每个限制值设置为默认值零（即没有限制）。对于MAX_USER_CONNECTIONS，限制为整数，表示账户一次可以同时连接的最大连接数。如果限制设置为 默认值零，则根据MAX_USER_CONNECTIONS系统变量确定该账户可以同时连接的数量。
 
 要想设置或更改已有账户的限制，在全局级别使用GRANT USAGE语句（ON .）。下面的语句可以将francis的查询限制更改为100：
+
 ```sql
 GRANT USAGE ON *.* TO 'francis'@'localhost'
     WITH MAX_QUERIES_PER_HOUR 100;
@@ -949,6 +1022,7 @@ GRANT USAGE ON *.* TO 'francis'@'localhost'
 该语句没有改变账户的已有权限，只修改了指定的限制值。
 
 要想取消已有限制，将该值设置为零。例如，要想取消francis每小时可以连接的次数的限制，使用该语句：
+
 ```sql
 GRANT USAGE ON *.* TO 'francis'@'localhost'
     WITH MAX_CONNECTIONS_PER_HOUR 0;
@@ -970,33 +1044,38 @@ GRANT USAGE ON *.* TO 'francis'@'localhost'
 
 当服务器启动时所有记数从零开始。
 
-
 ### 4、设置用户密码
+
 可以用mysqladmin命令在命令行指定密码：
+
 ```bash
 mysqladmin -u user_name -h host_name password "newpwd"
 ```
+
 该命令为Host为host_name，User为user_name账户添加密码newpwd。
 
 为账户赋予密码的另一种方法是执行SET PASSWORD语句：
+
 ```sql
 SET PASSWORD FOR 'jeffrey'@'%' = PASSWORD('biscuit');
 ```
 
 只有root等可以更新mysql数据库的用户可以更改其它用户的密码。如果你没有以匿名用户连接，省略FOR子句便可以更改自己的密码：
+
 ```sql
 SET PASSWORD = PASSWORD('biscuit');
 ```
 
 你还可以在全局级别使用GRANT USAGE语句(ON .)来指定某个账户的密码而不影响账户当前的权限：
+
 ```sql
 GRANT USAGE ON *.* TO 'jeffrey'@'%' IDENTIFIED BY 'biscuit';
 ```
 
 修改user表修改密码 略
 
-
 ### 5、修改root密码（忘记root密码）
+
 ```bash
 # 停止 mysql 服务
 sudo service mysql stop
@@ -1011,9 +1090,7 @@ mysql -uroot mysql
 > FLUSH PRIVILEGES;
 ```
 
-
 ## 排错
+
 * 查看数据配置文件，查找`my.cnf`获取错误日志的位置
 * 查看错误日志
-
-

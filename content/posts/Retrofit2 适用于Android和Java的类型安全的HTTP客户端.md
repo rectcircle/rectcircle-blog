@@ -2,37 +2,32 @@
 title: Retrofit2 适用于Android和Java的类型安全的HTTP客户端
 date: 2017-10-21T17:13:34+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/106
   - /detail/106/
 tags:
-  - java
+  - Java
 ---
 
 > http://square.github.io/retrofit/
 > 推荐： http://www.jianshu.com/p/308f3c54abdd
 
-## 目录
-* [一、入门](#一、入门)
-	* [1、一般步骤](#1、一般步骤)
-	* [2、Retrofit注解详解](#2、Retrofit注解详解)
-	* [3、Converter与Gson](#3、Converter与Gson)
-	* [4、CallAdapter与RxJava2](#4、CallAdapter与RxJava2)
-* [二、高级用法](#二、高级用法)
-	* [1、自定义Converter](#1、自定义Converter)
-	* [2、自定义CallAdapter](#2、自定义CallAdapter)
-	* [3、其他说明](#3、其他说明)
-
 ## 一、入门
-***************************
+
+***
+
 ### 1、一般步骤
+
 #### （0）引入依赖
+
 * [retrofit](http://mvnrepository.com/artifact/com.squareup.retrofit2/retrofit)
 
 #### （1）创建一个Http请求服务的接口
+
 假设需要从github上下载某个用户的同一个项目的一个json配置文件
+
 ```java
 public interface RuquireUrlsService {
 	@GET("{user}/BindingSearch/master/requireUrls.json")
@@ -41,21 +36,25 @@ public interface RuquireUrlsService {
 ```
 
 #### （2）创建Retrofit实例
+
 ```java
 		Retrofit retrofit = new Retrofit.Builder()
 				.baseUrl("https://raw.githubusercontent.com/")
 				.build();
 ```
+
 创建Retrofit实例时需要通过Retrofit.Builder,并调用baseUrl方法设置URL。
 Retrofit2 的baseUlr 必须以 /（斜线） 结束，不然会抛出一个IllegalArgumentException。
 
 #### （3）创建请求的实例
+
 ```java
 //创建一个请求接口的实例对象（内部通过反射产生）
 		RuquireUrlsService  service= retrofit.create(RuquireUrlsService.class);
 ```
 
 #### （4）获取Call对象并异步执行请求
+
 ```java
 Call<ResponseBody> call = service.getRequireUrls("rectcircle");
 
@@ -77,6 +76,7 @@ Call<ResponseBody> call = service.getRequireUrls("rectcircle");
 ```
 
 #### （5）输出
+
 ```json
 {
   "version": "0.1",
@@ -95,10 +95,10 @@ Call<ResponseBody> call = service.getRequireUrls("rectcircle");
 }
 ```
 
-
-
 ### 2、Retrofit注解详解
+
 #### （1）Http请求方法相关注解：
+
 * GET
 * POST
 * PUT
@@ -109,6 +109,7 @@ Call<ResponseBody> call = service.getRequireUrls("rectcircle");
 * HTTP
 
 HTTP注解具有三个属性，可以实现其他方法
+
 * method
 * path
 * hasBody
@@ -116,7 +117,9 @@ HTTP注解具有三个属性，可以实现其他方法
 URL参数必填，没有使用`"/"`，否者将报错
 
 #### （2）标记注解
+
 **@FormUrlEncoded**：请求表单
+
 ```java
 @POST("/form")
 @FormUrlEncoded
@@ -131,6 +134,7 @@ Call<ResponseBody> testFormUrlEncoded2(@FieldMap Map<String, Object> map);
 ```
 
 **@Multipart**：用于上传文件
+
 ```java
 /**
 * {@link Part} 后面支持三种类型，{@link RequestBody}、{@link okhttp3.MultipartBody.Part} 、任意类型
@@ -145,13 +149,12 @@ Call<ResponseBody> testFileUpload1(@Part("name") RequestBody name, @Part("age") 
 
 [例子](https://github.com/ikidou/Retrofit2Demo/blob/master/client/src/main/java/com/github/ikidou/Example03.java)
 
-
-
-
 #### （3）参数注解
+
 **@Headers**用于注解接口。配置请求头
 
 以下作用于形参
+
 * @Header，添加请求头
 * @Body，非表单请求体
 * 表单字段，配合@FormUrlEncoded使用
@@ -166,23 +169,26 @@ Call<ResponseBody> testFileUpload1(@Part("name") RequestBody name, @Part("age") 
 	* @QueryMap
 	* @Url
 
-
 注1：{占位符}和PATH尽量只用在URL的path部分，url中的参数使用Query和QueryMap 代替，保证接口定义的简洁
 注2：Query、Field和Part这三者都支持数组和实现了Iterable接口的类型，如List，Set等，方便向后台传递数组。
+
 ```java
 Call<ResponseBody> foo(@Query("ids[]") List<Integer> ids);
 //结果：ids[]=0&ids[]=1&ids[]=2
 ```
+
 [例子](https://github.com/ikidou/Retrofit2Demo/blob/master/client/src/main/java/com/github/ikidou/Example05.java)
 
-
-
 ### 3、Converter与Gson
+
 使用转换器（Converter）将数据转换为java对象，将请求对象转换为参数
+
 #### （1）引入依赖
+
 * [Converter: Gson](http://mvnrepository.com/artifact/com.squareup.retrofit2/converter-gson)
 
 #### （2）定义映射实体类
+
 ```java
 
 class RequireUrls<T> {
@@ -235,6 +241,7 @@ class RequireUrl {
 ```
 
 #### （3）创建一个Http请求服务的接口
+
 ```java
 	public interface RuquireUrlsService {
 		@GET("{user}/BindingSearch/master/requireUrls.json")
@@ -242,8 +249,8 @@ class RequireUrl {
 	}
 ```
 
-
 #### （4）创建Retrofit实例
+
 ```java
 		Retrofit retrofit = new Retrofit.Builder()
 				.baseUrl("https://raw.githubusercontent.com/")
@@ -252,6 +259,7 @@ class RequireUrl {
 ```
 
 #### （5）剩余步骤
+
 ```java
 		//创建一个请求接口的实例对象（内部通过反射产生）
 		RuquireUrlsService  service= retrofit.create(RuquireUrlsService.class);
@@ -271,13 +279,15 @@ class RequireUrl {
 ```
 
 #### （5）其他转换器（Converter）
+
 参见[retrofit-converters](https://github.com/square/retrofit/tree/master/retrofit-converters)
 
-
-
 ### 4、CallAdapter与RxJava2
+
 不直接使用Call对象，使用RxJava管理
+
 #### （1）引入依赖
+
 * 引入下面中的一个
 	* 若使用rxjava2：[adapter-rxjava2](http://mvnrepository.com/artifact/com.squareup.retrofit2/adapter-rxjava2)
 	* 若使用rxjava1：[adapter-rxjava](http://mvnrepository.com/artifact/com.squareup.retrofit2/adapter-rxjava)
@@ -286,6 +296,7 @@ class RequireUrl {
 	* 若使用rxjava1：[rxandroid](http://mvnrepository.com/artifact/io.reactivex/rxandroid)
 
 #### （2）创建一个Http请求服务的接口
+
 ```java
 	public interface RuquireUrlsService {
 		@GET("{user}/BindingSearch/master/requireUrls.json")
@@ -293,8 +304,8 @@ class RequireUrl {
 	}
 ```
 
-
 #### （3）创建Retrofit实例
+
 ```java
 		Retrofit retrofit = new Retrofit.Builder()
 				.baseUrl("https://raw.githubusercontent.com/")
@@ -304,6 +315,7 @@ class RequireUrl {
 ```
 
 #### （4）创建Observable对象
+
 ```java
 //创建一个请求接口的实例对象（内部通过反射产生）
 RuquireUrlsService  service= retrofit.create(RuquireUrlsService.class);
@@ -312,7 +324,9 @@ Observable<RequireUrls<List<RequireUrl>>> observable =  service.getRequireUrls("
 ```
 
 #### （5）实现处理数据
-参见[rxjava2](105)
+
+参见[rxjava2](/deteil/105)
+
 ```java
 		observable
 				.subscribeOn(Schedulers.io())
@@ -343,12 +357,15 @@ Observable<RequireUrls<List<RequireUrl>>> observable =  service.getRequireUrls("
 ```
 
 #### （6）直接获取字符串不使用实体类
+
 例子：获取网站的首页内容（java环境测试）
 
 使用scalar转换器，引入如下依赖
+
 * [Converter: Java Scalars](http://mvnrepository.com/artifact/com.squareup.retrofit2/converter-scalars)
 
 定义服务接口
+
 ```java
 	public interface HomePageService {
 		@GET("/")
@@ -357,6 +374,7 @@ Observable<RequireUrls<List<RequireUrl>>> observable =  service.getRequireUrls("
 ```
 
 其他内容
+
 ```java
 	public static void main(String[] args) throws InterruptedException {
 		Retrofit retrofit = new Retrofit.Builder()
@@ -371,12 +389,14 @@ Observable<RequireUrls<List<RequireUrl>>> observable =  service.getRequireUrls("
 	}
 ```
 
-
-
 ## 二、高级用法
-************************************
+
+***
+
 ### 1、自定义Converter
+
 #### （1）Converter接口及其作用：
+
 ```java
 public interface Converter<F, T> {
 	// 实现从 F(rom) 到 T(o)的转换
@@ -408,12 +428,13 @@ public interface Converter<F, T> {
 	}
 }
 ```
+
 [例子](https://github.com/ikidou/Retrofit2Demo/blob/master/client/src/main/java/com/github/ikidou/Example09.java)
 
-
 ### 2、自定义CallAdapter
+
 [例子](https://github.com/ikidou/Retrofit2Demo/blob/master/client/src/main/java/com/github/ikidou/Example10.java)
 
-
 ### 3、其他说明
+
 略

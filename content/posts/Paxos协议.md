@@ -2,7 +2,7 @@
 title: Paxos协议
 date: 2018-12-17T19:11:01+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/181
@@ -14,7 +14,6 @@ tags:
 * [维基百科](https://zh.wikipedia.org/zh-cn/Paxos%E7%AE%97%E6%B3%95)
 * [知乎](https://www.zhihu.com/question/19787937)
 * [博客1](http://www.cnblogs.com/woshiweige/p/4521165.html)
-
 
 目的：
 
@@ -31,6 +30,7 @@ tags:
 * 提案（value）
 
 过程：
+
 * prepare阶段：
 	* proposer选择一个提案编号n并将prepare请求发送给acceptors中的所有acceptors
 	* acceptor收到prepare消息后，如果提案的编号大于它已经回复的所有prepare消息(回复消息表示接受accept)，则acceptor将自己上次接受的提案（value）回复给proposer，并承诺不再回复小于n的提案；
@@ -49,6 +49,3 @@ tags:
 
 * 编号会一致更新为最大的
 * 提案（value）一旦确定不能改变
-
-
-

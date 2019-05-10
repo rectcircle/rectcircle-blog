@@ -2,7 +2,7 @@
 title: 机器学习实战（Peter Harrington）阅读笔记（二）
 date: 2017-10-02T21:34:49+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/100
@@ -11,27 +11,12 @@ tags:
   - 机器学习
 ---
 
-* [十、利用K-均值聚类算法对未标注数据分组](#十、利用K-均值聚类算法对未标注数据分组)
-	* [1、K-均值聚类算法](#1、K-均值聚类算法)
-	* [2、二分K-均值算法](#2、二分K-均值算法)
-* [十一、使用Apriori算法进行关联分析](#十一、使用Apriori算法进行关联分析)
-	* [1、关联分析](#1、关联分析)
-	* [2、Apriori原理及实现](#2、Apriori原理及实现)
-	* [3、从频繁项集中挖掘关联规则](#3、从频繁项集中挖掘关联规则)
-* [十二、使用FP-growth算法来高效发现频繁项集](#十二、使用FP-growth算法来高效发现频繁项集)
-	* [1、FP树：用于编码数据集的有效方式](#1、FP树：用于编码数据集的有效方式)
-	* [2、构建FP树](#2、构建FP树)
-	* [3、从一棵FP树中挖掘频繁项集](#3、从一棵FP树中挖掘频繁项集)
-* [十三、利用PCA来简化数据](#十三章、利用PCA来简化数据)
-	* [1、降维技术](#1、降维技术)
-	* [2、PCA](#2、PCA)
-* [十四、利用SVD简化数据](#十四、利用SVD简化数据)
-* [十五、大数据与MapReduce](#十五、大数据与MapReduce)
-
-
 ## 十、利用K-均值聚类算法对未标注数据分组
-**************************************
+
+***
+
 ### 1、K-均值聚类算法
+
 ```
 创建k个点作为起始质心（经常是随机选择）
 当任意一个点的簇分配结果发生改变时
@@ -41,7 +26,9 @@ tags:
 		将数据点分配到距其最近的簇
 	对每一个簇，计算簇中所有点的均值并将均值作为质心
 ```
+
 实现
+
 ```python
 def distEclud(vecA, vecB):
 	"""欧拉距离"""
@@ -54,17 +41,17 @@ def randCent(dataSet, k):
 	centroids = np.mat(np.zeros((k,n))) # 创建质心矩阵
 	for j in range(n):
 	# 针对每个特征的取值范围随机初始化每个质心的这个特征的值
-		minJ = min(dataSet[:,j]) 
+		minJ = min(dataSet[:,j])
 		rangeJ = float(np.max(dataSet[:,j]) - minJ)
 		centroids[:,j] = np.mat(minJ + rangeJ * np.random.rand(k,1))
-	return centroids   
+	return centroids
 
 
 def kMeans(dataSet, k, distMeas=distEclud, createCent=randCent):
 	"""k均值聚类算法"""
 	m = np.shape(dataSet)[0]
 	# 记录每个样本的所归属的质心idx，和该样本和所属质心距离
-	clusterAssment = np.mat(np.zeros((m,2))) 
+	clusterAssment = np.mat(np.zeros((m,2)))
 
 	centroids = createCent(dataSet, k) #创建质心
 	clusterChanged = True
@@ -78,24 +65,27 @@ def kMeans(dataSet, k, distMeas=distEclud, createCent=randCent):
 				if distJI < minDist:
 					minDist = distJI; minIndex = j
 			#如果该样本所属的质点发生变化，则说明没有达到最优
-			if clusterAssment[i,0] != minIndex: 
+			if clusterAssment[i,0] != minIndex:
 				clusterChanged = True
 			# 记录质点
 			clusterAssment[i,:] = minIndex,minDist**2
 		# 重新计算每个质心，根据距离
-		for cent in range(k): 
+		for cent in range(k):
 			# 获得所有属于该质点的样本
 			ptsInClust = dataSet[clusterAssment.A[:,0]==cent]
 			# 计算这些样本的中心
-			centroids[cent,:] = np.mean(ptsInClust, axis=0) 
+			centroids[cent,:] = np.mean(ptsInClust, axis=0)
 	return centroids, clusterAssment
 ```
+
 ### 2、二分K-均值算法
+
 SSE（Sum of Squared Error，误差平方和）
 
 该算法首先将所有点作为一个簇，然后将该簇一分为二。之后选择其中一个簇继续进行划分，选择哪一个簇进行划分取决于对其划分是否可以最大程度降低SSE的值。上述基于SSE的划分过程不断重复，直到得到用户指定的簇数目为止。
 
 伪代码
+
 ```
 将所有点看成一个簇
 当簇数目小于k时
@@ -103,15 +93,17 @@ SSE（Sum of Squared Error，误差平方和）
 		计算总误差
 		在给定的簇上面进行K-均值聚类（k=2）
 		计算将该簇一分为二之后的总误差
-	选择使得误差最小的那个簇进行划分操作 
+	选择使得误差最小的那个簇进行划分操作
 ```
+
 实现
+
 ```python
 def biKmeans(dataSet, k, distMeas=distEclud):
 	"""二分K均值算法"""
 	m = np.shape(dataSet)[0]
 	# 记录每个样本的所归属的质心idx，和该样本和所属质心距离
-	clusterAssment = np.mat(np.zeros((m,2))) 
+	clusterAssment = np.mat(np.zeros((m,2)))
 
 	# 初始化唯一质心，将所有点归为一个簇
 	# 获取每个特征均值
@@ -138,13 +130,13 @@ def biKmeans(dataSet, k, distMeas=distEclud):
 				bestClustAss = splitClustAss.copy() #新的划分
 				lowestSSE = sseSplit + sseNotSplit
 		#将1的簇的样本更改为len(centList)
-		bestClustAss[np.nonzero(bestClustAss[:,0].A == 1)[0],0] = len(centList) 
+		bestClustAss[np.nonzero(bestClustAss[:,0].A == 1)[0],0] = len(centList)
 		#将0号簇的样本更改为划分的id
 		bestClustAss[np.nonzero(bestClustAss[:,0].A == 0)[0],0] = bestCentToSplit
 		print ('the bestCentToSplit is: ',bestCentToSplit)
 		print ('the len of bestClustAss is: ', len(bestClustAss))
 		#更新已经划分质心
-		centList[bestCentToSplit] = bestNewCents[0,:].tolist()[0]#replace a centroid with two best centroids 
+		centList[bestCentToSplit] = bestNewCents[0,:].tolist()[0]#replace a centroid with two best centroids
 		#添加新的质心
 		centList.append(bestNewCents[1,:].tolist()[0])
 		#更新被二分的簇所属样本的簇和误差
@@ -153,26 +145,33 @@ def biKmeans(dataSet, k, distMeas=distEclud):
 ```
 
 ## 十一、使用Apriori算法进行关联分析
-****************************************************
+
+***
+
 ### 1、关联分析
+
 关联分析是一种在大规模数据集中寻找有趣关系的任务。这些关系可以有两种形式：频繁项集或者关联规则。
+
 * `频繁项集（frequent item sets）`：是经常出现在一块的物品的集合，例如`{葡萄酒，尿布, 豆奶}`
 * `关联规则（association rules）`：暗示两个集项之间可能存在很强的关系，例如`{尿布} ➞ {葡萄酒}`
 
 **衡量标准**
-* `支持度（support）`：用于衡量频繁项集的频繁程度，计算公式` 样本中存在该集项数目 / 样本数 `
+
+* `支持度（support）`：用于衡量频繁项集的频繁程度，计算公式`样本中存在该集项数目 / 样本数`
 * `可信度或置信度（confidence）`：用于衡量两个集项之间关系的强弱，`{尿布} ➞ {葡萄酒}`的计算公式为`支持度({尿布, 葡萄酒})/支持度({尿布})`
 
 **著名案例：**
+
 啤酒与尿布故事
 
-
 ### 2、Apriori原理及实现
+
 通过去除小于给定支持度的集项及其超集，来缓解组合爆炸情况，以提高速度
 
 **原理：**非常容易理解，当一个集项小于给定的支持度，那么其超集的支持度一定也小于给定的支持度
 
 #### （1）辅助函数
+
 ```python
 import numpy as np
 
@@ -186,10 +185,10 @@ def createC1(dataSet):
 		for item in transaction:
 			if not [item] in C1:
 				C1.append([item])
-				
+
 	C1.sort()
 	return list(map(frozenset, C1))#use frozen set so we
-							#can use it as a key in a dict	
+							#can use it as a key in a dict
 
 def scanD(D, Ck, minSupport):
 	""" 它有三个参数，分别是
@@ -224,9 +223,9 @@ def aprioriGen(Lk, k): #creates Ck
 	retList = []
 	lenLk = len(Lk)
 	for i in range(lenLk):
-		for j in range(i+1, lenLk): 
+		for j in range(i+1, lenLk):
 			# 提取每个元素的的前k-1个元素
-			L1 = list(Lk[i])[:k-2]; L2 = list(Lk[j])[:k-2] 
+			L1 = list(Lk[i])[:k-2]; L2 = list(Lk[j])[:k-2]
 			L1.sort(); L2.sort()
 			if L1==L2: #如果前k-1个元素相等，才执行并集操作，避免重复
 				retList.append(Lk[i] | Lk[j]) #并集
@@ -234,6 +233,7 @@ def aprioriGen(Lk, k): #creates Ck
 ```
 
 实现算法
+
 ```python
 def apriori(dataSet, minSupport = 0.5):
 	"""找到频繁项集，并计算支持度"""
@@ -252,6 +252,7 @@ def apriori(dataSet, minSupport = 0.5):
 ```
 
 ### 3、从频繁项集中挖掘关联规则
+
 ```python
 def rulesFromConseq(freqSet, H, supportData, brl, minConf=0.7):
 	m = len(H[0])
@@ -265,13 +266,13 @@ def calcConf(freqSet, H, supportData, brl, minConf=0.7):
 	prunedH = [] #create new list to return
 	for conseq in H:
 		conf = supportData[freqSet]/supportData[freqSet-conseq] #calc confidence
-		if conf >= minConf: 
+		if conf >= minConf:
 			print (freqSet-conseq,'-->',conseq,'conf:',conf)
 			brl.append((freqSet-conseq, conseq, conf))
 			prunedH.append(conseq)
 	return prunedH
 
-def generateRules(L, supportData, minConf=0.7):  
+def generateRules(L, supportData, minConf=0.7):
 	"""
 	生成关联规则
 	L和supportData 来自 scanD 函数
@@ -288,20 +289,24 @@ def generateRules(L, supportData, minConf=0.7):
 				rulesFromConseq(freqSet, H1, supportData, bigRuleList, minConf)
 			else:
 				calcConf(freqSet, H1, supportData, bigRuleList, minConf)
-	return bigRuleList		 
+	return bigRuleList
 ```
 
-
 ## 十二、使用FP-growth算法来高效发现频繁项集
-*************************************************
+
+***
+
 ### 1、FP树：用于编码数据集的有效方式
+
 对于这个数据集
+
 ![示例数据](/res/TYyaWfyY-yosCLjoiRm-QfZK.png)
 要生成的fp树，最小数目为3
 ![fp树](/res/9J1RTCyJPOht4wLR88d19uXs.png)
 在程序中要表现的结构
 ![fp树](/res/0pFJw30JHuDTE2V1E_-5B2Ve.png)
 构建树的过程
+
 * 第一次扫描样本，统计每个元素出现的次数
 * 第二次扫描样本，针对每一个样本
 	* 按照出现频次从大到小排序
@@ -309,9 +314,10 @@ def generateRules(L, supportData, minConf=0.7):
 		* 若出现过，该节点+1
 		* 若没出现过，创建该节点，并设置各种指针
 
-
 ### 2、构建FP树
+
 实现
+
 ```python
 def loadSimpDat():
     simpDat = [['r', 'z', 'h', 'j', 'p'],
@@ -337,17 +343,17 @@ class treeNode:
         self.count = numOccur # 数目
         self.nodeLink = None # 链接相似的元素项
         self.parent = parentNode      #needs to be updated
-        self.children = {} 
-    
+        self.children = {}
+
     def inc(self, numOccur):
         self.count += numOccur
-        
+
     def disp(self, ind=1):
         print ('  '*ind, self.name, ' ', self.count)
         for child in self.children.values():
             child.disp(ind+1)
 
-def updateHeader(nodeToTest, targetNode):   
+def updateHeader(nodeToTest, targetNode):
     #不使用递归实现，更新头指针
     while (nodeToTest.nodeLink != None):    #Do not use recursion to traverse a linked list!
         nodeToTest = nodeToTest.nodeLink
@@ -370,7 +376,7 @@ def updateTree(items, inTree, headerTable, count):
 
 
 
-def createTree(dataSet, minSup=1): 
+def createTree(dataSet, minSup=1):
     """从数据集创建FP树  but do not mine"""
     headerTable = {} # 头指针
     # 遍历数据集两次
@@ -380,9 +386,9 @@ def createTree(dataSet, minSup=1):
 
     delKey = []
     for k in headerTable.keys(): # 移除不满足最小支持度的元素
-        if headerTable[k] < minSup: 
+        if headerTable[k] < minSup:
             delKey.append(k)
-            
+
     for k in delKey:
         del(headerTable[k])
 
@@ -390,14 +396,14 @@ def createTree(dataSet, minSup=1):
     if len(freqItemSet) == 0: return None, None  #如果没有元素则退出
 
     for k in headerTable:
-        headerTable[k] = [headerTable[k], None] #reformat headerTable to use Node link 
+        headerTable[k] = [headerTable[k], None] #reformat headerTable to use Node link
 
     #print(headerTable)
     retTree = treeNode('Null Set', 1, None) # 创建树的根节点
     for tranSet, count in dataSet.items():  # 第二遍遍历统计出现的频率
-        localD = {} 
+        localD = {}
         # 将此样本按照出现频率进行排序
-        for item in tranSet: 
+        for item in tranSet:
             if item in freqItemSet:
                 localD[item] = headerTable[item][0]
        # print(localD)
@@ -408,7 +414,9 @@ def createTree(dataSet, minSup=1):
     return retTree, headerTable #返回树和头表
 
 ```
+
 测试算法
+
 ```python
 import fpGrowth
 
@@ -420,22 +428,24 @@ retTree, headerTable = fpGrowth.createTree(intData, 3)
 retTree.disp()
 ```
 
-
 ### 3、从一棵FP树中挖掘频繁项集
+
 实现步骤
+
 * 从FP树中获得条件模式基
 * 利用条件模式基，构建一个条件FP树（也就是上一步实现的函数）；
 * 递归调用
 
 #### （1）抽取条件基
-首先从上一节发现的已经保存在头指针表中的单个频繁元素项开始。对于每一个元素项，获得其对应的条件模式基（conditional pattern base）。条件模式基是以所查找元素项为结尾的路径集合。每一条路径其实都是一条前缀路径（prefix path）。简而言之，一条前缀路径是介于所查找元素项与树根节点之间的所有内容。
 
+首先从上一节发现的已经保存在头指针表中的单个频繁元素项开始。对于每一个元素项，获得其对应的条件模式基（conditional pattern base）。条件模式基是以所查找元素项为结尾的路径集合。每一条路径其实都是一条前缀路径（prefix path）。简而言之，一条前缀路径是介于所查找元素项与树根节点之间的所有内容。
 
 ![抽取条件模式基](/res/RqN2KIV9T7MYzsU-TCC7FXlA.png)
 
 实现
+
 ```python
-def ascendTree(leafNode, prefixPath): 
+def ascendTree(leafNode, prefixPath):
     # 递归从叶子节点到根节点
     if leafNode.parent != None:
         prefixPath.append(leafNode.name)
@@ -448,7 +458,7 @@ def findPrefixPath(basePat, treeNode): #treeNode 来自头指针表
     while treeNode != None:
         prefixPath = []
         ascendTree(treeNode, prefixPath)
-        if len(prefixPath) > 1: 
+        if len(prefixPath) > 1:
             condPats[frozenset(prefixPath[1:])] = treeNode.count
         treeNode = treeNode.nodeLink
     return condPats
@@ -471,6 +481,7 @@ def mineTree(inTree, headerTable, minSup, preFix, freqItemList):
 ```
 
 测试
+
 ```python
 #输出发现的频繁集
 freqItems = []
@@ -479,34 +490,40 @@ print(len(freqItems))
 print(freqItems)
 ```
 
-
-
 ## 十三、利用PCA来简化数据
-*****************************************
+
+***
+
 ### 1、降维技术
+
 目的：
+
 * 使得数据集更易使用
 * 降低很多算法的计算开销
 * 去除噪声
 * 使得结果易懂
 
 方法
+
 * 主成分分析（Principal Component Analysis，PCA）
 * 因子分析（Factor Analysis）
 * 独立成分分析（Independent Component Analysis，ICA）
 
 ### 2、PCA
+
 算法伪代码
+
 ```
 去除平均值
 计算协方差矩阵
 计算协方差矩阵的特征值和特征向量
 将特征值从大到小排序
 保留最上面的N个特征向量
-将数据转换到上述N个特征向量构建的新空间中 
+将数据转换到上述N个特征向量构建的新空间中
 ```
 
 编程实现
+
 ```python
 import numpy as np
 import matplotlib
@@ -533,13 +550,15 @@ def pca(dataMat, topNfeat=9999999):
 def draw(dataMat, reconMat):
 	fig = plt.figure()
 	ax = fig.add_subplot(111)
-	ax.scatter(dataMat[:,0].flatten().A[0], 
+	ax.scatter(dataMat[:,0].flatten().A[0],
 		dataMat[:, 1].flatten(), marker = '^', s=90)
-	ax.scatter(reconMat[:,0].flatten().A[0], 
+	ax.scatter(reconMat[:,0].flatten().A[0],
 		reconMat[:, 1].flatten(), marker = 'o', s=50, c='red')
 	plt.show()
 ```
+
 测试
+
 ```python
 import pca
 import numpy as np
@@ -552,10 +571,11 @@ pca.draw(dataMat, reconMat)
 ```
 
 ## 十四、利用SVD简化数据
-***************************************
+
+***
+
 参见[推荐系统](https://www.rectcircle.cn/detail/81#十一、推荐系统)
 
-
 ## 十五、大数据与MapReduce
-略
 
+略

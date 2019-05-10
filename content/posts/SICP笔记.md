@@ -2,7 +2,7 @@
 title: SICP笔记
 date: 2018-01-30T11:25:48+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/124
@@ -13,57 +13,32 @@ tags:
 
 ## 目录
 
-* [〇、预备](#〇、预备)
-	* [1、解释器环境](#1、解释器环境)
-	* [2、参考](#2、参考)
-	* [3、scheme基本语法](#3、scheme基本语法)
-* [一、构造抽象的过程](#一、构造抽象的过程)
-	* [1、程序设计的基本元素](#1、程序设计的基本元素)
-	* [2、过程和他们所产生的计算](#2、过程和他们所产生的计算)
-	* [3、用高阶函数做抽象](#3、用高阶函数做抽象)
-* [二、构造数据抽象](#二、构造数据抽象)
-	* [1、数据抽象引导](#1、数据抽象引导)
-	* [2、层次性数据和闭包性质](#2、层次性数据和闭包性质)
-	* [3、符号数据](#3、符号数据)
-	* [4、抽象数据的多重表示](#4、抽象数据的多重表示)
-	* [5、带有通用型操作的系统](#5、带有通用型操作的系统)
-* [三、模块化、对象和状态](#三、模块化、对象和状态)
-	* [1、赋值和局部状态](#1、赋值和局部状态)
-	* [2、求值的环境框架](#2、求值的环境框架)
-	* [3、用变动数据做模拟](#3、用变动数据做模拟)
-	* [4、并发：时间是一个本质问题](#4、并发：时间是一个本质问题)
-	* [5、流](#5、流)
-* [四、元语言抽象](#四、元语言抽象)
-	* [1、元循环求值器](#1、元循环求值器)
-	* [2、Scheme的变形——惰性求值](#2、Scheme的变形——惰性求值)
-	* [3、Scheme的变形——非确定性计算](#3、Scheme的变形——非确定性计算)
-	* [4、逻辑程序设计](#4、逻辑程序设计)
-* [五、寄存器机器里的计算](#五、寄存器机器里的计算)
-	* [1、寄存器机器的设计](#1、寄存器机器的设计)
-
-
-
-
-
 ## 〇、预备
-******************************
+
+***
+
 ### 1、解释器环境
+
 mit-scheme Release 9.1.1
 
 ### 2、参考
+
 > https://github.com/DeathKing/Learning-SICP
 > 《计算机程序的构造和解释（第二版）》
 > 《r5rs标准文档》
 
-
 ### 3、scheme基本语法
-参见[r5rs笔记](125)
 
+参见[r5rs笔记](/detail/125)
 
 ## 一、构造抽象的过程
-********************************
+
+***
+
 ### 1、程序设计的基本元素
+
 #### （1）表达式
+
 ```scheme
 486
 (+ 1 2)
@@ -71,6 +46,7 @@ mit-scheme Release 9.1.1
 ```
 
 #### （2）命名和环境
+
 ```scheme
 (define size 2)
 (define pi 3.14159)
@@ -78,17 +54,20 @@ size
 ```
 
 #### （3）组合式的求值
+
 组合表达式构成了一颗树
 
 #### （4）复合过程
+
 可以理解为一个函数
+
 ```scheme
 ;求某个数的平方的一个复合过程
 (define (square x) (* x x))
 (square 1001)
 
 ;求平方和
-(define (sum-of-square x y) 
+(define (sum-of-square x y)
   (+ (square x) (square y)))
 (sum-of-square 3 4)
 
@@ -99,8 +78,11 @@ size
 ```
 
 #### （5）过程应用的代换模型
+
 简单的将复合过程代换进去，并替换参数来模拟求值
+
 例子
+
 ```scheme
 (f 5)   ;=> 替换f的参数
 (sum-of-square (+ 5 1) (* 5 2))  ;=> 规约
@@ -108,9 +90,11 @@ size
 (+ (square 6) (square 10))  ;=> 替换
 (+ (* 6 6) (* 10 10)) ;规约
 (+ 36 100) ;规约
-136 
+136
 ```
+
 另一中方式
+
 ```scheme
 ;替换
 (f 5)
@@ -120,14 +104,14 @@ size
 ;规约求值
 (+ (* 6 6) (* 10 10))
 (+ 36 100)
-136 
+136
 ```
 
 * 第一种方式为“先求参数后应用”，称为**应用序求值**（scheme标准求值方式）
 * 第二种方式为“完全展开后规约”，称为正则序求值
 
-
 #### （6）条件表达式和谓词
+
 ```scheme
 (define (abs x)
   (cond ((< x 0) (- x))
@@ -141,7 +125,9 @@ size
 ```
 
 **练习1.5**
+
 测试求值方式
+
 ```scheme
 (define (p) (p))
 (define (test x y)
@@ -150,10 +136,12 @@ size
 	   y))
 (test 0 (p))
 ```
+
 应用序求值：陷入死循环
 正则序求值：返回0
 
 #### （7）实例采用牛顿法求平方根
+
 ```scheme
 (define (average x y)
   (/ (+ x y) 2))
@@ -162,7 +150,7 @@ size
   (average guess (/ x guess)))
 
 (define (good-enough? guess x)
-  (< (abs (- (square guess) x)) 
+  (< (abs (- (square guess) x))
      .001))
 
 (define (try guess x)
@@ -175,21 +163,26 @@ size
 ```
 
 **联系1.6**
+
 使用new-if代替以上的if将会出现什么问题？
+
 ```scheme
 (define (new-if predicate then-clause else-clause)
   (cond (predicate then-clause)
         (else else-clause)))
 ```
+
 由于scheme标准上是使用应用序求值，所以迭代的过程将会死循环
 
-
 #### （8）过程作为黑箱抽象
+
 一些定义：
+
 * 约束变量：在一个过程中，参数列表中的变量称之为约束变量
 * 自由变量：在一个过程中，没有出现在参数列表中的变量称为自由变量
 
 隐藏细节——内部定义和块过程
+
 ```scheme
 (define (sqrt x)
   (define (average x y)
@@ -197,7 +190,7 @@ size
   (define (improve guess)
     (average guess (/ x guess)))
   (define (good-enough? guess)
-    (< (abs (- (square guess) x)) 
+    (< (abs (- (square guess) x))
        .001))
   (define (try guess)
     (if (good-enough? guess)
@@ -206,19 +199,24 @@ size
   (try 1.0))
 ```
 
-
 ### 2、过程和他们所产生的计算
+
 对于递归程序，使用代换模型依次展开，得到的计算的形状可以反映出过程的性能（时间空间复杂度）
+
 #### （1）线性的递归和迭代
+
 对于阶乘的定义，直接翻译如下：
+
 ```scheme
 (define (factorial n)
   (if (= n 1)
       1
 			(* n (factorial (- n 1)))))
 ```
+
 使用代换模型可以得到
-```
+
+```scheme
 (factorial 4)
 (* 4 (factorial 3))
 (* 4 (* (factorial 3)))
@@ -230,18 +228,21 @@ size
 ```
 
 使用另一种定义方法
+
 ```scheme
 (define (factorial n)
   (fact-iter 1 1 n))
 (define (fact-iter product counter max-count)
   (if (> counter max-count)
 	    product
-			(fact-iter 
-			  (* product counter) 
-				(+ counter 1) 
+			(fact-iter
+			  (* product counter)
+				(+ counter 1)
 				max-count)))
 ```
+
 使用代换模型可以得到
+
 ```
 (factorial 4)
 (fact-iter 1 1 4)
@@ -253,29 +254,32 @@ size
 ```
 
 对一个递归的过程：
+
 * 若计算的“形状”如第一个展开的话，那么这个过程就是一个**递归计算过程**，更细化的对于这种线性增长的叫做**线性递归过程**
 * 若计算的“形状”如第二个展开的话，那么这个过程就是一个**迭代计算过程**。这种过程可以通过**尾递归**的方式进行优化。使其达到迭代一样的线性代价。而在scheme中语法就是这种过程的语法糖
 
-
-
 #### （2）树形递归
+
 类似于斐波那契数列的定义
+
 ```scheme
 (define (fib n)
   (cond ((= n 0) 0)
-	      ((= n 1) 1) 
+	      ((= n 1) 1)
 				(else (+ (fib (- n 1))
 				         (fib (- n 2))))))
 ```
+
 这就是一种树形递归
 
-
 #### （3）增长的阶
+
 也就是时间复杂度
 
-
 #### （4）求幂
+
 **版本1：递归计算过程**
+
 ```scheme
 (define (expt b n)
   (if (= n 0)
@@ -284,6 +288,7 @@ size
 ```
 
 **版本2：迭代计算过程**
+
 ```scheme
 (define (expt b n)
   (expt-iter b n 1))
@@ -296,14 +301,16 @@ size
 ```
 
 **版本3：优化算法**
+
 ```scheme
 (define (fast-expt b n)
   (cond ((= n 0) 1)
-        ((even? n) (square (fast-expt b (/ n 2)))) 
+        ((even? n) (square (fast-expt b (/ n 2))))
         (else (* b (fast-expt b (- n 1))))))
 ```
 
 #### （5）最大公约数
+
 ```scheme
 (define (gcd a b)
   (if (= b 0)
@@ -312,7 +319,9 @@ size
 ```
 
 #### （6）素数检测
+
 **方法1：使用素数定义**
+
 ```scheme
 (define (smallest-divisor n)
   (find-divisor n 2))
@@ -327,33 +336,40 @@ size
 ```
 
 **方法2：使用费马检测**
+
 费马小定理：如果n是一个素数，a是小于n的任意正整数，那么a的n次方与a模n同余
+
 算法：取位于1和n-1之间的数a，然后检查a的n次幂取模n的余数是否等于a，若不是则肯定不是素数，若是则可能是素数
+
 ```scheme
 (define (expmod base exp m)
   (cond ((= exp 0) 1)
-        ((even? exp) 
-				 (remainder (square (expmod base (/ exp 2) m)) m)) 
-				(else 
+        ((even? exp)
+				 (remainder (square (expmod base (/ exp 2) m)) m))
+				(else
 				 (remainder (* base (expmod base (- exp 1) m)) m))))
 
 (define (fermat-test n)
   (define (try-it a)
 	  (= (expmod a n n) a))
  (try-it (+ 1 (random (- n 1)))))
- 
+
 (define (fast-prime? n times)
   (cond ((= times 0) true)
 	      ((fermat-test n) (fast-prime? n (- times 1)))
 				(else false)))
 ```
+
 这是一种概率性的测试，不保证完全正确
 
-
 ### 3、用高阶函数做抽象
+
 scheme支持过程作为过程的参数，过程作为过程的值
+
 #### （1）过程作为参数
+
 **实例：使用scheme实现求和记法**
+
 ```scheme
 (define (sum term a next b)
   (if (> a b)
@@ -366,14 +382,16 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (define (identity i) i)
 (define (sum-int a b)
   (sum identity a 1+ b))
-	
+
 ;使用lambda构造
 (define (sum-int a b)
   (sum (lambda (i) i) a (lambda (i) (+ 1 i)) b))
 ```
 
 #### （3）过程作为一般性的方法
+
 求函数的不动点
+
 ```scheme
 ;函数不动点求平方根
 ;y = x/y 时 y = sqrt(x)，也称y为x/y函数的不动点
@@ -388,21 +406,22 @@ scheme支持过程作为过程的参数，过程作为过程的值
         new
         (iter new (f new))))
   (iter start (f start)))
-	
+
 (define (sqrt1 x)
-  (fixed-point 
+  (fixed-point
   	(lambda (y) (average (/ x y) y))
   	1))
 ```
 
 #### （4）过程作为返回值
+
 ```scheme
 (define average-damp
-  (lambda (f) 
+  (lambda (f)
           (lambda (x) (average (f x) x))))
 (define (sqrt2 x)
-  (fixed-point 
-  	(average-damp (lambda (y) (/ x y))) 
+  (fixed-point
+  	(average-damp (lambda (y) (/ x y)))
     1))
 
 ;牛顿法求平方根
@@ -414,7 +433,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (define deriv
   (lambda (f)
     (define dx 0.000001)
-    (lambda (x) 
+    (lambda (x)
             (/ (- (f (+ x dx))
                   (f x))
                dx))))
@@ -422,7 +441,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ;牛顿迭代法求方程的解
 (define (newton f guess)
   (define df (deriv f))
-   (fixed-point 
+   (fixed-point
   	(lambda (y) (- y (/ (f y) (df y))))
   	guess)
 )
@@ -433,16 +452,20 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 编程语言第一元素（具有第一级状态、或者称为第一等公民）的权利或特权如下：
+
 * 使用变量命名
 * 可以提供给过程作为参数
 * 可以由过程作为结果返回
 * 可以包含在数据结构中
 
-
 ## 二、构造数据抽象
-******************************
+
+***
+
 ### 1、数据抽象引导
+
 #### （1）实例：有理数的算数运算
+
 ```scheme
 ;模拟实数计算
 (define (gcd a b)
@@ -483,40 +506,49 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (print-rat b)
 (print-rat ans)
 ```
+
 #### （2）抽象屏障
+
 复杂系统需要将系统分成若干层，每一层封装这一些变化性，使用过程实现，这样可以使程序的变动限制到部分
 
 #### （3）数据意味着什么
+
 在scheme中，数据和过程的划分没有那么清晰比如点对的一种实现
+
 ```schemem
-(define (cons a b)	
+(define (cons a b)
   (lambda (pick) (cond ((= pick 1) a)
                        ((= pick 2) b))))
 
 (define (car x) (x 1))
 (define (cdr x) (x 2))
 ```
+
 这种表示叫做数据的过程性表示
 
-
 ### 2、层次性数据和闭包性质
+
 闭包的有以下含义：
+
 * 来源于抽象代数，一集元素称为在某运算之下密封，如果将该运算应用于这一集合的元素，产出的任然是该集合的元素
 * 一般说某种组合数据对象的操作满足闭包性质，就是说，通过他组合起数据对象得到的结果本身还可以通过同样的操作再进行组合（类似于scheme的点对的特点）
 * 闭包用于表示带有自由变量的过程的而用的实现计数
 
 #### （1）列表的表示
+
 ```scheme
 (define 1-to-4 (list 1 2 3 4))
 ;等价于
 (define nil ())
 (define 1-to-4 (cons 1 (cons 2 (cons 3 (cons 4 nil)))))
 ```
+
 * nil用于表示序对的链结束，是空表，来自拉丁词汇“nihil”表示什么都没有
 
-其他参见[r5rs](125#3、其他数据类型)
+其他参见[r5rs](/detail/125#3-其他数据类型)
 
 一些对表操作的高阶过程
+
 ```scheme
 ;列表缩放函数
 (define (scale-list s l)
@@ -547,22 +579,26 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 #### （2）层次性结构
+
 可以通过点对和列表实现树结构
 
 #### （3）序列作为一种约定界面
+
 略
 
 ### 3、符号数据
+
 #### （2）例子：符号化求导
+
 ```scheme
 ;求函数的定点导数(表达式,自变量)
 (define (deriv exp var)
   (cond ((constant? exp var) 0);表达式是常数，其导数为0
         ((same-var? exp var) 1)
-        ((sum? exp) 
+        ((sum? exp)
           (make-sum (deriv (a1 exp) var)
                     (deriv (a2 exp) var)))
-        ((product? exp) 
+        ((product? exp)
           (make-sum
             (make-product (m1 exp) (deriv (m2 exp) var))
             (make-product (deriv (m1 exp) var) (m2 exp) )))))
@@ -585,7 +621,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
   (and (not (atom? exp)) (eq? (car exp) '+ )))
 ;和式的构造函数
 (define (make-sum a1 a2)
-  (cond ((and (number? a1) 
+  (cond ((and (number? a1)
               (number? a2))
          (+ a1 a2))
         ((and (number? a1)
@@ -602,11 +638,11 @@ scheme支持过程作为过程的参数，过程作为过程的值
 
 ;判断是否是乘积式
 (define (product? exp)
-  (and (not (atom? exp)) 
+  (and (not (atom? exp))
        (eq? (car exp) '*)))
 ;乘积式的构造函数
 (define (make-product m1 m2)
-  (cond ((and (number? m1) 
+  (cond ((and (number? m1)
               (number? m2))
               (* m1 m2))
         ((and (number? m1)m2
@@ -620,14 +656,14 @@ scheme支持过程作为过程的参数，过程作为过程的值
               m2)
         ((and (number? m2)
               (= m2 1))
-              m1);添加化简        
+              m1);添加化简
         ( else (list '* m1 m2))))
 ;乘积式的选择函数（unapply）
 (define m1 cadr) ;列表的第二个元素（语法糖）
 (define m2 caddr);列表的第三个元素（语法糖）
 
 ;'表达式 表示 不要计算 而是当做列表解析
-(define foo 
+(define foo
   '(+ (* a (* x x))
       (+ (* b x) c)))
 
@@ -635,8 +671,11 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 ### 4、抽象数据的多重表示
+
 复数的表示：两种方案，直角坐标和极坐标
+
 使用带标志（类型）的数据
+
 ```scheme
 ;通用运算符
 ;实现复数运算
@@ -645,17 +684,17 @@ scheme支持过程作为过程的参数，过程作为过程的值
 
 ;算法描述
 (define (+c z1 z2)
-  (make-rectangular 
+  (make-rectangular
     (+ (real-part z1) (real-part z2))
     (+ (imag-part z1) (imag-part z2))))
 
 (define (*c z1 z2)
-  (make-polar 
+  (make-polar
     (+ (magnitude z1) (magnitude z2))
     (+ (angle z1) (angle z2))))
 
 (define (/c z1 z2)
-  (make-polar 
+  (make-polar
     (/ (magnitude z1) (magnitude z2))
     (- (angle z1) (angle z2))))
 
@@ -686,7 +725,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (define (imag-part-rectangular z)
   (cdr z))
 (define (magnitude-rectangular z)
-  (sqrt (+ (square (car z)) 
+  (sqrt (+ (square (car z))
            (square (cdr z)))))
 (define (angle-rectangular z)
   (atan (cdr z) (car z)))
@@ -705,36 +744,37 @@ scheme支持过程作为过程的参数，过程作为过程的值
 
 ;对以上根据类型进行统一
 (define (real-part z)
-  (cond ((rectangular? z) 
-         (real-part-rectangular 
+  (cond ((rectangular? z)
+         (real-part-rectangular
            (contents z)))
         ((polar? z)
-         (real-part-polar 
+         (real-part-polar
            (contents z)))))
 (define (imag-part z)
-  (cond ((rectangular? z) 
-         (imag-part-rectangular 
+  (cond ((rectangular? z)
+         (imag-part-rectangular
            (contents z)))
         ((polar? z)
-         (imag-part-polar 
+         (imag-part-polar
            (contents z)))))
 (define (magnitude z)
-  (cond ((rectangular? z) 
-         (magnitude-rectangular 
+  (cond ((rectangular? z)
+         (magnitude-rectangular
            (contents z)))
         ((polar? z)
-         (magnitude-polar 
+         (magnitude-polar
            (contents z)))))
 (define (angle z)
-  (cond ((rectangular? z) 
-         (angle-rectangular 
+  (cond ((rectangular? z)
+         (angle-rectangular
            (contents z)))
         ((polar? z)
-         (angle-polar 
+         (angle-polar
            (contents z)))))
 ```
 
 **数据导向编程，添加可加性**
+
 ```scheme
 ;双键值表的模拟实现
 (define table ())
@@ -743,8 +783,8 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (define (get k1 k2)
   (define (find t)
     (cond ((null? t) ())
-          ((and (eq? (car(car t)) k1)  
-                (eq? (cadr(car t)) k2)) 
+          ((and (eq? (car(car t)) k1)
+                (eq? (cadr(car t)) k2))
            (caddr(car t)))
           (else (find (cdr t)))))
   (find table))
@@ -781,22 +821,24 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 **消息传递**
+
 除了使用操作表以外，还可以将数据封装成一个过程，这种方式称为消息传递
+
 ```scheme
 (define (make-rectangular x y)
   (define (dispatch op)
 	  (cond ((eq? op 'real-part) x)
 		      ((eq? op 'imag-part) y)
-					((eq? op 'magnitude) 
+					((eq? op 'magnitude)
 					 (sqrt (+ (square x) (square y))))
-					((eq? op 'magnitude) 
+					((eq? op 'magnitude)
 					 (atan y x))
-					(else (error "Unkown op")))) 
+					(else (error "Unkown op"))))
 	dispatch)
 ```
 
-
 ### 5、带有通用型操作的系统
+
 ```scheme
 ;将lisp自带的+-*/和复数实数计算统一到更通用的运算add、sub、mul、div
 
@@ -816,31 +858,36 @@ scheme支持过程作为过程的参数，过程作为过程的值
   (if (eq? (type arg1) (type arg2))
       (let ((proc (get (type arg1) op)))
       	(if (not (null? proc))
-      	    (proc (contents arg1) 
+      	    (proc (contents arg1)
       	          (contents arg2))
       	   (error "op undefined on type")))
       (error "Arg not same type")))
 ;通用+
 (define (add x y)
   (operate-2 'add x y))
-	
+
 ;添加多项式运算略，
 ;对于系数的加减运算可以使用通用add，这样系统灵活性大大提高
 
 ```
 
-
 ## 三、模块化、对象和状态
-**********************************
+
+***
+
 ### 1、赋值和局部状态
+
 语法
+
 ```scheme
 (define var 1) ;赋创建值
 (set! var (+ var 1));修改变量的值
 ```
 
 #### （2）引进赋值带来的利益
+
 **例子：通过随机数计算pi（蒙特卡罗法）**
+
 ```scheme
 ;cesaro法估计pi Prob(gcd(n1 n2) = 1) = 6 / (Pi*Pi)
 (define (estimate-pi n)
@@ -852,12 +899,12 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ;蒙特卡罗法，进行trials次实验experiment，记录返回#t的概率
 (define (monte-carlo trials experiment)
   (define (iter remaining passed)
-    (cond ((= remaining 0) 
+    (cond ((= remaining 0)
            (/ passed trials))
-          ((experiment) 
+          ((experiment)
            (iter (- remaining 1)
                  (+ passed 1)))
-          (else 
+          (else
            (iter (- remaining 1)
                  passed))))
   (iter trials 0))
@@ -866,9 +913,9 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (define random-init 1)
 
 ;有状态随机数生成器
-(define rand 
+(define rand
   (let ((x random-init))
-  	(lambda () 
+  	(lambda ()
   	  (set! x (rand-update x))
   	  x)))
 
@@ -877,24 +924,32 @@ scheme支持过程作为过程的参数，过程作为过程的值
   (let ((a 76543210) (b #x12345678) (m #x7fffffff))
     (modulo (+ (* a x) b) m)))
 ```
+
 **使用赋值的好处**
+
 与所有状态必须显示地操作和传递额外的方式相比，通过引入赋值和将状态隐藏在局部变量中的技术，我们能以一种更模块化的方式构造函函数。
 
 #### （3）引入赋值的代价
+
 * 打破了引用透明性（使用替换模型替换不会改变表达式的值）
 * 产生副作用
 * 简单替换模型失效
 
 ### 2、求值的环境框架
+
 #### （1）求值规则
+
 如果要对一个表达式求值：
+
 * 求值这个表达式的子表达式
 * 将运算符表达式的值应用于运算对象子表达式的值
 
 使用环境-框架模型
 
 ### 3、用变动数据做模拟
+
 #### （1）变动的表结构
+
 ```scheme
 ;赋值类语句带来强大的能力的同时，破坏了引用透明性，带来了bug
 (define a (cons 1 2))
@@ -912,7 +967,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
   (x (lambda (a d) d)))
 ;添加可变性之后的定义
 (define (cons x y)
-  (lambda (m) 
+  (lambda (m)
     (m x
        y
        (lambda (n) (set! x n))
@@ -928,6 +983,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 #### （2）队列的表示
+
 ```scheme
 ;构造函数
 (define (make-queue) (cons '() '()))
@@ -940,7 +996,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
   (if (empty-queue? queue)
       (error "FRONT called with an empty queue" queue)
       (car (front-ptr queue))))
-			
+
 ;两个改变函数
 ;插入函数，插入到队列末端，返回修改过的队列作为值
 (define (insert-queue! queue item)
@@ -959,7 +1015,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
          (error "DELETE! called with an empty queue" queue))
         (else
          (set-front-ptr! queue (cdr (front-ptr queue)))
-         queue))) 
+         queue)))
 
 
 ;涉及的队列的定义
@@ -969,9 +1025,10 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (define (set-rear-ptr! queue item) (set-cdr! queue item))
 ```
 
-
 #### （3）表格的表示
+
 **一维表格（map、字典等）**
+
 ```scheme
 ;一维表格实现
 (define (lookup key table)
@@ -996,6 +1053,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 **二维表格**
+
 ```scheme
 ;二维表格
 (define (lookup key-1 key-2 table)
@@ -1025,6 +1083,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 **创建局部表格**
+
 ```scheme
 ;创建局部变量
 (define (make-table)
@@ -1062,6 +1121,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 #### （4）数字电路模拟器
+
 ```scheme
 ;数字电路仿真
 ;使用事件驱动模型（发布订阅）
@@ -1088,7 +1148,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 
 ;使用半加器构造一个全加器
 (define (full-adder a b c-in sum c-out)
-  (let ((s (make-wire)) 
+  (let ((s (make-wire))
         (c1 (make-wire))
         (c2 (make-wire)))
   	(half-adder a c-in s c1)
@@ -1154,25 +1214,25 @@ scheme支持过程作为过程的参数，过程作为过程的值
   (let ((signal 0) (action-procs '())) ;信号和关联的处理器
   	(define (set-my-signal! new)
   	  (cond ((= signal new) 'done)
-  	        (else 
+  	        (else
   	          (set! signal new)
   	          (call-each action-procs))))
     (define (accept-action-proc proc)
-      (set! action-procs 
+      (set! action-procs
             (cons proc action-procs))
       (proc))
     (define (dispatch m) ;分发器函数，返回内部的函数（成员函数）
       (cond ((eq? m 'get-signal) signal)
             ((eq? m 'set-signal!) set-my-signal!)
             ((eq? m 'add-action!) accept-action-proc)
-            (else 
+            (else
               (error "bad message m" m))))
     dispatch))
 
 ;调用所有的注册的处理函数
 (define (call-each procedures)
   (cond ((null? procedures) 'done)
-        (else 
+        (else
           ((car procedures))
           (call-each (cdr procedures)))))
 
@@ -1186,7 +1246,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 
 ;延时的实现
 (define (after-delay delay action)
-  (add-to-agenda! 
+  (add-to-agenda!
     (+ delay (current-time the-agenda))
     action
     the-agenda))
@@ -1194,7 +1254,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ;运行模拟器
 (define (propagate)
   (cond ((empty-agenda? the-agenda) 'done)
-        (else 
+        (else
           ((first-item the-agenda))
           (remove-first-item! the-agenda)
           (propagate))))
@@ -1202,7 +1262,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ;管理时间和处理函数的容器
 ;数据结构如下
 ;(当前时间 ((1, (proc...)) ((2,(proc...) nil))))
-;当前时间 -> 时间片(发生时间, 触发函数队列) 
+;当前时间 -> 时间片(发生时间, 触发函数队列)
 ; ->时间片(发生时间, 触发函数队列) -> ... ->nil
 ;整体上来看是一个优先队列
 ;内部包含一个队列
@@ -1289,13 +1349,13 @@ scheme支持过程作为过程的参数，过程作为过程的值
           (else
            (set-cdr! (rear-ptr queue) new-pair)
            (set-rear-ptr! queue new-pair)
-           queue)))) 
+           queue))))
 (define (delete-queue! queue)
   (cond ((empty-queue? queue)
          (error "DELETE! called with an empty queue" queue))
         (else
          (set-front-ptr! queue (cdr (front-ptr queue)))
-         queue))) 
+         queue)))
 
 (define (front-queue queue)
   (if (empty-queue? queue)
@@ -1307,7 +1367,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ;辅助函数，探测节点的值
 (define (probe name wire)
   (add-action! wire
-               (lambda ()        
+               (lambda ()
                  (newline)
                  (display name)
                  (display " ")
@@ -1345,12 +1405,12 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (propagate)
 ```
 
-
 ### 4、并发：时间是一个本质问题
 
-
 ### 5、流
+
 在mit-scheme中stream内嵌实现，相关api：
+
 * `stream-car` 取car
 * `stream-cdr` 区cdr
 * `cons-stream` 构造
@@ -1362,7 +1422,9 @@ scheme支持过程作为过程的参数，过程作为过程的值
 * `stream-filter`
 
 #### （1）流做延时的表
+
 **流的实现**
+
 ```scheme
 (define (cons-stream x y)
   (cons x (delay y)))
@@ -1389,14 +1451,14 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (define (map-stream proc s)
   (if (empty-stream? s)
       the-empty-steam
-      (cons-stream 
+      (cons-stream
         (proc (head s))
         (map-stream proc (tail s)))))
 ;filter
 (define (filter	pred s)
   (cond ((empty-stream? s) the-empty-steam)
-        ((pred (head s)) 
-         (cons-stream (head s) 
+        ((pred (head s))
+         (cons-stream (head s)
                       (filter pred (tail s))))
         (else (filter pred (tail s)))))
 
@@ -1434,6 +1496,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 **delay和force的实现**
+
 ```scheme
 (define (delay exp)
   (lambda () exp))
@@ -1443,9 +1506,9 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (define (delay exp)
   (define (memo-proc proc)
     (let ((already-run? #f) (result ()))
-      (lambda () 
+      (lambda ()
         (if (not already-run?)
-            (begin 
+            (begin
               (set! result (proc))
               (set! already-run? #t)
               result)
@@ -1454,6 +1517,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 #### （2）无穷流
+
 ```scheme
 ;整数无限流
 (define (integers-from n)
@@ -1473,11 +1537,11 @@ scheme支持过程作为过程的参数，过程作为过程的值
 
 ;筛法求素数
 (define (sieve s)
-  (cons-stream 
+  (cons-stream
     (head s)
     (sieve (filter
-             (lambda (r) 
-               (not (= 0 (remainder r (head s))))) 
+             (lambda (r)
+               (not (= 0 (remainder r (head s)))))
              (tail s)))))
 
 (define primes (sieve (integers-from 2)))
@@ -1501,37 +1565,38 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (define ones (cons-stream 1 ones))
 
 ;整数无限流
-(define integers 
+(define integers
   (cons-stream 1
     (add-streams integers ones)))
 
 ;流积分器
 (define (integeral s initial-value dt)
-  (define int 
-    (cons-stream 
+  (define int
+    (cons-stream
       init-value
-      (add-streams 
+      (add-streams
         (scale-stream dt s)
         int)))
   int)
 
-(define fibs 
+(define fibs
   (cons-stream
-    0 (cons-stream 
+    0 (cons-stream
         1
         (add-streams fibs (tail fibs)))))
 ```
 
-
 #### （3）流式计算模型的使用
+
 将迭代表示为流过程
 
-
 #### （4）流和延迟求值
+
 使用显示的delay延迟求值可能提高灵活性，但是，也会带来复杂性。
 一种解决方法是，使用应用序求值
 
 #### （5）函数式程序的模块化和对象的模块化
+
 使用流（或者说延迟求值）可以不使用赋值实现模块化的程序。流模拟的是变化的量，例如某个对象的状态。从本质上来说，流将时间显示的表现出来，因此流解耦了被模拟世界的时间和求值过程中事件发生的顺序之间的紧密联系。
 
 ```scheme
@@ -1552,16 +1617,22 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 ## 四、元语言抽象
-*********************************
+
+***
+
 ### 1、元循环求值器
+
 #### （1）求值器的内核
+
 **eval和apply**
+
 求值过程可以描述成两个过程eval和apply之间的相互作用
+
 * `eval` 拥有两个参数为表达式和环境，eval对表达式进行词法解析分类
 * `apply`有两个参数为过程和参数列表，分为两类：基本过程和复合过程
 
 ```scheme
-(define (eval exp env) 
+(define (eval exp env)
         ;常量类型（支持数字和字符串和bool）
   (cond ((self-evaluating? exp) exp)
         ;变量类型
@@ -1591,15 +1662,15 @@ scheme支持过程作为过程的参数，过程作为过程的值
         ;语法错误
         (else
          (error "Unkown expression type -- EVAL" exp))))
-				 
+
 (define apply-in-underlying-scheme apply)
 
 (define (apply procedure arguments)
         ;基本过程
-  (cond ((primitive-procedure? procedure) 
+  (cond ((primitive-procedure? procedure)
          (apply-primitive-procedure procedure arguments))
         ;复合过程
-        ((compound-procedure? procedure) 
+        ((compound-procedure? procedure)
          (eval-sequence
            (procedure-body procedure)
            (extend-envirnment
@@ -1611,6 +1682,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 **在eval中对过程的参数的进行求值**
+
 ```scheme
 (define (list-of-values exps env)
   (if (no-operands? exps)
@@ -1618,14 +1690,18 @@ scheme支持过程作为过程的参数，过程作为过程的值
       (cons (eval (first-operand exps) env)
             (list-of-values (rest-operand exps) env))))
 ```
+
 **条件表达式**
+
 ```scheme
 (define (eval-if exp env)
   (if (eq? #t (eval (if-predicate exp) env))
       (eval (if-consequent exp) env)
       (eval (if-alternative exp) env)))
 ```
+
 **多语句解析**
+
 ```scheme
 ;序列，求一组表达式的值，并返回最后一个表达式的值。
 (define (eval-sequence exps env)
@@ -1634,7 +1710,9 @@ scheme支持过程作为过程的参数，过程作为过程的值
               (eval-sequence (rest-exps exps) env))))
 
 ```
+
 **赋值和定义**
+
 ```scheme
 (define (eval-assignment exp env)
   (set-variable-value! (assignment-variable exp)
@@ -1648,8 +1726,8 @@ scheme支持过程作为过程的参数，过程作为过程的值
   'ok)
 ```
 
-
 #### （2）表达式的表示
+
 ```scheme
 ;自求值表达式（判断是否是常量：数、字符串）
 (define (self-evaluating? exp)
@@ -1685,7 +1763,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ;(define (<var> <paramer1> ... <paramern>)
 ;  <body>)
 ;等价于
-;(define <var> 
+;(define <var>
 ;  (lambda (<paramer1> ... <paramern>)
 ;  <body>))
 (define (definition? exp);判断是否是一个定义
@@ -1758,12 +1836,14 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (define (rest-operand ops) (cdr ops))
 
 ```
+
 **派生表达式**
+
 ```scheme
 ;cond实现，转换为if-begin
 ;例如
 ;(cond ((> x 0) x)
-;      ((= x 0) (display 'zero) 0) 
+;      ((= x 0) (display 'zero) 0)
 ;      (else (- x)))
 ;转换为
 ;(if (> x 0)
@@ -1775,7 +1855,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
   (tagged-list? exp 'cond))
 (define (cond-clauses exp) ;获取cond条目
   (cdr exp))
-(define (cond-else-clause? clause) 
+(define (cond-else-clause? clause)
   (eq? (cond-predicate clauses) 'else))
 (define (cond-predicate clause) ;获取条目的谓词
   (car clause))
@@ -1799,12 +1879,16 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 #### （3）求值器的数据结构
+
 **谓词检测**
+
 ```scheme
 (define (true? x) (not (eq? x #f)))
 (define (false? x) (eq? x #f))
 ```
+
 **过程的表示**
+
 ```scheme
 ;复合过程
 (define (make-procedure paramters body env)
@@ -1820,6 +1904,7 @@ scheme支持过程作为过程的参数，过程作为过程的值
 ```
 
 **对环境的操作**
+
 ```scheme
 ;对环境的操作
 ;查找环境中的值，若没有报告一个错误
@@ -1886,18 +1971,18 @@ scheme支持过程作为过程的参数，过程作为过程的值
 (define (add-binding-to-frame! var val frame)
   (set-car! frame (cons var (frame-variables frame)))
   (set-cdr! frame (cons val (frame-values frame))))
-	
+
 ;环境相关代码的测试
-(define env0 
-  (extend-envirnment 
-    '(a b c) 
-    '(1 2 3) 
+(define env0
+  (extend-envirnment
+    '(a b c)
+    '(1 2 3)
      the-empty-envirnment))
 env0
-(define env1 
-  (extend-envirnment 
-    '(a b d) 
-    '(4 5 6) 
+(define env1
+  (extend-envirnment
+    '(a b d)
+    '(4 5 6)
      env0))
 env1
 (lookup-variable-value 'd env1)
@@ -1907,10 +1992,10 @@ env1
 (set-variable-value! 'c 9 env1)
 ```
 
-
 #### （3）作为程序运行这个求值器
+
 ```scheme
-(define primitive-procedures 
+(define primitive-procedures
   (list (list 'car car)
         (list 'cdr cdr)
         (list 'cons cons)
@@ -1922,7 +2007,7 @@ env1
 (define (primitive-procedure-names)
   (map car primitive-procedures))
 (define (primitive-procedure-objects)
-  (map (lambda (proc) (list 'primitive (cadr proc))) 
+  (map (lambda (proc) (list 'primitive (cadr proc)))
        primitive-procedures))
 (define (setup-environment)
   (let ((initial-env
@@ -1941,7 +2026,7 @@ env1
 (define (apply-primitive-procedure proc args)
   (apply-in-underlying-scheme
    (primitive-implementation proc) args))
-	 
+
 ;测试整个求值器
 (eval 1 the-global-environment)
 (eval "123" the-global-environment)
@@ -1981,7 +2066,9 @@ env1
 ```
 
 #### （5）将数据作为程序
+
 scheme中原生提供的eval
+
 ```scheme
 (eval '(+ 1 2) user-initial-environment)
 ```
@@ -1989,8 +2076,8 @@ scheme中原生提供的eval
 #### （6）内部定义
 
 #### （7）将语法分析与执行分离
-添加一个`analyze`过程，进行语法分析，返回一个可执行的过程，这样就可以使分析过程只进行一次。从而提高效率。
 
+添加一个`analyze`过程，进行语法分析，返回一个可执行的过程，这样就可以使分析过程只进行一次。从而提高效率。
 
 ### 2、Scheme的变形——惰性求值
 
@@ -1998,10 +2085,8 @@ scheme中原生提供的eval
 
 ### 4、逻辑程序设计
 
-
-
 ## 五、寄存器机器里的计算
-**********************
+
+***
+
 ### 1、寄存器机器的设计
-
-

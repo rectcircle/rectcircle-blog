@@ -2,7 +2,7 @@
 title: scala读书笔记（二）
 date: 2016-11-27T19:37:45+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/29
@@ -11,27 +11,24 @@ tags:
   - scala
 ---
 
->  代码优于描述
-
-## 目录
-* [七、集合概况](#七、集合概况)
-* [八、列表、数组、映射、集及其他](#八、列表、数组、映射、集及其他)
-* [九、文件](#九、文件)
-* [十、进程](#十、进程)
-* [十一、Actor和并发](#十一、Actor和并发)
-
-
+> 代码优于描述
 
 ## 七、集合概况
-***********************************************
+
+***
+
 ### 1、集合分类
+
 #### （1）scala集合按照是否可变分为可变Mutable和不可变Immutable
+
 #### （2）scala集合按类型分为
+
 * 序列
 * set
 * map
 
 #### （3）序列
+
 通用集合
 
 |           | Immutable不可变 | Mutable可变 |
@@ -56,7 +53,7 @@ tags:
 |           | 索引序列 | 链表序列 | 描述 |
 | --------- | ------- | ------- | ----------- |
 |Array      | ✓      |          |依赖java数组实现，元素可变，大小不可变|
-|ArrayBuffer| ✓      |          |数组实现| 
+|ArrayBuffer| ✓      |          |数组实现|
 |ArrayStack | ✓      |          |数组实现栈|
 |DoubleLinkedList|   | ✓        |双向链表|
 |LinkedList |        | ✓        |可变单链表|
@@ -99,9 +96,10 @@ tags:
 |Option     | 包含一个或零个元素的集合|
 |Tuple      | 元组，支持异构元素的集合，最多支持22个元素|
 
-
 ### 2、集合方法
+
 #### （1）集合方法分类
+
 * 过滤方法
 	* collect, diff, distinct,
 drop, dropWhile, filter, filterNot, find, foldLeft, foldRight, head,
@@ -119,12 +117,13 @@ splitAt, and unzip
 contains, containsSlice, count, endsWith, exists, find, forAll, hasDefiniteSize,
 indexOf, indexOfSlice, indexWhere, isDefinedAt, isEmpty,
 lastIndexOf, lastIndexOfSlice, lastIndexWhere, max, min, nonEmpty, product,
-segmentLength, size, startsWith, sum. 
+segmentLength, size, startsWith, sum.
 * 其他
 	* par, view, flatten,
-foreach, mkString. 
+foreach, mkString.
 
 > 以下列表说明
+>
 > * c 代表集合
 > * f 代表函数
 > * p 代表谓词（返回Boolean的函数）
@@ -152,12 +151,12 @@ foreach, mkString.
 |c foreach f       |foreach|
 |c groupBy f       |把集合归类成Map，根据f返回值作为key，同一个key的元素的集合作为value|
 |c hasDefiniteSize |测试元素是否有限|
-|c head            |返回集合第一个元素，如果集合为空抛出 NoSuchElementException 
+|c head            |返回集合第一个元素，如果集合为空抛出 NoSuchElementException
 |c headOption      |返回Option
-|c init            |返回出去最后一个元素的集合，集合为空抛出UnsupportedOperationException 
+|c init            |返回出去最后一个元素的集合，集合为空抛出UnsupportedOperationException
 |c1 intersect c2   |返回连个集合的交集|
 |c isEmpty         |是否为空|
-|c last            |返回最后一个元素，如果集合为空抛出 NoSuchElementException 
+|c last            |返回最后一个元素，如果集合为空抛出 NoSuchElementException
 |c lastOption      |返回最后一个元素的Option
 |c map f           |函数f应用于每一个元素返回值的集合|
 |c max             |返回最大|
@@ -185,6 +184,7 @@ foreach, mkString.
 |c zipWithIndex    |按照下标遍历集合，返回一个元组集合|
 
 #### （3）可变集合中常用操作符
+
 |操作符 (方法)    |描述                           |
 | -------------- | ----------------------------- |
 |c += x          |把元素x添加到元素c|
@@ -199,6 +199,7 @@ foreach, mkString.
 |c.remove(n, len)|从n位置删除len长度的元素|
 
 #### （4）不可变集合中常用操作符
+
 |操作符 (方法)    |描述                           |
 | -------------- | ----------------------------- |
 |c1 ++ c2        |c2附加到c1中创造新的集合|
@@ -215,6 +216,7 @@ foreach, mkString.
 |c takeWhile p   |见上|
 
 #### （5）map方法
+
 不可变map方法
 
 |操作符 (方法)    |描述                           |
@@ -222,7 +224,6 @@ foreach, mkString.
 |m - k           |删除key后map|
 |m - (k1, k2, k3)|返回删除k1,k2,k3的map|
 |m -- c          |删除序列内的key|
-
 
 可变map方法
 
@@ -235,7 +236,6 @@ foreach, mkString.
 |mm -= k         |将map中k对应的k->v删除|
 |mm -= (k1, k2, k3)||
 |mm --= c        |将集合c中的key从map中删除|
-
 
 map不可变和可变共有方法
 
@@ -255,12 +255,12 @@ map不可变和可变共有方法
 |m values        |把keys作为Iterator返回|
 |m valuesIterator |把keys作为Iterator返回指向non-empty iterator|
 
-
 ### 3、集合的性能
+
 前置说明
 
 |Key |描述                                   |
-| -- | ------------------------------------ | 
+| -- | ------------------------------------ |
 |C   |常数级|
 |eC  |需要假设的常数时间|
 |aC  |平均常数级|
@@ -269,10 +269,11 @@ map不可变和可变共有方法
 |-   |不支持此操作|
 
 性能特点
-![](/res/smVMTo46w7ZQEg84fu_vb-WA.png)
+
+![性能](/res/smVMTo46w7ZQEg84fu_vb-WA.png)
 
 |Operation | Description                          |
-| -------- | ------------------------------------ | 
+| -------- | ------------------------------------ |
 |head      |返回第一个元素|
 |tail      |返回除第一个元素的集合|
 |apply     |索引|
@@ -281,24 +282,27 @@ map不可变和可变共有方法
 |append    |把元素添加到序列尾部|
 |insert    |在序列中任意位置插入一个元素，只能在可变中使用|
 
-
 set/map性能特点
-![](/res/8yRHptJP86h3ZG6jmd-RgZga.png)
+
+![setmap](/res/8yRHptJP86h3ZG6jmd-RgZga.png)
 
 |Operation | Description                          |
-| -------- | ------------------------------------ | 
+| -------- | ------------------------------------ |
 |lookup    |看某个元素是否在set/map中|
 |add       |将新元素添加到set/map中|
 |remove    |删除一个元素|
 |min       |返回最小元素|
 
 ### 4、创建序列
+
 #### （1）创建集合声明类型（类似泛型）
+
 ```scala
  val x = List[Number](1, 2.0, 33D, 400L)
 ```
 
 #### （2）不可变序列最佳选择
+
 ```scala
 val v = Vector("a", "b", "c")                     //> v  : scala.collection.immutable.Vector[String] = Vector(a, b, c)
 //IndexedSeq的默认实现
@@ -306,15 +310,17 @@ val x = IndexedSeq(1,2,3)                         //> x  : IndexedSeq[Int] = Vec
 ```
 
 #### （3）可变序列的最佳选择
+
 ```scala
 import scala.collection.mutable.ArrayBuffer
 var nums = ArrayBuffer(1, 2, 3)                   //> nums  : scala.collection.mutable.ArrayBuffer[Int] = ArrayBuffer(1, 2, 3)
 
 ```
 
-
 ### 5、遍历集合
+
 #### （1）使用foreach遍历集合
+
 ```scala
 val x = Vector(1, 2, 3)                           //> x  : scala.collection.immutable.Vector[Int] = Vector(1, 2, 3)
 x.foreach((i: Int) => println(i))                 //> 1
@@ -323,14 +329,15 @@ x.foreach((i: Int) => println(i))                 //> 1
 ```
 
 #### （2）for遍历
+
 ```scala
 val fruits = Traversable("apple", "banana", "orange")
                                                   //> fruits  : Traversable[String] = List(apple, banana, orange)
 for (f <- fruits) println(f)                      //> apple
                                                   //| banana
                                                   //| orange
-																									
-																									
+
+
 //使用循环计数器
 val fruits = Vector("apple", "banana", "orange")  //> fruits  : scala.collection.immutable.Vector[String] = Vector(apple, banana, o
                                                   //| range)
@@ -341,7 +348,9 @@ for (i <- 0 until fruits.size) println(s"element $i is ${fruits(i)}")
 ```
 
 #### （3）使用zipWithIndex或则zip创建循环计数器
+
 zipWithIndex
+
 ```scala
 val fruits = Vector("apple", "banana", "orange")  //> fruits  : scala.collection.immutable.Vector[String] = Vector(apple, banana, o
                                                   //| range)
@@ -351,7 +360,9 @@ fruits.zipWithIndex.foreach{case(e,i)=>println(s"index id $i, ele is $e")}
                                                   //| index id 1, ele is banana
                                                   //| index id 2, ele is orange
 ```
+
 zip，指定计数器起始值
+
 ```scala
 val fruits = Vector("apple", "banana", "orange")  //> fruits  : scala.collection.immutable.Vector[String] = Vector(apple, banana, o
                                                   //| range)
@@ -363,19 +374,22 @@ for ((elem, count) <- fruits.zip(Stream from 1)) {
 ```
 
 #### （4）迭代器遍历
+
 ```scala
 //类java
 ```
 
-
 ### 6、集合变换
+
 #### （1）使用for/yield
+
 ```scala
 val a = Array(1, 2, 3, 4, 5)                      //> a  : Array[Int] = Array(1, 2, 3, 4, 5)
 for (e <- a) yield e * 2                          //> res0: Array[Int] = Array(2, 4, 6, 8, 10)
 ```
 
 #### （2）使用map方法实现集合变换
+
 ```scala
 val helpers = Vector("adam", "kim", "melissa")    //> helpers  : scala.collection.immutable.Vector[String] = Vector(adam, kim, meli
                                                   //| ssa)
@@ -384,13 +398,14 @@ val caps = helpers.map(e => e.capitalize)         //> caps  : scala.collection.i
 ```
 
 #### （3）列表扁平化
+
 ```scala
 val lol = List(List(1,2), List(3,4))              //> lol  : List[List[Int]] = List(List(1, 2), List(3, 4))
 val result = lol.flatten                          //> result  : List[Int] = List(1, 2, 3, 4)
 ```
 
-
 #### （4）flatMap(f) === map(f).flatten
+
 ```scala
 val bag = List("1", "2", "three", "4", "one hundred seventy five")
 																								//> bag  : List[String] = List(1, 2, three, 4, one hundred seventy five)
@@ -406,6 +421,7 @@ bag.map(toInt).flatten.sum                //> res1: Int = 7
 ```
 
 #### （5）过滤、提取集合
+
 ```scala
 collect, diff, distinct,
 drop, dropWhile, filter, filterNot, find, foldLeft, foldRight, head,
@@ -414,7 +430,9 @@ remove, slice, tail, take, takeWhile, union
 ```
 
 #### （6）集合分割（groupBy，parttition）
+
 `groupBy`返回map
+
 ```scala
 val x = List(15, 10, 5, 8, 20, 12)        //> x  : List[Int] = List(15, 10, 5, 8, 20, 12)
 val y = x.groupBy(_ > 10)                 //> y  : scala.collection.immutable.Map[Boolean,List[Int]] = Map(false -> List(10
@@ -422,24 +440,28 @@ val y = x.groupBy(_ > 10)                 //> y  : scala.collection.immutable.Ma
 ```
 
 `partition`返回元组，按照true，false分组
+
 ```scala
 val x = List(15, 10, 5, 8, 20, 12)        //> x  : List[Int] = List(15, 10, 5, 8, 20, 12)
 val y = x.partition(_ > 10)               //> y  : (List[Int], List[Int]) = (List(15, 20, 12),List(10, 5, 8))
 ```
 
 `span`返回元组，分为满足谓词的最长前缀和剩下元素两组
+
 ```scala
 val x = List(15, 10, 5, 8, 20, 12)        //> x  : List[Int] = List(15, 10, 5, 8, 20, 12)
 val y = x.span(_ < 20)                    //> y  : (List[Int], List[Int]) = (List(15, 10, 5, 8),List(20, 12))
 ```
 
 `x.splitAt(2)`返回元组，按照位置
+
 ```scala
 val x = List(15, 10, 5, 8, 20, 12)        //> x  : List[Int] = List(15, 10, 5, 8, 20, 12)
 val y = x.splitAt(2)                      //> y  : (List[Int], List[Int]) = (List(15, 10),List(5, 8, 20, 12))
 ```
 
-`sliding(size, step)` | `sliding(size)` 
+`sliding(size, step)` | `sliding(size)`
+
 ```scala
 val nums = (1 to 5).toArray               //> nums  : Array[Int] = Array(1, 2, 3, 4, 5)
 nums.sliding(2).toList                    //> res0: List[Array[Int]] = List(Array(1, 2), Array(2, 3), Array(3, 4), Array(4,
@@ -448,8 +470,8 @@ nums.sliding(2, 2).toList                 //> res1: List[Array[Int]] = List(Arra
 nums.sliding(2, 3).toList                 //> res2: List[Array[Int]] = List(Array(1, 2), Array(4, 5))
 ```
 
-
 `zip`两个列表按照idx配对组成新的列表，`unzip`反之
+
 ```scala
 val women = List("Kim", "Julia")                  //> women  : List[String] = List(Kim, Julia)
 val men = List("Al", "Terry")                     //> men  : List[String] = List(Al, Terry)
@@ -458,9 +480,11 @@ couples.unzip                                     //> res0: (List[String], List[
 ```
 
 #### （7）reduce和fold方法
+
 略
 
 #### （8）提取不重复元素
+
 ```scala
 	val x = Vector(1, 1, 2, 3, 3, 4)          //> x  : scala.collection.immutable.Vector[Int] = Vector(1, 1, 2, 3, 3, 4)
 	val y = x.distinct                        //> y  : scala.collection.immutable.Vector[Int] = Vector(1, 2, 3, 4)
@@ -468,19 +492,23 @@ couples.unzip                                     //> res0: (List[String], List[
 ```
 
 #### （9）序列合并
+
 * ++=合并为可变集合
 * ++ 合并集合
 * union并集，diff相对补集，intersect交集
 * a ::: b 合并
 
 #### （10）创建惰性视图view方法
+
 ```scala
 (1 to 100).view                                   //> res0: scala.collection.SeqView[Int,scala.collection.immutable.IndexedSeq[Int]
                                                   //| ] = SeqView(...)
 ```
 
-###  7、创建集合
+### 7、创建集合
+
 #### （1）利用Range创建集合
+
 ```scala
 Array.range(1, 5)                         //> res0: Array[Int] = Array(1, 2, 3, 4)
 List.range(0, 10)                         //> res1: List[Int] = List(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
@@ -488,6 +516,7 @@ Vector.range(0, 10, 2)                    //> res2: scala.collection.immutable.V
 ```
 
 #### （2）枚举
+
 ```scala
 object Margin extends Enumeration {
 	type Margin = Value
@@ -498,6 +527,7 @@ Margin.TOP                                //> res0: worksheet.Margin.Value = TOP
 ```
 
 #### （3）元组
+
 ```scala
 val d = ("Debi", 95)                      //> d  : (String, Int) = (Debi,95)
 case class Person(name: String)
@@ -516,6 +546,7 @@ val b = "AL" -> "Alabama"                 //> b  : (String, String) = (AL,Alabam
 ```
 
 ### 8、集合排序
+
 ```scala
 val a = List(10, 5, 8, 1, 7).sorted       //> a  : List[Int] = List(1, 5, 7, 8, 10)
 val b = List("banana", "pear", "apple", "orange").sorted
@@ -542,6 +573,7 @@ dudes.sorted                              //> res1: List[worksheet.Person] = Lis
 ```
 
 ### 9、将集合转换为字符串，mkString
+
 ```scala
 val a = Array("apple", "banana", "cherry")//> a  : Array[String] = Array(apple, banana, cherry)
 a.mkString                                //> res0: String = applebananacherry
@@ -551,14 +583,18 @@ a.mkString("[", ", ", "]")                //> res3: String = [apple, banana, che
 ```
 
 ## 八、列表、数组、映射、集及其他
-****************************************************************************
+
+***
+
 ### 1、列表（List、ListBuffer、Stream）
+
 > 链表实现，头插尾插O(1)
 > 适合递归
 
-
 #### （1）创建与填充列表
+
 创建不可变列表List
+
 ```scala
 // 1
 scala> val list = 1 :: 2 :: 3 :: Nil
@@ -594,6 +630,7 @@ res0: List[Char] = List(f, o, o)
 ```
 
 创建可变列表ListBuffer
+
 ```scala
 import scala.collection.mutable.ListBuffer
 var fruits = new ListBuffer[String]()
@@ -604,6 +641,7 @@ fruits += "Orange"
 ```
 
 #### （2）添加元素
+
 ```scala
 val x = List(2)                                   //> x  : List[Int] = List(2)
 val y = 1 +: x                                    //> y  : List[Int] = List(1, 2)
@@ -611,7 +649,9 @@ val z = 0 :: y                                    //> z  : List[Int] = List(0, 1
 ```
 
 #### （3）从List或ListBuffer删除元素
+
 List
+
 ```scala
 val originalList = List(5, 1, 4, 3, 2)            //> originalList  : List[Int] = List(5, 1, 4, 3, 2)
 //通过filter删除
@@ -619,6 +659,7 @@ val newList = originalList.filter(_ > 2)          //> newList  : List[Int] = Lis
 ```
 
 ListBuffer
+
 ```scala
 import scala.collection.mutable.ListBuffer
 val x = ListBuffer(1, 2, 3, 4, 5, 6, 7, 8, 9)
@@ -633,24 +674,27 @@ x.remove(0)                               //> res3: Int = 4
 x.remove(1, 3)
 ```
 
-
 #### （4）合并或连接列表
+
 使用 `++`，`concat`，`:::`方法
 
 #### （5）使用List的lazy版本Stream
+
 构造Stream
+
 ```scala
 val s = 1#::2#::3#::Stream.empty
 val s1 = (1 to 1000000000).toStream //不会爆内存
 ```
 
-
 ### 2、数组（Array、ArrayBuffer）
+
 > 编译成java的数组
 
-
 #### （1）创建和更新
+
 创建普通数组
+
 ```scala
 val a = Array(1,2,3)                              //> a  : Array[Int] = Array(1, 2, 3)
 
@@ -667,6 +711,7 @@ val a7 = "Hello".toArray                          //> a7  : Array[Char] = Array(
 ```
 
 创建可变数组ArrayBuffer
+
 ```scala
 import scala.collection.mutable.ArrayBuffer
 var c = ArrayBuffer[String]()                     //> c  : scala.collection.mutable.ArrayBuffer[String] = ArrayBuffer()
@@ -677,15 +722,15 @@ c ++=Seq("cc","dd")                               //> res2: scala.collection.mut
 c.append("ee","ff")
 ```
 
-`
 #### （2）删除元素
-* ArrayBuffer使用`-= ` `--=` `remove`及`clear`
+
+* ArrayBuffer使用`-=` `--=` `remove`及`clear`
 * Array使用过滤方法和重新赋值方法
 
 #### （3）排序
+
 * 使用`scala.util.Sorting.quickSort(fruits);`
 * 使用`sorted`、`sortBy`、`sortWith`
-
 
 ```scala
 val fruits = Array("cherry", "apple", "banana")   //> fruits  : Array[String] = Array(cherry, apple, banana)
@@ -697,11 +742,13 @@ fruits.sorted                                     //> res0: Array[String] = Arra
 ```
 
 #### （4）创建多维数组
+
 使用`Array.ofDim()`//非Array独有,**最多允许5维**
+
 ```scala
 val rows = 2                                      //> rows  : Int = 2
 val cols = 3                                      //> cols  : Int = 3
-val a = Array.ofDim[String](rows, cols)           //> a  : Array[Array[String]] = Array(Array(null, null, null), Array(null, null, 
+val a = Array.ofDim[String](rows, cols)           //> a  : Array[Array[String]] = Array(Array(null, null, null), Array(null, null,
                                                   //| null))
 a(0)(0) = "a"
 a(0)(1) = "b"
@@ -713,19 +760,23 @@ a(1)(2) = "f"
 a                                                 //> res0: Array[Array[String]] = Array(Array(a, b, c), Array(d, e, f))
 
 ```
+
 使用数组的数组
+
 ```scala
 val a = Array(Array("a", "b", "c"), Array("d", "e"))
                                                   //> a  : Array[Array[String]] = Array(Array(a, b, c), Array(d, e))
 ```
 
-
 ### 3、映射（Map）
+
 #### （1）创建
+
 创建不可变Map和可变映射区别在于导入包不同
+
 ```scala
 val states = Map("AL" -> "Alabama", "AK" -> "Alaska")
-                                                  //> states  : scala.collection.immutable.Map[String,String] = Map(AL -> Alabama, 
+                                                  //> states  : scala.collection.immutable.Map[String,String] = Map(AL -> Alabama,
                                                   //| AK -> Alaska)
 var states = collection.mutable.Map[String, String]()
                                                   //> states  : scala.collection.mutable.Map[String,String] = Map()
@@ -733,6 +784,7 @@ var states = collection.mutable.Map[String, String]()
 ```
 
 #### （2）选择Map实现
+
 |类或特质|描述|
 |-------|----|
 |collection.immutable.Map|默认不可变映射|
@@ -743,9 +795,10 @@ var states = collection.mutable.Map[String, String]()
 |collection.immutable.HashMap|给予Hash查找树|
 |查看doc文档|.....|
 
-
 #### （3）添加、更新或删除元素
+
 可变
+
 ```scala
 var states = collection.mutable.Map[String, String]()
 																								//> states  : scala.collection.mutable.Map[String,String] = Map()
@@ -780,6 +833,7 @@ states.clear
 ```
 
 不可变：使用var同样可以使用`+=` `-=`
+
 ```scala
 val a = Map("AL" -> "Alabama") //> a  : scala.collection.immutable.Map[String,String] = Map(AL -> Alabama)
 //添加或更新
@@ -799,9 +853,10 @@ println(x) //> Map(AK -> Alaska, AC -> AC)
 ```
 
 #### （4）访问映射的值
+
 ```scala
 val states = Map("AL" -> "Alabama", "AK" -> "Alaska", "AZ" -> "Arizona")
-																								//> states  : scala.collection.immutable.Map[String,String] = Map(AL -> Alabama, 
+																								//> states  : scala.collection.immutable.Map[String,String] = Map(AL -> Alabama,
 																								//| AK -> Alaska, AZ -> Arizona)
 val s = states.getOrElse("FOO", "No such state")
 																								//> s  : String = No such state
@@ -813,7 +868,9 @@ val az = states("AZ")                     //> az  : String = Arizona
 val ac = states("AC")                     //> java.util.NoSuchElementException: key not found: AC
 
 ```
+
 #### （5）遍历映射
+
 ```scala
 val ratings = Map("Lady in the Water"-> 3.0,
  "Snakes on a Plane"-> 4.0,
@@ -848,23 +905,27 @@ ratings.values.foreach((rating) => println(rating))
                                                   //| 3.5
 
 ```
+
 #### （6）获取所有key或value的集合
+
 *　使用`keySet` `keys` `keysIterator`方法获取所有key
 *　使用`values` `valuesIterator`
 
 #### （7）反转键值
+
 使用`for/yield`,可能会丢失数据
+
 ```scala
 val reverseMap = for ((k,v) <- map) yield (v, k)
 ```
 
-
 #### （8）测试键值存在性
+
 ```scala
 val states = Map(
 	"AK" -> "Alaska",
 	"IL" -> "Illinois",
-	"KY" -> "Kentucky")               //> states  : scala.collection.immutable.Map[String,String] = Map(AK -> Alaska, 
+	"KY" -> "Kentucky")               //> states  : scala.collection.immutable.Map[String,String] = Map(AK -> Alaska,
 																								//| IL -> Illinois, KY -> Kentucky)
 if (states.contains("FOO")) println("Found foo") else println("No foo")
 																								//> No foo
@@ -876,6 +937,7 @@ states.valuesIterator.exists(_.contains("yucky"))
 ```
 
 #### （9）过滤键值
+
 ```scala
 var x = collection.mutable.Map(1 -> "a", 2 -> "b", 3 -> "c")
 																								//> x  : scala.collection.mutable.Map[Int,String] = Map(2 -> b, 1 -> a, 3 -> c)
@@ -891,6 +953,7 @@ m.take(2)                                 //> res3: scala.collection.immutable.M
 ```
 
 #### （10）排序
+
 ```scala
 //默认存储无序的无法排序
 val grades = Map("Kim" -> 90,
@@ -910,10 +973,10 @@ ListMap(grades.toSeq.sortWith(_._1 < _._1): _*)
 ListMap(grades.toSeq.sortWith(_._1 > _._1): _*)
 																								//> res2: scala.collection.immutable.ListMap[String,Int] = Map(Melissa -> 95, Ki
 																								//| m -> 90, Hannah -> 92, Emily -> 91, Al -> 85)
-ListMap(grades.toSeq.sortBy(_._2): _*)    //> res3: scala.collection.immutable.ListMap[String,Int] = Map(Al -> 85, Kim -> 
+ListMap(grades.toSeq.sortBy(_._2): _*)    //> res3: scala.collection.immutable.ListMap[String,Int] = Map(Al -> 85, Kim ->
 																								//| 90, Emily -> 91, Hannah -> 92, Melissa -> 95)
 ListMap(grades.toSeq.sortWith(_._2 < _._2): _*)
-																								//> res4: scala.collection.immutable.ListMap[String,Int] = Map(Al -> 85, Kim -> 
+																								//> res4: scala.collection.immutable.ListMap[String,Int] = Map(Al -> 85, Kim ->
 																								//| 90, Emily -> 91, Hannah -> 92, Melissa -> 95)
 ListMap(grades.toSeq.sortWith(_._2 > _._2): _*)
 																								//> res5: scala.collection.immutable.ListMap[String,Int] = Map(Melissa -> 95, Ha
@@ -921,13 +984,15 @@ ListMap(grades.toSeq.sortWith(_._2 > _._2): _*)
 
 //TODO 看书_*
 ```
+
 > 关于_*
+>
 > * `ListMap`构造函数需要传入一个可变参数的2元元组
 > * `sortWith`和`sortBy`返回一个序列，内容为2元元组
 > * _\*目的将元组拆分为2元元组的可变参数
-> 
 
 #### （11）找到最大键或值
+
 ```scala
 val grades = Map("Al" -> 80, "Kim" -> 95, "Teri" -> 85, "Julia" -> 90)
 																								//> grades  : scala.collection.immutable.Map[String,Int] = Map(Al -> 80, Kim -> 9
@@ -941,23 +1006,31 @@ grades.keysIterator.reduceLeft((x, y) => if (x.length > y.length) x else y)
 ```
 
 ### 4、集（Set）
+
 #### （1）添加元素
+
 可变集
+
 * 使用`+=` `++=` `add`
- 
+
 不可变
+
 * 使用`+` `++`
 
 #### （2）删除元素
+
 可变集
+
 * 使用`-=` `--=`
 * 使用`retain` `clear` `remove`方法
 
 不可变集
+
 * 使用 `-` `--`
 * 使用`filter` `take`方法
 
 #### （3）使用可排序集
+
 * 使用SortedSet
 
 ```scala
@@ -965,22 +1038,26 @@ val s = scala.collection.SortedSet("cherry", "kiwi", "apple")
 																								//> s  : scala.collection.SortedSet[String] = TreeSet(apple, cherry, kiwi)
 ```
 
-
 ### 5、队列
+
 略
 
 ### 6、栈
+
 略
 
 ### 7、Range
+
 略
 
-
-
 ## 九、文件
-***********************************************
+
+***
+
 ### 1、打开并读取文件
+
 #### 简要写法：适用于scala脚本，文件不会关闭，随jvm关闭而关闭
+
 ```scala
 import scala.io.Source
 val fileName = "d:/test.txt"              //> fileName  : String = d:/test.txt
@@ -998,8 +1075,8 @@ buffer.mkString                           //> res0: String = ""
 //getLine返回一个迭代器
 ```
 
-
 #### 自动关闭资源
+
 ```scala
 def using[A<:{def close():Unit}, B](resource: A)(f:A=>B):B = {
 	try{
@@ -1018,9 +1095,10 @@ using(buffer)(_.mkString);                //> res0: String = "Line1
 ```
 
 #### 处理异常（用到上面的using方法）
+
 ```scala
 
-// 将上定义 def using[A<:{def close():Unit}, B](resource: A)(f:A=>B):B 
+// 将上定义 def using[A<:{def close():Unit}, B](resource: A)(f:A=>B):B
 
 def readTextFile(fileName:String):Option[List[String]] = {
 	try{
@@ -1040,19 +1118,20 @@ readTextFile(fileName)                    //> res0: Option[List[String]] = Some(
 
 ```
 
-
 #### 其他`io.Source.fromFile`方法
+
 略
 
-
 ### 2、写入文本文件
+
 使用java的PrintWriter或FileWriter
 
 ### 3、读写二进制文件
+
 使用java的FileInputStream和FileOutputStream
 
-
 ### 4、将字符串封装成文本文件对象，便于测试
+
 ```scala
 import scala.io.Source
 val fileName = "d:/test.txt"              //> fileName  : String = d:/test.txt
@@ -1068,6 +1147,7 @@ for (line <- buffer.getLines()) {
 ```
 
 ### 5、序列化
+
 ```scala
 import java.io._
 // 创建一个类
@@ -1093,21 +1173,22 @@ println(stock)
 
 ```
 
-
 ### 5、列出文件中目录
+
 使用java方法
 
-
-
-
 ## 十、进程
+
 ### 1、执行外部命令
+
 导入`scala.sys.process`
+
 * 使用!方法执行命令，并获取退出码
 * 使用!!方法执行命名，并获取输出
 * 使用lines方法在后台执行命令，并得到输出
 
 使用!
+
 ```scala
 scala> "pwd".!
 /c/Users/xxxx
@@ -1130,6 +1211,7 @@ res4: Int = 0
 ```
 
 使用lines
+
 ```scala
 val p = Process("pwd").lines
 ```
@@ -1137,6 +1219,7 @@ val p = Process("pwd").lines
 注意：只能执行外部命令，不能执行内建命令如cd for
 
 ### 2、执行外部命令并使用标准输出
+
 ```scala
 scala> val result = "ipconfig".!!
 result: String =
@@ -1175,9 +1258,10 @@ Windows IP 配置
 
 ### 3、其他略
 
-
 ## 十一、Actor和并发
+
 ### 1、Actor入门
+
 ```scala
 import akka.actor.Actor
 import akka.actor.ActorSystem
@@ -1208,6 +1292,7 @@ huh?
 ```
 
 ### 2、Actor之间通讯
+
 ```scala
 import akka.actor._
 case object PingMessage //来自ping的消息
@@ -1266,6 +1351,7 @@ pong stopped
 ```
 
 ### 3、Actor声明周期
+
 ```scala
 import akka.actor._
 class Kenny extends Actor {
@@ -1351,9 +1437,10 @@ kenny: postStop方法执行
 重启流程
 > preRestart -> postStop -> postRestart -> preStart
 
-
 ### 4、Actor启动
+
 #### （1）主线程启动Actor
+
 ```scala
 val system = ActorSystem("HelloSystem")
 // 系统创建
@@ -1361,6 +1448,7 @@ val helloActor = system.actorOf(Props[HelloActor], name = "helloactor"
 ```
 
 #### （2）从Actor启动Actor
+
 ```scala
 class Parent extends Actor {
  val child = context.actorOf(Props[Child], name = "Child")
@@ -1369,7 +1457,9 @@ class Parent extends Actor {
 ```
 
 ### 5、Actor停止
-#### （1）`actorSystem.stop(actor)`或` context.stop(actor)`方法，处理完消息队列的消息然后停止
+
+#### （1）`actorSystem.stop(actor)`或`context.stop(actor)`方法，处理完消息队列的消息然后停止
+
 ```scala
 import akka.actor._
 
@@ -1399,6 +1489,7 @@ object Main extends App {
 ```
 
 #### （2）传递PoisonPill消息，
+
 ```scala
 import akka.actor._
 class TestActor extends Actor {
@@ -1430,6 +1521,7 @@ TestActor::postStop 方法执行
 ```
 
 #### （3）gracefulStop ？？方法，设置延时关闭，如果在指定实现内未关闭将报异常
+
 ```scala
 import akka.actor._
 import akka.pattern.gracefulStop
@@ -1468,16 +1560,18 @@ for(i <- 1 to 10) testActor ! "xx"
 ```
 
 ### 6、Actor系统关闭
+
 ```scala
 //system.shutdown ，已废弃
 system.terminate //关闭
 ```
 
 ### 7、Actor监控子Actor死亡
+
 #### （1）做法
+
 `context.watch(子Actor引用)` //开启监控
 `case Terminated(kenny)`  //匹配消息
-
 
 ```scala
 class Kenny extends Actor {
@@ -1488,7 +1582,7 @@ class Kenny extends Actor {
 class Parent extends Actor {
 	// start Kenny as a child, then keep an eye on it
 	val kenny = context.actorOf(Props[Kenny], name = "Kenny")
-	context.watch(kenny) 
+	context.watch(kenny)
 	def receive = {
 		case Terminated(kenny) => println("OMG, Kenny被killed")
 		case _ => println("Parent 收到一个消息")
@@ -1508,6 +1602,7 @@ object Main extends App {
 ```
 
 #### （2）获取子Actor
+
 ```scala
 val kenny = system.actorSelection("/user/Parent/Kenny")
 val kenny = context.actorSelection("../Kenny")
@@ -1516,9 +1611,10 @@ val kenny = system.actorFor(Seq("user", "Parent", "Kenny"))
 val kenny = system.actorFor(Seq("..", "Kenny"))
 ```
 
-
 ### 8、Futures实现并行计算任务
+
 #### （1）简单实例会阻塞
+
 ```scala
 import scala.concurrent.{ Await, Future }
 import scala.concurrent.duration._
@@ -1540,7 +1636,9 @@ object Main extends App {
 	sleep(1000)
 }
 ```
+
 #### （2）使用回调不阻塞
+
 ```scala
 import scala.concurrent.{ Future }
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -1583,6 +1681,7 @@ F ...
 ```
 
 #### （3）回调方法
+
 ```scala
 //同上......
 	f.onComplete {
@@ -1612,6 +1711,7 @@ F ...
 ```
 
 #### （4）创建返回Future[T]实例的方法
+
 ```scala
 import scala.concurrent.{ Await, Future, future }
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -1619,7 +1719,7 @@ import scala.util.{ Failure, Success }
 object Main extends App {
 	def sleep(time: Long) { Thread.sleep(time) }
 	implicit val baseTime = System.currentTimeMillis
-	
+
 	def longRunningComputation(i: Int): Future[Int] = future {
 		sleep(100)
 		i + 1
@@ -1638,6 +1738,7 @@ result = 12
 ```
 
 #### （5）运行多个任务，且有其他任务依赖他们，将所有任务连接一起
+
 ```scala
 import scala.concurrent.{ Future, future }
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -1687,14 +1788,15 @@ total = 90
 ```
 
 #### （6）连接器，将几个`Future`并行运算，并将结果连接起来
+
 * `for`
 * `map`
 * `flatMap`
 * `filter`等
 * `recover` `recoverWith` `fallbackTo`提供错误处理机制
 
-
 #### （7）给Actor发消息并等待消息回复
+
 ```scala
 import akka.actor._
 import akka.pattern.ask
@@ -1735,6 +1837,7 @@ Fred
 ```
 
 #### （8）使用become切换匹配函数
+
 ```scala
 import akka.actor._
 case object ActNormalMessage
@@ -1777,6 +1880,7 @@ Phew, I'm back to being David.
 ```
 
 #### （9）并发集合
+
 ```scala
 scala> val v = Vector.range(0, 10)
 v: scala.collection.immutable.Vector[Int] = Vector(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
@@ -1793,8 +1897,3 @@ scala> v.par.foreach{ e => print(e); Thread.sleep(50) }
 0516273894
 
 ```
-
-
-
-
-

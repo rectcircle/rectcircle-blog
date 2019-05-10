@@ -2,7 +2,7 @@
 title: scala读书笔记（三）
 date: 2016-12-10T21:14:59+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/32
@@ -11,21 +11,18 @@ tags:
   - scala
 ---
 
->  代码优于描述
-
-## 目录
-* [十二、简单构建工具SBT](#十二、简单构建工具SBT)
-* [十三、web服务](#十三、web服务)
-* [十四、数据库和持久化](#十四、数据库和持久化)
-* [十五、与java交互](#十五、与java交互)
-* [十六、类型（泛型系统）](#十六、类型（泛型系统）)
-* [十七、习惯用法](#十七、习惯用法)
+> 代码优于描述
 
 ## 十二、简单构建工具SBT
-**************************************************
+
+***
+
 ### 1、创建项目目录结构
+
 #### （1）手动(脚本)创建
+
 shell脚本如下
+
 ```bash
 #!/bin/sh
 mkdir -p src/{main,test}/{java,resources,scala}
@@ -37,6 +34,7 @@ scalaVersion := "2.10.0"' > build.sbt
 ```
 
 目录结构如下
+
 ```
 .
 |-- build.sbt
@@ -55,9 +53,13 @@ scalaVersion := "2.10.0"' > build.sbt
 ```
 
 #### （2）使用Giter8创建
+
 ##### 安装过程
+
 **安装Conscript**
+
 1、进入http://www.foundweekends.org/conscript/setup.html选择操作系统环境的安装脚本
+
 2、 进入~/.conscript/foundweekends/conscript/cs目录修改文件launchconfig为，切换镜像源
 
 ```
@@ -84,19 +86,22 @@ scalaVersion := "2.10.0"' > build.sbt
 4、将~/.conscript/文件移动到想要的位置，修改环境变量
 
 **安装g8**
+
 1、`cs foundweekends/giter8`卡住中断，结束进程
 2、修改conscript/foundweekends/giter8/g8/launchconfig仓库为阿里云
 3、从新执行`cs foundweekends/giter8`
 
-
 **生成项目模板**
+
 由于国内墙的存在浏览器上git下载下来zip文件解压到文件夹
 执行`g8 file://D:/IDE/scalag8temp/scalatra-sbt.g8-master`即可
 
-
 ### 2、sbt配置
+
 #### （1）进入安装目录/conf
+
 #### （2）编写`sbtconfig.txt`如下
+
 ```
 # Set the java args to high
 -Xmx512M
@@ -111,6 +116,7 @@ scalaVersion := "2.10.0"' > build.sbt
 ```
 
 #### （3）添加文件`repo.properties`，配置仓库国内镜像
+
 ```
 [repositories]
 #local
@@ -122,31 +128,38 @@ sonatype-oss-snapshots
 ```
 
 ### 3、sbt命令
+
 #### （1）一般操作
+
 进入项目根目录
 sbt compile 编译
 sbt run
 sbt package
 sbt clean
-sbt clean package 
+sbt clean package
 等等，类似于maven命令
 
 #### （2）sbt shell
+
 sbt进入sbt shell交互环境，可以直接执行以上命令
 
 #### （3）sbt持续编译
+
 ```bash
 sbt
 ~compile
 ```
 
 ### 4、使用sbt和ScalaTest运行测试
+
 在`build.sbt`添加依赖
+
 ```
 libraryDependencies += "org.scalatest" % "scalatest_2.12" % "3.0.1"
 ```
 
 在`src\test\java`目录下编写测试用例
+
 ```scala
 package com.alvinalexander.testproject
 import org.scalatest.FunSuite
@@ -166,8 +179,10 @@ class HelloTests extends FunSuite {
 运行测试`sbt test`
 
 ### 5、使用sbt管理依赖
+
 #### （1）完整的`build.sbt`文件结构示例
-```
+
+```scala
 name := "BasicProjectWithScalaTest"
 version := "1.0"
 scalaVersion := "2.10.0"
@@ -175,12 +190,15 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1" % "test"
 ```
 
 #### （2）依赖声明方式
+
 方式1：`libraryDependencies += groupID % artifactID % revision`
+
 ```scala
 libraryDependencies += "net.sourceforge.htmlcleaner" % "htmlcleaner" % "2.4"
 ```
 
 方式2：`libraryDependencies += groupID % artifactID % revision % configuration`
+
 ```scala
 libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1" % "test"
 
@@ -188,6 +206,7 @@ libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.1" % "test"
 ```
 
 方式3：多个依赖
+
 ```scala
 libraryDependencies ++= Seq(
  "net.sourceforge.htmlcleaner" % "htmlcleaner" % "2.4",
@@ -196,42 +215,51 @@ libraryDependencies ++= Seq(
 )
 ```
 
-
 #### （3）依赖版本声明
+
 版本标签
+
 ```scala
 libraryDependencies += "org.foobar" %% "foobar" % "latest.integration"
 ```
 
 标签选项
+
 * latest.integration
 * latest.[any status], 例如 latest.milestone
 * 在revision 结尾加上一个 + 字符，将选取最新版本
 
-
 ### 6、使用子项目
+
 略
 
 ### 7、在eclipse中使用sbt
+
 在`.sbt\plugins\`下添加sbteclipse.sbt文件
 内容为
+
 ```scala
 addSbtPlugin("com.typesafe.sbteclipse" % "sbteclipse-plugin" % "4.0.0")
 ```
 
 建立如上所述的目录结构
+
 键入`sbt eclipse`
 
 在eclipse中导入，修改运行时依赖库即可
 
 每次更新依赖等构建文件时，要执行`sbt eclipse`， 在eclipse中刷新项目
 
-
 ## 十三、web服务
-**************************************************
+
+***
+
 ### 1、Json与对象互转
+
 #### （1）从简单scala对象创建Json字符串
+
 方式一：Lift-JSON解决方法
+
 ```scala
 package com.rectcircle.scala.web
 
@@ -252,7 +280,9 @@ object LiftJsonTest extends App {
 ```
 
 #### （2）从包含集合的对象创建Json字符串
+
 使用Lift-JSON
+
 ```scala
 //通过元组的形式
 package com.rectcircle.scala.web
@@ -269,25 +299,25 @@ case class Address(city: String, state: String)
 object LiftJsonListsVersion1 extends App {
 	//引入类型隐式类型转换器
 	implicit val formats = DefaultFormats
-	
+
 	//测试对象
 	val merc = Person("Mercedes", Address("Somewhere", "KY"))
 	val mel = Person("Mel", Address("Lake Zurich", "IL"))
 	val friends = List(merc, mel)
-	
+
 	val p = Person("Alvin Alexander", Address("Talkeetna", "AK"))
 	p.friends = friends
 
 //写法一
 	// 定义输出映射
-	val json = 
-		( 
+	val json =
+		(
 			"person"→ (
 				("name" → p.name)~
 				("address"→("city"→p.address.city)~("state"→p.address.state))~
-				("friends"→p.friends.map ( f => 
+				("friends"→p.friends.map ( f =>
 					("name"→f.name)~
-					("address"→("city"→f.address.city)~("state"→f.address.state)) 
+					("address"→("city"→f.address.city)~("state"→f.address.state))
 				))
 			)
 		)
@@ -298,15 +328,15 @@ object LiftJsonListsVersion1 extends App {
 def getAddressJson(p:Person)={
 		("address"→("city"→p.address.city)~("state"→p.address.state))
 	}
-	
+
 	def getFriendJson(p:Person)={
-		("friends"→p.friends.map ( f => 
+		("friends"→p.friends.map ( f =>
 			("name"→f.name)~
-			("address"→("city"→f.address.city)~("state"→f.address.state)) 
-		))		
+			("address"→("city"→f.address.city)~("state"→f.address.state))
+		))
 	}
-	
-	val personToJson = 
+
+	val personToJson =
 		(
 			"person"→
 				("name"→p.name)~
@@ -317,6 +347,7 @@ def getAddressJson(p:Person)={
 ```
 
 两次输出都为
+
 ```json
 {
   "person":{
@@ -346,6 +377,7 @@ def getAddressJson(p:Person)={
 ```
 
 #### （3）将JSON解析成简单Scala对象
+
 ```scala
 package com.rectcircle.scala.web
 import net.liftweb.json._
@@ -378,6 +410,7 @@ mypassword
 ```
 
 #### （4）将JSON解析成包含对象的数组
+
 ```scala
 package com.rectcircle.scala.web
 import net.liftweb.json.DefaultFormats
@@ -390,7 +423,7 @@ case class EmailAccount(
 	password: String,
 	minutesBetweenChecks: Int,
 	usersOfInterest: List[String])
-	
+
 
 object ParseJsonArray extends App {
 	implicit val formats = DefaultFormats
@@ -449,7 +482,9 @@ Account: imap.gmail.com, USER, PASS
 ```
 
 ### 2、Scalatra web服务
+
 #### (1)使用giter8创建项目模板
+
 ```bash
 g8 file://D:/IDE/scalag8temp/scalatra-sbt.g8-master
 cd 项目目录
@@ -459,7 +494,9 @@ jetty:start #启动服务器
 ```
 
 #### （2）使用挂载替换`web.xml` servlet映射
+
 在servlet包内添加继承自`MyScalatraWebAppStack`的类，相当于java的servlet
+
 ```scala
 package com.example.app
 
@@ -476,7 +513,9 @@ class Test2Servlet extends MyScalatraServlet {
 }
 
 ```
+
 在`class ScalatraBootstrap extends LifeCycle`添加新的映射相当于java的servlet映射
+
 ```scala
 import com.example.app._
 import org.scalatra._
@@ -485,7 +524,7 @@ import javax.servlet.ServletContext
 class ScalatraBootstrap extends LifeCycle {
   override def init(context: ServletContext) {
     context.mount(new MyScalatraServlet, "/*")
-    
+
     context.mount(new Test1Servlet, "/test1/*")
     context.mount(new Test2Servlet, "/test2/*")
   }
@@ -493,20 +532,23 @@ class ScalatraBootstrap extends LifeCycle {
 ```
 
 #### （3）获取get参数
+
 传统get参数
+
 ```scala
 class login1Servlet extends MyScalatraServlet {
 	get("/") {
 		val username = params("username")
 		val password = params("password")
-		
+
 		<p>{username}-{password}</p>
-		
+
 	}
 }
 ```
 
 restful风格参数
+
 ```scala
 get("/:username/:password") {
 	val username = params("username")
@@ -515,10 +557,13 @@ get("/:username/:password") {
 	<p>{username}-{password}</p>
 }
 ```
+
 其他详见scalatra文档
 
 #### （4）获取post参数
+
 常用方法
+
 ```scala
 val username = params("username")
 val jsonString = request.body
@@ -526,13 +571,17 @@ response.addHeader("ACK", "GOT IT")
 ```
 
 ### 3、play框架
+
 #### （0）下载activator
+
 下载解压
 添加环境变量、
 添加sbt配置文件conf/sbtconfig.txt配置仓库镜像
 
 #### （1）开始创建
+
 sbt方式
+
 ```bash
 g8 file://D:\IDE\scalag8temp\play-scala-seed.g8-master
 进入项目目录
@@ -540,29 +589,35 @@ sbt
 eclipse
 run
 ```
+
 activator方式
+
 ```bash
 activator ui #选择模板创建
 ```
 
 #### （2）远程debug
+
 ```bash
 activator -jvm-debug 9999
 ```
 
-
-
 ## 十四、数据库和持久化
-**************************************************
+
+***
+
 ### 1、使用JDBC连接数据库
+
 #### （1）创建一个sbt项目
 
 #### （2）加入jdbc依赖
+
 ```scala
 libraryDependencies += "mysql" % "mysql-connector-java" % "5.1.38"
 ```
 
 #### （3）编写测试用例
+
 ```scala
 import java.sql.{ Connection, DriverManager }
 
@@ -590,9 +645,10 @@ object ScalaJdbcConnectSelect extends App {
 }
 ```
 
-
 ### 2、使用Spring JDBCTemp连接数据库
+
 #### （1）引入依赖
+
 ```scala
 libraryDependencies ++= Seq(
  "mysql" % "mysql-connector-java" % "5.1.+",
@@ -605,6 +661,7 @@ libraryDependencies ++= Seq(
 ```
 
 #### （2）配置spring.xml配置文件
+
 ```scala
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE beans PUBLIC "-//SPRING//DTD BEAN//EN"
@@ -625,6 +682,7 @@ libraryDependencies ++= Seq(
 ```
 
 #### （3）编写Dao.scala
+
 ```scala
 package com.rectcircle.test.dao
 
@@ -640,6 +698,7 @@ class TestDao extends SimpleJdbcDaoSupport {
 ```
 
 #### （4）编写测试
+
 ```scala
 import org.springframework.context.support.ClassPathXmlApplicationContext
 import com.rectcircle.test.dao.TestDao
@@ -652,12 +711,16 @@ object Main extends App {
 }
 ```
 
-
 ## 十五、与java交互
-**************************************************
+
+***
+
 ### 1、集合转换
+
 #### （1）java集合转为scala集合
+
 一般情况下，java的集合不会有scala的特性
+
 ```scala
 def nums = {
 	var list = new java.util.ArrayList[Int]
@@ -672,6 +735,7 @@ list.foreach(println) //报错
 ```
 
 引入`import scala.collection.JavaConversions._`,scala将进行隐式转换
+
 ```scala
 def nums = {
 	var list = new java.util.ArrayList[Int]
@@ -689,7 +753,8 @@ list.foreach(println)                     //> 1
 ```
 
 或者进行显示的转换
-```
+
+```scala
 //...
 import scala.collection.JavaConversions.asScalaBuffer
 val list = asScalaBuffer(nums)            //> list  : scala.collection.mutable.Buffer[Int] = Buffer(1, 2, 3)
@@ -699,6 +764,7 @@ list.foreach { println }                  //> 1
 ```
 
 #### （2）scala集合转化为java集合
+
 ```scala
 import scala.collection.JavaConversions._
 import scala.collection.mutable._
@@ -718,7 +784,9 @@ val t = test(Seq(1, 2, 3))                //> t  : Int = 1
 ```
 
 ### 2、scala添加异常注解
+
 scala没有受检异常，所以添加@throws在java中才会提示有异常
+
 ```scala
 class Thrower {
 	@throws(classOf[Exception])
@@ -729,7 +797,9 @@ class Thrower {
 ```
 
 ### 3、使用@SerialVersionUID等注解
+
 #### （1）java使用scala对象序列化需要使用@SerialVersionUID
+
 ```scala
 @SerialVersionUID(1000L)
 class Foo extends Serializable {
@@ -738,6 +808,7 @@ class Foo extends Serializable {
 ```
 
 #### （2）其他为了适用于java交互的注解
+
 | Scala | Java |
 |-------|-------|
 | scala.beans.BeanProperty | scala生成get/set方法 |
@@ -745,7 +816,7 @@ class Foo extends Serializable {
 | scala.deprecated | java.lang.Deprecated |
 | scala.inline | 相当于c++内联函数 |
 | scala.native | 相当于Java native关键字 |
-| scala.remote | java.rmi.Remote | 
+| scala.remote | java.rmi.Remote |
 | scala.serializable | java.io.Serializable |
 | scala.SerialVersionUID | serialVersionUID field. |
 | scala.throws |java throws 关键字|
@@ -755,7 +826,9 @@ class Foo extends Serializable {
 | scala.volatile | volatile 关键字 |
 
 ### 4、强制类型转换
+
 spring中使用.asInstanceOf[Animal]
+
 ```scala
 package scalaspring
 abstract class Animal(name: String) {
@@ -781,7 +854,9 @@ val cat = ctx.getBean("cat").asInstanceOf[Animal]
 dog.speak
 cat.speak
 ```
+
 ### 5、可变长参数
+
 ```scala
 @varargs def printAll(args: String*) {
 	args.foreach(print)
@@ -790,6 +865,7 @@ cat.speak
 ```
 
 ### 6、创建符合javabean标准的类
+
 ```scala
 import scala.beans.BeanProperty
 class Person(@BeanProperty var firstName: String,
@@ -804,10 +880,13 @@ val p = new Person("firstname","lastName")//> p  : Test.Person = Person: firstna
 p.getFirstName();                         //> res0: String = firstname
 p.setLastName("test")
 ```
+
 如果字段为val类型，则只生成get方法，不会生成set方法
 
 ### 7、java无法继承包含实现的特质
+
 解决方法使用包装类
+
 ```scala
 // scala
 package foo
@@ -818,7 +897,9 @@ trait MathTrait {
 // the wrapper class
 class MathTraitWrapper extends MathTrait
 ```
+
 java使用
+
 ```java
 // java
 package foo;
@@ -833,10 +914,12 @@ public class JavaMath extends MathTraitWrapper {
 
 ```
 
-
 ## 十六、类型（泛型系统）
-**************************************************
+
+***
+
 **型变**
+
 ```scala
 class Grandparent
 class Parent extends Grandparent
@@ -848,21 +931,23 @@ class VarianceExamples {
 	def invarMethod(x: InvariantClass[Parent]) {}
 	def covarMethod(x: CovariantClass[Parent]) {}
 	def contraMethod(x: ContravariantClass[Parent]) {}
-	
+
 	invarMethod(new InvariantClass[Child]) // ERROR - won't compile
 	invarMethod(new InvariantClass[Parent]) // success
 	invarMethod(new InvariantClass[Grandparent]) // ERROR - won't compile
-	
+
 	covarMethod(new CovariantClass[Child]) // success
 	covarMethod(new CovariantClass[Parent]) // success
 	covarMethod(new CovariantClass[Grandparent]) // ERROR - won't compile
-	
+
 	contraMethod(new ContravariantClass[Child]) // ERROR - won't compile
 	contraMethod(new ContravariantClass[Parent]) // success
 	contraMethod(new ContravariantClass[Grandparent]) // success
 }
 ```
+
 方法参数为泛型时
+
 [A] 不变 只接受A类型
 [+A] 协变 只接受类型A和A的子类
 [-A] 逆变 接受非A的子类
@@ -876,6 +961,7 @@ class VarianceExamples {
 |A<:Upper >: Lower|同时有父子类型限制|
 
 ### 1、创建使用泛型的类
+
 ```scala
 class LinkedList[A] {
 	private class Node[A](elem: A) {
@@ -912,7 +998,9 @@ list printAll                             //> 3
 ```
 
 ### 2、创建一个接受简单泛型的方法
+
 例子
+
 ```scala
 def randomName(names: Seq[String]) = {
 	val randomNum = util.Random.nextInt(names.length)
@@ -923,8 +1011,6 @@ val names = Seq("Aleka", "Christina", "Tyler", "Molly")
 																								//> names  : Seq[String] = List(Aleka, Christina, Tyler, Molly)
 val winner = randomName(names)            //> winner  : String = Tyler
 ```
-
-
 
 ### 3、结构化模型
 
@@ -944,13 +1030,18 @@ callSpeak(new Klingon)                    //> Qapla!
 ```
 
 ### 4、让可变集合非变（Invariant）
+
 声明方式
+
 ```scala
 class Array[A] ...
 class ArrayBuffer[A] ...
 ```
+
 这样泛型方法的传递泛型实例的子类型将报错
+
 **例子**
+
 ```scala
 import scala.collection.mutable.ArrayBuffer
 
@@ -966,28 +1057,28 @@ object Main extends App {
 	class SuperDog(name: String) extends Dog(name) {
 		def useSuperPower { println("Using my superpower!") }
 	}
-	
+
 	val fido = new Dog("Fido")
-	
+
 	val wonderDog = new SuperDog("Wonder Dog")
 	val shaggy = new SuperDog("Shaggy")
-	
+
 
 
 	def makeDogsSpeak(dogs: ArrayBuffer[Dog]) {
 		dogs.foreach(_.speak)
 	}
-	
+
 	val dogs = ArrayBuffer[Dog]()
 	dogs += fido
 	dogs += wonderDog
 
 	val dogs1 = ArrayBuffer[Dog]()
 	dogs1 += fido
-	
+
 	makeDogsSpeak(dogs) //正确
 	makeDogsSpeak(dogs1) //正确
-	
+
 	val superDogs = ArrayBuffer[SuperDog]()
 	superDogs += shaggy
 	superDogs += wonderDog
@@ -996,12 +1087,15 @@ object Main extends App {
 ```
 
 ### 5、让不可变集合协变（Covariant）
+
 声明方式
+
 ```scala
 class List[+T]
 class Vector[+A]
 trait Seq[+A]
 ```
+
 这样泛型方法的传递泛型实例的子类型将将正确
 
 ```scala
@@ -1019,29 +1113,34 @@ object Main extends App {
 	class SuperDog(name: String) extends Dog(name) {
 		def useSuperPower { println("Using my superpower!") }
 	}
-	
+
 	val fido = new Dog("Fido")
-	
+
 	val wonderDog = new SuperDog("Wonder Dog")
 	val shaggy = new SuperDog("Shaggy")
-	
+
 
 
 	def makeDogsSpeak(dogs: List[Dog]) {
 		dogs.foreach(_.speak)
 	}
-	
+
 	val dogs = List[Dog](fido,wonderDog)
 	makeDogsSpeak(dogs) //正确
-	
+
 	val superDogs = List[SuperDog](shaggy,wonderDog)
 	makeDogsSpeak(superDogs) //正确
 }
 ```
+
 ### 6、创建所有元素都是基本类型的集合
+
 `class Crew[A <: CrewMember] extends ArrayBuffer[A]`
+
 `class Crew[A <: CrewMember with StarfleetTrained] extends ArrayBuffer[A]`
+
 对泛型进行限制
+
 ```scala
 trait CrewMember
 class Officer extends CrewMember
@@ -1070,8 +1169,11 @@ officers += bones                                 //> res2: Test.officers.type =
 ```
 
 ### 7、给封闭类型添加新行为
+
 例子：
+
 给Dog添加行为，不给Cat添加行为
+
 ```scala
 import scala.collection.mutable.ArrayBuffer
 
@@ -1115,6 +1217,7 @@ object Test {
 ```
 
 实际应用
+
 ```scala
 import scala.collection.mutable.ArrayBuffer
 
@@ -1129,7 +1232,9 @@ object Test {
 ```
 
 ### 8、定义类型，关键字
+
 实现一个算法用时计时器
+
 ```scala
 def timer[A](codeBlock: => A) = {
 	val startTime = System.nanoTime
@@ -1143,8 +1248,6 @@ timer{
 }                                         //> res0: (Unit, Double) = ((),515.793197)
 ```
 
-
 ## 十七、习惯用法
-**************************************************
 
-
+***

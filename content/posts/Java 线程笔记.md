@@ -2,24 +2,17 @@
 title: Java 线程笔记
 date: 2017-05-21T12:46:27+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/80
   - /detail/80/
 tags:
-  - java
+  - Java
 ---
 
-## 目录
-* [1、创建线程的方式](#1、创建线程的方式)
-* [2、Thread常用方法](#2、Thread常用方法)
-* [3、线程状态](#3、线程状态)
-* [4、线程同步](#4、线程同步)
-* [5、其他线程相关类](#5、其他线程相关类)
-
-
 ### 1、创建线程的方式
+
 * 实现`java.lang.Runnable`接口
 * 继承自`java.lang.Thread`类
 
@@ -31,17 +24,17 @@ public class TestThread1 {
         //r.run();
         //Thread t = new Thread(r);
         //t.start();
-         
+
         for(int i=0; i<100; i++) {
             System.out.println("Main Thread:------" + i);
         }
     }
 }
- 
+
 //class Runner1 implements Runnable {
 class Runner1 extends Thread {
     public void run() {
-        for(int i=0; i<100; i++) {   
+        for(int i=0; i<100; i++) {
             System.out.println("Runner1 :" + i);
         }
     }
@@ -49,17 +42,18 @@ class Runner1 extends Thread {
 ```
 
 如何选择两种方式
+
 * 大多数情况下，如果只想重写 run() 方法，而不重写其他 Thread 方法，那么应使用 Runnable 接口。
 
-
-
 ### 2、Thread常用方法
+
 #### （1）静态方法
+
 * `Thread.sleep(long millis)` 线程睡眠时间
 *	`Thread.currentThread()` 获取当前线程对象
 
-
 #### （2）实例方法
+
 * `t.isAlive()`：线程是否存活（线程处于三个状态都返回true）
 * `t.getPriority()`：获取线程优先级
 * `t.setPriority()`：设置线程优先级
@@ -77,8 +71,8 @@ class Runner1 extends Thread {
 	* 在进程处于阻塞状态时（如果线程在调用 Object 类的 wait()、wait(long) 或 wait(long, int) 方法，或者该类的 join()、join(long)、join(long, int)、sleep(long) 或 sleep(long, int) 方法），将接收到一个`InterruptedException`等待处理
 * `t.stop()`：**已废弃**，中止线程
 
-
 **`Thread.sleep(long millis)` 与 `t.interrupt()`**
+
 ```java
 import java.util.*;
 public class TestInterrupt {
@@ -87,7 +81,7 @@ public class TestInterrupt {
     thread.start();
     try {Thread.sleep(10000);}
     catch (InterruptedException e) {}
-		
+
     thread.interrupt();
   }
 }
@@ -108,13 +102,14 @@ class MyThread extends Thread {
 
 ```
 
-
 **正确中止一个线程**
+
 定义一个共享标志量
 
-
 **线程合并**
+
 等待子线程执行结束。再执行下面的逻辑
+
 ```java
 public class TestJoin {
   public static void main(String[] args) {
@@ -123,7 +118,7 @@ public class TestJoin {
     try {
         t1.join();
     } catch (InterruptedException e) {}
-         
+
     for(int i=1;i<=10;i++){
       System.out.println("i am main thread");
     }
@@ -133,7 +128,7 @@ class MyThread2 extends Thread {
   MyThread2(String s){
     super(s);
   }
-   
+
   public void run(){
     for(int i =1;i<=10;i++){
       System.out.println("i am "+getName());
@@ -147,10 +142,8 @@ class MyThread2 extends Thread {
 }
 ```
 
-
-
-
 ### 3、线程状态
+
 * 新建状态：新创建了一个线程对象
 * 就绪状态：线程对象创建后，其他线程调用了该对象的`start()`方法。该状态的线程位于可运行线程池中，变得可运行，等待获取CPU的使用权。
 * 阻塞状态：阻塞状态是线程因为某种原因放弃CPU使用权，暂时停止运行。直到线程进入就绪状态，才有机会转到运行状态。阻塞的情况分三种：
@@ -164,17 +157,21 @@ class MyThread2 extends Thread {
 ```
 新建状态 -----start()----->  就绪状态  <----调度----> 运行状态 ----> 死亡状态
                                ^                      |
-                   （阻塞解除） |                      | （导致阻塞的事件）
+                    （阻塞解除） |                      | （导致阻塞的事件）
                                └----- 阻塞状态 <-------┘
 ```
 
-
 ### 4、线程同步
+
 #### （1）问题
+
 当多个线程同时操纵一份资源时，可能出现意想不到的问题，导致数据不一致
+
 ```java
 public class TestSync implements Runnable {
+
 	Timer timer = new Timer();
+
 
 	public static void main(String[] args) {
 		TestSync test = new TestSync();
@@ -203,24 +200,34 @@ class Timer{
 	}
 }
 ```
+
 输出：
+
+```
 t2, 你是第2个使用timer的线程
 t1, 你是第2个使用timer的线程
+```
 
 #### （2）加锁
+
 锁定当前对象
+
 ```java
 synchronized (this) {
 	//原子操作
 }
 ```
+
 或者
+
 ```java
 public synchronized returnType 原子操作方法名(参数列表){
 	//原子操作
 }
 ```
+
 注意并不是加了锁，之后该对象就不能被更改，其他没有加锁的代码仍然可以修改其值
+
 ```java
 public class TestSynchronized implements Runnable {
 	Integer b = 100;
@@ -249,14 +256,16 @@ public class TestSynchronized implements Runnable {
 		TestSynchronized tt = new TestSynchronized();
 		Thread t = new Thread(tt);
 		t.start();
-		
+
 		Thread.sleep(1000);
 		tt.m2();
 	}
 }
 //输出为 b = 2000
 ```
+
 所以说，对于代码段，只有都加了锁才能实现互斥的作用，并不是单纯的锁住资源，其他代码段无法访问
+
 ```java
 package com.rectcircle.javaapi.lang.thread;
 
@@ -296,21 +305,22 @@ public class TestSynchronized implements Runnable {
 锁的效果在锁与锁之间有效
 
 `synchronized(obj){代码体}` 的含义是:
+
 * 当执行**代码体**时，需要获取obj的锁对象，先检查是否可以获取
 	* 若可以获取，则，获取锁对象，执行代码体。执行结束后，释放锁对象
 	* 若不可获取，则，等待别的方法是否该锁对象，直到可以获取
 
 对于不加`synchronized`的代码体：
+
 * 不需要检查锁对象，即可直接执行代码
 
 锁对象官方称为：对象的监视器
 
-
-
 #### （3）加锁的问题：死锁
-线程A锁住对象O1，并需要等待锁住O2，即可完成操作
-线程B锁住对象O2，并需要等待锁住O1，即可完成操作
-于是线程A、B在等待对方的锁释放，导致死锁，程序死在这里
+
+* 线程A锁住对象O1，并需要等待锁住O2，即可完成操作
+* 线程B锁住对象O2，并需要等待锁住O1，即可完成操作
+* 于是线程A、B在等待对方的锁释放，导致死锁，程序死在这里
 
 ```java
 package com.rectcircle.javaapi.lang.thread;
@@ -364,10 +374,13 @@ public class TestDeadLock implements Runnable {
 #### （4）解决死锁
 
 #### （5）生产者和消费者问题
+
 实现方法：
+
 使用`BlockingQueue`
 
 或者自己实现
+
 ```java
 package com.rectcircle.javaapi.lang.thread;
 
@@ -472,10 +485,12 @@ class Consumer implements Runnable {
 ```
 
 ### 5、其他线程相关类
+
 > `java.lang.ThreadLocal`
 > java1.5 以后提供`java.util.concurrent`包，提供高级工具
 
 #### （1）`java.lang.ThreadLocal`
+
 该类的实例在每个不同的线程都会维护一个副本，互不影响
 
 ```java
@@ -524,11 +539,5 @@ class Run implements Runnable{
 	}
 }
 
-//输出：0 1 2 0 1 2 0 1 2 0 1 2 0 1 2 
+//输出：0 1 2 0 1 2 0 1 2 0 1 2 0 1 2
 ```
-
-
-
-
-
-

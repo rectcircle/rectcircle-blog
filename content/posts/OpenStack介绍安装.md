@@ -2,7 +2,7 @@
 title: OpenStack介绍安装
 date: 2018-10-30T10:25:04+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/172
@@ -16,24 +16,12 @@ tags:
 > 参考：[官方文档](https://docs.openstack.org/)
 > [一键式安装](https://docs.openstack.org/training_labs/)
 
-
-
-* [一、OpenStack介绍](#一、OpenStack介绍)
-	* [1、OpenStack简介](#1、OpenStack简介)
-	* [2、OpenStack基本组件](2、OpenStack基本组件)
-* [二、OpenStack安装](#二、OpenStack安装)
-	* [1、环境条件](#1、环境条件)
-	* [2、认证服务](#2、认证服务)
-	* [3、镜像服务](#3、镜像服务)
-	* [4、计算服务](#4、计算服务)
-	* [5、网络服务](#5、网络服务)
-	* [6、仪表盘](#6、仪表盘)
-	* [7、块存储服务](#7、块存储服务)
-
-
 ## 〇、安装虚拟机
 
-**~~命令行安装（没有成功）~~** 
+**~~命令行安装（没有成功）~~**
+
+### 安装
+
 ```bash
 # 配置语言环境
 sudo dpkg-reconfigure locales
@@ -70,11 +58,9 @@ brctl addbr br0
 virt-install --connect qemu:///system  --name centos-controller --ram 4096 --vcpus=1 --location  /home/sunben.96/download/CentOS-7-x86_64-Minimal-1804.iso --disk path=/home/sunben.96/vm-disk/centos7-controller.qcow2,size=20,format=qcow2 --network network=default --os-type=linux --os-variant=rhel6 --extra-args='console=ttyS0' --force
 ```
 
-
 #### （1）安装虚拟机软件
 
 使用开源免费的[virtualbox](https://www.virtualbox.org/)
-
 
 #### （2）下载镜像
 
@@ -103,6 +89,7 @@ virt-install --connect qemu:///system  --name centos-controller --ram 4096 --vcp
 提供者网络配置
 
 编辑文件`/etc/sysconfig/network-scripts/ifcfg-enp0s9`
+
 ```
 TYPE=Ethernet
 BOOTPROTO="none"
@@ -127,7 +114,6 @@ Compute节点：
 * RAM 2048
 * disk 10G
 * centos7.5.1804 最小化安装
-
 
 安装完成后的基本配置：
 
@@ -179,8 +165,8 @@ Host_Only网络设置：
 
 虚拟机节点Compute，可以从Controller复制，使用`nmtui`修改网络配置即可
 
-
 ## 一、OpenStack介绍
+
 ***
 
 配置注意事项：
@@ -189,11 +175,13 @@ Host_Only网络设置：
 * 所有节点关闭Selinux
 
 ### 1、OpenStack简介
+
 OpenStack是一个云操作系统，通过数据中心可控制大型的计算、存储、网络等资源池。所有的管理通过前端界面管理员就可以完成，同样也可以通过web接口让最终用户部署资源。
 
 就是一个服务器集群资源分配管理系统
 
 ### 2、OpenStack基本组件
+
 * Horion：UI组件，用户控制面板，提供两套、分别针对管理员和用户
 	* 提供了一个基于web的自服务门户，与OpenStack底层服务交互，诸如启动一个实例，分配IP地址以及配置访问控制。
 * KeyStone：认证鉴权模块
@@ -212,7 +200,6 @@ OpenStack是一个云操作系统，通过数据中心可控制大型的计算�
 	* 为OpenStack云的计费、基准、扩展性以及统计等目的提供监测和计量。
 * Heat
 	* Orchestration服务支持多样化的综合的云应用，通过调用OpenStack-native REST API和CloudFormation-compatible Query API，支持:term:`HOT <Heat Orchestration Template (HOT)>`格式模板或者AWS CloudFormation格式模板
-
 
 ## 二、OpenStack安装
 
@@ -249,6 +236,7 @@ OpenStack是一个云操作系统，通过数据中心可控制大型的计算�
 参考以上虚拟机配置
 
 配置hosts文件，添加如下配置：
+
 ```host
 192.168.2.101 controller
 192.168.2.102 compute
@@ -259,6 +247,7 @@ OpenStack是一个云操作系统，通过数据中心可控制大型的计算�
 分布式系统要保持一致性一般都需要统一的时钟源。NTP就是时间服务
 
 控制节点
+
 * `yum install chrony`
 * 编辑`/etc/chrony.conf`
 	* 编译远端服务器`server NTP_SERVER iburst`（表示时间同步服务器的配置，控制节点默认即可）
@@ -268,6 +257,7 @@ OpenStack是一个云操作系统，通过数据中心可控制大型的计算�
 	* `systemctl start chronyd.service`
 
 其他节点
+
 * `yum install chrony`
 * 编辑`/etc/chrony.conf`
 	* 编译远端服务器`server controller iburst`注释其他全部
@@ -276,6 +266,7 @@ OpenStack是一个云操作系统，通过数据中心可控制大型的计算�
 	* `systemctl start chronyd.service`
 
 验证操作
+
 * 两个节点分别运行`chronyc sources`
 
 #### （1）安装OpenStack库
@@ -288,7 +279,6 @@ yum install centos-release-openstack-rocky # 根据版本选择
 yum upgrade
 yum install python-openstackclient
 ```
-
 
 #### （2）安装MySql数据库
 
@@ -312,12 +302,12 @@ character-set-server = utf8
 ```
 
 重启并加固
+
 ```bash
 systemctl enable mariadb.service
 systemctl start mariadb.service
 mysql_secure_installation
 ```
-
 
 #### （4）消息队列
 
@@ -338,6 +328,7 @@ rabbitmqctl set_permissions openstack ".*" ".*" ".*"
 ```
 
 #### （5）memecached
+
 认证服务认证缓存使用Memcached缓存令牌。缓存服务memecached运行在**控制节点**。在生产部署中，我们推荐联合启用防火墙、认证和加密保证它的安全。
 
 ```bash
@@ -379,7 +370,6 @@ systemctl enable etcd
 systemctl start etcd
 ```
 
-
 ### 2、认证服务
 
 安装在控制节点
@@ -387,6 +377,7 @@ systemctl start etcd
 #### （1）先决条件
 
 创建数据库和管理员令牌
+
 ```sql
 # 创建数据库
 CREATE DATABASE keystone;
@@ -406,7 +397,7 @@ yum install openstack-keystone httpd mod_wsgi
 
 #### （3）配置
 
-配置`/etc/keystone/keystone.conf `
+配置`/etc/keystone/keystone.conf`
 
 ```ini
 [database]
@@ -427,6 +418,7 @@ su -s /bin/sh -c "keystone-manage db_sync" keystone
 ```
 
 初始化Fernet keys：
+
 ```bash
 keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
 keystone-manage credential_setup --keystone-user keystone --keystone-group keystone
@@ -444,7 +436,7 @@ keystone-manage bootstrap --bootstrap-password 123456 \
 
 配置Apache Http服务器
 
-编辑 ` /etc/httpd/conf/httpd.conf`  中 `ServerName controller`
+编辑 `/etc/httpd/conf/httpd.conf`  中 `ServerName controller`
 创建链接 `ln -s /usr/share/keystone/wsgi-keystone.conf /etc/httpd/conf.d/`
 
 ```bash
@@ -485,7 +477,7 @@ openstack project create --domain default \
 #创建一个project叫做`myproject`
 openstack project create --domain default \
   --description "Demo Project" myproject
-	
+
 #创建一个用户，输入密码为123456
 openstack user create --domain default \
   --password-prompt myuser
@@ -685,7 +677,6 @@ openstack image create "cirros" \
 openstack image list
 ```
 
-
 ### 4、计算服务
 
 计算服务包括如下模块：
@@ -864,6 +855,7 @@ my_ip = 192.168.2.101
 use_neutron = true
 firewall_driver = nova.virt.firewall.NoopFirewallDriver
 ```
+
 配置vnc、镜像查找
 
 ```ini
@@ -938,7 +930,6 @@ systemctl start openstack-nova-api.service \
 systemctl start openstack-nova-consoleauth
 systemctl enable openstack-nova-consoleauth
 ```
-
 
 #### （1）安装在**计算节点**
 
@@ -1048,7 +1039,9 @@ su -s /bin/sh -c "nova-manage cell_v2 discover_hosts --verbose" nova
 ```
 
 #### （3）验证操作
+
 在**控制节点**执行如下命令
+
 ```bash
 source env/admin-openrc
 
@@ -1065,7 +1058,6 @@ openstack image list
 nova-status upgrade check
 ```
 
-
 ### 5、网络服务
 
 OpenStack网络服务组件被称为`neutron`，包含如下组件：
@@ -1073,7 +1065,6 @@ OpenStack网络服务组件被称为`neutron`，包含如下组件：
 * neutron-server 接收api请求并转发到下层服务
 * OpenStack Networking plug-ins and agents
 * Messaging queue
-
 
 #### （1）宿主机网络配置
 
@@ -1094,7 +1085,6 @@ GRANT ALL PRIVILEGES ON neutron.* TO 'neutron'@'%' \
   IDENTIFIED BY '123456';
 ```
 
-
 配置
 
 ```bash
@@ -1107,10 +1097,10 @@ openstack role add --project service --user neutron admin
 
 openstack service create --name neutron \
   --description "OpenStack Networking" network
-	
+
 openstack endpoint create --region RegionOne \
   network public http://controller:9696
-	
+
 openstack endpoint create --region RegionOne \
   network internal http://controller:9696
 
@@ -1119,7 +1109,6 @@ openstack endpoint create --region RegionOne \
 ```
 
 **选项2：自服务网络配置**
-
 
 ```bash
 yum install openstack-neutron openstack-neutron-ml2 \
@@ -1202,7 +1191,6 @@ vni_ranges = 1:1000
 enable_ipset = true
 ```
 
-
 配置 Linux 桥接代理，编辑`/etc/neutron/plugins/ml2/linuxbridge_agent.ini`
 
 ```ini
@@ -1221,6 +1209,7 @@ firewall_driver = neutron.agent.linux.iptables_firewall.IptablesFirewallDriver
 ```
 
 设置 `sysctl` 配置文件`vim /etc/sysctl.conf`
+
 ```
 net.bridge.bridge-nf-call-iptables=1
 net.bridge.bridge-nf-call-ip6tables=1
@@ -1228,7 +1217,8 @@ net.bridge.bridge-nf-call-ip6tables=1
 
 使用`sysctl -p`生效
 
-若 报错 
+若 报错
+
 ```
 sysctl: cannot stat /proc/sys/net/bridge/bridge-nf-call-iptables: 没有那个文件或目录
 sysctl: cannot stat /proc/sys/net/bridge/bridge-nf-call-ip6tables: 没有那个文件或目录
@@ -1240,7 +1230,6 @@ sysctl: cannot stat /proc/sys/net/bridge/bridge-nf-call-ip6tables: 没有那个�
 modprobe br_netfilter
 sysctl -p
 ```
-
 
 并设置`br_netfilter`开机自启，创建完成后效果如下
 
@@ -1259,6 +1248,7 @@ chmod 755 /etc/sysconfig/modules/br_netfilter.modules
 
 查看模块情况：`lsmod |grep br_netfilter`
 输出类似如下
+
 ```
 br_netfilter           22209  0
 bridge                136173  1 br_netfilter
@@ -1280,7 +1270,6 @@ interface_driver = linuxbridge
 dhcp_driver = neutron.agent.linux.dhcp.Dnsmasq
 enable_isolated_metadata = true
 ```
-
 
 配置元数据代理，编辑`/etc/neutron/metadata_agent.ini`
 
@@ -1309,7 +1298,6 @@ service_metadata_proxy = true
 metadata_proxy_shared_secret = 123456
 ```
 
-
 **完成安装**
 
 ```bash
@@ -1326,7 +1314,7 @@ systemctl enable neutron-server.service \
 systemctl start neutron-server.service \
   neutron-linuxbridge-agent.service neutron-dhcp-agent.service \
   neutron-metadata-agent.service
-	
+
 # 网络选项2 需要执行
 systemctl enable neutron-l3-agent.service
 systemctl start neutron-l3-agent.service
@@ -1371,7 +1359,7 @@ physical_interface_mappings = provider:enp0s3 # 要桥接到的网卡的名字
 
 [vxlan]
 enable_vxlan = true
-local_ip = 192.168.2.102 # 本节点在管理网络的ip 
+local_ip = 192.168.2.102 # 本节点在管理网络的ip
 l2_population = true
 
 [securitygroup]
@@ -1414,7 +1402,6 @@ systemctl start neutron-linuxbridge-agent.service
 #### （4）验证操作
 
 在**控制节点**执行
-
 
 ```bash
 source env/admin-openrc
@@ -1475,7 +1462,6 @@ OPENSTACK_KEYSTONE_DEFAULT_ROLE = "user"
 
 TIME_ZONE = 'Asia/Shanghai' # 时区设置为中国
 ```
-
 
 编辑`/etc/httpd/conf.d/openstack-dashboard.conf`
 

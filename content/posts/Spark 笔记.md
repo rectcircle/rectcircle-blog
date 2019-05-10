@@ -2,7 +2,7 @@
 title: Spark 笔记
 date: 2018-12-28T10:56:52+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/184
@@ -10,12 +10,6 @@ aliases:
 tags:
   - 大数据
 ---
-
-## 目录
-
-* [一、安装配置](#一、安装配置)
-	* [1、前提条件](#1、前提条件)
-	* [2、安装](#2、安装)
 
 ## 一、安装配置
 
@@ -35,6 +29,7 @@ tags:
 #### （1）安装Scala
 
 下载[scala](https://www.scala-lang.org/download/2.11.12.html)，并安装
+
 ```bash
 su
 wget https://downloads.lightbend.com/scala/2.11.12/scala-2.11.12.tgz
@@ -48,7 +43,6 @@ vim /etc/profile
 export SCALA_HOME=/usr/scala/default
 export PATH="$SCALA_HOME/bin:$PATH"
 ```
-
 
 ### 2、安装
 
@@ -132,4 +126,3 @@ sbin/stop-all.sh
 访问Master节点8080端口`http://192.168.3.20:8080/`
 
 将看到两个worker
-

@@ -12,6 +12,10 @@ a:hover {
 	text-decoration: underline;
 }
 
+img {
+	margin: 0 auto;
+}
+
 /* figure微调 */
 
 figure.center {

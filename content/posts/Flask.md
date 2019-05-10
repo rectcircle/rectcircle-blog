@@ -2,7 +2,7 @@
 title: Flask
 date: 2018-11-13T14:59:10+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/178
@@ -12,24 +12,6 @@ tags:
 ---
 
 > 参考：[官方网站](http://flask.pocoo.org)
-
-## 目录
-
-* [一、Flask介绍](#一、Flask介绍)
-	* [1、简介](#1、简介)
-	* [2、HelloWorld](#2、HelloWorld)
-* [二、部分文档](#二、部分文档)
-	* [1、最小化应用](#1、最小化应用)
-	* [2、debug模式](#2、debug模式)
-	* [3、路由](#3、路由)
-	* [4、静态文件](#4、静态文件)
-	* [5、渲染模板](#5、渲染模板)
-	* [6、获取请求数据](#6、获取请求数据)
-	* [7、响应](#7、响应)
-	* [8、session](#8、session)
-	* [其他](#其他)
-
-
 
 ## 一、Flask介绍
 
@@ -54,6 +36,7 @@ def index():
 ```
 
 运行
+
 ```bash
 pip install flask
 export FLASK_APP=hello.py
@@ -77,7 +60,6 @@ flask run
 
 flask命令，一些选项通过环境变量设置
 
-
 ### 2、debug模式
 
 方式1：`export FLASK_ENV=development`
@@ -89,8 +71,6 @@ flask命令，一些选项通过环境变量设置
 方式2：`FLASK_DEBUG=1`
 
 * 仅开启debug模式（显示异常堆栈）
-
-
 
 ### 3、路由
 
@@ -146,11 +126,12 @@ def about():
 ```
 
 末尾为`/`的行为
+
 * 不以`/`自动重定向到带`/`的路径
 
 末尾不以`/`结尾的行为
-* 访问带`/`的路径将404
 
+* 访问带`/`的路径将404
 
 #### （4）url构建
 
@@ -206,14 +187,11 @@ def login():
 
 自动生成option
 
-
 ### 4、静态文件
 
 在启动脚本所在包创建`/static`目录用来存放静态文件如js、css等
 
 `url_for` 第一个参数为`"static"`即为生成静态文件目录
-
-
 
 ### 5、渲染模板
 
@@ -355,7 +333,6 @@ def page_not_found(error):
 
 更多查看 [异常处理](http://flask.pocoo.org/docs/1.0/errorhandling/#error-handlers)
 
-
 ### 7、响应
 
 * 如果返回的是响应对象，则直接从视图返回
@@ -440,6 +417,3 @@ app.wsgi_app = LighttpdCGIRootFix(app.wsgi_app)
 
 * [扩展](#http://flask.pocoo.org/docs/1.0/extensions/#extensions)
 * [部署](http://flask.pocoo.org/docs/1.0/deploying/#deployment)
-
-
-

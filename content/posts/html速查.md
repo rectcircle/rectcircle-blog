@@ -2,7 +2,7 @@
 title: html速查
 date: 2016-11-14T22:48:03+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/10
@@ -12,6 +12,7 @@ tags:
 ---
 
 ### 1、html模板
+
 ```html
 <!DOCTYPE html>
 <html lang="zh-CN">
@@ -26,7 +27,7 @@ tags:
 	<link rel="stylesheet" href="css/admin-dde00bb529.css">
 </head>
 <body>
-	
+
 	<p>hello World</p>
 
 	<script src="js/vendor-85bdac4e63.js"></script>

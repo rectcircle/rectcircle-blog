@@ -2,7 +2,7 @@
 title: 使用Dot绘图
 date: 2018-10-04T16:22:32+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/171
@@ -16,10 +16,11 @@ tags:
 官方文档图片是乱放的与章节不匹配
 
 > [官方网站](http://www.graphviz.org/)
-> 
+>
 > 原版：[dotguide](https://graphviz.gitlab.io/_pages/pdf/dotguide.pdf)
-> 
+>
 > 参考博客：
+>
 > * [翻译](http://gashero.iteye.com/blog/1748795)
 > * [博客1](http://blog.jobbole.com/94472/)
 > * [博客2](https://my.oschina.net/Tsybius2014/blog/617963)
@@ -220,7 +221,7 @@ digraph G {
 
 ```dot
 digraph html {
-  abc [shape = none, margin = 0, label =< 
+  abc [shape = none, margin = 0, label =<
     <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
     <TR>
       <TD ROWSPAN="3">
@@ -735,4 +736,3 @@ digraph G {
 
 * [参见1](http://www.graphviz.org/doc/info/colors.html)
 * [参见2](http://www.graphviz.org/doc/info/attrs.html#k:color)
-

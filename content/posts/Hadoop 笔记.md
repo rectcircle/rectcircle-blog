@@ -2,7 +2,7 @@
 title: Hadoop 笔记
 date: 2017-04-05T23:04:33+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/56
@@ -15,33 +15,6 @@ tags:
 > 《Hadoop权威指南》
 > [配置列表](http://hadoop.apache.org/docs/current/hadoop-mapreduce-client/hadoop-mapreduce-client-core/mapred-default.xml)
 
-## 目录
-* [〇、安装配置](#〇、安装配置)
-	* [0、必须操作](#0、必须操作)
-	* [1、单机模式安装](#1、单机模式安装)
-	* [2、伪分布式操作](#2、伪分布式操作)
-	* [3、配置YARN](#3、配置YARN)
-	* [4、完全分布式单点配置](#4、完全分布式单点配置)
-* [二、hdfs原理及操作](#二、hdfs原理及操作)
-	* [1、常用命令](#1、常用命令)
-	* [2、java编程交互](#2、java编程交互)
-	* [3、Hadoop文件系统的设计与原理](#3、Hadoop文件系统的设计与原理)
-* [三、Yarn](#三、Yarn)
-	* [0、Yarn简介](#0、Yarn简介)
-	* [1、Yarn运行机制](#1、Yarn运行机制)
-	* [2、Yarn调度](#2、Yarn调度)
-* [四、Hadoop的IO](#四、Hadoop的IO)
-* [五、MR使用与原理](#五、MR使用与原理)
-	* [1、word-count例子](#1、word-count例子)
-	* [2、Mapper](#2、Mapper)
-	* [3、Reducer](#3、Reducer)
-	* [4、Job](#4、Job)
-	* [5、word-count例子2](#1、word-count例子2)
-	* [6、链接MapReduce作业](#6、链接MapReduce作业)
-	* [7、Hadoop Stream](#7、Hadoop Stream)
-
-
-
 ## 〇、安装配置
 
 ***
@@ -52,18 +25,20 @@ tags:
 ### 0、必须操作
 
 #### （1）安装所需软件
+
 * `ssh`
 * `rsync`
 * `jdk`并配置环境变量JAVA_HOME
 
 #### （2）添加用户
+
 ```bash
 useradd -m hadoop -s /bin/bash
 passwd hadoop
 visudo #添加到sudo组
 #配置ssh登录限制（安全）、将hadoop限制为仅限localhost登录
 #配置免密可能无法登录
-# vi /etc/ssh/sshd_config 
+# vi /etc/ssh/sshd_config
 # service sshd restart
 
 #配置免密登录（通过秘钥）
@@ -85,6 +60,7 @@ sudo systemctl restart sshd
 ```
 
 #### （3）下载安装
+
 ```bash
 # 安装Java
 
@@ -127,12 +103,12 @@ source ~/.bashrc
 hadoop
 ```
 
-
-
 ### 1、单机模式安装
+
 > 以下使用hadoop用户操作
 
 #### （1）测试程序
+
 ```bash
 mkdir input
 cp etc/hadoop/*.xml input
@@ -142,6 +118,7 @@ cat output/*
 ```
 
 ### 2、伪分布式操作
+
 > 以下使用hadoop用户操作
 
 Hadoop也可以以伪分布式模式运行在单节点上，其中每个Hadoop守护程序都在单独的Java进程中运行。
@@ -162,18 +139,19 @@ vim etc/hadoop/core-site.xml
     <name>fs.defaultFS</name>
     <value>hdfs://localhost/</value> <!-- 默认端口为8200 -->
   </property>
-  
+
   <!-- mac或Window设置（没有手动编译Hadoop本地库情况下）-->
   <property>
     <name>io.native.lib.available</name>
     <value>false</value>
   </property>
-  
+
   <!-- 使用 HADOOP_CONF_DIR 环境变量指定配置文件目录 -->
 </configuration>
 ```
 
 HDFS配置
+
 ```bash
 vim etc/hadoop/hdfs-site.xml
 #添加如下
@@ -196,22 +174,27 @@ vim etc/hadoop/hdfs-site.xml
 ```
 
 #### （2）执行 NameNode 的格式化
+
 ```bash
 ./bin/hdfs namenode -format
 ```
 
 #### （3）开启 NameNode 和 DataNode 守护进程
+
 ```bash
 ./sbin/start-dfs.sh
 ```
 
 #### （4）查看是否启动成功
+
 ```bash
 jps
 ```
 
 #### （5）重新部署
+
 针对 DataNode 没法启动的解决方法
+
 ```bash
 ./sbin/stop-dfs.sh   # 关闭
 rm -r ./tmp     # 删除 tmp 文件，注意这会删除 HDFS 中原有的所有数据
@@ -220,6 +203,7 @@ rm -r ./tmp     # 删除 tmp 文件，注意这会删除 HDFS 中原有的所有
 ```
 
 #### （6）hdfs 操作示例
+
 ```bash
 #上面的单机模式，grep 例子读取的是本地数据，伪分布式读取的则是 HDFS 上的数据。要使用 HDFS，首先需要在 HDFS 中创建用户目录：
 ./bin/hdfs dfs -mkdir -p /user/hadoop
@@ -233,6 +217,7 @@ rm -r ./tmp     # 删除 tmp 文件，注意这会删除 HDFS 中原有的所有
 ```
 
 #### （7）运行任务
+
 > 伪分布式运行 MapReduce 作业的方式跟单机模式相同，区别在于伪分布式读取的是HDFS中的文件（可以将单机步骤中创建的本地 input 文件夹，输出结果 output 文件夹都删掉来验证这一点）。
 
 ```bash
@@ -245,18 +230,23 @@ rm -r ./output    # 先删除本地的 output 文件夹（如果存在）
 ./bin/hdfs dfs -get output ./output     # 将 HDFS 上的 output 文件夹拷贝到本机
 cat ./output/*
 ```
+
 注意输出目录不能存在
+
 ```bash
 ./bin/hdfs dfs -rm -r output    # 删除 output 文件夹
 ```
 
 #### （8）关闭Hadoop
+
 ```bash
 ./sbin/stop-dfs.sh
 ```
 
 ### 3、配置YARN
+
 #### （1）配置
+
 ```bash
 cp ./etc/hadoop/mapred-site.xml.template ./etc/hadoop/mapred-site.xml
 vim etc/hadoop/yarn-site.xml
@@ -285,11 +275,12 @@ vim etc/hadoop/mapred-site.xml
 ```
 
 #### （2）启动
+
 ```bash
 ./sbin/start-dfs.sh
 ./sbin/start-yarn.sh      # 启动YARN
 ./sbin/mr-jobhistory-daemon.sh start historyserver  # 开启历史服务器，才能在Web中查看任务运行情况
-jps 
+jps
 
 http://localhost:8088/cluster
 ```
@@ -305,8 +296,6 @@ http://localhost:8088/cluster
   * `sudo ln -s /usr/bin/java /bin/java`
 * 伪分布式，MR如果卡在 INFO mapreduce.Job: Running job
   * `/etc/hosts` 将127.0.0.1 后面添加 `$(hostname)`
-
-
 
 ### 4、完全分布式单点配置
 
@@ -405,8 +394,6 @@ Hadoop配置
 	* 作业调度（略）
 	* 慢启动reduce：`mapreduce.job.reduce.slowstart.completedumps=0.05` 默认5%，表示5%的map任务完成后，启动reduce
 	* 短路本地读（当数据在本机使用unix套接字连接）
-
-
 
 #### （1）集群部署规划
 
@@ -519,7 +506,6 @@ export JAVA_HOME=/usr/java/default
 </configuration>
 ```
 
-
 #### （3）复制虚拟机并配置静态网卡IP
 
 略
@@ -542,6 +528,7 @@ stop-dfs.sh
 ```
 
 yarn启动，在`hadoop-slave1`节点执行（规划为ResourceManager的节点）
+
 ```bash
 #启动
 start-yarn.sh
@@ -551,11 +538,14 @@ stop-yarn.sh
 
 启动过程中会使用ssh登录，所以过程中可能需要输入`yes`
 
-
 ## 二、hdfs原理及操作
-************************************
+
+***
+
 ### 1、常用命令
+
 #### （1）`hadoop fs`
+
 * `hadoop fs -ls /` 列出根目录文件
 * `hadoop fs -lsr`  展开列出根目录文件
 * `hadoop fs -mkdir -p /user/hadoop` 创建目录
@@ -571,17 +561,18 @@ stop-yarn.sh
 * `hadoop fs -moveFromLocal localsrc dst` 将本地文件上传到hdfs，同时删除本地文件。
 
 #### （2） `hadoop fsadmin`
+
 * `hadoop dfsadmin -report` 查看hdfs状态
 * `hadoop dfsadmin -safemode enter | leave | get | wait`
 * `hadoop dfsadmin -setBalancerBandwidth 1000`
 
 #### （3）`hadoop fsck`
+
 #### （4）`start-balancer.sh`
 
 #### （5）相关HDFS API可以到Apache官网进行查看
+
 http://hadoop.apache.org/docs/r2.8.0/api/index.html
-
-
 
 ### 2、java编程交互
 
@@ -591,7 +582,7 @@ http://hadoop.apache.org/docs/r2.8.0/api/index.html
 
 ```java
 	URL.setURLStreamHandlerFactory(new FsUrlStreamHandlerFactory());
-	in = new URL('file:///etc/hosts').openStream(); 
+	in = new URL('file:///etc/hosts').openStream();
 ```
 
 通过Hadoop的FileSystem
@@ -631,8 +622,8 @@ fs.globStatus(new Path(globPath))	// 通过glob模式获取文件信息
 fs.delete(new Path(p))
 ```
 
-
 #### （1）创建hadoop项目
+
 * 打开eclipse
 * 创建简单maven项目
 * 更改pom.xml
@@ -644,27 +635,29 @@ fs.delete(new Path(p))
   <artifactId>hadoop</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <name>HadoopTest</name>
-  
-      <dependencies>  
-        <dependency>  
-            <groupId>org.apache.hadoop</groupId>  
-            <artifactId>hadoop-client</artifactId>  
-            <version>2.8.0</version>  
-        </dependency>  
-   
-        <dependency>  
-            <groupId>junit</groupId>  
-            <artifactId>junit</artifactId>  
-            <version>4.12</version>  
-            <scope>test</scope>  
-        </dependency>  
-    </dependencies>  
-  
+
+      <dependencies>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-client</artifactId>
+            <version>2.8.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>4.12</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
 </project>
 ```
 
 #### （2）样例1：查看某文件的前4096个字节
+
 `FileSystemCat.java`
+
 ```java
 import java.io.IOException;
 import java.io.InputStream;
@@ -692,23 +685,29 @@ public class FileSystemCat {
 ```
 
 **搭建测试环境**
+
 运行hdfs
+
 ```bash
 start-all.sh
 #stop-all.sh
 ```
 
 进入hadoop目录
+
 ```bash
 cd /usr/local/hadoop
 ```
 
 在本地创建测试目录
+
 ```bash
 mkdir myclass
 mkdir input
 ```
+
 编辑测试文件
+
 ```bash
 cd input
 touch  quangle.txt
@@ -719,24 +718,33 @@ The Quangle Wangle sat,
 But his face you could not see,
 On account of his Beaver Hat.
 ```
+
 在hdfs中创建存放测试文件的目录`class4`
+
 ```bash
 hadoop fs -mkdir /class4
 hadoop fs -ls /
 ```
+
 将测试文件put到hdfs中
+
 ```bash
 hadoop fs -put quangle.txt /class4
 hadoop fs -ls /class4
 ```
+
 **编译源码**
+
 建立源文件
+
 ```bash
 cd ../myclass/
 vi FileSystemCat.java
 #将代码复制到文件中
 ```
+
 编译
+
 ```bash
 #编译
 javac -classpath ../share/hadoop/common/hadoop-common-2.8.0.jar FileSystemCat.java
@@ -745,15 +753,17 @@ jar cvf FileSystemCat.jar FileSystemCat.class
 ls
 #输出jar和class文件
 ```
+
 **运行程序**
+
 > `hadoop jar xxx.jar mainClass arg...`
 
 ```bash
 hadoop jar FileSystemCat.jar FileSystemCat /class4/quangle.txt
 ```
 
-
 #### （3）样例2：将本地系统的文件的第101-120字节的内容写入HDFS中
+
 ```java
 import java.io.File;
 import java.io.FileInputStream;
@@ -771,15 +781,15 @@ public class LocalFile2Hdfs {
 	public static void main(String[] args) throws IOException {
 		String local = args[0]; //本地文件路径
         String uri = args[1]; //hdfs系统的路径
-        
+
         FileInputStream in = null;
         OutputStream out = null;
         Configuration conf = new Configuration();
-        
+
         try {
         	// 从本地文件读取文件
         	in = new FileInputStream(new File(local));
-        	
+
         	//目标文件配置
         	FileSystem fs = FileSystem.get(URI.create(uri), conf);
         	out = fs.create(new Path(uri), new Progressable() {
@@ -788,27 +798,28 @@ public class LocalFile2Hdfs {
                     System.out.println("*");
                 }
             });
-        	
+
         	// 跳过前100个字符
             in.skip(100);
-            
+
             byte[] buffer = new byte[20];
             // 从101的位置读取20个字符到buffer中
             int bytesRead = in.read(buffer);
             if (bytesRead >= 0) { //数据写入系统
                 out.write(buffer, 0, bytesRead);
             }
-        	
+
         } finally {
         	IOUtils.closeStream(in);
             IOUtils.closeStream(out);
 		}
-        
+
 	}
 }
-
 ```
+
 编译运行类似
+
 ```bash
 cd /usr/local/hadoop/myclass
 vim LocalFile2Hdfs.java
@@ -821,15 +832,15 @@ vim local2hdfs.txt
 cd ../myclass
 javac -classpath ../share/hadoop/common/hadoop-common-2.8.0.jar LocalFile2Hdfs.java
 #打包时注意，由于使用了匿名对象所以生成了LocalFile2Hdfs\$1.class
-jar cvf LocalFile2Hdfs.jar LocalFile2Hdfs.class LocalFile2Hdfs\$1.class 
+jar cvf LocalFile2Hdfs.jar LocalFile2Hdfs.class LocalFile2Hdfs\$1.class
 hadoop jar LocalFile2Hdfs.jar LocalFile2Hdfs ../input/local2hdfs.txt /class4/local2hdfs_part.txt
 
 #查看
 hadoop fs -cat /class4/local2hdfs_part.txt
 ```
 
-
 #### （4）样例3：读取hdfs系统的文件的的第101-120字节内容写入本地系统
+
 ```bash
 import java.io.FileOutputStream;
 import java.io.OutputStream;
@@ -868,7 +879,9 @@ public class Hdfs2LocalFile {
 	}
 }
 ```
+
 编译运行类似
+
 ```bash
 cd /usr/local/hadoop/myclass
 vim Hdfs2LocalFile.java
@@ -940,7 +953,7 @@ Hadoop文件系统的实现有多个：
 
 * Local 通过Hadoop文件系统接口访问本地磁盘文件
 * HDFS 配合MR使用的，是核心
-* WebHDFD 
+* WebHDFD
 * 等
 
 编程接口方面：原生支持的是Java、提供C语言的接口（JNI实现，更新较慢）、RESTful API、NFS、FUSE
@@ -956,7 +969,6 @@ Hadoop文件系统的实现有多个：
 * 写入内容即使flush(JavaIO的flush)了，但是也不能保证立即可见
 * 写入内容后使用hflush(FSDataOutputStream提供)，可以保证可见，但是不保证写入磁盘
 * 写入内容后使用hsync(FSDataOutputStream提供)，可以保证可见，保证落磁盘
-
 
 ## 三、Yarn
 
@@ -1028,6 +1040,7 @@ root
 ```
 
 **capacity-scheduler.xml**
+
 ```xml
 <?xml version="1.0"?>
 <configuration>
@@ -1075,7 +1088,6 @@ MR 任务配置队列方式：`mapreduce.job.queuename=队列名后缀`
 
 其他参见 《Apache Hadoop YARN》
 
-
 ## 四、Hadoop的IO
 
 ***
@@ -1114,7 +1126,6 @@ reduce: (K2, list(V2)) -> list(K3, V3)
 * 编写一个驱动程序来运行作业
 * 使用小数据集测试驱动程序是否正确
 
-
 Hadoop 提交MR作业例子：
 
 ```bash
@@ -1132,10 +1143,7 @@ hadoop jar target/experiment.jar cn.rectcircle.hadooplearn.mrunit.MaxTemperature
 * `-conf xxx.xml` 指定配置文件
 * `-D  配置键=value` 配置
 
-
-
 ### 1、word-count例子
-
 
 创建maven项目
 
@@ -1158,7 +1166,7 @@ hadoop jar target/experiment.jar cn.rectcircle.hadooplearn.mrunit.MaxTemperature
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <hadoop.version>2.6.5</hadoop.version>
   </properties>
-  
+
 
   <dependencies>
     <!-- https://mvnrepository.com/artifact/org.apache.hadoop/hadoop-common -->
@@ -1297,6 +1305,7 @@ public class WordCount {
 ```
 
 编译
+
 ```bash
 mvn package
 ```
@@ -1320,15 +1329,13 @@ hadoop fs -ls exp01/output
 hadoop fs -cat exp01/output/part-r-00001
 ```
 
-
-
 ### 2、Mapper
 
 **映射**
 
 Mapper是MR编程接口的核心之一。负责将KV转换为另一组KV
 
-在Job中通过`Job.setMapperClass(Class) `设置
+在Job中通过`Job.setMapperClass(Class)`设置
 
 map输出的接口若要传递给Reducer则需要按照K进行分组。所以可以通过`Job.setGroupingComparatorClass(Class)`设置K比较器。
 
@@ -1340,7 +1347,6 @@ map的输出按照K进行排序，然后传递到指定的Reducer
 
 Mapper的数量一般由输入文件（块）的数目决定。好的并行级别是每个节点10~100个Mapper。运行时间大于1分钟。要权衡并行度和启动销毁JVM的花销
 
-
 ### 3、Reducer
 
 **规约**
@@ -1349,12 +1355,11 @@ Reduce是MR编程接口的核心之一。负责将`<K, List<V>>`转换为新的K
 
 Reduce任务的数量可以手动设置`Job.setNumReduceTasks(int)`
 
-
 reduce 有三个阶段：shuffle, sort and reduce
 
 **shuffle**
 
-Shuffle描述着数据从map task输出到reduce task输入的这段过程。 
+Shuffle描述着数据从map task输出到reduce task输入的这段过程。
 
 * map端输出的数据溢出、排序、group
 * reduce去拉取，并进行group
@@ -1375,11 +1380,9 @@ reduce可以不设置
 
 可以配置：Mapper, combiner (if any), Partitioner, Reducer, InputFormat, OutputFormat  的实现
 
-	其他高级配置如：Comparator
-	
-	
-任务日志`${HADOOP_LOG_DIR}/userlogs`
+其他高级配置如：Comparator
 
+任务日志`${HADOOP_LOG_DIR}/userlogs`
 
 ### 5、word-count例子2
 
@@ -1567,19 +1570,17 @@ hadoop jar wordcount.jar cn.rectcircle.hadooplearn.wordcount.WordCount2 exp02/in
 hadoop fs -cat exp02/output2/part-r-00000
 ```
 
-
 ### 6、链接MapReduce作业
 
 大多数情况一个MapReduce无法完成一个业务需要多个MR链接才能完成。Job提供这些操作，Hadoop提供这些操作
 
 * 创建多个Job
-* 依赖关系式 MapReuce：` org.apache.hadoop.mapred.jobcontrol.JobControl`
+* 依赖关系式 MapReuce：`org.apache.hadoop.mapred.jobcontrol.JobControl`
 * `ChainMapper`和`ChainReducer`
-*  还有专门的工作流引擎来实现如：Oozie 和 Azkaban
-
-
+* 还有专门的工作流引擎来实现如：Oozie 和 Azkaban
 
 ### 7、Hadoop Stream
+
 Hadoop  支持任意编程语言（只要支持标准输入输出）编写的MR程序，称为Hadoop Stream
 
 比如Python
@@ -1651,5 +1652,3 @@ hadoop jar $HADOOP_HOME/share/hadoop/tools/lib/hadoop-streaming-*.jar \
 
 * 输出输出面向标准IO， K和V的分隔符为`\t`
 * Reduce 输入的不是 `<K, List<V>>`的结构，而是`List<K, V>` 保证按照K从小到大排序，需要自行判断边界
-
-

@@ -2,7 +2,7 @@
 title: Django rest framework
 date: 2018-11-06T18:16:26+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/174
@@ -16,18 +16,6 @@ tags:
 > [序列化相关](https://blog.csdn.net/l_vip/article/details/79156113)
 > [视图mixns相关](https://blog.csdn.net/l_vip/article/details/79142105)
 > [博客1](https://segmentfault.com/a/1190000004400540)
-
-## 目录
-
-*** 
-
-* [1、简介](#1、简介)
-* [2、层次说明](#2、层次说明)
-* [3、视图层](#3、视图层)
-* [4、序列化层](#4、序列化层)
-* [5、异常处理](#5、异常处理)
-* [6、定制化返回格式](#6、定制化返回格式)
-
 
 ### 1、简介
 
@@ -68,6 +56,7 @@ tags:
 #### （1）常用类
 
 从封装层次来说，从高层次到低层次为：
+
 * viewsets 视图集：提供一个URL资源的众多方法组合的封装，通过as_view返回一个分发器调用list、create等方法，但是不会提供get、post方法、配合路由使用
 	* `ModelViewSet` 提供全部增删改查操作
 	* `ReadOnlyModelViewSet` 提供只读操作
@@ -107,6 +96,7 @@ tags:
 * View Django类...
 
 基于函数的视图使用`@api_view`修饰即可
+
 * `@api_view(http_method_names=['GET'])`
 * `@throttle_classes([OncePerDayUserThrottle])` 限流阀：一天只能访问1次
 * @renderer_classes(...)
@@ -114,7 +104,6 @@ tags:
 * @authentication_classes(...)
 * @permission_classes(...)
 * @schema(None) 去除html调试页面
-
 
 #### （2）常用覆盖的方法
 
@@ -155,7 +144,7 @@ tags:
 		
 		def post(self, request, *args, **kwargs):
 				 pass
-				 
+
 		# 可以使用的成员变量、和方法
 		def method(self):
 		    print self.request
@@ -163,7 +152,6 @@ tags:
 				print self.queryset
 				print self.get_queryset()
 				print self.get_serializer(self.queryset(), many=True)
-				
 ```
 
 **[Request](https://www.django-rest-framework.org/api-guide/requests/)**
@@ -173,18 +161,15 @@ tags:
 * query_params属性包含get后的查询参数
 * user属性
 
-
 **[Response](https://www.django-rest-framework.org/api-guide/responses/)**
 
 * 提供内容协商，根据请求返回表征
-* 签名` Response(data, status=None, template_name=None, headers=None, content_type=None)`
+* 签名`Response(data, status=None, template_name=None, headers=None, content_type=None)`
 	* data: The serialized data for the response.
 	* status: A status code for the response. Defaults to 200. See also status codes.
 	* template_name: A template name to use if HTMLRenderer is selected.
 	* headers: A dictionary of HTTP headers to use in the response.
 	* content_type: The content type of the response. Typically, this will be set automatically by the renderer as determined by content negotiation, but there may be some cases where you need to specify the content type explicitly.
-
-
 
 #### （3）视图集和generics常用的配置
 
@@ -207,7 +192,7 @@ tags:
 		# 查询集
     queryset = Course.objects.filter(is_active=True).order_by('-id')
 		# 序列化类
-	  serializer_class = Xxx
+	serializer_class = Xxx
     filter_fields = ('term',)
     search_fields = ('name', 'teacher', 'school__name')
     module_perms = ['course.course']
@@ -290,27 +275,24 @@ DRF提供的有一个核心功能之一。该层次提供：
 #### （1）两个主要父类
 
 **`serializers.Serializer`**
- 
+
 基础可用序列化类，提供基本的数据验证、序列化功能
 
 **`serializers.ModelSerializer`**
- 
+
 继承自Serializer，额外提供如下功能：
 从Model中读取字段信息
- 
- 
+
 #### （2）使用方法
 
 * 继承自两个主要父类之一
 * 声明字段（ModelSerializer可以声明查询集、Meta）
 * 根据业务覆写验证器、属性获取器
 
-
 该对象的构建方式：
 
 * 从`data`（用户输入）构建->执行验证（过滤字段：read_only）->输出 `validated_data` -> 存到数据库
 * 从`query_set` （数据库）构建->执行验证（过滤字段：write_only）->输出`validated_data` -> 返回Json
-
 
 #### （3）字段类型
 
@@ -353,9 +335,7 @@ fs.is_valid()
 
 fs = FieldTestSerializer(data={ 'write_field':'write', 'normal_field':'nornal'})
 fs.is_valid()
-
 ```
-
 
 **基本数据类型：**
 
@@ -380,7 +360,6 @@ class CustomDateTimeField(DateTimeField):
         return value
 ```
 
-
 #### （4）自定义验证
 
 * 传入self和待验证的参数
@@ -391,6 +370,7 @@ class CustomDateTimeField(DateTimeField):
 **针对性验证**
 
 定义函数：`validate_字段名(self, field)`
+
 * field是待验证的字段
 
 **联合验证**
@@ -398,7 +378,6 @@ class CustomDateTimeField(DateTimeField):
 定义函数：`validate(self, attrs)`
 
 * attrs是待验证的参数集
-
 
 #### （5）ModelSerializer特有功能
 
@@ -448,7 +427,6 @@ class StudentSerializer(serializers.ModelSerializer):
         return 1
 ```
 
-
 **外键约束**
 
 再次声明
@@ -461,14 +439,14 @@ category = CourseCategorySerializer()
 # 反向获取
 courses = CourseSerializer(many=True)
 # 自引用外键
-parent_category = models.ForeignKey('self', null=True, blank=True, 
+parent_category = models.ForeignKey('self', null=True, blank=True,
                     verbose_name='父类目别',
                     related_name='sub_cat')
 # 没有外键约束的情况
 courses = SerializerMethodField()
 def get_courses(self, obj):
     all_courses = Course.objects.filter(category__parent_category_id=obj.id)
-    courses_serializer = CourseSerializer(all_course, many=True, 
+    courses_serializer = CourseSerializer(all_course, many=True,
                     context={'request': self.context['request']})
     return courses_serializer.data
 ```
@@ -505,8 +483,6 @@ REST_FRAMEWORK = {
     'EXCEPTION_HANDLER': 'xxx.exception_handler',
 }
 ```
-
-
 
 ### 6、定制化返回格式
 

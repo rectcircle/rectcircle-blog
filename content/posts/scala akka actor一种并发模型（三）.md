@@ -2,7 +2,7 @@
 title: scala akka actor一种并发模型（三）
 date: 2017-11-11T13:57:43+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/114
@@ -11,43 +11,22 @@ tags:
   - scala
 ---
 
-## 目录
-* [三、Actors](#三、Actors)
-	* [1、Actor](#1、Actor)
-		* [（1）创建Actor](#（1）创建Actor)
-		* [（2）Actor API](#（2）Actor API)
-		* [（3）通过Actor Selection查找Actor](#（3）通过Actor Selection查找Actor)
-		* [（4）消息和不可变性](#（4）消息和不可变性)
-		* [（5）发送消息](#（5）发送消息)
-		* [（6）接收消息](#[（6）接收消息)
-		* [（7）回复消息](#（7）回复消息)
-		* [（8）接收超时](#（8）接收超时)
-		* [（9）定时器，计划消息](#（9）定时器，计划消息)
-		* [（10）停止Actor](#（10）停止Actor)
-		* [（11）Become/Unbecome](#（11）Become/Unbecome)
-		* [（12）Stash特质](#（12）Stash特质)
-		* [（13）Actors和exceptions](#（13）Actors和exceptions)
-		* [（14）使用PartialFunction链扩展Actor](#（14）使用PartialFunction链扩展Actor)
-		* [（15）初始化模式](#（15）初始化模式)
-	* [2、Akka Typed](#2、Akka Typed)
-	* [3、容错](#3、容错)
-	* [4、调度器](#4、调度器)
-	* [5、邮箱](#5、邮箱)
-
-
-
-
 ## 三、Actors
-*********************************
+
+***
+
 ### 1、Actor
+
 #### （1）创建Actor
 
 **定义一个Actor class**
+
 参见[例子](112#（1）Akka 快速入门（使用scala） Helloworld项目)
 
-
 **Props**
+
 Props是一个配置类，用于指定用于创建actor的选项，将其视为一个不可变的因此可自由共享的用于创建actor的配方，包括相关的部署信息（例如，要使用哪个调度程序，请参阅下面的更多内容）。这里有一些如何创建一个Props实例的例子。
+
 ```scala
 import akka.actor.Props
 
@@ -57,6 +36,7 @@ val props3 = Props(classOf[ActorWithArgs], "arg") // 这种方式不支持值类
 ```
 
 **`Props.apply(clazz, args)`Actor不支持值类型**
+
 ```scala
 case class MyValueClass(v: Int) extends AnyVal
 class ValueActor(value: MyValueClass) extends Actor {
@@ -68,6 +48,7 @@ val valueClassProp = Props(classOf[ValueActor], MyValueClass(5)) // 不支持
 ```
 
 **Actor不支持使用默认构造函数**
+
 ```scala
 class DefaultValueActor(a: Int, b: Int = 5) extends Actor {
 	def receive = {
@@ -88,15 +69,17 @@ val defaultValueProp3 = Props(classOf[DefaultValueActor2]) // 不支持
 ```
 
 **推荐做法**
+
 * 在伴生对象中 定义一个签名为`props(...):Props`的工厂方法用于创建Props
 * 在伴生对象中 定义该actor可以接收的消息
 
-
 **用Props创建Actor**
+
 * 顶层actor使用`system.actorOf(props:Props, name:String)`
 * 子actor使用`context.actorOf(props:Props, name:String)`
 
 **值类作为构造函数参数**
+
 ```scala
 class Argument(val value: String) extends AnyVal
 class ValueClassActor(arg: Argument) extends Actor {
@@ -111,6 +94,7 @@ object ValueClassActor {
 ```
 
 **依赖注入**
+
 ```scala
 import akka.actor.IndirectActorProducer
 
@@ -133,9 +117,8 @@ val actorRef = system.actorOf(
 
 依赖注入技术和与依赖注入框架的集成在使用依赖注入指南和Akka Java Spring教程中有更深入的描述。
 
-
-
 **The Inbox**：常用语测试actor
+
 收件箱是从外部询问的类似演员的对象。它包含一个演员，其参照可以像往常一样传递给其他演员，并可以观看其他演员的生命周期。
 
 ```scala
@@ -152,8 +135,8 @@ val s = i.receive(1.second)
 println(s.asInstanceOf[String])
 ```
 
-
 #### （2）Actor API
+
 *可以对照源码看*
 
 Actor特征只定义了一个抽象方法：`receive`用于接收消息
@@ -161,6 +144,7 @@ Actor特征只定义了一个抽象方法：`receive`用于接收消息
 如果当前的行为者行为与接收到的消息不匹配，则调用`unhandled`，默认情况下在actor系统的事件流上发布一个`akka.actor.UnhandledMessage(message, sender, recipient)`消息（将配置项akka.actor.debug.unhandled设置为on，将它们转换为实际的Debug消息）。
 
 另外，它还提供：
+
 * `self` actor的ActorRef引用
 * `sender` 最后一个收到的消息的发送人的ActorRef引用
 * `supervisorStrategy` 用户可重写定义用于监督子Actor的策略
@@ -175,8 +159,8 @@ Actor特征只定义了一个抽象方法：`receive`用于接收消息
 可以导入context成员，以避免频繁使用context前缀
 `import context._`
 
-
 剩下的可见方法是用户可覆盖的生命周期回调函数，如下所述：
+
 ```scala
 def preStart(): Unit = ()
 
@@ -194,13 +178,15 @@ def postRestart(reason: Throwable): Unit = {
   preStart()
 }
 ```
+
 上面显示的实现是Actor特征提供的默认值。
 
 **Actor声明周期**
 
-![](/res/96hvpAjKFyqhnMQZEIWzhtsU.png)
+![图6](/res/96hvpAjKFyqhnMQZEIWzhtsU.png)
 
 注意：
+
 * `restart`和先`stop`再启动是不同的
 	* 重新启动只交换由Props定义的Actor实例，但是incarnation和UID保持不变。只要incarnation是相同的，你可以继续使用相同的ActorRef。重新启动由Actor的父亲的监督策略处理
 	* 一个incarnation的生命周期在演员停止时结束。在这一点上，适当的生命周期事件被调用，观察者被告知终止。在化身停止之后，可以通过使用actorOf（）创建一个actor来重新使用该路径。在这种情况下，新的化身名称将与前一个相同，但UID将有所不同。一个Actor可以被Actor本身，另一个Actor或者ActorSystem停止
@@ -210,10 +196,10 @@ ActorRef总是表示一个incarnation （路径和UID）不只是一个给定的
 
 另一方面，`ActorSelection`指向路径（如果使用通配符，则使用多个路径），并且完全不知道哪个incarnation正在占据它。`ActorSelection`因为这个原因不能被监视。通过向ActorSelection发送Identify消息，可以解决路径下的当前incarnation的ActorRef。这也可以通过ActorSelection的resolveOne方法来完成，该方法返回匹配ActorRef的Future。
 
-
-
 **生命周期监视 aka DeathWatch**
+
 为了在另一个演员stop（即永久停止，而不是暂时失败和重新启动）时被通知，一个Actor可以注册自己接收由另一个Actor终止的终止消息。这个服务由actor系统的DeathWatch组件提供。
+
 ```scala
 import akka.actor.{ Actor, Props, Terminated }
 
@@ -242,15 +228,16 @@ class WatchActor extends Actor {
 //输出"finished"
 ```
 
-
 **start回调**
 **Restart回调**
 **Stop回调**
+
 参见[例子的实现](112#（1）Akka 快速入门（使用scala） Helloworld项目)
 
-
 #### （3）通过Actor Selection查找Actor
+
 使用路径查找
+
 ```scala
 // will look up this absolute path
 context.actorSelection("/user/serviceA/aggregator")
@@ -259,12 +246,14 @@ context.actorSelection("../joe")
 ```
 
 注意：
+
 * 总是最好使用ActorRef而不是依赖ActorSelection与其他Actor进行通信。除非：
 	* 使用At-Least-Once Delivery工具发送消息
 	* 发起与远程系统的首次联系
 * 在所有其他情况下，可以在Actor创建或初始化期间提供ActorRefs，通过将它们的ActorRefs发送给消息内的其他Actor来将它们从父代传递到子代或引入Actors。
 
 使用通配符
+
 ```scala
 // will look all children to serviceB with names starting with worker
 context.actorSelection("/user/serviceB/worker*")
@@ -273,6 +262,7 @@ context.actorSelection("../*")
 ```
 
 获取到ActorRef，例子如下
+
 ```scala
 class Follower extends Actor {
 	val identifyId = 1
@@ -303,7 +293,7 @@ class Follower extends Actor {
 	val props10 = Props[Follower]
 	val followerActor1 = system.actorOf(props10, "my")
 	//输出 没有找到了another，自己即将stop
-	
+
 //测试2
 	val props10 = Props[Follower]
 	val followerActor = system.actorOf(props10, "another")
@@ -317,9 +307,10 @@ class Follower extends Actor {
 	*/
 ```
 
-	
 #### （4）消息和不可变性
+
 **保证消息不可变性**
+
 ```scala
 case class User(name: String)
 
@@ -330,22 +321,24 @@ val user = User("Mike")
 val message = Register(user)
 ```
 
-
 #### （5）发送消息
 
 > [第二参考](https://segmentfault.com/a/1190000006672829)
 
 消息通过以下方法之一发送给角色。
+
 * `!` 意味着“fire-and-forget（发送）”，例如异步发送消息并立即返回，也被称为`tell`
 * `?` 发送一个异步消息并返回`Future`，它代表一个可能的答复，也被称为`ask`
 * `target forward message` 转发消息
 
 **`?`或`ask`说明**
+
 使用ask会造成性能影响，因为当超时是，一些事情需要保持追踪。这需要一些东西来将一个Promise连接进入ActorRef，并且需要通过远程连接可到达的。所以总是使用tell更偏向性能,除非必须才用ask。
 
 actor 本身是没有 ask 函数的，如果想用 ask 函数，需要引入 akka.pattern.ask 依赖。Akka 官方并不推荐使用 ask 函数，因为它意味着处理 message 的 actor (receiver) 需要把处理结果返回 sender，这就引入了 sender 和 receiver 之间的依赖关系，本来 actor 之间都是各个独立存在的实体，因为 ask 函数引入了依赖会使程序变得复杂。但是在某些场景下 ask 函数会带来极大的便利性，所以它的存在还是有必要的。最终 akka 对 ask 的设计就像我们看到的一样，没有把 ask 作为 actor 的成员函数，表明自己对 ask 的不推荐态度，但又以隐式转换的方式支持它，表示如果你真的要用，我们仍提供这种 capability。
 
 例子1
+
 ```scala
 import akka.pattern.{ ask, pipe } //必须引入否者，找不到函数，akka以隐式转换的形式提供此功能
 import system.dispatcher // The ExecutionContext that will be used
@@ -370,6 +363,7 @@ pipe(f) to actorD
 使用`ask`发送消息给被问询的actor，这个actor必须使用`sender()! 回复消息`来填充Future的值。询问操作涉及创建一个内部参与者来处理这个回复，为了不泄漏资源，这个回应需要有一个超时之后才能被销毁。
 
 为了防止问题，使用以下写法
+
 ```scala
 try {
   val result = operation()
@@ -382,7 +376,8 @@ try {
 ```
 
 如果actor没有给future相应，future将在超时时间后过期，超时设定：
-```
+
+```scala
 val future = myActor.ask("hello")(5 seconds) //方式1，直接传参，高优先级
 implicit val timeout = Timeout(5 seconds) //方式2，隐式值，低优先级
 ```
@@ -390,6 +385,7 @@ implicit val timeout = Timeout(5 seconds) //方式2，隐式值，低优先级
 `Future` 提供了 onComplete, onSuccess, or onFailure 注册回调函数，以避免阻塞（不要在回调中调用封闭演员的方法或访问可变状态）
 
 例子二
+
 ```scala
 class AskActor extends Actor {
 	override def receive: Receive = {
@@ -417,13 +413,15 @@ msg
 ```
 
 **转发消息说明：**
+
 转发消息不同于tell在于，发送者`sender()`不变
 
-
 #### （6）接收消息
+
 Actor必须实现接收方法来接收消息：
 
 定义如下
+
 ```scala
 type Receive = PartialFunction[Any, Unit]
 def receive: Actor.Receive
@@ -432,16 +430,19 @@ def receive: Actor.Receive
 一组case语句将会编译成为，`PartialFunction`偏函数，所以receive最佳写法是使用一组case
 
 #### （7）回复消息
+
 ```scala
 sender() ! replyMsg
 ```
 
 #### （8）接收超时
+
 设置接收消息的空闲时间超时，也就是说最后接收到的消息到现在的时间不允许超过某个值，最小单位是1ms，
 设置方式`context.setReceiveTimeout(30 milliseconds)`，可多次设置，后者覆盖前者。
 取消设置`context.setReceiveTimeout(Duration.Undefined)`
 
 例子
+
 ```scala
 import akka.actor.ReceiveTimeout
 import scala.concurrent.duration._
@@ -471,19 +472,22 @@ class TimeoutActor extends Actor {
 	println("任然没有超时")
 	Thread.sleep(80)
 	println("100ms后才超时")
-	
+
 	/*输出
 	超时
 	任然没有超时
 	超时
 	100ms后才超时
 	*/
-	
+
 ```
+
 #### （9）定时器，计划消息
+
 通过直接使用调度器可以安排消息被安排在稍后的时间发送，但是当在一个参与者的周期或者单个消息中安排消息时，使用对定时器的支持更加方便和安全。计划消息的生命周期可能难以管理，当参与者重新启动并由定时器负责。
 
 更新build.sbt依赖版本最新版`2.5.6`
+
 ```scala
 object TimerActor {
 	private case object TickKey
@@ -519,12 +523,13 @@ class TimerActor extends Actor with Timers{
 .....
 */
 ```
+
 混入`Timers`，可以实现延期，或者周期性定时给自己发消息
 
-
-
 #### （10）停止Actor
+
 几种方式：
+
 * `context.stop(child | self)` 在父亲或者自身停止
 * 发送`PoisonPill`消息
 * 发送`Kill`来 Killing 一个Actor，与PoisonPill不同，这将导致actor抛出ActorKilledException，从而触发失败。Actor将暂停操作，其主管将被问及如何处理失败，这可能意味着恢复演员，重新启动或完全终止。
@@ -532,14 +537,17 @@ class TimerActor extends Actor with Timers{
 一般来说，在设计你的演员互动，不建议过度依赖PoisonPill或Kill。
 
 **优雅的停止**
+
 如果您需要等待终止或编写多个参与者的有序终止，那么gracefulStop是有用的
 
 **协调关闭**
 
-
 #### （11）Become/Unbecome
+
 **动态绑定接收函数**
+
 使用`become()`进行绑定，可以有两种选择一种是替换（默认），另一种是将接收函数放入行为栈的顶部`become(receive, discardOld = false)`。
+
 ```scala
 class HotSwapActor extends Actor {
   import context._
@@ -561,7 +569,9 @@ class HotSwapActor extends Actor {
 ```
 
 **取消最后一次绑定的接收函数**
+
 使用`unbecome()`取消最后一次绑定的接收函数，实际上是将行为栈顶部的函数弹出。
+
 ```scala
 case object Swap
 class Swapper extends Actor {
@@ -591,11 +601,12 @@ object SwapperApp extends App {
 }
 ```
 
-
 #### （12）Stash特质
+
 Stash特质使演员能够临时存储不能或不应该使用演员当前行为处理的消息。在更改演员的消息处理程序(使用context.become或context.unbecome)后，再将消息填充到actor的邮箱中，再处理这些消息，可以按照原来收到的信息的顺序处理信息。
 
 这是一个Stash的例子：
+
 ```scala
 import akka.actor.Stash
 class StashActor extends Actor with Stash {
@@ -606,7 +617,7 @@ class StashActor extends Actor with Stash {
 			context.become({
 				case "stash" =>
 					println("重新隐藏接收消息")
-					context.unbecome() 
+					context.unbecome()
 				case msg => println(msg)
 			}, discardOld = false)
 		case msg =>
@@ -628,7 +639,7 @@ class StashActor extends Actor with Stash {
 	stashActor ! 2
 	stashActor ! 3
 	stashActor ! 4
-	
+
 /*输出
 这个消息被隐藏了，没有发到邮箱中
 这个消息被隐藏了，没有发到邮箱中
@@ -653,20 +664,25 @@ class StashActor extends Actor with Stash {
 * actor’s stash通过`scala.collection.immutable.Vector`实现
 
 #### （13）Actors和exceptions
+
 当一个演员正在处理一个消息时，可能发生某种异常，例如，一个数据库异常，那么这个actor和其组件会发生什么
 
 **这个消息会怎样**
+
 如果正在处理消息时抛出异常，那么这个消息将会丢失。理解它不会放在邮箱上很重要。所以如果你想重试一个消息的处理，你需要通过捕获这个异常来处理它，然后重试你的流程。因为你不想让系统活锁（所以消耗很多cpu周期而没有进展），所以确保你对重试次数进行了限制。
 
 **信箱会怎样**
+
 没有影响，如果演员重新启动，相同的邮箱将在那里。所以邮箱里的所有邮件也会在那里。
 
 **actor会怎样**
+
 这个actor被挂起，监督过程开始（见监督）。由其主管决定，acctor恢复（如同没有任何事情发生），重新启动（清除其内部状态并从头开始）或终止。
 
-
 #### （14）使用PartialFunction链扩展Actor
+
 一个简单的例子
+
 ```scala
 //消费者共有的一些行为
 trait ConsumerBehavior {
@@ -701,23 +717,24 @@ final case class Give(thing: Any)
 ```
 
 #### （15）初始化模式
+
 * 使用生命周期回调函数
 * 使用自定义消息实现初始化
 
-
-
-
 ### 2、Akka Typed
+
 **警告：**该模块还未稳定，可能在没有警告或者废弃的情况下修改api
 
 #### （1）添加依赖
+
 ```scala
 "com.typesafe.akka" %% "akka-typed" % "2.5.6"
 ```
 
-
 #### （2）介绍
+
 有类型的Actor，和普通的actor类似
+
 ```scala
 package com.lightbend.akka.sample
 
@@ -769,6 +786,7 @@ object TypedActorTest extends App {
 ```
 
 复杂一点的例子：聊天室
+
 ```scala
 
 sealed trait Command //命令
@@ -837,8 +855,8 @@ object ChatClient {
 
 	implicit val scheduler: Scheduler = system.scheduler
 	implicit val timeout = Timeout(1 second)
-	
-	
+
+
 		//main actor
 	val main: Behavior[akka.NotUsed] =
 		Actor.deferred { ctx ⇒
@@ -862,22 +880,24 @@ object ChatClient {
 	val system1 = ActorSystem(main, "ChatRoomDemo")
 	//等一会
 	Await.result(system1.whenTerminated, 3.seconds)
-	
-	
+
+
 /*输出
 message has been posted by 'ol’ Gabbler': Hello World!
 system terminated
 */
 ```
 
-
 ### 3、容错
+
 如Actor系统中所解释的，每个Actor都是其子女的监督者，因此每个Actor定义故障处理监督者策略。之后这个策略是不能改变的，因为它是行为体系结构的一个组成部分。
 
 #### （1）实践中的故障处理
+
 首先，让我们看一个示例，说明处理数据存储异常的一种方法，这是现实应用程序中典型的失败来源。当然，这取决于实际的应用程序，当数据存储不可用时可以做什么，但是在这个示例中，我们使用了尽力而为的重新连接方法。
 
 #### （2）创建一个监管策略
+
 ```scala
 import akka.actor.OneForOneStrategy
 import akka.actor.SupervisorStrategy._
@@ -897,6 +917,7 @@ override val supervisorStrategy =
 首先，这是一对一的策略，这意味着每个孩子都是分开对待的（一对一的战略运作非常类似，唯一的区别是，任何决定是适用于所有的监督子女，不仅失败的）。在上面的例子中，10和1分钟分别传递给maxNrOfRetries和withinTimeRange参数，这意味着当该策略重新启动一个孩子，每分钟最多重新启动10次。如果在withinTimeRange持续时间内重新启动次数超过maxNrOfRetries，则子actor将停止。
 
 此外，这些参数还有特殊的值。如果您指定：
+
 * `maxNrOfRetries=-1, withinTimeRange=Duration.inf`表示无限制重启
 * `maxNrOfRetries=-1, withinTimeRange=有限的值` maxNrOfRetries总是=1，仅尝试重启一次
 * `maxNrOfRetries=非负数, withinTimeRange=Duration.inf` withinTimeRange被视为无限持续时间（即），无论需要多长时间，一旦重新启动计数超过maxNrOfRetries，子actor就会停止
@@ -904,23 +925,27 @@ override val supervisorStrategy =
 另一组参数是一个`PartialFunction[Throwable, Directive]`，对其进行匹配
 
 **默认主管策略**
+
 参见源码
 
 **停止监管战略**
+
 Closer to the Erlang way is the strategy to just stop children when they fail and then take corrective action in the supervisor when DeathWatch signals the loss of the child. This strategy is also provided pre-packaged as SupervisorStrategy.stoppingStrategy with an accompanying StoppingSupervisorStrategy configurator to be used when you want the "/user" guardian to apply it.
 
 **Actor失败日志**
+
 SupervisorStrategy默认情况下会记录失败，除非使用escalated。escalated失败应该被处理，并且可能被记录在层次结构中更高的级别上。
 
 您可以通过在实例化时将loggingEnabled设置为false来禁用SupervisorStrategy的默认日志记录。定制日志可以在Decider内完成
 
 您也可以通过重写logFailure方法来自定义SupervisorStrategy实现中的日志记录。
 
-
 #### （3）顶级Actor的监管
+
 顶层Actor指的是使用`system.actorOf()`，他们是`/user`监管者的孩子。在这种情况下没有特别的规则，监护人只是简单地应用配置的策略。
 
 #### （4）测试
+
 ```scala
 package com.lightbend.akka.sample
 
@@ -1017,18 +1042,20 @@ postStop执行
 */
 ```
 
-
-
 ### 4、调度器
+
 Akka MessageDispatcher是什么使阿卡演员“tick”，可以这么说是机器的引擎。所有的MessageDispatcher实现也是一个ExecutionContext。这意味着它们可以用来执行任意代码，例如Futures。
 
 调度器决定actor执行中如何分配线程，如何调度等等
 
 #### （1）默认调度器
+
 每个ActorSystem都会有一个默认的调度器，这个调度-器在没有其他配置给Actor的情况下使用。如果ActorSystem是通过ExecutionContext传入来创建的，则此ExecutionContext将用作此ActorSystem中所有程序的执行位置。如果没有给出ExecutionContext，它将回退到akka.actor.default-dispatcher.default-executor.fallback作为执行上下文。默认情况下，这是一个“fork-join-executor”，它在大多数情况下都有出色的性能。
 
 #### （2）获取一个调度器
+
 **编写配置**
+
 ```
 # 配置一个调度器
 my-dispatcher {
@@ -1053,6 +1080,7 @@ my-dispatcher {
 ```
 
 **在程序中查找到配置，并创建执行上下文**
+
 ```scala
 // for use with Futures, Scheduler, etc.
 implicit val executionContext = system.dispatchers.lookup("my-dispatcher")
@@ -1061,6 +1089,7 @@ implicit val executionContext = system.dispatchers.lookup("my-dispatcher")
 [更多配置](https://doc.akka.io/docs/akka/current/scala/general/configuration.html)
 
 **单独为一个Actor配置调度器**
+
 ```scala
 import akka.actor.Props
 val myActor =
@@ -1068,13 +1097,16 @@ val myActor =
 ```
 
 或者使用配置文件
+
 代码正常编写
+
 ```scala
 import akka.actor.Props
 val myActor = context.actorOf(Props[MyActor], "myactor")
 ```
 
 配置文件
+
 ```
 akka.actor.deployment {
   /myactor {
@@ -1083,10 +1115,10 @@ akka.actor.deployment {
 }
 ```
 
-
-
 #### （3）调度器的类型
+
 有三种不同类型的消息调度器：
+
 * `Dispatcher`：这是一个基于事件的调度程序，它将一组Actor分别绑定到一个线程池。如果没有指定，这是默认的调度程序。
 	* 共享性：不限制
 	* 邮箱：任何，为每个Actor创建一个
@@ -1102,9 +1134,11 @@ akka.actor.deployment {
 	* 邮箱：按需，任何，每个线程创建一个
 	* 用例：测试
 	* Driven by: 直接创建线程
-	
+
 **更多的调度器配置示例**
+
 配置固定线程池大小的调度程序，例如，用于执行阻塞IO的actor：
+
 ```
 blocking-io-dispatcher {
   type = Dispatcher
@@ -1115,14 +1149,16 @@ blocking-io-dispatcher {
   throughput = 1
 }
 ```
+
 然后使用它：
+
 ```scala
 val myActor2 =
   context.actorOf(Props[MyActor].withDispatcher("blocking-io-dispatcher"), "myactor2")
 ```
 
-
 另一个使用基于内核数量的线程池的例子（例如，用于CPU绑定的任务）
+
 ```
 # 用于绑定CPU任务
 my-thread-pool-dispatcher {
@@ -1147,6 +1183,7 @@ my-thread-pool-dispatcher {
 ```
 
 “亲和池”，保证同一个Actor在同一个线程执行，减少缓存拷贝
+
 ```
 affinity-pool-dispatcher {
   # Dispatcher is the name of the event-based dispatcher
@@ -1170,6 +1207,7 @@ affinity-pool-dispatcher {
 ```
 
 配置PinnedDispatcher：
+
 ```conf
 my-pinned-dispatcher {
   executor = "thread-pool-executor"
@@ -1178,6 +1216,7 @@ my-pinned-dispatcher {
 ```
 
 使用
+
 ```scala
 	val myActor3 =
 		system.actorOf(Props[MyActor].withDispatcher("my-pinned-dispatcher"), "myactor3")
@@ -1185,8 +1224,8 @@ my-pinned-dispatcher {
 
 注意：要始终使用相同的线程，需要将`Thread-pool-executor.allow-core-timeout = off`添加到PinnedDispatcher的配置中。
 
-
 #### （4）阻塞需求需求谨慎管理
+
 在某些情况下，做阻塞操作是不可避免的，也就是说，让一个线程休眠一段时间，等待一个外部事件的发生。例如传统的关系数据库驱动和消息API，原因发生在网络IO延迟。
 
 ```scala
@@ -1198,7 +1237,9 @@ class BlockingActor extends Actor {
 	}
 }
 ```
+
 当面对这个问题时，你可能会试图将这个阻塞呼叫包裹在Future中，然后用它来工作，但是这个策略太简单了：当应用程序在增加的负载下运行时，您很可能发现瓶颈或内存或线程不足。
+
 ```scala
 class BlockingFutureActor extends Actor {
   implicit val executionContext: ExecutionContext = context.dispatcher
@@ -1215,21 +1256,25 @@ class BlockingFutureActor extends Actor {
 ```
 
 **问题：在默认调度器上阻塞**
+
 关键在这一行
+
 ```scala
 implicit val executionContext: ExecutionContext = context.dispatcher
 ```
+
 使用context.dispatcher作为阻塞Future执行的调度器可能是一个问题，因为这个调度器默认用于所有其他的actor处理，除非你为actor设置了一个单独的调度器。
 
 *如果所有可用的线程都被阻塞，那么同一个调度器上的所有参与者将饿死线程，并且将无法处理传入的消息。*
 
 **注意**
+
 * 如果可能的话，也应该避免阻塞API。尝试查找或构建反应式API，使阻塞最小化，或转移到专用调度程序。
 * 通常在与现有的库或系统集成时，不可能避免阻塞API。以下解决方案说明如何正确处理阻止操作。
 * 请注意，同样的提示也适用于管理Akka任何地方的阻塞操作，包括Streams，Http和其他构建于其上的反应式库。
 
-
 **模拟出现的问题**
+
 ```scala
 class PrintActor extends Actor {
 	def receive = {
@@ -1249,11 +1294,12 @@ class PrintActor extends Actor {
 
 观察输出：可以发现，尽管`PrintActor`不是阻塞的，但是，他任然在某刻停顿的一会。因为，所有的线程全部被Future用光了。
 
-
 **解决方案：用于阻塞操作的专用调度程序**
+
 隔离阻塞行为的最有效的方法之一是不影响系统的其余部分的是为所有这些阻塞操作准备和使用专用调度器。这种技术通常被称为“bulk-heading”或简称为“隔离阻塞”。
 
 在application.conf中，专用于阻止行为的调度程序应按如下所示进行配置：
+
 ```conf
 my-blocking-dispatcher {
   type = Dispatcher
@@ -1264,7 +1310,9 @@ my-blocking-dispatcher {
   throughput = 1
 }
 ```
+
 编写阻塞actr程序
+
 ```scala
 class SeparateDispatcherFutureActor extends Actor {
 	//找到调度器（执行上下文）
@@ -1288,19 +1336,14 @@ class SeparateDispatcherFutureActor extends Actor {
 		actor2 ! i
 	}
 ```
+
 这样就不会阻塞其他actor的正常操作了
 
 **解决阻塞操作的可用方案**
+
 * 在一个actor（或者一个由路由器路由管理的actor）中进行阻塞调用，确保配置一个专用于此目的的线程池或足够大小的线程池。
 * 在Future中进行阻塞调用，确保在任何时间点上调用这些调用的数量的上限（提交无限数量的这种性质的任务将耗尽你的内存或线程限制）。
 * 在Future中执行阻塞调用，为线程池提供线程池的数量上限，该线程数适合运行应用程序的硬件，如本节所述。
 * 将单个线程专用于管理一组阻塞资源（例如，驱动多个通道的NIO选择器），并在事件作为参与者消息发送时分派事件。
 
 第一种可能性特别适合本质上是单线程的资源，比如数据库句柄，传统上一次只能执行一个未完成的查询，并使用内部同步来确保这一点。一个常见的模式是为N个参与者创建一个路由器，每个参与者包装一个数据库连接并处理发送给路由器的查询。然后必须调整数字N以获得最大的吞吐量，这将取决于在哪个硬件上部署了哪个DBMS。
-
-
-
-
-
-
-

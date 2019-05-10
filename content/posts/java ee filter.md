@@ -1,8 +1,8 @@
 ---
-title: java ee filter
+title: Java EE Filter
 date: 2016-11-16T11:05:07+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/18
@@ -12,30 +12,34 @@ tags:
 ---
 
 ## 一、过滤器生命周期
+
 > 实例化 —— Web.xml
 > 初始化 —— init()
 > 过滤	 —— doFilter()
 > 销毁	 —— destroy()
 
 ## 二、实现
-#### 新建java类实现 javax.servlet.Filter接口
+
+### 新建java类实现`javax.servlet.Filter`接口
+
 ```java
-@Override 
-public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException { 
+@Override
+public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
 	//处理请求逻辑
-	HttpServletRequest req = (HttpServletRequest) request; 
-	HttpServletResponse res = (HttpServletResponse) response; 
-	HttpSession session = req.getSession(); 
-	if (session.getAttribute("admin") == null) { 
+	HttpServletRequest req = (HttpServletRequest) request;
+	HttpServletResponse res = (HttpServletResponse) response;
+	HttpSession session = req.getSession();
+	if (session.getAttribute("admin") == null) {
 		res.sendRedirect(req.getContextPath() + url);
-		return ; 
-	} 
+		return ;
+	}
 	chain.doFilter(request, response); //执行下一个过滤器放行
-	//处理响应的业务逻辑 
-} 
+	//处理响应的业务逻辑
+}
 ```
 
 #### 配置web.xml
+
 ```xml
 <filter>
 	<filter-name>Filter的名字</filter-name>
@@ -47,7 +51,7 @@ public void doFilter(ServletRequest request, ServletResponse response, FilterCha
 		<param-value>参数值</param-value>
 	</init-param>
 </filter>
-	
+
 <!-- 可设置一对或多对 -->
 <filter-mapping>
 	<filter-name>filter的名字</filter-name>
@@ -60,52 +64,64 @@ public void doFilter(ServletRequest request, ServletResponse response, FilterCha
 ```
 
 ## 三、应用
+
 *	登录验证
 	*	在filter检查session验证是否登录，
 	*	使用init-param参数配置放行规则，在init()存到成员变量中，
-*		在doFilter()中检验放行规则
+*	在doFilter()中检验放行规则
 *	编码转换
 *	数据过滤（sql防注入）
 *	图像转码
 *	响应压缩
 *	加密解密
-	
-	
+
 ## 四、过滤器链
+
 略
 
 ## 五、过滤器分类
-#### 概念：
-> 重定向（改变url地址通过浏览器对新URL地址重新发起请求改变页面）：
-> * response.sendRedirect(request.getContextPath()+"/main.jsp");
-> 
-> 转发（服务器内部转发浏览器url不变）
-> * request.getRequestDispatcher("本服务器内部url").forward(request,response);
 
+### 概念：
+
+> 重定向（改变url地址通过浏览器对新URL地址重新发起请求改变页面）：
+> response.sendRedirect(request.getContextPath()+"/main.jsp");
+>
+> 转发（服务器内部转发浏览器url不变）
+> request.getRequestDispatcher("本服务器内部url").forward(request,response);
 
 ### 1、Request：用户直接访问页面时，web容器将会调用过滤器
+
 过滤request的请求
-	
+
 ### 2、Forword：
+
 	过滤.forward(request,response);的请求
-	
+
 ### 3、include：
+
 	过滤include方法的请求
-	
+
 ### 4、error
+
 可以在web.xml中配置：
+
 ```xml
 <error-page>
 	<error-code>404</error-code>
 	<location>/error.jsp</location>
 </error-page>
 ```
+
 当访问出错时过滤,一般用于记录错误日志
-	
+
 ### 5、async(servlet3.0-javaee6.0)
+
 当后台处理长时间业务时允许异步执行后面的操作
+
 servlet异步处理事务
+
 web.xml 配置
+
 ```xml
 <servlet>
 	<description>This is the description of my J2EE component</description>
@@ -118,9 +134,11 @@ web.xml 配置
 <servlet-mapping>
 	<servlet-name>AsynServlet</servlet-name>
 	<url-pattern>/servlet/AsynServlet</url-pattern>
-</servlet-mapping>	
+</servlet-mapping>
 ```
+
 代码：
+
 ```java
 package com.imooc.servlet;
 
@@ -190,8 +208,9 @@ public class AsynServlet extends HttpServlet {
 
 }
 ```
-		
+
 filter代码
+
 ```java
 package com.imooc.filter;
 
@@ -227,8 +246,9 @@ public class AsynFilter implements Filter {
 
 }
 ```
-			
-六、注解配置(servlet3.0-javaee6.0)
+
+## 六、注解配置(servlet3.0-javaee6.0)
+
 ```java
 	@WebFilter(filterName="实例名",value={"过滤的路径"},dispatcherTypes={DispatcherType.过滤类型1,DispatcherType.过滤类型2})
 	@WebServlet() //servlet 配置注解

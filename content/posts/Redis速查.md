@@ -2,7 +2,7 @@
 title: Redis速查
 date: 2017-10-30T09:07:03+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/109
@@ -13,83 +13,74 @@ tags:
 
 > [参考：runoob.com](http://www.runoob.com/redis/redis-tutorial.html)
 
-## 目录
-* [一、入门](#一、入门)
-	* [1、简介](#1、简介)
-	* [2、安装](#2、安装)
-	* [3、配置](#3、配置)
-	* [4、数据类型](#4、数据类型)
-* [二、命令](#二、命令)
-	* [1、客户端启动](#1、客户端启动)
-	* [2、基本命令](#2、基本命令)
-	* [3、高级命令](#3、高级命令)
-* [三、高级话题](#三、高级话题)
-	* [1、Redis 数据备份与恢复](#1、Redis 数据备份与恢复)
-	* [2、Redis 安全](#2、Redis 安全)
-	* [3、Redis 性能测试](#3、Redis 性能测试)
-	* [4、Redis 客户端连接](#4、Redis 客户端连接)
-	* [5、Redis 管道技术](#5、Redis 管道技术)
-	* [6、Redis 分区](#6、Redis 分区)
-* [四、Java 使用 Redis](#四、Java 使用 Redis)
-	* [1、直接使用](#1、直接使用)
-	* [2、spring Boot使用Redis作为缓存](#2、spring Boot使用Redis作为缓存)
-	* [3、Spring Boot使用Redis缓存Session](#3、Spring Boot使用Redis缓存Session)
-
-
 ## 一、入门
-****************************
+
+***
+
 ### 1、简介
+
 Redis 是完全开源免费的，遵守BSD协议，是一个高性能的key-value数据库。
+
 * Redis 与其他 key - value 缓存产品有以下三个特点：
 * Redis支持数据的持久化，可以将内存中的数据保存在磁盘中，重启的时候可以再次加载进行使用。
 * Redis不仅仅支持简单的key-value类型的数据，同时还提供list，set，zset，hash等数据结构的存储。
 * Redis支持数据的备份，即master-slave模式的数据备份。
 
 #### （1）Redis 优势
+
 * 性能极高 – Redis能读的速度是110000次/s,写的速度是81000次/s 。
 * 丰富的数据类型 – Redis支持二进制案例的 Strings, Lists, Hashes, Sets 及 Ordered Sets 数据类型操作。
 * 原子 – Redis的所有操作都是原子性的，同时Redis还支持对几个操作全并后的原子性执行。
 * 丰富的特性 – Redis还支持 publish/subscribe, 通知, key 过期等等特性。
 
 #### （2）Redis与其他key-value存储有什么不同？
+
 * Redis有着更为复杂的数据结构并且提供对他们的原子性操作，这是一个不同于其他数据库的进化路径。Redis的数据类型都是基于基本数据结构的同时对程序员透明，无需进行额外的抽象。
 * Redis运行在内存中但是可以持久化到磁盘，所以在对不同数据集进行高速读写时需要权衡内存，因为数据量不能大于硬件内存。在内存数据库方面的另一个优点是，相比在磁盘上相同的复杂的数据结构，在内存中操作起来非常简单，这样Redis可以做很多内部复杂性很强的事情。同时，在磁盘格式方面他们是紧凑的以追加的方式产生的，因为他们并不需要进行随机访问。
 
-
 ### 2、安装
+
 #### （1）windows安装
+
 [下载地址](https://github.com/MicrosoftArchive/redis/releases)
 下载`*.zip`文件，解压，添加到环境变量
 
 启动服务器，进入cmd
-```
-redis-server 
+
+```bash
+redis-server
 ```
 
 启动客户端，新建cmd
-```
+
+```bash
 redis-cli.exe -h 127.0.0.1 -p 6379
 ```
 
 测试输入：
+
 ```
 set key value
 get key
 ```
 
 安装成服务
-```
+
+```bash
 #安装
-redis-server.exe --service-install redis.windows.conf --loglevel verbose 
+redis-server.exe --service-install redis.windows.conf --loglevel verbose
 #卸载
-redis-server --service-uninstall  
+redis-server --service-uninstall
 ```
+
 可以启动客户端测试
 
 #### （2）linux安装
+
 > [参考](http://blog.csdn.net/ludonqin/article/details/47211109)
 
 **下载安装**
+
 ```bash
 wget http://download.redis.io/releases/redis-4.0.2.tar.gz
 tar -zxvf redis-4.0.2.tar.gz
@@ -98,23 +89,32 @@ make
 make test
 make install
 ```
+
 **配置**
+
 创建配置文件目录
+
 ```bash
 mkdir /etc/redis
 ```
+
 创建变量目录
+
 ```bash
 cd /var/
 mkdir redis
 cd redis
 mkdir data log run
 ```
+
 将配置文件`redis.conf`拷贝到配置文件目录
+
 ```bash
 cp redis.conf /etc/redis/
 ```
+
 修改配置文件
+
 ```
 pidfile /var/redis/run/redis.pid
 dir /var/redis/data
@@ -123,22 +123,28 @@ daemonize yes #启动成守护进程
 ```
 
 **启动**
+
 ```bash
 redis-server /etc/redis/redis.conf
 ```
 
 **停止**
+
 ```bash
 redis-cli shutdown
 ```
 
 **设置为服务和开机自启**
+
 拷贝脚本、赋予权限
+
 ```bash
 cp utils/redis_init_script /etc/init.d/redis
 chmod +x /etc/init.d/redis
 ```
+
 编辑脚本
+
 ```bash
 #!/bin/sh
 #
@@ -153,35 +159,44 @@ PIDFILE=/var/redis/run/redis.pid
 #CONF="/etc/redis/${REDISPORT}.conf"
 CONF="/etc/redis/redis.conf"
 ```
+
 启动关闭服务
+
 ```bash
 service redis start/stop
 ```
+
 设置为开机自启
+
 ```bash
 chkconfig redis on
 ```
 
 ### 3、配置
+
 #### （1）配置文件
+
 windows下为 `~/redis.windows.conf`
 
 #### （2）使用客户端配置
-获取配置信息`CONFIG GET 配置名 `
+
+获取配置信息`CONFIG GET 配置名`
+
 ```
 # 获取所有配置信息
 CONFIG GET *
 ```
 
 配置配置信息`CONFIG SET loglevel "配置值"`
+
 ```
 CONFIG GET loglevel
 CONFIG SET loglevel "notice"
 CONFIG GET loglevel
 ```
 
-
 #### （2）配置文件常用配置项说明
+
 * `bind 127.0.0.1` 绑定主机号
 * `port 6379` 绑定的端口
 * `timeout 0` 当 客户端闲置多长时间后关闭连接，如果指定为0，表示关闭该功能
@@ -200,8 +215,8 @@ CONFIG GET loglevel
 * `appendonly no` 指定是否在每次更新操作后进行日志记录，Redis在默认情况下是异步的把数据写入磁盘，如果不开启，可能会在断电时导致一段时间内的数据丢失。因为 redis本身同步数据文件是按上面save条件来同步的，所以有的数据会在一段时间内只存在于内存中。默认为no
 * `appendfilename appendonly.aof` 指定更新日志文件名，默认为appendonly.aof
 * `appendfsync everysec` 指定更新日志条件，共有3个可选值：
-	* no：表示等操作系统进行数据缓存同步到磁盘（快） 
-  * always：表示每次更新操作后手动调用fsync()将数据写到磁盘（慢，安全） 
+  * no：表示等操作系统进行数据缓存同步到磁盘（快）
+  * always：表示每次更新操作后手动调用fsync()将数据写到磁盘（慢，安全）
   * everysec：表示每秒同步一次（折衷，默认值）
 * `vm-enabled no`指定是否启用虚拟内存机制，默认值为no，简单的介绍一下，VM机制将数据分页存放，由Redis将访问量较少的页即冷数据swap到磁盘上，访问多的页面由磁盘自动换出到内存中
 * `vm-swap-file /tmp/redis.swap` 虚拟内存文件路径，默认值为/tmp/redis.swap，不可多个Redis实例共享
@@ -214,11 +229,10 @@ CONFIG GET loglevel
 * `activerehashing yes` 指定是否激活重置哈希，默认为开启
 * `include /path/to/local.conf` 指定包含其它的配置文件，可以在同一主机上多个Redis实例之间使用同一份配置文件，而同时各个实例又拥有自己的特定配置文件
 
-
-
-
 ### 4、数据类型
+
 Redis支持五种数据类型：
+
 * string（字符串），
 * hash（哈希），
 * list（列表），
@@ -226,46 +240,54 @@ Redis支持五种数据类型：
 * zset(sorted set：有序集合)。
 
 #### （1）String（字符串）
+
 string是redis最基本的类型，你可以理解成与Memcached一模一样的类型，一个key对应一个value。
 string类型是二进制安全的。意思是redis的string可以包含任何数据。比如jpg图片或者序列化的对象 。
 string类型是Redis最基本的数据类型，一个键最大能存储512MB。
 
 **语法**
+
 存`SET key value`
 取`GET key`
 
 **存取**
+
 ```
 set name "rectcircle"
 get name
 ```
 
 #### （2）Hash（哈希）
+
 Redis hash 是一个键名对集合。
 Redis hash是一个string类型的field和value的映射表，hash特别适合用于存储对象。
 
 **语法**
+
 存`HMSET key field value [field value...]`
 取`HGETALL key`或`HGET key field`
 
-
 **存取**
+
 ```
 HMSET user:1 username rectcircle password 123456
 HGETALL user:1
 HGET user:1 username
 ```
+
 每个 hash 可以存储 232 -1 键值对（40多亿）
 
 #### （3）List（列表）
+
 Redis 列表是简单的字符串列表，按照插入顺序排序。你可以添加一个元素到列表的头部（左边）或者尾部（右边）。
 
 **语法**
+
 存`LPUSH key value [value...]`或者`RPUSH key value [value...]`
 取`LRANGE key start stop` 包括start、stop
 
-
 **存取**
+
 ```
 LPUSH list a b c d
 LRANGE list 0 10
@@ -274,10 +296,12 @@ LRANGE list 0 2
 ```
 
 #### （4）Set（集合）
+
 Redis的Set是string类型的无序集合。
 集合是通过哈希表实现的，所以添加，删除，查找的复杂度都是O(1)。
 
 **语法**
+
 存`sadd key member [member...]`
 取`smembers key`
 
@@ -290,11 +314,13 @@ SMEMBERS set
 ```
 
 #### （5）zset(sorted set：有序集合)
+
 Redis zset 和 set 一样也是string类型元素的集合,且不允许重复的成员。
 不同的是每个元素都会关联一个double类型的分数。redis正是通过分数来为集合中的成员进行从小到大的排序。
 zset的成员是唯一的,但分数(score)却可以重复。
 
 **语法**
+
 存`ZADD key [NX|XX] [CH] [INCR] score member [score member ...]`
 取`ZRANGEBYSCORE key min max [WITHSCORES] [LIMIT offset count]`
 
@@ -307,25 +333,31 @@ ZRANGEBYSCORE zset 0 100
 ```
 
 ## 二、命令
-********************************
+
+***
+
 ### 1、客户端启动
+
 ```
 redis-cli #无密码、本机、默认端口 6379
 redis-cli -h 127.0.0.1 -p 6379 -a "mypass" #指定主机、端口、密码
 ```
 
-
 ### 2、基本命令
+
 > https://redis.io/commands
 
 #### （1）键命令key
+
 例子
+
 ```
 SET key redis
 DEL key
 ```
 
 **命令列表**
+
 * `DEL key` 该命令用于在 key 存在时删除 key。
 * `DUMP key` 序列化给定 key ，并返回被序列化的值。
 * `EXISTS key` 检查给定 key 是否存在。
@@ -344,6 +376,7 @@ DEL key
 * `TYPE key` 返回 key 所储存的值的类型。
 
 #### （2）字符串命令string
+
 * `SET key value` 设置指定 key 的值
 * `GET key` 获取指定 key 的值。
 * `GETRANGE key start end` 返回 key 中字符串值的子字符
@@ -366,6 +399,7 @@ DEL key
 * `APPEND key value` 如果 key 已经存在并且是一个字符串， APPEND 命令将 value 追加到 key 原来的值的末尾。
 
 #### （3）哈希hash
+
 * `HDEL key field1 [field2]` 删除一个或多个哈希表字段
 * `HEXISTS key field` 查看哈希表 key 中，指定的字段是否存在。
 * `HGET key field` 获取存储在哈希表中指定字段的值。
@@ -382,6 +416,7 @@ DEL key
 * `HSCAN key cursor [ MATCH pattern ] [COUNT count]` 迭代哈希表中的键值对。
 
 #### （4）列表(List)
+
 * `BLPOP key1 [key2 ] timeout` 移出并获取列表的第一个元素， 如果列表没有元素会阻塞列表直到等待超时或发现可弹出元素为止。
 * `BRPOP key1 [key2 ] timeout` 移出并获取列表的最后一个元素， 如果列表没有元素会阻塞列表直到等待超时或发现可弹出元素为止。
 * `BRPOPLPUSH source destination timeout` 从列表中弹出一个值，将弹出的元素插入到另外一个列表中并返回它； 如果列表没有元素会阻塞列表直到等待超时或发现可弹出元素为止。
@@ -397,6 +432,7 @@ DEL key
 * `RPUSH key value1 [value2]` 在列表中添加一个或多个值`RPUSHX key value 为已存在的列表添加值
 
 #### （5）集合Set
+
 * `SADD key member1 [member2]` 向集合添加一个或多个成员
 * `SCARD key` 获取集合的成员数
 * `SDIFF key1 [key2]` 返回给定所有集合的差集
@@ -414,6 +450,7 @@ DEL key
 * `SSCAN key cursor [MATCH pattern] [COUNT count]` 迭代集合中的元素
 
 #### （7）有序集合(sorted set)
+
 * `ZADD key score1 member1 [score2 member2]` 向有序集合添加一个或多个成员，或者更新已存在成员的分数
 * `ZCARD key` 获取有序集合的成员数
 * `ZCOUNT key min max` 计算在有序集合中指定区间分数的成员数
@@ -436,15 +473,18 @@ DEL key
 * `ZSCAN key cursor [MATCH pattern] [COUNT count]` 迭代有序集合中的元素（包括元素成员和元素分值）
 
 #### （8）HyperLogLog
+
 Redis 在 2.8.9 版本添加了 HyperLogLog 结构。
 Redis HyperLogLog 是用来做基数统计的算法，HyperLogLog 的优点是，在输入元素的数量或者体积非常非常大时，计算基数所需的空间总是固定 的、并且是很小的。
 在 Redis 里面，每个 HyperLogLog 键只需要花费 12 KB 内存，就可以计算接近 2^64 个不同元素的基 数。这和计算基数时，元素越多耗费内存就越多的集合形成鲜明对比。
 但是，因为 HyperLogLog 只会根据输入元素来计算基数，而不会储存输入元素本身，所以 HyperLogLog 不能像集合那样，返回输入的各个元素。
 
 **什么是基数（不重复的元素的个数）**
+
 比如数据集 {1, 3, 5, 7, 5, 7, 8}， 那么这个数据集的基数集为 {1, 3, 5 ,7, 8}, 基数(不重复元素)为5。 基数估计就是在误差可接受的范围内，快速计算基数。
 
 例子
+
 ```
 PFADD runoobkey "a"
 PFADD runoobkey "b"
@@ -457,31 +497,38 @@ PFCOUNT runoobkey
 * `PFCOUNT key [key ...]` 返回给定 HyperLogLog 的基数估算值。
 * `PFMERGE destkey sourcekey [sourcekey ...]` 将多个 HyperLogLog 合并为一个 HyperLogLog
 
-
 ### 3、高级命令
+
 #### （1）Redis发布订阅
+
 实例
+
 我们创建了订阅频道名为 redisChat:
+
 ```
 SUBSCRIBE redisChat
 ```
+
 打开另一个客户端
+
 ```
 PUBLISH redisChat "Redis is a great caching technique"
 PUBLISH redisChat "Learn redis by runoob.com"
 ```
+
 另一个客户端显示为：
+
 ```
 Reading messages... (press Ctrl-C to quit)
 1) "subscribe"
 2) "redisChat"
 3) (integer) 1
-1) "message"
-2) "redisChat"
-3) "Redis is a great caching technique"
-1) "message"
-2) "redisChat"
-3) "Learn redis by runoob.com"
+4) "message"
+5) "redisChat"
+6) "Redis is a great caching technique"
+7) "message"
+8) "redisChat"
+9) "Learn redis by runoob.com"
 ```
 
 * `PSUBSCRIBE pattern [pattern ...]` 订阅一个或多个符合给定模式的频道。
@@ -492,24 +539,25 @@ Reading messages... (press Ctrl-C to quit)
 * `UNSUBSCRIBE [channel [channel ...]]` 指退订给定的频道。
 
 #### （2）事务
+
 Redis 事务可以一次执行多个命令， 并且带有以下两个重要的保证：
+
 * 事务是一个单独的隔离操作：事务中的所有命令都会序列化、按顺序地执行。事务在执行的过程中，不会被其他客户端发送来的命令请求所打断。
 * 事务是一个原子操作：事务中的命令要么全部被执行，要么全部都不执行。
 
 一个事务从开始到执行会经历以下三个阶段：
+
 * 开始事务。
 * 命令入队。
 * 执行事务。
 
 事务中出现错误
+
 * 语法错误：所有的指令都不会执行
 * 运行错误：仍会执行，**不会回滚**
 
-
-
-
-
 例子， 它先以 MULTI 开始一个事务， 然后将多个命令入队到事务中， 最后由 EXEC 命令触发事务， 一并执行事务中的所有命令：
+
 ```
 MULTI
 SET book-name "Mastering C++ in 21 days"
@@ -528,9 +576,11 @@ EXEC
 	* 执行玩exec之后自动unwatch
 
 #### （3）Redis 脚本命令
+
 略
 
 #### （4）Redis 连接
+
 * `AUTH password` 验证密码是否正确
 * `ECHO message` 打印字符串
 * `PING` 查看服务是否运行
@@ -538,6 +588,7 @@ EXEC
 * `SELECT index` 切换到指定的数据库
 
 #### （5）Redis 服务器
+
 * `BGREWRITEAOF 异步执行一个 AOF（AppendOnly File）` 文件重写操作
 * `BGSAVE` 在后台异步保存当前数据库的数据到磁盘
 * `CLIENT KILL [ip:port] [ID client-id]` 关闭客户端连接
@@ -571,64 +622,87 @@ EXEC
 * `SYNC` 用于复制功能(replication)的内部命令
 
 ## 三、高级话题
-**********************************
+
+***
+
 ### 1、Redis 数据备份与恢复
+
 #### （1）保存
+
 ```
-SAVE 
+SAVE
 Bgsave #后台保存
 ```
+
 #### （2）恢复
+
 如果需要恢复数据，只需将备份文件 (dump.rdb) 移动到 redis 安装目录并启动服务即可。获取 redis 目录可以使用 CONFIG 命令，如下所示：
+
 ```
 CONFIG GET dir
 ```
 
 ### 2、Redis 安全
+
 #### （1）查看是否设置密码
+
 ```
 CONFIG get requirepass
 ```
 
 #### （2）设置密码
+
 ```
 CONFIG set requirepass "123456"
 ```
 
 #### （3）登录
+
 ```
 AUTH 123456
 ```
 
-
 ### 3、Redis 性能测试
+
 #### （1）语法
+
 ```
 redis-benchmark [option] [option value]
 ```
 
 #### （2）例子
+
 ```
 redis-benchmark -n 10000
 ```
 
 ### 4、Redis 客户端连接
+
 略
+
 ### 5、Redis 管道技术
+
 略
+
 ### 6、Redis 分区
+
 略
 
 ## 四、Java 使用 Redis
-***********************************
+
+***
+
 ### 1、直接使用
+
 #### （1）引入
+
 [jedis](http://mvnrepository.com/artifact/redis.clients/jedis)
 
 #### （2）使用
+
 ```java
 import redis.clients.jedis.Jedis;
- 
+
 public class RedisStringJava {
     public static void main(String[] args) {
         //连接本地的 Redis 服务
@@ -643,7 +717,9 @@ public class RedisStringJava {
 ```
 
 ### 2、spring Boot使用Redis作为缓存
+
 #### （1）引入依赖
+
 ```xml
 <dependency>
 	<groupId>org.springframework.boot</groupId>
@@ -652,7 +728,9 @@ public class RedisStringJava {
 ```
 
 #### （2）配置redis服务器相关信息
+
 打开`application.properties`相关配置项以`spring.redis.`开头
+
 ```
 # 配置redis
 spring.redis.host=localhost
@@ -662,6 +740,7 @@ spring.redis.password=123456
 #### （3）在启动类上或者配置类添加`@EnableCaching`注解
 
 #### （4）对Redis进行详细配置（可选）
+
 ```java
 package cn.rectcircle.ssm.config;
 
@@ -801,15 +880,19 @@ public class RedisConfig extends CachingConfigurerSupport {
 ```
 
 #### （5）直接使用
+
 在Service中使用上面配置的Bean
 
 #### （6）在方法上添加**`@Cacheable`**注解
+
 **说明**
+
 * @Cacheable可以标记在一个方法上，也可以标记在一个类上。
 * 当标记在一个方法上时表示该方法是支持缓存的，
 * 当标记在一个类上时则表示该类所有的方法都是支持缓存的
 
 **注解属性**
+
 * `value`属性是必须指定的，其表示当前方法的返回值是会被缓存在哪个Cache上的，对应Cache的名称。其可以是一个Cache也可以是多个Cache，当需要指定多个Cache时其是一个数组。
 * `key`属性自定义key，支持`SpringEL`表达式，语法
 	* `#参数名`
@@ -825,23 +908,27 @@ public class RedisConfig extends CachingConfigurerSupport {
 	* 例子： `condition="#user.id%2==0"`
 
 **执行过程**：
+
 调用此方法时，spring生成Key，在缓存中查询是否存在，若不存再执行此方法，然后将返回值最为value将key-value写入缓存
 
 #### （6）在方法上添加**`@CachePut`**注解
+
 属性一致
 执行过程：直接执行方法体，将返回值写入缓存
 
-
 #### （7）**`@CacheEvict`**
+
 当标记在一个类上时表示其中所有的方法的执行都会触发缓存的清除操作
 属性有value、key、condition、allEntries和beforeInvocation
 其中value、key和condition的语义与@Cacheable对应的属性类似
+
 * allEntries 表示是否需要清除缓存中的所有元素。默认为false，表示不需要。当指定了allEntries为true时，Spring Cache将忽略指定的key
 * beforeInvocation 清除操作默认是在对应方法成功执行之后触发的，即方法如果因为抛出异常而未能成功返回时也不会触发清除操作。使用beforeInvocation可以改变触发清除操作的时间，当我们指定该属性值为true时，Spring会在调用该方法之前清除缓存中的指定元素
 
-
 #### （8）**`@Caching`**
+
 @Caching注解可以让我们在一个方法或者类上同时指定多个Spring Cache相关的注解。其拥有三个属性：cacheable、put和evict，分别用于指定@Cacheable、@CachePut和@CacheEvict。
+
 ```java
    @Caching(cacheable = @Cacheable("users"), evict = { @CacheEvict("cache2"),
 
@@ -854,11 +941,12 @@ public class RedisConfig extends CachingConfigurerSupport {
    }
 ```
 
-
 ### 3、Spring Boot使用Redis缓存Session
+
 #### （1）[完成以上配置](#2、spring Boot使用Redis作为缓存)
 
 #### （2）添加session依赖
+
 ```xml
 		<dependency>
 			<groupId>org.springframework.session</groupId>
@@ -867,14 +955,9 @@ public class RedisConfig extends CachingConfigurerSupport {
 ```
 
 #### （3）配置session仓库
+
 ```
 spring.session.store-type=redis
 ```
 
-
 #### （4）在SpringMVC Controller方法中添加session参数
-
-
-
-
-

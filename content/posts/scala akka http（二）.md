@@ -2,7 +2,7 @@
 title: scala akka http（二）
 date: 2017-11-19T21:35:52+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/118
@@ -11,24 +11,16 @@ tags:
   - scala
 ---
 
-* [五、http](#五、http)
-	*	[6、高级别服务端API](#6、高级别服务端API)
-		*	[（7）Source Streaming](（7）Source Streaming)
-		*	[（8）路由测试](#（8）路由测试)
-		*	[（9）http应用Bootstrap](#（9）http应用Bootstrap)
-	*	[7、服务端WebSocket支持](#7、服务端WebSocket支持)
-	*	[8、服务端https支持](#8、服务端https支持)
-	*	[9、服务端http2预览](#9、服务端http2预览)
-	*	[10、Server-Sent Events支持](#10、Server-Sent Events支持)
-	*	[11、http服务客户端支持](#11、http服务客户端支持)
-	*	[12、处理Akka HTTP中的阻塞操作](#12、处理Akka HTTP中的阻塞操作)
-
-
 ## 五、http
-************************
+
+***
+
 ### 6、高级别服务端API
+
 #### （7）Source Streaming
+
 **以json流为例**
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -93,8 +85,8 @@ class SourceStreamingTest extends WordSpec with Matchers with ScalatestRouteTest
 }
 ```
 
-
 **自定义流渲染器**
+
 ```scala
 import MyJsonProtocol._
 
@@ -129,6 +121,7 @@ Get("/tweets").withHeaders(AcceptJson) ~> route ~> check {
 ```
 
 **json流渲染配置**
+
 ```scala
 import MyJsonProtocol._
 implicit val jsonStreamingSupport: JsonEntityStreamingSupport =
@@ -142,7 +135,9 @@ path("tweets") {
 ```
 
 **例子二：解析json流**
+
 用户上传json数组
+
 ```scala
 	case class Measurement(id: String, value: Int)
 
@@ -152,7 +147,7 @@ path("tweets") {
 		//....
 		implicit val measurementFormat = jsonFormat2(Measurement.apply)
 	}
-	
+
 	val route1 =
 		path("metrics") {
 			// [3] extract Source[Measurement, _]
@@ -187,15 +182,16 @@ path("tweets") {
 
 ```
 
-
-
 #### （8）路由测试
+
 **引入依赖**
+
 ```scala
 "com.typesafe.akka" %% "akka-http-testkit" % "10.0.10"
 ```
 
 **基本例子**
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -255,6 +251,7 @@ class RouteTest  extends WordSpec with Matchers with ScalatestRouteTest {
 ```
 
 **基本结构**
+
 ```scala
 REQUEST ~> ROUTE ~> check {
   ASSERTIONS
@@ -263,12 +260,12 @@ REQUEST ~> ROUTE ~> check {
 
 [其他参见](https://doc.akka.io/docs/akka-http/current/scala/http/routing-dsl/testkit.html)
 
-
-
 #### （9）http应用Bootstrap
+
 akkahttp的入口，**实验性特性**
 
 **最小化的例子**
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -293,6 +290,7 @@ object WebServer1 extends App {
 ```
 
 **端口绑定失败的回调**
+
 ```scala
 object WebServer extends HttpApp {
 //...
@@ -303,6 +301,7 @@ object WebServer extends HttpApp {
 ```
 
 **提供您自己的服务器设置**
+
 ```scala
 // Creating own settings
 val settings = ServerSettings(ConfigFactory.load).withVerboseErrorMessages(true)
@@ -310,6 +309,7 @@ WebServer.startServer("localhost", 8080, settings)
 ```
 
 **提供您自己的Actor系统**
+
 ```scala
 val system = ActorSystem("ownActorSystem")
 WebServer.startServer("localhost", 8080, system)
@@ -317,6 +317,7 @@ system.terminate()
 ```
 
 **提供您自己的Actor系统和设置**
+
 ```scala
 val system = ActorSystem("ownActorSystem")
 val settings = ServerSettings(ConfigFactory.load).withVerboseErrorMessages(true)
@@ -325,6 +326,7 @@ system.terminate()
 ```
 
 **重写服务器中止信号**
+
 ```scala
 object WebServer extends HttpApp {
 //...
@@ -335,6 +337,7 @@ object WebServer extends HttpApp {
 ```
 
 **获取服务器关闭的通知**
+
 ```scala
 object WebServer extends HttpApp {
 //...
@@ -344,19 +347,20 @@ object WebServer extends HttpApp {
 }
 ```
 
-
-
 ### 7、服务端WebSocket支持
+
 WebSocket是一种在浏览器和Web服务器之间提供双向通道的协议，通常通过升级的HTTP（S）连接来运行。数据通过消息交换，消息可以是二进制数据或Unicode文本。
 
 Akka HTTP提供了一个基于流的WebSocket协议实现，隐藏底层二进制框架有线协议的底层细节，并提供一个简单的API来实现使用WebSocket的服务。
 
 #### （1）模型
+
 WebSocket协议中的基本数据交换单元是一个消息。消息可以是二进制消息，即八位字节序列或文本消息，即一个Unicode代码点序列。
 
 在数据模型中，两种消息（二进制和文本消息）由来自公共超类消息的两个类BinaryMessage和TextMessage表示。BinaryMessage和TextMessage子类包含访问数据的方法。以TextMessage的API为例（BinaryMessage与ByteString替换的String非常相似）：
 
 #### （2）低级api使用示例
+
 ```scala
 		import akka.actor.ActorSystem
 		import akka.http.scaladsl.Http
@@ -413,9 +417,10 @@ WebSocket协议中的基本数据交换单元是一个消息。消息可以是�
 		  .onComplete(_ => system.terminate())(executionContext) // and shutdown when done
 ```
 
-
 #### （3）高级api使用示例
+
 路由支持
+
 ```scala
 package com.lightbend.akka.sample.http
 
@@ -486,11 +491,12 @@ class WebSocketExampleSpec extends WordSpec with Matchers with ScalatestRouteTes
 }
 ```
 
-
 ### 8、服务端https支持
+
 Akka HTTP支持服务器端和客户端的TLS加密。
 
 配置加密的核心工具是HttpsConnectionContext，它可以使用静态方法ConnectionContext.https来创建，定义如下：
+
 ```scala
 // ConnectionContext
 def https(
@@ -506,6 +512,7 @@ def https(
 在服务器端，akka.http.scaladsl.Http扩展的bind和bindAndHandleXXX方法定义一个可选的httpsContext参数，该参数可以以HttpsContext实例的形式接收HTTPS配置。如果在所有接受的连接上启用了定义的加密。否则它被禁用（这是默认的）。
 
 #### （1）SSL配置
+
 Akka HTTP严重依赖并将任何SSL / TLS相关选项的大多数配置委托给Lightbend SSL-Config，Lightbend SSL-Config是专门提供默认安全的SSLContext和相关选项的库。
 
 有关所有可用设置的详细文档，请参阅[Lightbend SSL-Config](http://typesafehub.github.io/ssl-config/)文档。
@@ -513,14 +520,16 @@ Akka HTTP严重依赖并将任何SSL / TLS相关选项的大多数配置委托�
 Akka HTTP（以及Streaming TCP）使用的SSL配置设置位于akka.ssl-config命名空间下。
 
 为了在Akka中使用SSL-Config，所以它记录到正确的ActorSystem-wise记录器等，AkkaSSLConfig扩展提供。获得它如下简单：
+
 ```scala
 implicit val system = ActorSystem()
 val sslConfig = AkkaSSLConfig()
 ```
+
 典型的用法，例如配置http客户端设置将通过在application.conf中配置ssl-config来全局应用，可以在修改任何可能需要更改的配置时获取扩展并将其复制，然后在建立连接时使用特定的AkkaSSLConfig实例，而不必在客户端或服务器端进行连接。
 
-
 #### （2）获取SSL / TLS证书
+
 为了运行HTTPS服务器，必须提供一个证书，通常是从签名机构获取证书或者为了本地或分段环境的目的而自己创建证书。
 
 签名机构通常会提供有关如何创建Java密钥库（通常参考Tomcat配置）的说明。如果要生成自己的证书，可以在[此处](https://docs.oracle.com/javase/8/docs/technotes/tools/unix/keytool.html)找到有关如何使用JDK keytool实用程序生成密钥库的官方Oracle文档。
@@ -528,9 +537,11 @@ val sslConfig = AkkaSSLConfig()
 SSL-Config为生成证书提供了更具针对性的指南，因此我们建议您从[生成X.509证书的](http://typesafehub.github.io/ssl-config/CertificateGeneration.html)指南开始。
 
 #### （3）使用https
+
 一旦你获得了服务器证书，使用它就像准备一个HttpsConnectionContext一样简单，并将其设置为由给定的Http扩展启动的所有服务器使用的缺省值，或者在绑定服务器时显式传递它。
 
 以下示例显示了如何设置HTTPS的工作原理。首先，创建并配置一个HttpsConnectionContext实例：
+
 ```scala
 import java.io.InputStream
 import java.security.{ SecureRandom, KeyStore }
@@ -567,6 +578,7 @@ val https: HttpsConnectionContext = ConnectionContext.https(sslContext)
 ```
 
 一旦配置了HTTPS上下文，就可以将其设置为默认值：
+
 ```scala
 // sets default context to HTTPS – all Http() bound servers for this ActorSystem will use HTTPS from now on
 Http().setDefaultServerHttpContext(https)
@@ -574,6 +586,7 @@ Http().bindAndHandle(routes, "127.0.0.1", 9090, connectionContext = https)
 ```
 
 还可以将上下文传递给特定的`bind...`（或客户端）调用，如下所示：
+
 ```scala
 Http().bind("127.0.0.1", connectionContext = https)
 
@@ -583,6 +596,7 @@ Http().bindAndHandle(routes, "127.0.0.1", 8080, connectionContext = https)
 ```
 
 #### （4）同时运行http和https
+
 如果要在单个应用程序中运行HTTP和HTTPS服务器，可以两次调用bind ...方法，一个用于HTTPS，另一个用于HTTP。
 
 ```scala
@@ -592,30 +606,22 @@ Http().bindAndHandle(commonRoutes, "127.0.0.1", 443, connectionContext = https)
 Http().bindAndHandle(commonRoutes, "127.0.0.1", 80)
 ```
 
-
 #### （5）相互验证、进一步阅读
+
 [参见](https://doc.akka.io/docs/akka-http/10.0.10/scala/http/server-side/server-https-support.html#mutual-authentication)
 
-
-
 ### 9、服务端http2预览
+
 参见[http2](https://doc.akka.io/docs/akka-http/10.0.10/scala/http/server-side/http2.html)
 
 ### 10、Server-Sent Events支持
+
 参见[sse](https://doc.akka.io/docs/akka-http/10.0.10/scala/http/sse-support.html)
 
 ### 11、http服务客户端支持
+
 参见[客户端](https://doc.akka.io/docs/akka-http/10.0.10/scala/http/client-side/index.html)
 
 ### 12、处理Akka HTTP中的阻塞操作
+
 当处理耗时操作，应该使用独特的线程池，具体参见 [actor](114#4、调度器)结尾
-
-
-
-
-
-
-
-
-
-

@@ -2,7 +2,7 @@
 title: go指南
 date: 2018-05-03T22:51:51+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/139
@@ -11,68 +11,28 @@ tags:
   - 其他编程语言
 ---
 
-> 参考 
+> 参考
 > [go官方文档](https://go-zh.org/)
 > [go官方指南](https://tour.go-zh.org/)
 > [相关源码](https://github.com/Go-zh/tour)
 > [实效go编程](https://go-zh.org/doc/effective_go.html)
 
-## 目录
-* [〇、go概述](#〇、go概述)
-	* [1、go的爸爸](#1、go的爸爸)
-	* [2、go的安装](#2、go的安装)
-	* [3、go的语言特性](#3、go的语言特性)
-	* [4、相关实践](#4、相关实践)
-	* [5、开发环境最佳实践](#5、开发环境最佳实践)
-* [一、go基础](#一、go基础)
-	* [1、包、变量、类型和函数](#1、包、变量、类型和函数)
-		* [（1）包与导入](#（1）包与导入)
-		* [（2）函数](#（2）函数)
-		* [（3）变量与常量](#（3）变量与常量)
-		* [（4）类型](#（4）类型)
-		* [（5）运算符](#（5）运算符)
-	* [2、流程控制语句](#2、流程控制语句)
-		* [（1）for循环](#（1）for循环)
-		* [（2）if条件](#（2）if条件)
-		* [（3）switch](#（3）switch)
-		* [（4）defer](#（4）defer)
-	* [3、更多类型](#3、更多类型)
-		* [（1）指针](#（1）指针)
-		* [（2）结构体](#（2）结构体)
-		* [（3）数组](#（3）数组)
-		* [（4）切片](#（4）切片)
-		* [（5）range](#（5）range)
-		* [（6）映射](#（6）映射)
-		* [（7）函数值](#（7）函数值)
-		* [（8）闭包](#（8）闭包)
-* [二、方法与接口](#二、方法与接口)
-	* [1、方法](#1、方法)
-	* [2、接口](#2、接口)
-		* [（3）常用标准接口](#（3）常用标准接口)
-	* [3、类型判断和转换](#3、类型判断和转换)
-* [三、并发](#三、并发)
-	* [1、Go程](#1、Go程)
-	* [2、信道](#2、信道)
-	* [3、Select、Range和Close](#3、Select、Range和Close)
-	* [4、锁](#4、锁)
-* [四、填坑](#四、填坑)
-	* [1、标准项目结构](#1、标准项目结构)
-	* [2、关于类型别名的转换](#2、关于类型别名的转换)
-	* [3、跨平台编译](#3、跨平台编译)
-	* [4、在线编译运行小工具](#4、在线编译运行小工具)
-
-
-
 ## 〇、go概述
-*******************
+
+***
+
 ### 1、go的爸爸
+
 Google
 
 ### 2、go的安装
+
 #### （1）Ubuntu
+
 可以使用`sudo apt install golang`
 
 ### 3、go的语言特性
+
 * 静态类型语言
 * C语言的加强版
 	* 安全的指针
@@ -85,10 +45,9 @@ Google
 	* 访问控制
 	* 实现接口方法即实现接口
 
-
 ### 4、相关实践
-* [操作系统进程与资源管理](https://github.com/rectcircle/process-manage)
 
+* [操作系统进程与资源管理](https://github.com/rectcircle/process-manage)
 
 ### 5、开发环境最佳实践
 
@@ -127,12 +86,16 @@ export PATH=$PATH:$GOROOT/bin:$GOLIB/bin:$GOLEARN/bin:$GOWORKSPACE/bin
 * 安装Go插件
 * 使用VSCode打开上面工作空间
 
-
 ## 一、go基础
-**********************
+
+***
+
 ### 1、包、变量、类型和函数
+
 #### （1）包与导入
+
 **基本说明**
+
 * go源代码文件以package的形式组织，源码码文件以`.go`结尾
 * 每个源代码文件开头必须包含`package 包名`的声明
 * 在其他文件中使用某个包的函数或结构必须先使用`import "包所在的目录"`，然后使用`包名.导出内容`使用
@@ -142,37 +105,42 @@ export PATH=$PATH:$GOROOT/bin:$GOLIB/bin:$GOLEARN/bin:$GOWORKSPACE/bin
 * 每个源文件允许包含一个`init`函数在`import`时调用
 * 程序入口所在源文件的包名必须为`main`，入口函数为`main`
 
-
 **语法**
+
 声明包
+
 ```go
 package 包名
 ```
 
 导入包
+
 ```go
 //单条语句
 import "包所在路径1"
-import 别名 "包所在路径2" 
+import 别名 "包所在路径2"
 import . "包所在路径3"  //.表示导入的内容不使用包名前缀就可以直接使用
 import _ "包所在路径4"  //_表示不导入包，仅执行init函数
 
 //组合导入
 import(
 	"包所在路径1"
-	别名 "包所在路径2" 
+	别名 "包所在路径2"
 	. "包所在路径3"
 	import _ "包所在路径4"  //_表示不导入包，仅执行init函数
 )
 ```
 
 **导出名**
+
 * go中没有访问控制符
 * 所有首字母大写的内容（函数或结构）将会导出（public公有），外部可以导入后通过包名访问
 * 所有首字母小写的内容（函数或结构）将不会导出（private私有），外部无法访问
 
 **例子**
+
 定义包与导入
+
 ```go
 package main
 
@@ -185,7 +153,9 @@ func main() {
 	fmt.Printf("Now you have %g problems.", math.Sqrt(7))
 }
 ```
+
 导出名
+
 ```go
 package main
 
@@ -199,30 +169,34 @@ func main() {
 }
 ```
 
-
 **最佳实践**
+
 * 报名应该与包所在目录同名，否则容易造成误解
 * 避免使用`.`导入，`.`可能导致命名冲突
 
 **更多内容**
+
 [如何使用Go编程](https://go-zh.org/doc/code.html)
 
-
 #### （2）函数
+
 **综述**
+
 * 支持多值返回
 * 支持返回命名
 * 支持函数类型（函数是一等公民）
 * 支持闭包
 
 **语法**
-```
+
+```go
 func function_name( [parameter list] ) [return_types] {
 	//函数体
 }
 ```
 
 **例子**
+
 ```go
 func add(x int, y int) int {
 	return x + y
@@ -256,13 +230,16 @@ func fib() func() int {
 ```
 
 **最佳实践**
+
 * 使用多值返回特性返回错误信息
 * 使用多值返回返回下一个状态
 * 使用命名返回提高代码可读性
 * 使用Defer关闭资源，使相关代码更加集中
 
 #### （3）变量与常量
+
 **概述**
+
 * 常量为编译期可知具体值的符号，且运行时不可修改
 * 变量是运行时可知的符号，可修改
 * 批量声明与初始化
@@ -271,6 +248,7 @@ func fib() func() int {
 * `:=`函数局部变量，通过字面量自动类型推断的语法糖
 
 **语法**
+
 ```go
 //变量
 var c, python, java bool //默认零值
@@ -304,8 +282,10 @@ const Pi = 3.14
 ```
 
 #### （4）类型
+
 **基本类型**
-```
+
+```go
 bool
 
 string
@@ -322,8 +302,8 @@ float32 float64
 
 complex64 complex128
 ```
-* int, uint 和 uintptr 在 32 位系统上通常为 32 位宽，在 64 位系统上则为 64 位宽。
 
+* int, uint 和 uintptr 在 32 位系统上通常为 32 位宽，在 64 位系统上则为 64 位宽。
 
 **零值**
 
@@ -337,6 +317,7 @@ complex64 complex128
 
 **类型转换**
 不同于C，所有类型都需要类型转换
+
 ```go
 var i int = 42
 var f float64 = float64(i)
@@ -344,6 +325,7 @@ var u uint = uint(f)
 ```
 
 **类型推导**
+
 ```go
 var i int
 j := i // j 也是一个 int
@@ -353,13 +335,14 @@ f := 3.142        // float64
 g := 0.867 + 0.5i // complex128
 ```
 
-
 #### （5）运算符
+
 * 全功能C语言运算符
 
-
 ### 2、流程控制语句
+
 #### （1）for循环
+
 * 循环语句只有for一个关键字，可以完成C的for while功能
 * 支持break，continue；同时支持break label，continue label（Java）
 * 支持foreach
@@ -367,6 +350,7 @@ g := 0.867 + 0.5i // complex128
 * 大括号不可省略
 
 **语法**
+
 ```go
 //等价于C的for循环
 for init; condition; post { }
@@ -384,6 +368,7 @@ for key, value := range oldMap {
 ```
 
 **例子**
+
 ```go
 sum := 0
 for i := 0; i < 10; i++ {
@@ -413,10 +398,12 @@ for i, j := 0, len(a)-1; i < j; i, j = i+1, j-1 {
 ```
 
 #### （2）if条件
+
 * 具有C语言全功能的 `if - else if - else` 功能‘
 * 支持初始化语句（类似于for的init部分）
 
 **例子**
+
 ```go
 func pow(x, n, lim float64) float64 {
 	if v := math.Pow(x, n); v < lim {
@@ -430,6 +417,7 @@ func pow(x, n, lim float64) float64 {
 ```
 
 **最佳实践**
+
 * 在Go的库中，你会发现若 if 语句不会执行到下一条语句时，亦即其执行体 以 break、continue、goto 或 return 结束时，不必要的 else 会被省略。
 
 ```go
@@ -445,8 +433,8 @@ if err != nil {
 codeUsing(f, d)
 ```
 
-
 #### （3）switch
+
 * 功能上类似于C的switch
 * 不需要为每条case写break，因为go默认是break的
 * go的switch不需要一定是常量也不需要一定是整数
@@ -456,6 +444,7 @@ codeUsing(f, d)
 * 支持类型选择
 
 **例子**
+
 ```go
 	switch os := runtime.GOOS; os {
 	case "darwin":
@@ -477,14 +466,14 @@ codeUsing(f, d)
 	default:
 		fmt.Println("Good evening.")
 	}
-	
+
 //多值匹配
 	switch c {
 	case ' ', '?', '&', '=', '#', '+', '%':
 		return true
 	}
 	return false
-	
+
 //类型选择
 var t interface{}
 t = functionOfSomeType()
@@ -503,6 +492,7 @@ case *int:
 ```
 
 #### （4）defer
+
 * 在函数中使用，修饰一条语句
 * 那么这条语句将在函数返回之后，返回值赋值之前执行
 * 可以使相关逻辑的语句更加内聚
@@ -510,6 +500,7 @@ case *int:
 * 多用于资源释放
 
 **例子**
+
 ```go
 package main
 
@@ -538,11 +529,10 @@ func main() {
 
 ```
 
-
-
-
 ### 3、更多类型
+
 #### （1）指针
+
 * 类似与C语言的指针
 * 安全的指针，不支持指针运算
 * 支持多重指针
@@ -550,6 +540,7 @@ func main() {
 * 一律使用`.`，不使用箭头`->`
 
 **例子**
+
 ```go
 //==普通指针==
 var pointer *int;   //声明
@@ -572,6 +563,7 @@ fmt.Println(**outer);
 ```
 
 **new**
+
 * 常用于给指针进行初始化
 	* 创建一块某类型可用内存并返回该内存的地址
 	* 将指针指向改地址
@@ -585,9 +577,11 @@ p := new(SyncedBuffer)
 ```
 
 #### （2）结构体
+
 * 类似于C语言的结构体
 
 **例子**
+
 ```go
 type Vertex struct {
 	X int
@@ -603,7 +597,7 @@ var (
 
 func main() {
 	fmt.Println(Vertex{1, 2})
-	
+
 	v := Vertex{1, 2}
 	v.X = 4
 	fmt.Println(v.X)
@@ -611,6 +605,7 @@ func main() {
 ```
 
 **结构体与指针**
+
 * 相对于C取消了`->`操作符或者说省略`*`，结构体指针使用`.`访问成员
 * 针对指针类型参数，仍需要显示的取址符`&`
 * 多重结构体指针任然需要`*`解引用
@@ -630,7 +625,7 @@ func main() {
 	p := Point{1,2}
 	use_sturct(&p)
 	fmt.Println(p)
-	
+
 	fmt.Printf("%p\n", &p)
 	fmt.Printf("%p\n", &p.x)
 }
@@ -642,14 +637,15 @@ func main() {
 */
 ```
 
-
 ### （3）数组
+
 * 传参时，按值传递（拷贝副本）
 * 类似于Java，数组的长度是数组的一部分
 * 最好使用切片
 * 类型描述为：`[n]T`
 
 **例子**
+
 ```go
 	var a [2]string
 	a[0] = "Hello"
@@ -662,12 +658,14 @@ func main() {
 ```
 
 **数组与指针**
+
 * 数组做参数时, 需要被检查长度.
 * 变量名不等于数组开始指针!
 * 不支持C中的`*(ar + sizeof(int))`方式的指针移动. 需要使用到unsafe包
 * 如果p2array为指向数组的指针， `*p2array`不等于`p2array[0]`
 
 例子1：编译报错
+
 ```go
 func use_array(args [4]int){
     args[1] = 100;
@@ -682,6 +680,7 @@ func main() {
 
 例子2：数组是按值传递
 输出 [1 2 3 4 5]
+
 ```go
 func use_array(args [5]int){
     args[1] = 100;
@@ -696,13 +695,14 @@ func main() {
 
 例子3：数组名不是隐式指针
 输出 [1 100 3 4]
+
 ```go
 // 又长度检查, 也为地址传参
 func use_array(args *[4]int){
     args[1] = 100;  //但是使用还是和C一致,不需要别加"*"操作符
 }
 
-func main() {        
+func main() {
     var args = [4]int{1, 2, 3, 4};
     use_array(&args); // 数组名已经不是表示地址了, 需要使用"&"得到地址
     fmt.Println(args);
@@ -713,16 +713,16 @@ func main() {
 输出：
 1040c128
 10414020
+
 ```go
 	var p2array *[3]int;
 	p2array = new([3]int);
-	fmt.Printf("%x\n", &p2array); 
-	fmt.Printf("%x\n", &p2array[0]); 
+	fmt.Printf("%x\n", &p2array);
+	fmt.Printf("%x\n", &p2array[0]);
 ```
 
-
-
 #### （4）切片
+
 * 类型描述为：`[]T`（类似于没有指定长度的数组）
 * 切片保存了对底层数组的引用，修改可见
 * 支持动态扩容，当前容量大小可以通过`cap([]T)`获得，表示底层数组的大小
@@ -736,8 +736,8 @@ func main() {
 * 使用`copy(dest []T, source []T)`创建拷贝
 * 其他通过切片语法`[start:end]`和`s = append([]T, []T...)`实现
 
-
 **例子**
+
 ```go
 //通过数组获得
 	primes := [6]int{2, 3, 5, 7, 11, 13}
@@ -746,7 +746,7 @@ func main() {
 	fmt.Println(s)
 	fmt.Println(cap(s))
 	fmt.Println(len(s))
-	
+
 //通过切片是对数组的引用
 	arr := [4]int{1,2,3,4}
 	fmt.Println(arr)
@@ -806,7 +806,9 @@ d len=3 cap=3 [0 0 0]
 ```
 
 #### （5）range
+
 一般用于实现foreach
+
 ```go
 var pow = []int{1, 2, 4, 8, 16, 32, 64, 128}
 
@@ -828,7 +830,9 @@ func main() {
 ```
 
 #### （6）映射
+
 例子
+
 ```go
 //简介
 type Vertex struct {
@@ -897,6 +901,7 @@ func main() {
 ```
 
 #### （7）函数值
+
 * 支持函数式编程的基础
 * 函数可以作为参数值
 * 函数可以返回值
@@ -924,10 +929,10 @@ func main() {
 }
 ```
 
-
-
 #### （8）闭包
+
 **例子：斐波纳契闭包**
+
 ```go
 package main
 
@@ -950,7 +955,9 @@ func main() {
 ```
 
 ## 二、方法与接口
+
 ### 1、方法
+
 * go没有类
 * go使用方法（类似函数的语法），将自定义类型名（结构体或者别名）与函数绑定
 * 这样就可以使用`类型变量.函数名调用`
@@ -958,6 +965,7 @@ func main() {
 * 对于接收者参数，不管是指针还是值类型，调用时都使用`类型变量.函数名调用`，编译过程自动转换
 
 #### （1）语法
+
 ```go
 func (self T) method(args...) return_type... {
 	//self.X ，访问self的成员
@@ -965,6 +973,7 @@ func (self T) method(args...) return_type... {
 ```
 
 #### （2）例子
+
 ```go
 //结构体
 type Vertex struct {
@@ -1019,8 +1028,8 @@ func main() {
 }
 ```
 
-
 ### 2、接口
+
 * 虽然go不支持类
 * 但是支持面向接口编程
 	* 声明一个接口类型，内部定义了一些函数声明
@@ -1033,20 +1042,24 @@ func main() {
 * nil 接口值会引发运行时错误`panic`
 * 空接口`interface{}`用于接收任意类型（类似于Java Object）
 
-
-
 #### （1）语法
+
 定义接口
+
 ```go
 type I interface {
 	M()
 }
 ```
+
 声明接口类型变量
+
 ```go
 var i I
 ```
+
 一个类型实现接口
+
 ```go
 type T struct {
 	S string
@@ -1056,7 +1069,9 @@ func (t *T) M() {
 	fmt.Println(t.S)
 }
 ```
+
 使用接口变量调用该方法
+
 ```go
 	i = &T{"Hello"}
 	i.M()
@@ -1111,7 +1126,9 @@ func describe(i I) {
 	fmt.Printf("(%v, %T)\n", i, i)
 }
 ```
+
 **空接口**
+
 ```go
 func main() {
 	var i interface{}
@@ -1130,14 +1147,19 @@ func describe(i interface{}) {
 ```
 
 #### （3）常用标准接口
+
 **Stringer**
+
 fmt 包中定义的 Stringer 是最普遍的接口之一。
+
 ```go
 type Stringer interface {
     String() string
 }
 ```
+
 例子
+
 ```go
 package main
 
@@ -1160,15 +1182,19 @@ func main() {
 ```
 
 **error**
+
 Go 程序使用 error 值来表示错误状态。
 
 与 fmt.Stringer 类似，error 类型是一个内建接口：
+
 ```go
 type error interface {
     Error() string
 }
 ```
+
 例子
+
 ```go
 i, err := strconv.Atoi("42")
 if err != nil {
@@ -1179,11 +1205,15 @@ fmt.Println("Converted integer:", i)
 ```
 
 **Reader**
+
 io 包指定了 io.Reader 接口，它表示从数据流的末尾进行读取。
+
 ```go
 func (T) Read(b []byte) (n int, err error)
 ```
+
 例子
+
 ```go
 package main
 
@@ -1207,8 +1237,11 @@ func main() {
 	}
 }
 ```
+
 **Image**
+
 image 包定义了 Image 接口：
+
 ```go
 package image
 
@@ -1219,18 +1252,19 @@ type Image interface {
 }
 ```
 
-
-
-
 ### 3、类型判断和转换
+
 #### （1）类型断言
+
 ```go
 t := i.(T)    //如果i是T类型，将i转换成T类型并赋给t，否则报错
 t, ok := i.(T) //如果i是T类型，将i转换成T类型并赋给t，ok返回true；否则t=nil，ok=false
 ```
 
 #### （2）类型选择
+
 **语法**
+
 ```go
 switch v := i.(type) {
 case T:
@@ -1243,6 +1277,7 @@ default:
 ```
 
 **例子**
+
 ```go
 package main
 
@@ -1267,14 +1302,21 @@ func main() {
 ```
 
 ## 三、并发
-********
+
+***
+
 ### 1、Go程
+
 Go 程（goroutine）是由 Go 运行时管理的轻量级线程。
+
 #### （1）启动语法
+
 ```go
 go f(x, y, z)
 ```
+
 例子
+
 ```go
 package main
 
@@ -1297,25 +1339,32 @@ func main() {
 ```
 
 ### 2、信道
+
 通信方式，go提供了一种称为信道的通信方式，类似于消息队列
 
 #### （1）语法
+
 创建
+
 ```go
 ch := make(chan int)
 ```
+
 发送与接收
+
 ```go
 ch <- v    // 将 v 发送至信道 ch。
 v := <-ch  // 从 ch 接收值并赋予 v。
 ```
 
 #### （2）特点
+
 * 默认情况下，发送和接收操作在另一端准备好之前都会阻塞
 * 可以使用带缓冲的信道，空取阻塞，满放阻塞
 * 可以使用类似`v, ok := <-ch`的语法
 
 #### （3）例子
+
 ```go
 package main
 
@@ -1342,6 +1391,7 @@ func main() {
 ```
 
 **带缓冲的信道**
+
 ```go
 package main
 
@@ -1356,10 +1406,10 @@ func main() {
 }
 ```
 
-
 ### 3、Select、Range和Close
+
 * 支持`v, ok := <-ch`语法，当ch关闭时，ok返回false
-* 支持` for i := range c `语法，当i关闭时，跳出循环
+* 支持`for i := range c`语法，当i关闭时，跳出循环
 * 支持使用select等待多个阻塞信道，当某个信道就绪，执行相关语句，并支持默认选项
 
 #### （1）例子
@@ -1389,8 +1439,8 @@ func main() {
 }
 ```
 
-
 select 语句
+
 ```go
 package main
 
@@ -1449,9 +1499,10 @@ func main() {
 
 ```
 
-
 ### 4、锁
+
 例子
+
 ```go
 package main
 
@@ -1496,14 +1547,19 @@ func main() {
 ```
 
 ## 四、填坑
-*************
+
+***
+
 ### 1、标准项目结构
+
 参见[如何使用go编程](https://go-zh.org/doc/code.html)
 
 ### 2、关于类型别名的转换
+
 当时用类型别名时，虽然底层表示的是同一类型，但是仍需要显示转换，使用`T(变量)`进行显示的转换
 
 例子
+
 ```go
 package main
 
@@ -1538,17 +1594,19 @@ func main() {
 	var s1 S1 = S1(s)
 	var s2 S2 = S2(s1)
 	fmt.Println(s2)
-	m[S2(s)] = "value" 	
+	m[S2(s)] = "value"
 }
 
 ```
 
 ### 3、跨平台编译
+
 #### （1）默认情况
+
 编译结果为宿主机器相对应的可执行文件
 
-
 #### （2）相关环境变量
+
 * CGO_ENABLED 默认为1 CGO（在go中使用c语言）是否打开
 	* 0 关闭
 	* 1 打开
@@ -1559,15 +1617,16 @@ func main() {
 	* "386"
 	* amd64
 
-
 #### （3）查看环境变量
+
 `go env`
 
 [相关介绍](https://blog.csdn.net/u012210379/article/details/50443669)
 
-
 #### （4）技巧——实现一个bash脚本
+
 用于编译，防止在根目录
+
 ```bash
 #!/usr/bin/env bash
 
@@ -1603,6 +1662,5 @@ go install $package
 ```
 
 ### 4、在线编译运行小工具
+
 https://play.golang.org/
-
-

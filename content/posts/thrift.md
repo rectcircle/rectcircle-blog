@@ -2,7 +2,7 @@
 title: thrift
 date: 2018-11-09T17:13:53+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/177
@@ -14,27 +14,6 @@ tags:
 > [官网](http://thrift.apache.org/)
 > [github](https://github.com/apache/thrift)
 
-## 目录
-
-***
-
-* [一、简介与安装](#一、简介与安装)
-	* [1、简介](#1、简介)
-	* [2、安装](#2、安装)
-* [二、HelloWorld](#二、HelloWorld)
-	* [1、创建.thrift文件](#1、创建.thrift文件)
-	* [2、编译](#2、编译)
-	* [3、编写服务端](#3、编写服务端)
-	* [4、编写测试客户端](#4、编写测试客户端)
-* [三、thrift文件语法](#三、thrift文件语法)
-	* [1、基本数据类型](#1、基本数据类型)
-	* [2、名字空间](#2、名字空间)
-	* [3、引入](#3、引入)
-	* [4、复合数据类型](#4、复合数据类型)
-	* [5、服务](#5、服务)
-	* [6、函数](#6、函数)
-	* [7、其他](#7、其他)
-
 ## 一、简介与安装
 
 ***
@@ -42,7 +21,6 @@ tags:
 ### 1、简介
 
 一款开源跨语言RPC框架。
-
 
 ### 2、安装
 
@@ -53,7 +31,8 @@ tags:
 
 #### （1）osx
 
-最新本
+最新版本
+
 ```bash
 brew install thrift
 ```
@@ -77,12 +56,11 @@ make
 make install
 ```
 
-
 ## 二、HelloWorld
 
 ### 1、创建.thrift文件
 
-参见 [github](https://github.com/apache/thrift/blob/master/tutorial/) 
+参见 [github](https://github.com/apache/thrift/blob/master/tutorial/)
 
 shared.thrift
 
@@ -202,7 +180,6 @@ service Calculator extends shared.SharedService {
 
 ```
 
-
 ### 2、编译
 
 以Python为例
@@ -238,7 +215,7 @@ from tutorial import Calculator
 
 class CalculatorHandler:
     """服务Calculator的实现"""
-    
+
     def __init__(self):
         self.log = {}
 
@@ -398,23 +375,23 @@ if __name__ == '__main__':
 
 ## 三、thrift文件语法
 
-*** 
+***
 
 时刻想着thrift就是一种中间声明语法，最终会被解释成各种编程语言的声明
 
 ### 1、基本数据类型
 
-*  bool        Boolean, one byte
-*  i8 (byte)   Signed 8-bit integer
-*  i16         Signed 16-bit integer
-*  i32         Signed 32-bit integer
-*  i64         Signed 64-bit integer
-*  double      64-bit floating point value
-*  string      String
-*  binary      Blob (byte array)
-*  `map<t1,t2>`  Map from one type to another
-*  `list<t1>`   Ordered list of one type
-*  `set<t1>`     Set of unique elements of one type
+* bool        Boolean, one byte
+* i8 (byte)   Signed 8-bit integer
+* i16         Signed 16-bit integer
+* i32         Signed 32-bit integer
+* i64         Signed 64-bit integer
+* double      64-bit floating point value
+* string      String
+* binary      Blob (byte array)
+* `map<t1,t2>`  Map from one type to another
+* `list<t1>`   Ordered list of one type
+* `set<t1>`     Set of unique elements of one type
 
 ### 2、名字空间
 
@@ -500,7 +477,6 @@ service SharedService {
 * 可选抛出异常`throws (整数标识符:类型 异常名)`
 * `void`类型可选添加`oneway`修饰，表示将客户端发出后不等待返回
 
-
 ### 7、其他
 
 #### （1）typedef
@@ -509,13 +485,11 @@ service SharedService {
 
 `typedef i32 MyInteger`
 
-
 #### （2）常量
+
 `const 类型 常量名 = 字面量`
 
 ```thrift
 const i32 INT32CONSTANT = 9853
 const map<string,string> MAPCONSTANT = {'hello':'world', 'goodnight':'moon'}
 ```
-
-

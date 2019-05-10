@@ -2,7 +2,7 @@
 title: Dart笔记
 date: 2019-03-17T11:56:11+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/188
@@ -16,16 +16,6 @@ tags:
 > [指南](https://www.dartlang.org/guides/language/language-tour)
 > [系统库](https://www.dartlang.org/guides/libraries/create-library-packages)
 > [来自Java](https://codelabs.developers.google.com/codelabs/from-java-to-dart/)
-
-## 目录
-
-* [〇、简介安装开发环境](#〇、简介安装开发环境)
-	* [1、简介](#1、简介)
-	* [2、安装](#2、安装)
-	* [3、开发环境搭建](#3、开发环境搭建)
-	* [4、包管理](#4、包管理)
-* [一、语法特性](#一、语法特性)
-
 
 ## 〇、简介安装开发环境
 
@@ -71,7 +61,7 @@ brew install dart
 * `pub get` 下载依赖
 * `pub deps` 查看依赖关系
 * `pub global` 运行激活命令
-* `pub run ` 运行一个脚本
+* `pub run` 运行一个脚本
 
 ```bash
 pub run bin/main.dart
@@ -120,7 +110,6 @@ export 'src/syntax_learn_base.dart';
 // TODO: Export any libraries intended for clients of this package.
 ```
 
-
 ## 一、语法特性
 
 ***
@@ -159,7 +148,7 @@ import 'package:greetings/hello.dart' deferred as hello;
 Future greet() async { //延迟导入之前必须手动加载
   await hello.loadLibrary();
   hello.printGreeting();
-} 
+}
 ```
 
 **导出（不适用part）**
@@ -246,7 +235,6 @@ main() {
 }
 ```
 
-
 ### 2、重要概念
 
 * 一切都是对象包括：数字、字符串、null、函数、类，都是Object的子类
@@ -256,14 +244,12 @@ main() {
 * 使用`_`表示私有的
 * 同时支持表达式和语句
 
-
 ### 3、变量
 
 object 和 dynamic 区别
 
 * dynamic 变量不会进行类型检查（直接是弱类型）
 * object 变量是强类型会进行类型检查
-
 
 ```dart
 variableTest() {
@@ -349,8 +335,8 @@ variableTest() {
   print(clapping.length);
   print(clapping.codeUnits);
   print(clapping.runes.toList());
-	
-	var sym = #doSomething; // 符号
+
+  var sym = #doSomething; // 符号
 
   Runes input = new Runes(
       '\u2665  \u{1f605}  \u{1f60e}  \u{1f47b}  \u{1f596}  \u{1f44d}');
@@ -486,8 +472,6 @@ testOperator() {
 ### 6、控制流
 
 ```dart
-
-
 testControlFlow(){
   for (var i = 0; i < 5; i++) {
     print('!');
@@ -517,7 +501,7 @@ testControlFlow(){
       // Runs for both CLOSED and NOW_CLOSED.
       print('NOW_CLOSED');
       break;
-  } 
+  }
 }
 ```
 
@@ -561,12 +545,11 @@ testException() {
 }
 ```
 
-
 ### 8、类继承和混入
 
 * 支持一个缺省构造函数（或一个工厂构造函数）、多个命名构造函数；也就是说不支持构造函数重载
 * 支持const构造函数（能保证组合链上的对象都是const）
-	* 使用const构造该类实例必须满足：构造函数的参数的构造函数为const类型。否则编译失败
+  * 使用const构造该类实例必须满足：构造函数的参数的构造函数为const类型。否则编译失败
 * 支持静态成员函数、静态成员变量（不支持重写、支持覆盖）
 * 支持抽象类
 * 支持讲一个类当做一个接口
@@ -842,7 +825,6 @@ testClass() {
 }
 ```
 
-
 ### 9、泛型
 
 类似于Java
@@ -872,13 +854,13 @@ testGenerics(){
   print(names is List<int>);
 }
 ```
- 
- ### 10、异步支持
- 
- 类似于JavaScript的`await`和`async`
- 
- ```dart
- Future<String> lookUpVersion() async => '1.0.0';
+
+### 10、异步支持
+
+类似于JavaScript的`await`和`async`
+
+```dart
+Future<String> lookUpVersion() async => '1.0.0';
 
 Future<void> asyncFunction() async {
   print(await lookUpVersion());
@@ -903,11 +885,10 @@ testAsync() {
 }
 ```
 
-
 ### 11、生成器
 
 * 类似于Python或者Scala的生成器
-* 同步生成一个 ` Iterable` 对象
+* 同步生成一个 `Iterable` 对象
 * 异步生成一个 `Stream` 对象
 * 支持递归生成器优化
 
@@ -945,7 +926,6 @@ main() {
 ```
 
 ### 13、并发机制
-
 
 * 使用Actor模型，不共享变量，使用消息通信
 * 可以理解为客户服务器模型类似socket编程
@@ -1080,7 +1060,6 @@ testMetadata() {
 }
 ```
 
-
 ### 16、注释
 
 ```dart
@@ -1096,5 +1075,3 @@ testMetadata() {
  * 文档注释，官方推荐三斜线注释
  */
 ```
-
- 

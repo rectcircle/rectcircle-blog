@@ -2,7 +2,7 @@
 title: Django笔记
 date: 2018-10-30T18:49:49+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/173
@@ -11,37 +11,9 @@ tags:
   - 后端
 ---
 
-## 目录
-
 > [参考1](https://www.runoob.com/django/django-tutorial.html)
 > [参考2](https://django-intro-zh.readthedocs.io/zh_CN/latest/)
 > [参考3](http://djangobook.py3k.cn/2.0/)
-
-***
-
-* [一、准备](#一、准备)
-	* [1、简介](#1、简介)
-	* [2、前置条件](#2、前置条件)
-	* [3、安装](#3、安装)
-* [二、HelloWorld](#二、HelloWorld)
-	* [1、常用指令](#1、常用指令)
-	* [2、步骤](#2、步骤)
-* [三、ORM](#ORM)
-	* [1、ORM使用](#1、ORM使用)
-	* [2、模型字段类型与数据局映射关系](#2、模型字段类型与数据局映射关系)
-* [四、内置对象](#四、内置对象)
-* [五、模板](#五、模板)
-* [六、django-rest-framework](#六、django-rest-framework)
-	* [1、djangorestframework安装](#1、djangorestframework安装)
-	* [2、djangorestframework使用](#2、djangorestframework使用)
-	* [3、djangorestframework教程](#3、djangorestframework教程)
-		* [（1）序列化](#（1）序列化)
-		* [（2）Response](#（2）Response)
-		* [（3）基于class的视图](#（3）基于class的视图)
-		* [（4）身份验证和权限](#（4）身份验证和权限)
-		* [（5）关系和超链接api](#（5）关系和超链接api)
-		* [（6）视图集和路由](#（6）视图集和路由)
-
 
 ## 一、准备
 
@@ -50,6 +22,7 @@ tags:
 ### 1、简介
 
 一个轻量级MVC的web框架，基于Python。支持如下特性
+
 * 基于正则表达式的可配置路由
 * 模板引擎
 * 自带ORM框架
@@ -69,20 +42,24 @@ sudo pip install Django
 ```
 
 ## 二、HelloWorld
+
 ### 1、常用指令
 
 * 创建一个项目 `django-admin startproject projectname`
 * 创建一个app（先进入项目根目录） `django-admin startapp appname`
 * 创建表结构 `python manage.py migrate`
-* 让 Django 知道我们在我们的模型有一些变更 `python manage.py makemigrations appname` 
+* 让 Django 知道我们在我们的模型有一些变更 `python manage.py makemigrations appname`
 * 创建表结构 `python manage.py migrate appname`
 * 启动服务 `python manage.py runserver [ip:port]`
 
 ### 2、步骤
+
 #### （1）创建项目
+
 `django-admin startproject helloworld`
 
 目录结构如下：
+
 ```
 .
 ├── helloworld
@@ -102,6 +79,7 @@ sudo pip install Django
 * `wsgi.py` 通用网关接口相关
 
 #### （2）定义服务函数（Controller）
+
 在项目目录中添加python文件完成Controller
 
 ```python
@@ -122,12 +100,15 @@ def hello(request):
 ```
 
 #### （3）使用模板（可选）
+
 在项目根目录创建模板文件目录`templates`，添加模板文件
+
 ```html
 <h1>{{hello}}</h1>
 ```
 
 在`settings.py`中配置模板位置
+
 ```python
 TEMPLATES = [
     {
@@ -147,7 +128,9 @@ TEMPLATES = [
 ```
 
 #### （4）配置路由
+
 在`urls.py`中
+
 ```python
 from django.conf.urls import url
 from django.contrib import admin
@@ -162,8 +145,8 @@ urlpatterns = [
 ```
 
 #### （5）启动服务
-`python manage.py runserver`
 
+`python manage.py runserver`
 
 ## 三、ORM
 
@@ -176,6 +159,7 @@ Django内置了一个ORM框架，通过继承实现，可以通过链式调用�
 #### （0）配置数据库和连接
 
 安装数据库驱动`sudo pip install mysqlclient`或者
+
 ```python
 sudo apt install python-mysql.connector
 pip install mysql-connector-python`
@@ -184,7 +168,9 @@ pip install mysql-connector-python`
 创建数据库：略
 
 配置数据库连接：
+
 在`settings.py`中配置
+
 ```python
 DATABASES = {
     'default': {
@@ -220,13 +206,14 @@ LOGGING = {
 }
 ```
 
-
-
 #### （1）创建一个app
+
 `django-admin startapp appname`
 
 #### （2）添加模型定义
+
 在`models.py`中添加模型
+
 ```python
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
@@ -256,7 +243,9 @@ INSTALLED_APPS = [
 ```
 
 #### （4）执行命令
+
 创建表结构
+
 ```bash
 python manage.py migrate   # 创建表结构
 python manage.py makemigrations TestModel  # 让 Django 知道我们在我们的模型有一些变更
@@ -264,6 +253,7 @@ python manage.py migrate TestModel   # 创建表结构
 ```
 
 当数据库中存在数据时，需改表结构若添加的字段为not null将报错
+
 * 设置为允许为空
 * 设置默认值
 
@@ -349,8 +339,9 @@ def testdbRemove(request):
 
 字符串类型：
 name=models.CharField(max_length=32)
-```
-EmailField(CharField)：
+
+```python
+EmailField(CharField)
 IPAddressField(Field)
 URLField(CharField)
 SlugField(CharField)
@@ -363,14 +354,14 @@ CommaSeparatedIntegerField(CharField)
 
 时间字段
 
-```
+```python
 models.DateTimeField(null=True)
 date=models.DateField()
 ```
 
 数字字段
 
-```
+```python
 num = models.IntegerField()
 num = models.FloatField() 浮点
 price=models.DecimalField(max_digits=8,decimal_places=3) 精确浮点
@@ -378,7 +369,7 @@ price=models.DecimalField(max_digits=8,decimal_places=3) 精确浮点
 
 枚举字段
 
-```
+```python
 choice=(
         (1,'男人'),
         (2,'女人'),
@@ -389,7 +380,7 @@ lover=models.IntegerField(choices=choice) #枚举类型
 
 其他字段
 
-```
+```python
 db_index = True 表示设置索引
 unique(唯一的意思) = True 设置唯一索引
 
@@ -431,12 +422,12 @@ ManyToManyField(RelatedField)  #多对多操作
 * Django
 
 安装
+
 ```bash
 pip install djangorestframework
 pip install markdown       # Markdown support for the browsable API.
 pip install django-filter  # Filtering support
 ```
-
 
 ### 2、djangorestframework使用
 
@@ -447,7 +438,7 @@ pip install django-filter  # Filtering support
 ```python
 INSTALLED_APPS = (
     ...
-    'rest_framework', 
+    'rest_framework',
 )
 ```
 
@@ -483,6 +474,7 @@ REST_FRAMEWORK = {
 ```
 
 简单起见所有代码都写在`urls.py`
+
 ```python
 from django.conf.urls import url, include
 from django.contrib.auth.models import User
@@ -520,7 +512,6 @@ urlpatterns = [
 
 启动服务器访问查看
 
-
 ### 3、djangorestframework教程
 
 > [github](https://github.com/encode/rest-framework-tutorial)
@@ -531,6 +522,7 @@ urlpatterns = [
 #### （1）序列化
 
 序列化器处理方向有两个：
+
 * 接收用户提交的数据，验证后，生成数据模型并持久化到数据库
 * 从数据库中拿到数据，生成数据字典传递给视图（JSON等）
 
@@ -583,7 +575,7 @@ class Snippet(models.Model):
     created = models.DateTimeField(auto_now_add=True) # 创建时间
     title = models.CharField(max_length=100, blank=True, default='') # 标题
     code = models.TextField() # 代码文本
-    linenos = models.BooleanField(default=False) # 
+    linenos = models.BooleanField(default=False) #
     language = models.CharField(
         choices=LANGUAGE_CHOICES, default='python', max_length=100) # 语言选择
     style = models.CharField(choices=STYLE_CHOICES,
@@ -694,6 +686,7 @@ class SnippetSerializer(serializers.ModelSerializer):
 ```
 
 测试
+
 ```
 from snippets.serializers import SnippetSerializer
 serializer = SnippetSerializer()
@@ -701,6 +694,7 @@ print(repr(serializer))
 ```
 
 区别
+
 * 自动确定字段集
 * 自动创建简单的方法如create、update等
 
@@ -794,6 +788,7 @@ urlpatterns = [
 ```
 
 **添加到项目**
+
 ```python
 from django.urls import path, include
 
@@ -886,13 +881,12 @@ class SnippetList(mixins.ListModelMixin,
 
 通用视图，进一步进行封装。只要提供序列化对象和结果集获取方法即可自动实现
 
-
-
 #### （4）身份验证和权限
 
 模型修改参见[指南](https://www.django-rest-framework.org/tutorial/4-authentication-and-permissions/#adding-information-to-our-model)
 
 一般鉴权组件使用步骤：
+
 * 配置过滤器之类的东西
 * 编写鉴权规则
 * 给定登录登出端点
@@ -988,4 +982,3 @@ urlpatterns = [
     url(r'^', include(router.urls))
 ]
 ```
-

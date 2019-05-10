@@ -2,7 +2,7 @@
 title: zsc第四届新生赛题解
 date: 2016-12-18T22:55:21+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/33
@@ -12,11 +12,13 @@ tags:
 ---
 
 ## A题
+
 [原题链接](http://acm.two.moe:808/JudgeOnline/problem.php?id=1578)
 
 不解释
 
 ### 代码：
+
 ```cpp
 #include <cstdio>
 #include <algorithm>
@@ -36,20 +38,21 @@ int main() {
 		sort(a, a + 3);
 		printf("%d\n",a[1]);
 	}
-	
+
 	return 0;
 }
-
 ```
 
-
 ## B题
+
 [原题链接](http://acm.two.moe:808/JudgeOnline/problem.php?id=1579)
 
 ### 题意：
+
 给出一个区间，问这个区间有多少个不含4的数？
 
 ### 代码：
+
 ```cpp
 #include <cstdio>
 #include <cstring>
@@ -75,7 +78,7 @@ int main(){
 	int t ;
 	scanf("%d",&t);
 	int L,R;
-	
+
 	while(t--){
 		int sum = 0;
 		scanf("%d%d",&L,&R);
@@ -86,20 +89,25 @@ int main(){
 		}
 		printf("%d\n",sum);
 	}
-	
+
 
 	return 0;
 }
 ```
 
 ## C题
+
 [原题链接](http://acm.two.moe:808/JudgeOnline/problem.php?id=1580)
 
 ### 题意：
+
 略
 
 ### 题解：
+
 比较麻烦。。。
+
+```cpp
 if(d==1){
 	//转化为分钟判断
 } else {
@@ -107,8 +115,10 @@ if(d==1){
 	//判断第d天，几次
 	// += d-2
 }
+```
 
 ### 代码：
+
 ```cpp
 #include <cstdio>
 
@@ -132,7 +142,7 @@ int main() {
 		int s = sh * 60 + sm;
 		int e = eh * 60 + em;
 		if (d == 1) {
-			
+
 			if (s <= 5 * 60) {
 				if (e>=18*60) {
 					ans += 2;
@@ -162,27 +172,28 @@ int main() {
 		}
 		printf("%d\n", ans);
 	}
-	
+
 	return 0;
 }
-
 ```
 
-
 ## D题
+
 [原题链接](http://acm.two.moe:808/JudgeOnline/problem.php?id=1581)
 
 ### 题意：
+
 略
 
 ### 题解：
 
 ### 代码：
+
 ```cpp
 //斯巴鲁买水果标程
 #pragma comment(linker, "/STACK:102400000,102400000")
-#include <cstdio>  
-#include <string> 
+#include <cstdio>
+#include <string>
 #include <iostream>
 #include <cstring>
 #include <cctype>
@@ -197,18 +208,18 @@ int main() {
 #include <cmath>
 #include <set>
 using namespace std;
- 
+
 typedef long long LL;
 typedef pair<int, int> pii;
 typedef pair<int, double> pid;
 typedef pair<double, int> pdi;
- 
+
 const int inf = 0x3f3f3f3f;
 const int maxn = 100 + 10;
 const double eps = 1e-8;
 int t, n;
 pii a[maxn];
- 
+
 int Solve() {
     int ans = 0;
     for (int i = 0; i < n; ++i) {
@@ -228,7 +239,7 @@ int Solve() {
     }
     return ans;
 }
- 
+
 int main() {
     scanf("%d", &t);
     while (t--) {
@@ -244,43 +255,44 @@ int main() {
 }
 ```
 
-
-
 ## E题
+
 [原题链接](http://acm.two.moe:808/JudgeOnline/problem.php?id=1582)
 
 ### 题意：
+
 求聚关灯的的摆放情况
 
 ### 题解：
+
 * 水平方向判断一次，对每一行记录首尾的坐标，和这一行的人数，据此计算这一行的方案
 * 垂直方向判断一次，类似水平处理
 
-
 ### 代码：
+
 ```cpp
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
 #include <vector>
- 
+
 using namespace std;
- 
+
 const int MAXN = 1010;
- 
+
 int rowSum[MAXN], colSum[MAXN]; //行列人数统计
 int rowSE[MAXN][2]; //行的开始和结束的人的位置
 int colSE[MAXN][2]; //列的开始和结束的人的位置
- 
- 
+
+
 void init(){
     memset(rowSum, 0, sizeof rowSum);
     memset(colSum, 0, sizeof colSum);
     memset(rowSE, 0, sizeof rowSE);
     memset(colSE, 0, sizeof colSE);
- 
+
 }
- 
+
 int solve(int se[][2], int sum[], int len, int size){
     int ans = 0;
     for(int i=0; i<size; i++){
@@ -292,18 +304,18 @@ int solve(int se[][2], int sum[], int len, int size){
     }
     return ans;
 }
- 
+
 int main(){
 #ifdef CDZSC_OFFLINE
     freopen("in.txt","r",stdin);
 #endif //CDZSC_OFFLINE
- 
+
     int t, n, m, v;
     scanf("%d",&t);
     while (t--) {
- 
+
         init();
- 
+
         scanf("%d%d",&n, &m);
         for(int i=0; i<n; i++){
             for(int j=0; j<m; j++){
@@ -315,7 +327,7 @@ int main(){
                     } else if(rowSum[i] > 1){
                         rowSE[i][1] = j;
                     }
- 
+
                     colSum[j]+= v; //更新列人数
                     if(colSum[j] == 1){ //更新列的第一个人
                         colSE[j][0] = i;
@@ -325,49 +337,55 @@ int main(){
                 }
             }
         }
- 
+
         printf("%d\n",solve(rowSE,rowSum,m,n)+solve(colSE,colSum,n,m));
     }
- 
+
     return 0;
 }
 ```
 
-
-
 ## F题
+
 [原题链接](http://acm.two.moe:808/JudgeOnline/problem.php?id=1583)
 
 ### 题意：
+
 给出一个ip地址和一个简写方式的掩码，问网络号和主机号是多少
 
 ### 题解：
+
 观察原题实例
+
 ```
 3.128.255.255/25->00000011.10000000.11111111.11111111
                   00000011.10000000.11111111.10000000 ->3.128.255.128 这就是网络号
                   00000000.00000000.00000000.01111111 -> 0.0.0.127 这就是主机号
 ```
+
 可以知道本题主要考察十进制和二进制相互转换，按照这个过程，完成程序即可通过
+
 #### 处理方式：
+
 以样例来看
+
 1. `25/8 = 3` 所以网络号的前三位等于ip地址的前三位为：3.128.255.x
 2. `25%8 = 1` 所以第四位为 `10000000(二进制) &(与运算) 11111111(二进制) = 10000000(二进制) = 128(十进制)`
 3. 所以子网号为`3.128.255.128`
 4. 观察易知：`主机号 = ip(点分十进制的各位) - 网络号(点分十进制) = (3-3).(128-128).(255-255).(255-128) = 0.0.0.127`
 
-
 ### 代码：
+
 ```cpp
 #include <cstdio>
 #include <cstring>
- 
+
 using namespace std;
- 
+
 int ip[4],n; //ip[]存放ip地址“点分十进制的”4个数字，n为掩码
 int netIp[4]; //存放网络号
 int hostIp[4]; //存放主机号
- 
+
 int calculate(int a, int n){
     int mask = 0;
     for(int i=0; i<n; i++){ //通过位运算计算掩码的的二进制形式
@@ -375,14 +393,14 @@ int calculate(int a, int n){
     }
     return a & mask; //得出结果
 }
- 
+
 void out(int a[]){
     printf("%d.%d.%d.%d",a[0],a[1],a[2],a[3]);
 }
- 
+
 void solve(){
     memset(netIp, 0, sizeof netIp); //初始化网络号为0
- 
+
     int s,e;
     for(int i=0; i<n; i++){ //对ip（点分十进制）的每一位（共四个数执行），计算网络号
         s = i*8+1;
@@ -395,19 +413,19 @@ void solve(){
             netIp[i] = calculate(ip[i],n-s+1);
         }
     }
- 
+
     for(int i = 0; i<4; i++){ //直接获得主机号
         hostIp[i] = ip[i] - netIp[i];
     }
- 
+
     out(netIp); //输出
     printf(" ");
     out(hostIp);
     printf("\n");
- 
- 
+
+
 }
- 
+
 int main(){
 #ifdef CDZSC_OFFLINE
     freopen("f.in","r",stdin);
@@ -415,26 +433,30 @@ int main(){
 #endif //CDZSC_OFFLINE
     int t ;
     scanf("%d",&t);
- 
+
     while(t--){
         scanf("%d.%d.%d.%d/%d",ip+0,ip+1, ip+2,ip+3,&n);
         solve();
     }
- 
+
     return 0;
 }
 ```
 
 ## G题
+
 [原题链接](http://acm.two.moe:808/JudgeOnline/problem.php?id=1584)
 
 ### 题意：
+
 略
 
 ### 题解：
+
 枚举第一个位置是否有地雷，由此递推到最后。在判断是否可行并输出
 
 ### 代码：
+
 ```cpp
 //G艾米莉亚爱扫雷标程
 //只要确定了第一个是否有地雷就可以推算出后面是否有地雷
@@ -502,7 +524,7 @@ void solve(int n) {
 	if ((m = judge(n))!=-1) {
 		out(m, n);
 		return;
-	} 
+	}
 
 	memset(x, 0, sizeof x);
 	x[1] = 1;
@@ -536,15 +558,19 @@ int main() {
 ```
 
 ## H题
+
 [原题连接](http://acm.two.moe:808/JudgeOnline/problem.php?id=1585)
 
 ### 题意：
+
 略
 
 ### 题解：
+
 找到距离白王最近的八个方向的棋子的类型，在判断一下是否可以将军
 
 ### 代码：
+
 ```cpp
 #include <cstring>
 #include <cstdio>
@@ -560,7 +586,7 @@ struct node
 {
 	char c;
 	int x, y;
-}; 
+};
 
 node a[3][3]; //存放距离白王最近的八个方向棋子状态
 
@@ -605,7 +631,7 @@ bool judge() {
 				if (abs(ii) == abs(jj)) {
 					if (a[i][j].c == 'B' || a[i][j].c == 'Q') {
 						return true;
-					} 
+					}
 				} else {
 					if (a[i][j].c == 'R' || a[i][j].c == 'Q') {
 						return true;
@@ -650,6 +676,7 @@ int main() {
 ```
 
 ## 声明
+
 * 本套试题版权归作者所有
 * A、H题作者刘穗*
 * B、F题作者Rectcircle

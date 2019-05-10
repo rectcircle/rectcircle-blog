@@ -2,7 +2,7 @@
 title: Canvas实例之时钟
 date: 2017-02-20T22:20:50+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/39
@@ -12,11 +12,13 @@ tags:
 ---
 
 ### 1、html结构
+
 ```html
 <canvas id="canvas">您的浏览器不支持canvas</canvas>
 ```
 
 ### 2、数字图形数组
+
 ```js
 digit =
     [
@@ -155,8 +157,8 @@ digit =
     ];
 ```
 
-
 ### 3、主逻辑
+
 ```js
 //定义常量
 var WINDOW_WIDTH = 1024;  //屏幕宽度
@@ -183,15 +185,13 @@ window.onload = function(){
     RADIUS = Math.round(WINDOW_WIDTH * 4 / 5 / 108)-1
 
     MARGIN_TOP = Math.round(WINDOW_HEIGHT /5);
-		
-		
 
-    var canvas = document.getElementById('canvas'); 
+    var canvas = document.getElementById('canvas');
     var context = canvas.getContext("2d");
 
     canvas.width = WINDOW_WIDTH;
     canvas.height = WINDOW_HEIGHT;
-		
+
     curShowTimeSeconds = getCurrentShowTimeSeconds()
     setInterval(
 			function(){
@@ -341,9 +341,8 @@ function renderDigit( x , y , num , cxt ){
 
 ```
 
-
-
 效果展示
+
 <canvas id="canvas">您的浏览器不支持canvas</canvas>
 
 <script type="text/javascript">
@@ -482,10 +481,7 @@ digit =
             [0,0,0,0]
         ]//:
     ];
-		
-		
-		
-		
+
 //定义常量
 var WINDOW_WIDTH = 1024;  //屏幕宽度
 var WINDOW_HEIGHT = 768; //屏幕高度
@@ -501,9 +497,7 @@ var curShowTimeSeconds = 0; //当前时间
 var balls = []; //小球容器
 const colors = ["#33B5E5","#0099CC","#AA66CC","#9933CC","#99CC00","#669900","#FFBB33","#FF8800","#FF4444","#CC0000"]; //小球随机颜色
 
-
 window.onload = function(){
-
 
     WINDOW_WIDTH = document.body.clientWidth
     WINDOW_HEIGHT = document.body.clientHeight
@@ -512,10 +506,8 @@ window.onload = function(){
     RADIUS = Math.round(WINDOW_WIDTH * 4 / 5 / 108)-1
 
     MARGIN_TOP = Math.round(WINDOW_HEIGHT /5);
-		
-		
 
-    var canvas = document.getElementById('canvas'); 
+    var canvas = document.getElementById('canvas');
     var context = canvas.getContext("2d");
 
     canvas.width = WINDOW_WIDTH;
@@ -531,7 +523,6 @@ window.onload = function(){
       50
     );
 }
-
 
 function update(){
 
@@ -596,7 +587,6 @@ function updateBalls(){
     }
 }
 
-
 function addBalls( x , y , num ){
 
     for( var i = 0  ; i < digit[num].length ; i ++ )
@@ -650,7 +640,6 @@ function render( cxt ){
         cxt.fill();
     }
 
-		
 }
 
 function renderDigit( x , y , num , cxt ){

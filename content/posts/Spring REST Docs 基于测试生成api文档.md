@@ -2,35 +2,21 @@
 title: Spring REST Docs 基于测试生成api文档
 date: 2017-11-05T15:17:35+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/111
   - /detail/111/
 tags:
-  - java
+  - Java
 ---
 
-## 目录
-* [一、Spring Test](#一、Spring Test)
-	* [1、加入Spring Test依赖](#1、加入Spring Test依赖)
-	* [2、Spring Test相关注解](#2、Spring Test相关注解)
-	* [3、测试Dao的例子](#3、测试Dao的例子)
-	* [4、测试Controller的例子](#4、测试Controller的例子)
-* [二、Spring REST Docs](#二、Spring REST Docs)
-	* [1、原理说明](#1、原理说明)
-	* [2、加入Spring REST Docs相关依赖](#2、加入Spring REST Docs相关依赖)
-	* [3、adoc语法说明说明](#3、adoc语法说明说明)
-	* [4、编写测试类](#4、编写测试类)
-	* [5、spring-boot-maven-plugin](#5、spring-boot-maven-plugin)
-	* [6、编写index文档](#6、编写index文档)
-	* [7、Spring REST Docs详细说明](#7、Spring REST Docs详细说明)
-* [三、Spring使用swagger](#三、Spring使用swagger)
-
-
 ## 一、Spring Test
-*******************************
+
+***
+
 ### 1、加入Spring Test依赖
+
 ```xml
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -39,23 +25,28 @@ tags:
 ```
 
 ### 2、Spring Test相关注解
+
 #### （1）测试类注解
+
 **基本注解**
+
 * `@RunWith(SpringRunner.class)` 告诉JUnit运行使用Spring的测试支持。SpringRunner是SpringJUnit4ClassRunner的新名字，这个名字只是让名字看起来简单些。
 * `@SpringBootTest(classes=Application.class)` “带有Spring Boot支持的引导程序”（例如，加载应用程序、属性，为我们提供Spring Boot的所有精华部分）。
 * `@TransactionConfiguration` 事务控制
 
 **插件**
+
 * `@AutoConfigureMockMvc` 主动注入mockMvc用于配置测试Controller
 * `@AutoConfigureRestDocs(outputDir = "target/snippets")` 配置api文档输出位置
 
-
 #### （2）测试方法注解
+
 * `@Test` Junit注解，标明测试方法
 * `@Rollback(false)` 是否回滚
 * `@BeforeTransaction`和`@AfterTransaction`在事务开始之前和之后要执行的逻辑
 
 #### （3）标准注解支持
+
 * @Autowired
 * @Qualifier
 * @Resource (javax.annotation) if JSR-250 is present
@@ -66,8 +57,8 @@ tags:
 * @Required
 * @Transactional
 
-
 ### 3、测试Dao的例子
+
 ```java
 package cn.rectcircle.ssm.mapper;
 
@@ -162,8 +153,8 @@ public class UserMapperTest {
 
 ```
 
-
 ### 4、测试Controller的例子
+
 ```java
 package cn.rectcircle.ssm.controller;
 
@@ -311,6 +302,7 @@ public class UserControllerTest {
 ```
 
 #### （1）基本框架
+
 ```java
 package xxx;
 
@@ -345,21 +337,24 @@ public class UserControllerTest {
 }
 ```
 
-
 ## 二、Spring REST Docs
-*****************************************
+
+***
+
 ### 1、原理说明
+
 为了简化http api文档的编写维护，Spring REST Docs在测试中将api信息写好、测试通过会将编写的信息生成几个adoc格式的文档输出到指定目录，然后通过asciidoctor-maven-plugin将adoc文档转换为最终的api html 文档。
 
 需要做的事情
+
 * 编写测试，在测试中说明请求参数、返回类型的信息
 * 执行测试并通过测试
 * 编写index.adoc，引用测试过程中生成的adoc文件
 * 执行`mvn package`
 * 查看target目录中的生成的文档
 
-
 ### 2、加入Spring REST Docs相关依赖
+
 ```xml
 		<dependency>
 			<groupId>org.springframework.restdocs</groupId>
@@ -369,12 +364,15 @@ public class UserControllerTest {
 ```
 
 ### 3、adoc语法说明说明
+
 > http://asciidoctor.org/
 > http://asciidoctor.org/docs
 > 下载[AsciidocFx](https://github.com/asciidocfx/AsciidocFX/releases)
 
 #### （1）表格
+
 在测试中对参数和返回信息的进行说明将会生成表格形式的文档
+
 ```
 |===
 |Parameter|Description
@@ -399,8 +397,8 @@ public class UserControllerTest {
 |`name`|姓名|
 |`password`|密码（明文）|
 
-
 #### （2）标题
+
 ```
 = 文档标题，一个文档一般只允许有一个（相当于H1） (Level 0)
 
@@ -416,8 +414,9 @@ public class UserControllerTest {
 ```
 
 #### （3）一些提示图标
+
 ```
-NOTE: 警告段引起读者的注意 辅助信息。 
+NOTE: 警告段引起读者的注意 辅助信息。
 它的目的是由标签决定的 在段落的开头。
 
 TIP: 专业小贴士...
@@ -430,6 +429,7 @@ CAUTION: 确保这件事...
 ```
 
 或者定义一个段
+
 ```
 [NOTE]
 ====
@@ -445,6 +445,7 @@ Another paragraph.
 ```
 
 #### （4）代码段
+
 ```
 [source,ruby]
 ----
@@ -470,6 +471,7 @@ end
 ```
 
 #### （5）一些效果
+
 * `*加粗*`或者`**加粗**`：**粗体**
 * `_斜体_` 或则 `__斜体__`：_斜体_
 * `*_斜体加粗_*`:**_斜体加粗_**
@@ -478,7 +480,9 @@ end
 * `#字体背景为黄色#`
 
 #### （6）列表
+
 无序列表
+
 ```
 * level 1
 ** level 2
@@ -489,6 +493,7 @@ end
 ```
 
 有序列表
+
 ```
 . Step 1
 . Step 2
@@ -496,6 +501,7 @@ end
 ```
 
 清单
+
 ```
 清单
 
@@ -506,12 +512,14 @@ end
 ```
 
 定义列表
+
 ```
 first term:: definition of first term
 second term:: definition of second term
 ```
 
 Q&A
+
 ```
 [qanda]
 What is Asciidoctor?::
@@ -520,17 +528,18 @@ What is the answer to the Ultimate Question?:: 42
 ```
 
 #### （7）链接与图片
+
 ```
 http://asciidoctor.org[Asciidoctor]
 ```
+
 效果：[Asciidoctor](http://asciidoctor.org)
 
-
 图片
+
 ```
 image::http://asciidoctor.org/images/octocat.jpg[GitHub mascot]
 ```
-
 
 ### 4、编写测试类
 
@@ -542,7 +551,7 @@ image::http://asciidoctor.org/images/octocat.jpg[GitHub mascot]
 public class UserControllerTest {
 	@Autowired
 	private MockMvc mockMvc;
-	
+
 	public void testRegister() throws Exception {
 		mockMvc.perform(/*请求的url信息*/)
 			.andExpect(/**/)
@@ -552,13 +561,16 @@ public class UserControllerTest {
 ```
 
 这样执行测试在`target/snippets/userRegister`目录下就会生成如下文档
+
 ```
 curl-request.adoc
 http-request.adoc
 http-response.adoc
 httpie-request.adoc
 ```
+
 `http-request.adoc`内容如下
+
 ```
 [source,http,options="nowrap"]
 ----
@@ -572,8 +584,11 @@ username=root&name=root&password=123456
 ```
 
 ### 5、spring-boot-maven-plugin
+
 #### （1）添加maven插件
+
 spring-boot-maven-plugin的作用是将adoc类型的文档编译成html或者pdf等类型的文档
+
 ```xml
 			<plugin>
 				<groupId>org.asciidoctor</groupId>
@@ -608,10 +623,12 @@ spring-boot-maven-plugin的作用是将adoc类型的文档编译成html或者pdf
 ```
 
 #### （2）配置说明
+
 > 参考：[官方文档](https://github.com/asciidoctor/asciidoctor-maven-plugin/blob/master/README_zh-CN.adoc)
 
 **执行任务配置`<execution>`**
-```
+
+```xml
 <plugin>
     ...
     <executions>
@@ -633,6 +650,7 @@ spring-boot-maven-plugin的作用是将adoc类型的文档编译成html或者pdf
 * `<goal>`Asciidoctor Maven 插件在此时的执行目标。
 
 **配置选项`<configuration>`**
+
 * `<sourceDirectory>` 源文件目录 默认`${basedir}/src/main/asciidoc`
 * `<sourceDocumentName>` 源文件名默认指向 ${sourceDirectory} 中的所有文件
 * `<sourceDocumentExtensions>`（在 v1.5.3 及其以下版本中被命名为 extensions) 一系列需要渲染的不标准的文件扩展名。目前，ad、adoc 和 asciidoc 默认就会被渲染。
@@ -653,18 +671,23 @@ spring-boot-maven-plugin的作用是将adoc类型的文档编译成html或者pdf
 * ...
 * `<attributes>`包含传递给 Asciidoctor 的属性的 `Map<String,Object>`，默认为 null，在此填写属性，在adoc文档中可以通过`{属性名}`引用。例子
 	添加属性
-	```xml
-	<attributes>
-		<snippets>${project.build.directory}/snippets</snippets>
-	</attributes>
-	```
-	在adoc文件中
-	```
-	include::{snippets}/userLogin/http-request.adoc[]
-	```
+
+```xml
+<attributes>
+	<snippets>${project.build.directory}/snippets</snippets>
+</attributes>
+```
+
+在adoc文件中
+
+```
+include::{snippets}/userLogin/http-request.adoc[]
+```
 
 **小技巧**
+
 为每个版本在不同目录中生成文档
+
 ```xml
 <configuration>
     ...
@@ -672,7 +695,9 @@ spring-boot-maven-plugin的作用是将adoc类型的文档编译成html或者pdf
     ...
 </configuration>
 ```
+
 启用章节数值
+
 ```xml
 <attributes>
 	<doctype>book</doctype>
@@ -682,8 +707,8 @@ spring-boot-maven-plugin的作用是将adoc类型的文档编译成html或者pdf
 </attributes>
 ```
 
-
 ### 6、编写index文档
+
 ```
 = 简单商品管理系统Api文档
 Rectcircle <sunben960729@163.com>
@@ -713,28 +738,32 @@ include::{snippets}/userRegisterError/http-response.adoc[]
 
 根据`asciidoctor-maven-plugin`配置的`<phase>`执行maven 命令最后在配置的输出位置看到生成的文档
 
-
 ### 7、Spring REST Docs详细说明
+
 > [Spring REST Docs官方文档](https://docs.spring.io/spring-restdocs/docs/current/reference/html5/#documenting-your-api-request-response-payloads)
 
 #### （1）基本方式
+
 ```java
-this.mockMvc.perform(get("/").accept(MediaType.APPLICATION_JSON)) 
-	.andExpect(status().isOk()) 
+this.mockMvc.perform(get("/").accept(MediaType.APPLICATION_JSON))
+	.andExpect(status().isOk())
 	.andDo(document("index"));
 ```
 
 #### （2）对json类型的请求和响应体进行解释
+
 ```java
 document("index",
 				requestFields(
-						fieldWithPath("xxx").description("xxx"), 
+						fieldWithPath("xxx").description("xxx"),
 				),
-				responseFields( 
-						fieldWithPath("contact.email").description("The user's email address"), 
+				responseFields(
+						fieldWithPath("contact.email").description("The user's email address"),
 						fieldWithPath("contact.name").description("The user's name")))
 ```
+
 responseFields对应的数据必须为以下结构
+
 ```json
 {
 	"contact": {
@@ -745,11 +774,13 @@ responseFields对应的数据必须为以下结构
 ```
 
 **说明**
+
 * 进行测试时，进行描述的结构必须存在否则测试失败
 	* 不能出现有的结构但是没有在`fieldWithPath`中进行解释的
 	* 不能出先没有的但是在`fieldWithPath`中进行解释的（没有执行optional()）
 
 **fieldWithPath**的相关用法
+
 ```java
 fieldWithPath("errcode") //生成一个表述器，参数为字段的路径
 	.description("错误码") //描述
@@ -777,18 +808,20 @@ fieldWithPath("errcode") //生成一个表述器，参数为字段的路径
 }
 ```
 
-
 **对于以上格式的字段路径说明**
+
 * `a` 一个包含b的对象
 * `a.b`或者`['a']['b']`或者 `a['b']` 或者 `['a'].b` 或者 `a.b[]` 一个包含三个对象的数组
 * `a.b[].c` 包含字符串"one"和"two"的数组
 * `a.b[].d` 字符串"three"
 * `a['e.dot']` 或者 `['a']['e.dot']` "four"字符串
 * 对于顶层是`[]`json 例如`[{"id":1}]`
-	* `[].id` 
+	* `[].id`
 
 **预定义**
+
 对于以下结构
+
 ```json
 [{
 	"title": "Pride and Prejudice",
@@ -799,24 +832,29 @@ fieldWithPath("errcode") //生成一个表述器，参数为字段的路径
 	"author": "Harper Lee"
 }]
 ```
+
 定义
+
 ```java
 FieldDescriptor[] book = new FieldDescriptor[] {
 		fieldWithPath("title").description("Title of the book"),
 		fieldWithPath("author").description("Author of the book") };
 ```
+
 使用
+
 ```java
 //只有一个对象
 document("book", responseFields(book))
 //对于以上结构
 document("book",
 				responseFields(
-						fieldWithPath("[]").description("An array of books")) 
+						fieldWithPath("[]").description("An array of books"))
 								.andWithPrefix("[].", book))
 ```
 
 **子文档**
+
 ```json
 {
 	"weather": {
@@ -831,48 +869,54 @@ document("book",
 	}
 }
 ```
+
 写法
+
 ```java
 document("location",
-				responseFields(beneathPath("weather.temperature"), 
-												fieldWithPath("high").description("The forecast high in degrees celcius"), 
+				responseFields(beneathPath("weather.temperature"),
+												fieldWithPath("high").description("The forecast high in degrees celcius"),
 												fieldWithPath("low").description("The forecast low in degrees celcius")
 												)
 				)
 ```
 
-
 #### （3）请求post form参数、或者get查询解释
+
 简单实例
+
 ```java
-this.mockMvc.perform(get("/users?page=2&per_page=100")) 
+this.mockMvc.perform(get("/users?page=2&per_page=100"))
 	.andExpect(status().isOk())
-	.andDo(document("users", requestParameters( 
-			parameterWithName("page").description("The page to retrieve"), 
-			parameterWithName("per_page").description("Entries per page") 
+	.andDo(document("users", requestParameters(
+			parameterWithName("page").description("The page to retrieve"),
+			parameterWithName("per_page").description("Entries per page")
 	)));
 ```
 
 #### （4）路径参数
+
 ```java
-this.mockMvc.perform(get("/locations/{latitude}/{longitude}", 51.5072, 0.1275)) 
+this.mockMvc.perform(get("/locations/{latitude}/{longitude}", 51.5072, 0.1275))
 	.andExpect(status().isOk())
-	.andDo(document("locations", pathParameters( 
-			parameterWithName("latitude").description("The location's latitude"), 
-			parameterWithName("longitude").description("The location's longitude") 
+	.andDo(document("locations", pathParameters(
+			parameterWithName("latitude").description("The location's latitude"),
+			parameterWithName("longitude").description("The location's longitude")
 	)));
 ```
 
 #### （5）请求 parts
+
 ```java
-this.mockMvc.perform(fileUpload("/upload").file("file", "example".getBytes())) 
+this.mockMvc.perform(fileUpload("/upload").file("file", "example".getBytes()))
 	.andExpect(status().isOk())
-	.andDo(document("upload", requestParts( 
-			partWithName("file").description("The file to upload")) 
+	.andDo(document("upload", requestParts(
+			partWithName("file").description("The file to upload"))
 ));
 ```
 
 #### （6）Documenting a request part’s fields
+
 ```java
 MockMultipartFile image = new MockMultipartFile("image", "image.png", "image/png",
 		"<<png data>>".getBytes());
@@ -882,20 +926,21 @@ MockMultipartFile metadata = new MockMultipartFile("metadata", "",
 this.mockMvc.perform(fileUpload("/images").file(image).file(metadata)
 			.accept(MediaType.APPLICATION_JSON))
 	.andExpect(status().isOk())
-	.andDo(document("image-upload", requestPartFields("metadata", 
-			fieldWithPath("version").description("The version of the image")))); 
+	.andDo(document("image-upload", requestPartFields("metadata",
+			fieldWithPath("version").description("The version of the image"))));
 ```
 
 #### （7）HTTP 头
+
 ```java
 this.mockMvc
-	.perform(get("/people").header("Authorization", "Basic dXNlcjpzZWNyZXQ=")) 
+	.perform(get("/people").header("Authorization", "Basic dXNlcjpzZWNyZXQ="))
 	.andExpect(status().isOk())
 	.andDo(document("headers",
-			requestHeaders( 
+			requestHeaders(
 					headerWithName("Authorization").description(
-							"Basic auth credentials")), 
-			responseHeaders( 
+							"Basic auth credentials")),
+			responseHeaders(
 					headerWithName("X-RateLimit-Limit").description(
 							"The total number of requests permitted per period"),
 					headerWithName("X-RateLimit-Remaining").description(
@@ -905,26 +950,28 @@ this.mockMvc
 ```
 
 #### （8）重复利用生成片段
+
 ```java
 protected final LinksSnippet pagingLinks = links(
 		linkWithRel("first").optional().description("The first page of results"),
 		linkWithRel("last").optional().description("The last page of results"),
 		linkWithRel("next").optional().description("The next page of results"),
 		linkWithRel("prev").optional().description("The previous page of results"));
-		
-		
+
+
 this.mockMvc.perform(get("/").accept(MediaType.APPLICATION_JSON))
 	.andExpect(status().isOk())
-	.andDo(document("example", this.pagingLinks.and( 
+	.andDo(document("example", this.pagingLinks.and(
 			linkWithRel("alpha").description("Link to the alpha resource"),
 			linkWithRel("bravo").description("Link to the bravo resource"))));
 ```
 
 #### （9）记录约束
+
 ```java
 public void example() {
-	ConstraintDescriptions userConstraints = new ConstraintDescriptions(UserInput.class); 
-	List<String> descriptions = userConstraints.descriptionsForProperty("name"); 
+	ConstraintDescriptions userConstraints = new ConstraintDescriptions(UserInput.class);
+	List<String> descriptions = userConstraints.descriptionsForProperty("name");
 }
 
 static class UserInput {
@@ -938,8 +985,3 @@ static class UserInput {
 	String password;
 }
 ```
-
-
-
-
-

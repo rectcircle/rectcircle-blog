@@ -2,7 +2,7 @@
 title: scala web scalatra（一）
 date: 2016-12-29T18:54:44+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/35
@@ -15,37 +15,21 @@ tags:
 > http://scalatra.org/guides/2.5/
 > 更新时间2017-04-15
 
-## 目录
-* [一、快速开始](#一、快速开始)
-	* [1、安装](#1、安装)
-	* [2、第一个项目](#2、第一个项目)
-	* [3、项目结构](#3、项目结构)
-	* [4、debug](#4、debug)
-* [二、HTTP相关](#二、HTTP相关)
-	* [1、路由](#1、路由)
-	* [2、Actions（操作）](#2、Actions（操作）)
-	* [3、反向路由（重定向）](#3、反向路由（重定向）)
-	* [4、请求和响应](#4、请求和响应)
-	* [5、开启Gzip](#5、开启Gzip)
-	* [6、认证框架Scentry](#6、认证框架Scentry)
-* [三、异步支持](#三、异步支持)
-	* [1、Akka](#1、Akka)
-	* [2、Atmosphere](#2、Atmosphere)
-* [四、视图](#四、视图)
-	* [1、内联HTML]()
-	* [2、Scalate模板引擎](#2、Scalate模板引擎)
-
-
 ## 一、快速开始
+
 ### 1、安装
+
 开始使用新的Web框架听起来可能有点吓人。幸运的是，Scalatra很容易安装，因为它有相对较少的依赖。 它可以在Windows，Mac OS X，Linux或BSD上运行。
+
 #### （1）安装JDK
+
 Scalatra是用Scala编写的Web微框架，因此您需要安装Java开发工具包（JDK）。
 Many systems come with a JDK pre-loaded.
 
 许多系统可能已经预装了JDK
 
 在终端（cmd或bash）运行 `java -version` 和 `javac -version` 查看是否已经预装JDK，命令的输出应该像下面这样：
+
 ```bash
 $ java -version
 java version "1.7.0_10"
@@ -57,59 +41,71 @@ Java HotSpot(TM) 64-Bit Server VM (build 23.6-b094, mixed mode)
 $ javac -version
 javac 1.7.0_10
 ```
+
 如果你需要的是Java 7，在这里会显示 version 1.7。
 
 Scala中的Java 8支持在Scala 2.11.x版本中被归类为实验。如果你不确定这意味着什么，请使用Java 7版本。
 
 如果您还没有安装Java，您可以在[Java 7安装页面](http://docs.oracle.com/javase/7/docs/webnotes/install/index.html)找到如何为您的系统安装它。确保你使用OpenJDK或Sun的JDK。有些Linux发行版预安装gcj，这将不起作用。
 
-
 #### （2）安装giter8
+
 中国用户参见[scala读书笔记（三）](https://www.rectcircle.cn/detail/32#十二、简单构建工具SBT)十二、简单构建工具SBT和十三、web服务。有针对墙的解决方案
 翻译略
 
-
 ### 2、第一个项目
+
 #### （1）生成了Scalatra项目模板骨架
+
 进入工作空间
 执行命令（国内可能报错，参见[scala读书笔记（三）](https://www.rectcircle.cn/detail/32#十二、简单构建工具SBT)）
+
 ```scala
-$ g8 scalatra/scalatra-sbt 
-organization [com.example]: 
-name [My Scalatra Web App]: 
-version [0.1.0-SNAPSHOT]: 
-servlet_name [MyScalatraServlet]: 
-package [com.example.app]: 
-scala_version [2.11.7]: 
-sbt_version [0.13.9]: 
-scalatra_version [2.4.0]: 
+$ g8 scalatra/scalatra-sbt
+organization [com.example]:
+name [My Scalatra Web App]:
+version [0.1.0-SNAPSHOT]:
+servlet_name [MyScalatraServlet]:
+package [com.example.app]:
+scala_version [2.11.7]:
+sbt_version [0.13.9]:
+scalatra_version [2.4.0]:
 
 Template applied in ./my-scalatra-web-app
 ```
+
 选项解释说明翻译略参见http://www.scalatra.org/2.4/getting-started/first-project.html
 
 #### （2）使用idea管理项目
+
 * 安装Idea和sbt插件
 * File > Open > 选择刚刚生成的项目，即可打开编码
 
 #### （3）构建
+
 点击idea左下右打开Terminal（终端）
 输入
+
 ```bash
 sbt
 > jetty:start
 ```
+
 在浏览器打开http://127.0.0.1:8080/ 即可看到页面
 
 #### （4）自动编译重载
+
 ```bash
 sbt
 > ~;jetty:stop;jetty:start
 ```
 
 ### 3、项目结构
+
 #### （1）路径
+
 推荐的Scalatra项目构建方法如下。这是你使用giter8生成一个新项目时得到的：
+
 ```
 project
 |_build.properties      <= specifies what version of sbt to use
@@ -138,11 +134,13 @@ src
             |_ projectname
                |_ MyScalatraServletSpec.scala
 ```
+
 对于那些使用过Rails，Sinatra或Padrino应用程序的人来说，基本结构应该是相当熟悉的。你的视图在views文件夹，布局（包括包装视图）在layouts文件夹。
 
 Scalatra giter8项目将Scala应用程序代码放入一系列命名空间目录中：在上面的例子中，是`org.yourdomain.projectname`。这完全是可选的。在Scala编程风格知道中建议这么做，但是这不是语言本身强制要求的。如果你想，你可以把所有的Scala代码放在同一个目录，以方便导航。
 
 #### （2）静态资源文件
+
 静态文件放置在webapps文件夹中，他是静态文件的根目录，与任何基于servlet的应用程序一样，此目录的内容都是公用的，除了WEB-INF目录中的文件外。
 
 示例结构可以帮助理解这一点。
@@ -167,17 +165,21 @@ src
       |- images
          |_ foo.jpg
 ```
+
 在此应用程序中，唯一可公开访问的文件在 stylesheets/default.css 和 images/ foo.jpg。其他一切将受到Web应用程序容器的保护。
 
-
 #### （3）ScalatraServlet 和 ScalatraFilter对比
+
 有两个基类可以继承，以便使编写Scalatra应用程序：`ScalatraServlet` and `ScalatraFilter`。
+
 ```scala
 class YourServlet extends ScalatraServlet with ScalateSupport {
   // your class here
 }
 ```
+
 vs
+
 ```scala
 class YourFilter extends ScalatraFilter with ScalateSupport {
   // your class here
@@ -187,17 +189,21 @@ class YourFilter extends ScalatraFilter with ScalateSupport {
 他们主要区别是找不到路由时的默认行为。ScalatraFilter将委派给链中的下一个过滤器或servlet（由web.xml配置），这允许您在同一WAR中的不同命名空间中安装多个servlet。
 
 **如果使用ScalatraFilter：**
+
 * 你需要在同一Url空间迁移旧版的webapp
 * 您希望从WAR提供静态内容，而不是专用的Web服务器
 
 **如果使用ScalatraServlet：**
+
 * 您希望匹配前缀比上下文路径更深的路由。
 * 您不确定要使用哪个！
 
 #### （4）Scalatra的sbt依赖
+
 project/build.scala文件定义您的应用程序将依赖的库，以便sbt可以为您下载并构建您的Scalatra项目。
 
 这里有一个Scalatra 的 project/build.scala文件：
+
 ```scala
 import sbt._
 import Keys._
@@ -247,13 +253,17 @@ object MyExampleBuild extends Build {
 ```
 
 ### 4、debug
+
 #### （1） 使用g8创建项目
+
 参见[第一个项目](#2、第一个项目)
 
 #### （2） 导入到idea
+
 参见[第一个项目](#2、第一个项目)
 
 #### （3）在`build.sbt`最后添加debug配置
+
 ```scala
 //......
 def debugJetty = Command.command("debugJetty") { state =>
@@ -276,6 +286,7 @@ commands += debugJetty
 ```
 
 #### （4）配置远程调试
+
 * 回到idea
 * Run -> Edit Configurations
 * 点击`+`号
@@ -288,13 +299,14 @@ commands += debugJetty
 * 成功断点在断点处
 * 回到控制台jetty:stop停止调试
 
-
-
-
 ## 二、HTTP相关
+
 ### 1、路由
+
 ——匹配url将请求交由一个方法处理，即url与scala代码的映射
+
 #### （1）匹配http协议的方法
+
 ```scala
 class Articles extends ScalatraServlet {
   get("/articles/:id") {  //  <= this is a route matcher
@@ -317,6 +329,7 @@ class Articles extends ScalatraServlet {
 ```
 
 #### （2）命名参数
+
 ```scala
 get("/hello/:name") {
   // Matches "GET /hello/foo" and "GET /hello/bar"
@@ -326,6 +339,7 @@ get("/hello/:name") {
 ```
 
 #### （3）通配符
+
 ```scala
 	get("/say/*/to/*") {
 		// Matches "GET /say/hello/to/world"
@@ -334,7 +348,7 @@ get("/hello/:name") {
 			say {split(0)} to {split(1)}
 		</h1>
 	}
-	
+
 	get("/download/*.*") {
 		// Matches "GET /download/path/to/file.xml"
 		multiParams("splat") // == Seq("path/to/file", "xml")
@@ -346,6 +360,7 @@ get("/hello/:name") {
 ```
 
 #### （4）正则匹配
+
 ```scala
 	get("""^\/f(.*)/b(.*)""".r) {
 		// Matches "GET /foo/bar"
@@ -354,6 +369,7 @@ get("/hello/:name") {
 ```
 
 #### （5）条件
+
 ```scala
 get("/foo", request.getRemoteHost == "127.0.0.1") {
 	// Overrides "GET /foo" for local users
@@ -366,6 +382,7 @@ get("/foo", request.getRemoteHost == "127.0.0.1", request.getRemoteUser == "admi
 ```
 
 #### 2.5新增：添加对PUT和DELETE的支持
+
 Scalatra支持的HTTP动词是`GET`和`POST`，但是不支持`PUT`和`DELETE`
 
 许多前端库使用非标准但简单的约定来表示他们希望将该请求视为`PUT`或`DELETE`而不是POST：例如，jQuery将`X-HTTP-METHOD-OVERRIDE`标头添加到请求中。
@@ -373,7 +390,8 @@ Scalatra支持的HTTP动词是`GET`和`POST`，但是不支持`PUT`和`DELETE`
 其他客户端和框架通常通过向POST主体添加`_method = put`或`_method = delete`参数来表示相同的事情。
 
 Scalatra会在传入请求时查找这些约定，如果将`MethodOverride` trait添加到servlet或过滤器中，则会自动转换请求方法：
-```
+
+```scala
 class MyFilter extends ScalatraFilter with MethodOverride {
 
   // POST to "/foo/bar" with params "id=2" and "_method=put" will hit this route:
@@ -384,8 +402,10 @@ class MyFilter extends ScalatraFilter with MethodOverride {
 ```
 
 #### （6）路由排序
+
 这样总是调用下面的方法，排序简单的按照从下到上顺序，不是按照匹配精确度来排序
 //访问/foo/abc返回还是下面
+
 ```scala
 get("/foo/abc", request.getRemoteHost == "127.0.0.1") {
 	// Overrides "GET /foo" for local users
@@ -399,6 +419,7 @@ get("/foo/*", request.getRemoteHost == "127.0.0.1") {
 ```
 
 #### （7）参数处理
+
 * multiParams
 * params
 	* params.getOrElse
@@ -434,8 +455,7 @@ get("/articles/:id") {
 params("paramName") 找不到抛出异常，有多个返回第一个，类型为字符串
 params.get("paramName") 返回一个Option
 multiParams("param") 返回一个Seq，匹配不到没有为空Seq
-	
-	
+
 使用params.getOrElse("author", halt(400))设置默认值
 
 ```scala
@@ -449,9 +469,10 @@ get("/articles-by/:author/:page") {
 
 使用字节传递json数据不会被映射只能使用`request.body`获取，但这不推荐
 
-
 #### （8）servlet过滤器
+
 一般示例
+
 ```scala
 before() {
 	println("请求处理前执行")
@@ -463,6 +484,7 @@ after(){
 ```
 
 匹配url路径执行过滤器方法
+
 ```scala
 before("/admin/*") {
   basicAuth
@@ -474,14 +496,16 @@ after("/admin/*") {
 ```
 
 #### （9）servlet内方法actions, errors, and filters的调用顺序
+
 1. `before` 过滤器
 2. Routes and actions.
 3. 如果在before过滤器或路由操作期间抛出异常，则会将其传递给errorHandler函数，并且其结果作为action的作结果。
 4. `after` 过滤器
 
-
 #### （10）重定向
+
 `redirect`将发送一个301 response
+
 ```scala
 get("/"){
 	redirect("/someplace/else")
@@ -489,6 +513,7 @@ get("/"){
 ```
 
 #### （11）设定返回状态码
+
 ```scala
 halt(403)
 halt(403, <h1>Go away!</h1>)
@@ -501,7 +526,9 @@ halt(status = 403,
 ```
 
 #### （12）passing方法
+
 将请求交由另一个，处理由下到上，参数任然可以获得参数
+
 ```scala
 get("/guess/*") {
   <h1>"You missed!"{params("who")}</h1>
@@ -516,14 +543,15 @@ get("/guess/:who") {
 ```
 
 #### （13）notFound 处理没有映射的请求
+
 ```scala
 notFound {
   <h1>Not found. Bummer.</h1>
 }
 ```
 
-
 #### （14）匹配最后的斜线
+
 ```scala
 //访问http://127.0.0.1:8080/guess
 //http://127.0.0.1:8080/guess/
@@ -534,8 +562,11 @@ get("foo/bar/?") {
 ```
 
 ### 2、Actions（操作）
+
 Action是匹配到路由后执行的代码（也称为业务逻辑）
+
 #### （1）默认的行为
+
 每条路由后面都有一个动作。 Action可以返回任何值，然后根据以下规则将其渲染到响应中。
 
 |返回类型|渲染方式|
@@ -546,11 +577,12 @@ Action是匹配到路由后执行的代码（也称为业务逻辑）
 | Unit | 这表示action完成整个响应，并且不采取进一步的action。 |
 | Any | 对于任何其他值，如果未设置`content-type`，则将其设置为`text/plain`。该值将转换为字符串并写入响应的writer |
 
-
 #### （2）自定义action行为
+
 对于不在上表中的行为，可以通过重写`renderResponse`为这些或其他返回类型定制。
 
 ActionResult示例
+
 ```scala
 get("/file/:id") {
 	params.get("id") match {
@@ -565,9 +597,10 @@ get("/file/:id") {
 
 在Scalatra中有几十个可能的响应，如果你想查看所有它们，并找出他们产生什么响应代码，最简单的方法是查看ActionResult源代码。
 
-
 ### 3、反向路由（重定向）
+
 使用页面级别相对路由（比较违反常识）
+
 ```scala
 get("/relative"){
 	// 访问 http://127.0.0.1:8080/redirect/relative
@@ -577,6 +610,7 @@ get("/relative"){
 ```
 
 使用上下文级相对路由
+
 ```scala
 get("/context") {
 	// 访问 http://127.0.0.1:8080/redirect/context
@@ -586,6 +620,7 @@ get("/context") {
 ```
 
 可以将路由保存为变量，以便它们具有方便的句柄：
+
 ```scala
 class MyApp extends ScalatraServlet with UrlGeneratorSupport {
   // When you create a route, you can save it as a variable
@@ -602,7 +637,9 @@ class MyApp extends ScalatraServlet with UrlGeneratorSupport {
 ```
 
 ### 4、请求和响应
+
 #### （1）请求
+
 Inside any action, the current request is available through the request variable. The underlying servlet request is implicitly extended with the following methods:
 在任何操作中，当前的请求都可以通过request变量获得。底层的servlet request通过以下方法隐式拓展
 
@@ -612,16 +649,17 @@ cookies: 请求的Cookie的Map视图
 multiCookies: 请求的Cookie的Map视图
 
 #### （2）响应
+
 响应可以通过response变量获得
 
-
 #### （3）ServletContext
+
 servlet上下文可以通过`servletContext`变量获得
 
-
-
 ### 5、开启Gzip
+
 混入`ContentEncodingSupport`特质
+
 ```scala
 class GzipServlet extends ScalatratestStack with ContentEncodingSupport {
 	get("/") {
@@ -639,14 +677,16 @@ class GzipServlet extends ScalatratestStack with ContentEncodingSupport {
 ```
 
 ### 6、认证框架Scentry
+
 #### （1）介绍
+
 使用此认证框架，要实现两个部分
 
 * 定义身份认证策略类可以有多个，声明如下
 
 ```scala
 class UserPasswordStrategy(protected val app: ScalatraBase)(implicit request: HttpServletRequest, response: HttpServletResponse) extends ScentryStrategy[User] {
-	
+
 }
 ```
 
@@ -655,15 +695,16 @@ class UserPasswordStrategy(protected val app: ScalatraBase)(implicit request: Ht
 ```scala
 trait AuthenticationSupport extends ScalatraBase with ScentrySupport[User] {
   self: ScalatraBase =>
-	
+
 }
 ```
 
 #### （2）使用样例创建步骤
+
 > git地址https://git.oschina.net/null_834/ScalatraScentryAuthDemo.git
 
-
 **a. 引入依赖**
+
 ```scala
 val ScalatraVersion = "2.5.0"
 
@@ -671,6 +712,7 @@ libraryDependencies += "org.scalatra" %% "scalatra-auth" % ScalatraVersion
 ```
 
 **b.新建包`com.xxx.xxx.auth`和`com.xxx.xxx.auth.strategies`创建一个用户实体类**
+
 ```scala
 package com.constructiveproof.example.models
 import org.slf4j.LoggerFactory
@@ -684,23 +726,27 @@ case class User(id:String)               {
 
 ```
 
-
 **c. 编写两个用户身份验证策略**
-密码登录
-`class UserPasswordStrategy(protected val app: ScalatraBase)(implicit request: HttpServletRequest, response: HttpServletResponse)`
- 
-记住登录
-`class RememberMeStrategy(protected val app: ScalatraBase)(implicit request: HttpServletRequest, response: HttpServletResponse) extends ScentryStrategy[User] `
 
+密码登录
+
+`class UserPasswordStrategy(protected val app: ScalatraBase)(implicit request: HttpServletRequest, response: HttpServletResponse)`
+
+记住登录
+
+`class RememberMeStrategy(protected val app: ScalatraBase)(implicit request: HttpServletRequest, response: HttpServletResponse) extends ScentryStrategy[User]`
 
 **d. 编写身份验证的配置入口**
+
 配置验证策略和其他一些常用函数
 `trait AuthenticationSupport extends ScalatraBase with ScentrySupport[User] {self: ScalatraBase =>}`
 
-**e. 配置一个特质用于Controller混入 **
-`class SessionsController extends ScentryauthdemoStack with AuthenticationSupport `
+**e. 配置一个特质用于Controller混入**
+
+`class SessionsController extends ScentryauthdemoStack with AuthenticationSupport`
 
 **f. 需要身份验证的Controller混入e.步骤编写的特质**
+
 ```scala
 class ProtectedController extends ScentryauthdemoStack with AuthenticationSupport {
   /**
@@ -718,7 +764,9 @@ class ProtectedController extends ScentryauthdemoStack with AuthenticationSuppor
 ```
 
 #### （3）认证流程
+
 情况一：第一次登录
+
 * 用户访问被保护页面
 * 后台收到请求before()过滤器 调用isAuthenticated方法放回false
 * 重定向登录页面，访问登录页面
@@ -729,9 +777,10 @@ class ProtectedController extends ScentryauthdemoStack with AuthenticationSuppor
 * 跳转到受保护页面，后台收到请求before()过滤器 调用isAuthenticated方法放回true
 * 加载页面成
 
-
 #### （4）验证策略详细写法
+
 **必须实现的方法`authenticate()`**
+
 ```scala
 override def authenticate()(implicit request: HttpServletRequest, response: HttpServletResponse): Option[User] = {
 		//获取请求参数app.params.getOrElse("username", "")
@@ -740,11 +789,13 @@ override def authenticate()(implicit request: HttpServletRequest, response: Http
 ```
 
 **定义策略名**
+
 ```scala
 override def name: String = "UserLogin"
 ```
 
 **执行`authenticate()`方法前执行，验证参数是否合理`isValid`**
+
 ```scala
 override def isValid(implicit request: HttpServletRequest) = {
 }
@@ -753,9 +804,8 @@ override def isValid(implicit request: HttpServletRequest) = {
 **`unauthenticated()`验证未通过执行的函数，一般跳转到登陆页面**
 //...
 
-
-
 #### （5）Controller常用方法
+
 `isAuthenticated` 验证是否已经通过验证（这只是读取验证状态、不会执行验证策略，执行验证策略前，默认为false）
 `scentry.authenticate("RememberMe")` 执行指定的验证策略
 `scentry.authenticate()` 执行所有的验证策略
@@ -763,14 +813,16 @@ override def isValid(implicit request: HttpServletRequest) = {
 `userOption` 获取用户实体对象通过调用fromSession获得
 
 ### 7、Flash重定向带参数
+
 访问/toOther将重定向到other，用flash可以读取设置的参数
+
 ```scala
 class FlashController extends ScalatratestStack with FlashMapSupport{
 	get("/toOther"){
 		flash("notice") = "dsf"
 		redirect(url("/other"))
 	}
-	
+
 	get("/other"){
 		<h1>toOther的参数是：{flash.get("notice")}</h1>
 	}
@@ -778,14 +830,18 @@ class FlashController extends ScalatratestStack with FlashMapSupport{
 ```
 
 ## 三、异步支持
+
 ### 1、Akka
+
 #### （1）添加依赖
+
 ```scala
 "com.typesafe.akka" %% "akka-actor" % "2.3.4",
 "net.databinder.dispatch" %% "dispatch-core" % "0.11.3",
 ```
 
 #### （2）初始化Actor系统
+
 ```scala
 import _root_.akka.actor.{Props, ActorSystem}
 import com.example.app._
@@ -810,33 +866,37 @@ class ScalatraBootstrap extends LifeCycle {
 ```
 
 #### （3）Controller混入FutureSupport特质
+
 ```scala
 class AkkaController(system:ActorSystem, myActor:ActorRef) extends ScalatratestStack  with FutureSupport {
 	implicit val timeout = new Timeout(2 seconds)
 	protected implicit def executor: ExecutionContext = system.dispatcher
-	
+
 	// You'll see the output from this in the browser.
 	get("/ask") {
 		myActor ? "Do stuff and give me an answer"
 	}
-	
+
 	// You'll see the output from this in your terminal.
 	get("/tell") {
 		myActor ! "Hey, you know what?"
 		Accepted()
 	}
-	
+
 }
 ```
 
 ### 2、Atmosphere
+
 Atmosphere是Scalatra内建的一个异步的异步websocket/comet框架。Atmosphere允许您在服务器和用户的浏览器（或其他用户代理）之间保持持久连接，您可以随时向用户推送新信息，而无需刷新页面。
 
 #### （1）Atmosphere样例——一个web聊天系统
+
 > git地址https://git.oschina.net/null_834/Scalatra-Atmosphere-Example.git
 
 **a. 使用g8创建项目骨架**
 **b. 添加依赖**
+
 ```scala
 "org.scalatra" %% "
 " % "2.5.0",
@@ -844,6 +904,7 @@ Atmosphere是Scalatra内建的一个异步的异步websocket/comet框架。Atmos
 ```
 
 **c. 创建Controller引入内容**
+
 ```scala
 import java.util.Date
 
@@ -858,10 +919,11 @@ import scala.concurrent.ExecutionContext.Implicits.global
 ```
 
 **d. 创建Controller**
+
 ```scala
-class ChatController extends ScalatraServlet 
-  with ScalateSupport with JValueResult 
-  with JacksonJsonSupport with SessionSupport 
+class ChatController extends ScalatraServlet
+  with ScalateSupport with JValueResult
+  with JacksonJsonSupport with SessionSupport
   with AtmosphereSupport {
 
   atmosphere("/the-chat") {
@@ -878,10 +940,12 @@ class ChatController extends ScalatraServlet
   }
 ```
 
-**e. 客户端依赖
+**e. 客户端依赖**
+
 https://github.com/Atmosphere/atmosphere-javascript
 
 **f.客户端程序**
+
 ```js
 var socket = atmosphere; //获取socket
 var author = null;
@@ -921,13 +985,14 @@ subSocket = socket.subscribe(request);
 //subSocket.push(str);
 ```
 
-
-
 ## 四、视图
+
 ### 1、内联HTML
+
 渲染视图的最简单的方法是使用内联HTML。
 
 与大多数其他语言中的框架不同，Scalatra可以使用Scala的内置XML文字直接输出XML作为操作的返回值：
+
 ```scala
 get("/inline"){
 	contentType="text/html"
@@ -945,18 +1010,21 @@ get("/inline"){
 
 通常你会想要更多的结构比内联HTML可以提供，以便您可以从您的控制器操作和路由分离您的视图。
 
-
 ### 2、Scalate模板引擎
+
 如果你使用Scalatra构建一个web应用程序（而不是一个API），你可能会想渲染HTML布局，页面内容，可重复使用的碎片或部分。像许多其他框架一样，我们将HTML模板称为“视图”。
 
 Scalatra可以以两种主要方式渲染视图：
-1. 内联HTML，直接从操作返回。 
+
+1. 内联HTML，直接从操作返回。
 2. 使用内置在默认Scalatra g8模板中的ScalateSupport帮助程序trait。
 
 #### （1）Scalate介绍
+
 Scalatra使用了一个非常强大的模板引擎，Scalate。它支持多种模板样式。我们认为它是最好的模板引擎之一 - 它非常快速，灵活和功能丰富。
 
 Scalate的亮点功能包括：
+
 * Custom template evaluation scopes / bindings
 * Ability to pass locals to template evaluation
 * Support for passing a block to template evaluation for "yield"
@@ -968,6 +1036,7 @@ Scalate包括对多种模板样式的支持， 包括 SSP (类似于 Velocity �
 Scalate默认包含在scalatra中。默认情况下，Scalatra在应用程序根目录中的views目录中查找视图。
 
 有两种使用Scalate的方法。您可以使用ScalateSupport帮助程序，或直接调用Scalate。无论哪种方式，您都需要使用ScalateSupport扩展您的servlet，如下所示：
+
 ```scala
 class YourServlet extends ScalatraServlet with ScalateSupport {
   get("/") {
@@ -976,31 +1045,36 @@ class YourServlet extends ScalatraServlet with ScalateSupport {
 }
 ```
 
-
 #### （2）ScalateSupport 帮助
+
 使用Scalate的最简单的方法是使用Scalatra的ScalateSupport帮助程序。 每种可能的Scalate模板（mustache，scaml，jade，ssp）都有一个相应的助手，可以用来查找模板文件。 基本用法：
+
 ```scala
 get("/") {
   contentType="text/html"
   ssp("/index") //默认查找模板目录
 }
 ```
+
 注意：当使用scalate helper方法时，它不需要有一个前导的`/`，所以`ssp（"index"）`会像`ssp（"/index:"）`一样工作。
 
 你也可以使用一点点魔法来做同样的事情，使用一个名为layoutTemplate的方法。此方法允许您渲染任何类型的Scalate模板。您需要给出模板的完整路径，从WEB-INF目录开始：
+
 ```scala
 get("/") {
   contentType="text/html"
   layoutTemplate("/WEB-INF/templates/views/index.ssp")
 }
 ```
+
 注意：当使用layoutTemplate时，必须在视图路径前添加相对`/`字符。所以，`layoutTemplate("/WEB-INF/templates/views/foo.ssp")`是正确的，`layoutTemplate("WEB-INF/templates/views/foo.ssp")`将出错。
 
-
 #### （3）将参数传递给视图
+
 如前所述，Scalate模板是强类型的（除了Mustache不是之外）。这使它们运行非常快，并通过让编译器告诉你什么时候出错，帮助你提高效率。这也意味着您想要在视图中访问的任何控制器变量都需要由控制器显式发送到视图。它们需要在视图中声明才能使用。
 
 视图参数在模板文件的路径后使用Seq(String,Any）传递给视图。最简单的示例可能如下所示：
+
 ```scala
 get("/") {
   contentType="text/html"
@@ -1023,6 +1097,7 @@ get("/") {
 ```
 
 视图还可以从templateAttributes帮助器接收参数。如果您有多个步骤来创建参数，这允许您从路由操作之前的处理程序或内部全局传递参数，示例如下：
+
 ```scala
 before(){
   if(isAuthenticated) {
@@ -1032,7 +1107,9 @@ before(){
 ```
 
 #### （4）布局
+
 Scalatra在webapp/layouts/目录中查找布局，并将当前操作的渲染视图插入到您指定的点的模板中。如果您使用SSP，您的布局可能如下所示：
+
 ```html
 <%@ val body: String %>
 <html>
@@ -1046,11 +1123,14 @@ Scalatra在webapp/layouts/目录中查找布局，并将当前操作的渲染视
 您的操作的特定视图将在`<%= unescape(body) %>`语句中呈现。
 
 #### （5）默认布局
+
 按照惯例，Scalatra在`WEB-INF/layouts/default.xx`中使用默认布局（其中xx是scalate支持的模板类型之一）。如果你使用ssp，例如，你把一个`default.ssp`文件在`WEB-INF/layouts/default.ssp`。它会自动使用。在这种情况下，您可以简单地调用`ssp("/index")`，并且响应将在默认布局中呈现。
 
 #### （6）指定布局
+
 从您的操作传递的布局键有点特别，因为它被Scalate用于标识布局文件，它围绕当前操作的输出包装一个标准布局。
 指定一个参数为"layout"->"WEB-INF/layouts/app.jade"
+
 ```scala
 get("/") {
   contentType="text/html"
@@ -1060,7 +1140,9 @@ get("/") {
 ```
 
 #### （7）禁用布局
+
 要禁用某些模板的布局，Scalate接受空布局参数：
+
 ```scala
 get("/") {
   // This template will render without a layout.
@@ -1069,7 +1151,9 @@ get("/") {
 ```
 
 #### （8）呈现404页面
+
 当Scalatra找不到路由时，您可能需要呈现404网页。 你可以通过将notFound帮助器放入你的servlet来做到这一点。下面是它的外观，当使用ScalateSupport帮助程序来呈现页面。
+
 ```scala
 notFound {
 	//查找路径是否存在这个路径的模板，不存在就查找静态文件，找不到就返回默认NotFind
@@ -1082,6 +1166,7 @@ notFound {
 
 我的写法:
 先查找静态文件，找不到，返回自定义的404页面
+
 ```scala
 notFound {
 
@@ -1094,25 +1179,31 @@ notFound {
 ```
 
 #### （9）关闭Scalate 错误页面（部署设定）
+
 在混入ScalateSupport中，可以为任何未捕获的异常启用Scalate错误页面。此页面呈现模板源并突出显示错误。要禁用此行为，请覆盖isScalateErrorPageEnabled：
+
 ```scala
 override def isScalateErrorPageEnabled = false
 ```
 
 #### （10）乱码
+
 若在`trait Xxx extends ScalatraServlet with ScalateSupport`里面实现notFound
 需要显示的声明`contentType = "text/html;charset=UTF-8"`否则乱码
 
-
 ### 3、Ssp 模板语言
-#### （1）取值表达式`${ }`或` <%= %>`
+
+#### （1）取值表达式`${ }`或`<%= %>`
+
 ```ssp
 <p>
 		<%= List("hi", "there", "reader!").mkString(" ") %>
 		${ "yo "+(3+4) }
 </p>
 ```
+
 输出
+
 ```html
 <p>
   hi there reader!
@@ -1120,8 +1211,8 @@ override def isScalateErrorPageEnabled = false
 </p>
 ```
 
-
 #### （2）scala代码块`<% %>`或者  Velocity风格`#{ }#`
+
 ```ssp
 <%
   var foo = "hello"
@@ -1130,14 +1221,18 @@ override def isScalateErrorPageEnabled = false
 %>
 <p>${foo}</p>
 ```
+
 输出
+
 ```html
 <p>hello there you!</p>
 ```
 
 #### （3）声明传递变量或者属性`<%@ %>`
+
 如果属性映射不包含声明变量，则在渲染模板时抛出NoValueSetException。
 使用默认值的形式（如下第二行）
+
 ```ssp
 <%@ val foo: MyType %>
 <%@ val bar: String = "this is the default value" %>
@@ -1149,33 +1244,39 @@ override def isScalateErrorPageEnabled = false
 <%@ import val model: Person %>
 <p>Hello ${name}, what is the weather like in ${city}</p>
 ```
+
 或者
+
 ```ssp
 <%@ val model: Person %>
 <% import model._ %>
 <p>Hello ${name}, what is the weather like in ${city}</p>
 ```
+
 等价于
+
 ```ssp
 <%@ val model: Person %>
 <p>Hello ${model.name}, what is the weather like in ${model.city}</p>
 ```
 
 #### （4）Velocity风格的指令
+
 执行逻辑分支或循环Scalate支持Velocity样式指令。
 
 Velocity风格的指令都以＃开头，并且在括号中使用表达式，或者不使用。
 
 例如，#if接受一个表达式，例如#if(x> 5)。如果需要，指令名称和括号之间可以有空格。所以你可以使用任何这些
-* #if(x > 5)
-* #if (x > 5)
-* #if( x > 5 )
+
+* `#if(x > 5)`
+* `#if(x > 5)`
+* `#if( x > 5)`
 
 当指令不接受表达式时，您可以使用指令加括号的方式将其与文本更清楚地分开。
 例如，如果你想在一行写if/else
 
-
 **a. `#for`**
+
 ```ssp
 <ul>
 #for (i <- 1 to 5)
@@ -1193,6 +1294,7 @@ Velocity风格的指令都以＃开头，并且在括号中使用表达式，或
 ```
 
 输出
+
 ```html
 <ul>
   <li>1</li>
@@ -1211,6 +1313,7 @@ Velocity风格的指令都以＃开头，并且在括号中使用表达式，或
 ```
 
 **b. `#if`**
+
 ```ssp
 <p>
 #if (customer.type == "Gold")
@@ -1228,7 +1331,9 @@ Velocity风格的指令都以＃开头，并且在括号中使用表达式，或
 #end
 </p>
 ```
+
 输出
+
 ```html
 <p>
   Special stuff...
@@ -1239,16 +1344,20 @@ Velocity风格的指令都以＃开头，并且在括号中使用表达式，或
 ```
 
 **c. `#set`**
+
 你经常想要一个模板的一部分，并将其分配给一个属性，然后你可以传递到布局或其他模板。
 
 例如，您可能希望定义一个头部分，允许页面定义要进入HTML头元素的自定义输出...
+
 ```ssp
 #set (head)
   ... some page specific JavaScript includes here...
 #end
 ...rest of the page here...
 ```
+
 layout文件
+
 ```ssp
 <%@ var body: String %>
 <%@ var title: String = "Some Default Title" %>
@@ -1256,7 +1365,7 @@ layout文件
 <html>
 <head>
   <title>${title}</title>
-  
+
   <%-- page specific head goes here --%>
   ${unescape(head)}
 </head>
@@ -1264,14 +1373,16 @@ layout文件
   <p>layout header goes here...</p>
 
   ${unescape(body)}
-  
+
   <p>layout footer goes here...</p>
 </body>
 </html>
 ```
 
 **d. `#match`**
+
 您可以使用`#match`，`#case`，`#otherwise`和`#end`指令执行Scala样式模式匹配。
+
 ```ssp
 <p>
 #match (customer.type)
@@ -1297,14 +1408,15 @@ layout文件
 </p>
 ```
 
-
 **e. `#do`**
+
 用于调用模板内部可用的函数如：
 layout("foo.ssp")
 render("foo.ssp")
 等
 
 假设有foo.ssp
+
 ```ssp
 <%@ val body: String = "Bar" %>
 <table>
@@ -1331,19 +1443,21 @@ Foo
 ```
 
 **f. `#import`等价于`<% import somePackage %>`**
+
 ```ssp
 #import(java.util.Date)
 
 <p>The time is now ${new Date}</p>
 ```
 
-
 #### （5）注释`<%-- --%>`
 
 #### （6）包含命令`${include(someUri)}`
 
 #### （7）渲染模板
+
 通常想要将大模板重构为更小的可重用部分。它容易使用render方法从另一个模板中渲染模板，如下所示
+
 ```ssp
 <% render("foo.ssp") %>
 <% render("/customers/contact.ssp") %>
@@ -1352,10 +1466,12 @@ Foo
 ```
 
 #### （8）布局
+
 它很常见的想要以类似的方式来样式所有的页面;例如添加页眉和页脚，常用导航栏或包括一组常见的CSS样式表。
 
 你可以使用Scalate中的布局支持来实现这一点。
 /WEB-INF/scalate/layouts/default.ssp
+
 ```scala
 <%@ var body: String %>
 <%@ var title: String = "Some Default Title" %>
@@ -1374,6 +1490,7 @@ Foo
 ```
 
 更改标题或布局模板
+
 ```ssp
 <% attributes("layout") = "/WEB-INF/layouts/custom.ssp" %>
 <% attributes("title") = "This is the custom title" %>
@@ -1382,6 +1499,7 @@ Foo
 ```
 
 禁用布局
+
 ```ssp
 <% attributes("layout") = "" %>
 <html>
@@ -1394,6 +1512,7 @@ Foo
 
 显示的调用布局
 假设有foo.ssp
+
 ```ssp
 <%@ val body: String = "Bar" %>
 <table>
@@ -1420,6 +1539,7 @@ Foo
 ```
 
 #### （9）捕获输出
+
 ```ssp
 <% val foo = capture { %>
   hello there ${user.name} how are you?
@@ -1431,33 +1551,40 @@ ${foo}
 ```
 
 #### （10）调用scala函数
+
 ```scala
 object Cheese {
-  def foo(productId: Int) = 
+  def foo(productId: Int) =
     <a href={"/products/" + productId} title="Product link">My Product</a>
 }
 ```
+
 ```ssp
 <% import Cheese._  %>
 ${foo(123)}
 ```
 
 #### （11）集合方法`collection`
+
 对于每一个Person对象，进行渲染模板index，输出到此处，分隔符为`<hr>`
 在index模板中使用约定的变量名获取变量为person
+
 ```ssp
 <% val people = List(Person("James", "Strachan"), Person("Hiram", "Chirino")) %>
 <% collection(people, "index", "<hr/>")  %>
 ```
 
 #### （12）对象视图方法`view`
+
 ```ssp
 <% val user = new User("foo") %>
 <p>Something...</p>
 <% view(user) %>
 <p>... more stuff </p>
 ```
+
 流程：
+
 Scalate will then look for the template called packageDirectory.ClassName.viewName.(jade|mustache|ssp|scaml) and render that
 Scalate然后将查找叫做`packageDirectory.ClassName.viewName.(jade|mustache|ssp|scaml)`然后渲染。
 例如：`org.fusesource.scalate.sample.Person`将查找
@@ -1466,15 +1593,7 @@ Scalate然后将查找叫做`packageDirectory.ClassName.viewName.(jade|mustache|
 但是使用scalatra未测试成功报错
 No 'index' view template could be found for model object 'User(0,abc,111)' of type: com.rectcircle.scalatrateset.model.User
 
-
 ```ssp
 <% val user = new User("foo") %>
 ${view(user, "edit")}
 ```
-
-
-
-
-
-
-

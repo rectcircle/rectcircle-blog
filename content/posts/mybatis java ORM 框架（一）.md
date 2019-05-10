@@ -2,54 +2,30 @@
 title: mybatis java ORM 框架（一）
 date: 2017-10-21T20:23:45+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/107
   - /detail/107/
 tags:
-  - java
+  - Java
 ---
 
 > http://www.mybatis.org/mybatis-3/zh/index.html
 > http://blog.csdn.net/gebitan505/article/details/54929287
 
-## 目录
-* [一、相关说明](#一、相关说明)
-	* [1、开发环境](#1、开发环境)
-	* [2、toy项目需求](#2、toy项目需求)
-	* [3、初始化项目](#3、初始化项目)
-* [二、通用步骤](#二、通用步骤)
-	* [1、实现model对象](#1、实现model对象)
-	* [2、创建数据库及表结构](#2、创建数据库及表结构)
-* [三、无配置文件注解版](#三、无配置文件注解版)
-	* [1、包扫描配置](#1、包扫描配置)
-	* [2、实现相应的mapper接口](#2、实现相应的mapper接口)
-	* [3、测试](#3、测试)
-	* [4、在service中使用](#4、在service中使用)
-* [四、极简xml方式](#四、极简xml方式)
-	* [1、配置xml位置](#1、配置xml位置)
-	* [2、编写mybatis-config.xml](#2、编写mybatis-config.xml)
-	* [3、编写mapper.xml](#3、编写mapper.xml)
-	* [4、创建mapper接口](#4、创建mapper接口)
-	* [5、测试使用](#5、测试使用)
-* [五、官方文档摘要](#五、官方文档摘要)
-	* [1、入门](#1、入门)
-	* [2、XML配置文件](#2、XML配置文件)
-	* [3、XML映射文件](108#3、XML映射文件)
-	* [4、动态SQL](108#4、动态SQL)
-	* [5、Java API](108#5、Java API)
-	* [6、SQL语句构建器](108#6、SQL语句构建器)
-* [六、MyBatis-Spring-Boot-Starter](108#六、MyBatis-Spring-Boot-Starter)
-
-
 ## 一、相关说明
-********************************
+
+***
+
 ### 1、开发环境
+
 IntelliJ IDEA
 
 ### 2、toy项目需求
+
 简单的商品后台管理系统
+
 * 管理系统目的：对一系列商品和用户的管理。
 * 商品属性包括价格，名称，描述，分类等。
 * 管理系统需要支持对商品的增删查改，对分类的增删查改，支持按照分类浏览商品。
@@ -59,6 +35,7 @@ IntelliJ IDEA
 	* 可以做用户权限级别[查看权限，修改权限]，自由发挥）
 
 ### 3、初始化项目
+
 * 使用IDEA 的 spring boot 初始化器
 * 配置application.properties中配置数据库信息
 
@@ -72,21 +49,26 @@ spring.datasource.driverClassName = com.mysql.jdbc.Driver
 spring.session.store-type=none
 ```
 
-
-
 ## 二、通用步骤
-****************************************
+
+***
+
 ### 1、实现model对象
+
 #### （1）设计实体类
+
 假设该项目拥有一个User实体，包含以下成员
+
 * id:Long
 * username:String
 * password:String
 * name:String
 
 #### （2）创建实体类
+
 创建一个包，命名为model
 实现一个实体类（javabean）
+
 ```java
 package cn.rectcircle.ssm.model;
 
@@ -155,8 +137,11 @@ public class User implements Serializable {
 ```
 
 ### 2、创建数据库及表结构
+
 根据模型设计编写sql
+
 以mysql为例
+
 ```sql
 CREATE DATABASE `commodity`;
 
@@ -169,12 +154,17 @@ CREATE TABLE user (
 ```
 
 ## 三、无配置文件注解版
-*****************************
+
+***
+
 这种方式更能可能受限于Java注解，缺乏灵活性
 
 ### 1、包扫描配置
+
 #### （1）mapper包扫描
+
 在Spring boot入口类上添加注解`@MapperScan("cn.rectcircle.ssm.mapper")`
+
 ```java
 package cn.rectcircle.ssm;
 
@@ -191,9 +181,11 @@ public class SsmApplication {
 	}
 }
 ```
+
 这样Spring就会自动扫描接口创建相应的实体类
 
 #### （2）实体类包扫描
+
 在application.properties添加
 
 ```
@@ -202,9 +194,11 @@ mybatis.type-aliases-package=cn.rectcircle.ssm.model
 ```
 
 ### 2、实现相应的mapper接口
+
 #### （1）创建mapper包
 
 #### （2）定义业务逻辑需要的Dao操作
+
 ```java
 package cn.rectcircle.ssm.mapper;
 
@@ -242,6 +236,7 @@ public interface UserMapper {
 [参见](http://www.mybatis.org/mybatis-3/zh/java-api.html)
 
 注意，使用#符号和$符号的不同：
+
 ```java
 // This example creates a prepared statement, something like select * from teacher where name = ?;
 @Select("Select * from teacher where name = #{name}")
@@ -251,9 +246,12 @@ Teacher selectTeachForGivenName(@Param("name") String name);
 @Select("Select * from teacher where name = '${name}'")
 Teacher selectTeachForGivenName(@Param("name") String name);
 ```
+
 ### 3、测试
+
 在Maven测试目录下创建相同的包结构创建如下测试类。
 使用`@Autowired`以成员变量的方式注入
+
 ```java
 package cn.rectcircle.ssm.mapper;
 
@@ -287,12 +285,15 @@ public class UserMapperTest {
 ```
 
 ### 4、在service中使用
+
 同样使用`@Autowired`以成员变量的方式注入
 
-
 ## 四、极简xml方式
+
 ### 1、配置xml位置
+
 在application.properties中添加
+
 ```
 # 配置xml文件位置
 mybatis.config-locations=classpath:mybatis/mybatis-config.xml
@@ -300,7 +301,9 @@ mybatis.mapper-locations=classpath:mybatis/mapper/*.xml
 ```
 
 ### 2、编写mybatis-config.xml
+
 mybatis-config.xml 配置
+
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE configuration
@@ -314,12 +317,13 @@ mybatis-config.xml 配置
 		<typeAlias alias="LinkedHashMap" type="java.util.LinkedHashMap" />
 		<typeAlias alias="ArrayList" type="java.util.ArrayList" />
 		<typeAlias alias="LinkedList" type="java.util.LinkedList" />
-		
+
 	</typeAliases>
 </configuration>
 ```
 
 ### 3、编写mapper.xml
+
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
@@ -398,6 +402,7 @@ mybatis-config.xml 配置
 ```
 
 ### 4、创建mapper接口
+
 ```java
 package cn.rectcircle.ssm.mapper;
 
@@ -423,7 +428,9 @@ public interface UserMapper1 {
 ```
 
 #### 5、测试使用
+
 使用`@Autowired`注入
+
 ```java
 package cn.rectcircle.ssm.mapper;
 
@@ -461,14 +468,18 @@ public class UserMapper1Test {
 }
 ```
 
-
 ## 五、官方文档摘要
-*****************************
+
+***
+
 ### 1、入门
+
 #### （1）安装
+
 添加依赖：[Mybatis](http://mvnrepository.com/artifact/org.mybatis/mybatis)，以及jdbc驱动和数据库实现
 
 或者 maven Spring Boot
+
 ```xml
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -487,14 +498,16 @@ public class UserMapper1Test {
 ```
 
 #### （2）从 XML 中构建 SqlSessionFactory
+
 * MyBatis 以一个 SqlSessionFactory 的实例为中心的
 * SqlSessionFactory 的实例可以通过 SqlSessionFactoryBuilder 获得
 * SqlSessionFactoryBuilder 则可以从
-	*  XML 配置文件
-	*  或一个预先定制的 Configuration 的实例
-*  构建出 SqlSessionFactory 的实例
+	* XML 配置文件
+	* 或一个预先定制的 Configuration 的实例
+* 构建出 SqlSessionFactory 的实例
 
 样例代码
+
 ```java
 String resource = "org/mybatis/example/mybatis-config.xml";
 InputStream inputStream = Resources.getResourceAsStream(resource);
@@ -502,6 +515,7 @@ SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(input
 ```
 
 XML 配置文件中包含了对 MyBatis 系统的核心设置，包含获取数据库连接实例的数据源（DataSource）和决定事务作用域和控制方式的事务管理器（TransactionManager）。XML 配置文件的详细内容后面再探讨，这里先给出一个简单的示例：
+
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE configuration
@@ -527,8 +541,8 @@ XML 配置文件中包含了对 MyBatis 系统的核心设置，包含获取数�
 
 在 spring boot 中一般这些信息可以在application.properties文件中配置
 
-
 #### （2）Java代码配置
+
 ```java
 DataSource dataSource = BlogDataSourceFactory.getBlogDataSource(); //javax.sql.DataSource
 TransactionFactory transactionFactory = new JdbcTransactionFactory();
@@ -539,8 +553,11 @@ SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(confi
 ```
 
 #### （3）从 SqlSessionFactory 中获取 SqlSession
+
 例如
+
 旧版写法
+
 ```java
 SqlSession session = sqlSessionFactory.openSession();
 try {
@@ -551,6 +568,7 @@ try {
 ```
 
 新版写法
+
 ```java
 SqlSession session = sqlSessionFactory.openSession();
 try {
@@ -560,13 +578,16 @@ try {
   session.close();
 }
 ```
+
 其中BlogMapper用户自定义的接口，定义常规Dao操作，其中selectBlog就是其中一个
 Blog是用户自定义的实体类，应用与Db中的表映射
 
 原理如下
 
 #### （4）探究已映射的 SQL 语句
+
 **通过XML映射语句实例：**
+
 ```xml
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper
@@ -578,18 +599,22 @@ Blog是用户自定义的实体类，应用与Db中的表映射
   </select>
 </mapper>
 ```
+
 在命名空间org.mybatis.example.BlogMapper中定义了一个名为“selectBlog”的映射语句，这样它就允许你使用指定的完全限定名org.mybatis.example.BlogMapper.selectBlog来调用映射语句，就像上面的例子中做的那样：
+
 ```java
 Blog blog = (Blog) session.selectOne("org.mybatis.example.BlogMapper.selectBlog", 101);
 ```
+
 如果名字空间和Java接口定义一致就可以使用以下写法
+
 ```java
   BlogMapper mapper = session.getMapper(BlogMapper.class);
   Blog blog = mapper.selectBlog(101);
 ```
 
-
 **通过注解实现**
+
 ```java
 package org.mybatis.example;
 public interface BlogMapper {
@@ -598,20 +623,25 @@ public interface BlogMapper {
 }
 ```
 
-
 #### （5）作用域（Scope）和生命周期
+
 对象生命周期和依赖注入框架
+
 依赖注入框架可以创建线程安全的、基于事务的 SqlSession 和映射器（mapper）并将它们直接注入到你的 bean 中，因此可以直接忽略它们的生命周期。如果对如何通过依赖注入框架来使用 MyBatis 感兴趣可以研究一下 MyBatis-Spring 或 MyBatis-Guice 两个子项目。
 
 **SqlSessionFactoryBuilder**:
+
 这个类可以被实例化、使用和丢弃，一旦创建了 SqlSessionFactory，就不再需要它了。因此 SqlSessionFactoryBuilder 实例的最佳作用域是方法作用域（也就是**局部方法变量**）
 
 **SqlSessionFactory**:
+
 SqlSessionFactory 一旦被创建就应该在应用的运行期间一直存在，最简单的就是使用**单例模式**或者静态单例模式。
 
 **SqlSession**:
+
 每个线程都应该有它自己的 SqlSession 实例。SqlSession 的实例**不是线程安全**的，因此是不能被共享的，所以它的最佳的作用域是请求或方法作用域。
 如果你现在正在使用一种 Web 框架，要考虑 SqlSession 放在一个和 HTTP 请求对象相似的作用域中。换句话说，**每次收到的 HTTP 请求，就可以打开一个 SqlSession，返回一个响应，就关闭它**。这个关闭操作是很重要的，你应该把这个关闭操作放到 finally 块中以确保每次都能执行关闭。下面的示例就是一个确保 SqlSession 关闭的标准模式：
+
 ```java
 SqlSession session = sqlSessionFactory.openSession();
 try {
@@ -624,18 +654,23 @@ try {
 **映射器实例（Mapper Instances）**:
 映射器是创建用来绑定映射语句的接口。映射器接口的实例是从 SqlSession 中获得的。因此从技术层面讲，**映射器实例的最大作用域是和 SqlSession 相同的**，因为它们都是从 SqlSession 里被请求的。
 
-
 ### 2、XML配置文件
+
 mybatis-config.xml文件的配置
+
 #### （1）properties
+
 用于配置一些属性，这些属性在全局配置文件都可以通过`${属性名使用}`
+
 ```xml
 	<properties resource="org/mybatis/example/config.properties">
 		<property name="username" value="dev_user"/>
 		<property name="password" value="F2Fa3!33TYyg"/>
 	</properties>
 ```
+
 使用
+
 ```xml
 <dataSource type="POOLED">
   <property name="driver" value="${driver}"/>
@@ -644,16 +679,20 @@ mybatis-config.xml文件的配置
   <property name="password" value="${password}"/>
 </dataSource>
 ```
+
 关于属性的优先级：通过方法参数传递的属性具有最高优先级，resource/url 属性中指定的配置文件次之，最低优先级的是 properties 属性中指定的属性。
 
 从MyBatis 3.4.2开始，你可以为占位符指定一个默认值。例如：
+
 ```xml
 <dataSource type="POOLED">
   <!-- ... -->
   <property name="username" value="${username:ut_user}"/> <!-- 如果username没有定义，将使用ut_user作为默认值 -->
 </dataSource>
 ```
+
 前提有开启此特性
+
 ```xml
 <properties resource="org/mybatis/example/config.properties">
   <!--开启属性默认值 -->
@@ -662,7 +701,9 @@ mybatis-config.xml文件的配置
 ```
 
 #### （2）settings
+
 全局设置
+
 ```xml
 	<!--mybatis 设置 -->
 	<settings>
@@ -709,6 +750,7 @@ FAILING: 映射失败 (抛出 SqlSessionException)-->
 ```
 
 #### （3）typeAliases（类型别名）
+
 ```xml
 <typeAliases>
   <typeAlias alias="Author" type="domain.blog.Author"/>
@@ -720,7 +762,9 @@ FAILING: 映射失败 (抛出 SqlSessionException)-->
 	<package name="domain.blog"/> <!-- 会使用 Bean 的首字母小写的非限定类名来作为它的别名 -->
 </typeAliases>
 ```
+
 使用注解
+
 ```java
 @Alias("author")
 public class Author {
@@ -761,20 +805,23 @@ public class Author {
 |iterator |	Iterator|
 
 #### （4）[typeHandlers](http://www.mybatis.org/mybatis-3/zh/configuration.html#typeHandlers)
+
 无论是 MyBatis 在预处理语句（PreparedStatement）中设置一个参数时，还是从结果集中取出一个值时， 都会用类型处理器将获取的值以合适的方式转换成 Java 类型。下表描述了一些默认的类型处理器。
 
 略
 
 #### （5）[对象工厂（objectFactory）](http://www.mybatis.org/mybatis-3/zh/configuration.html#objectFactory)
+
 MyBatis 每次创建结果对象的新实例时，它都会使用一个对象工厂（ObjectFactory）实例来完成。 默认的对象工厂需要做的仅仅是实例化目标类，要么通过默认构造方法，要么在参数映射存在的时候通过参数构造方法来实例化。 如果想覆盖对象工厂的默认行为，则可以通过创建自己的对象工厂来实现。
 
 略
 
-
 #### （6）[插件（plugins）](http://www.mybatis.org/mybatis-3/zh/configuration.html#plugins)
 
 #### （7）[配置环境（environments）](http://www.mybatis.org/mybatis-3/zh/configuration.html#environments)
+
 例子
+
 ```xml
 <environments default="development">
   <environment id="development">
@@ -790,11 +837,15 @@ MyBatis 每次创建结果对象的新实例时，它都会使用一个对象工
   </environment>
 </environments>
 ```
+
 #### [（8）databaseIdProvider](http://www.mybatis.org/mybatis-3/zh/configuration.html#databaseIdProvider)
+
 略
 
 #### （9）映射器（mappers）
+
 既然 MyBatis 的行为已经由上述元素配置完了，我们现在就要定义 SQL 映射语句了。但是首先我们需要告诉 MyBatis 到哪里去找到这些语句。 Java 在自动查找这方面没有提供一个很好的方法，所以最佳的方式是告诉 MyBatis 到哪里去找映射文件。你可以使用相对于类路径的资源引用， 或完全限定资源定位符（包括 file:/// 的 URL），或类名和包名等。例如：
+
 ```xml
 <!-- Using classpath relative resources -->
 <mappers>
@@ -803,6 +854,7 @@ MyBatis 每次创建结果对象的新实例时，它都会使用一个对象工
   <mapper resource="org/mybatis/builder/PostMapper.xml"/>
 </mappers>
 ```
+
 ```xml
 <!-- Using url fully qualified paths -->
 <mappers>
@@ -811,6 +863,7 @@ MyBatis 每次创建结果对象的新实例时，它都会使用一个对象工
   <mapper url="file:///var/mappers/PostMapper.xml"/>
 </mappers>
 ```
+
 ```xml
 <!-- Using mapper interface classes -->
 <mappers>
@@ -819,13 +872,10 @@ MyBatis 每次创建结果对象的新实例时，它都会使用一个对象工
   <mapper class="org.mybatis.builder.PostMapper"/>
 </mappers>
 ```
+
 ```xml
 <!-- Register all interfaces in a package as mappers -->
 <mappers>
   <package name="org.mybatis.builder"/>
 </mappers>
 ```
-
-
-
-

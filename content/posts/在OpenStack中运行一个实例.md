@@ -2,7 +2,7 @@
 title: 在OpenStack中运行一个实例
 date: 2018-11-23T10:23:35+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/179
@@ -11,27 +11,16 @@ tags:
   - devops
 ---
 
-## 目录
-
 > 参考：[官方文档](https://docs.openstack.org/)
 
-* [三、OpenStack运行一个实例](#三、OpenStack运行一个实例)
-	* [1、命令行工具和仪表盘](#1、命令行工具和仪表盘)
-	* [2、创建虚拟网络](#2、创建虚拟网络)
-	* [3、创建m1.nano flavor](#3、创建m1.nano flavor)
-	* [4、创建一对秘钥](#4、创建一对秘钥)
-	* [5、运行实例](#5、运行实例)
-	* [6、其他可选配置](#6、其他可选配置)
-
-
 ## 三、OpenStack运行一个实例
+
 ***
 
 ### 1、命令行工具和仪表盘
 
 * [命令行客户端](https://docs.openstack.org/python-openstackclient/rocky/cli/command-objects/server.html#server-create)
 * [仪表盘](https://docs.openstack.org/horizon/rocky/user/)
-
 
 ### 2、创建虚拟网络
 
@@ -42,7 +31,7 @@ tags:
 * 存在两个网段
 	* 主要用于联网、虚拟机交互的网段`192.168.2.0/24`（相当于文档中管理网络）
 	* 仅用于ssh的网段`192.168.3.0/24`
-* Controller 
+* Controller
 	* 网卡`enp0s3`绑定IP`192.168.2.101`
 	* 网卡`enp0s8`绑定IP`192.168.3.101`
 * Compute
@@ -108,7 +97,6 @@ openstack subnet create --network selfservice \
 * `--gateway` 自服务网关
 * `--subnet-range`  子网范围
 
-
 创建一个路由
 
 ```bash
@@ -127,13 +115,11 @@ openstack port list --router router
 ping -c 4 203.0.113.101
 ```
 
-
 ### 3、创建m1.nano flavor
 
 ```bash
 openstack flavor create --id 0 --vcpus 1 --ram 64 --disk 1 m1.nano
 ```
-
 
 ### 4、创建一对秘钥
 
@@ -146,7 +132,6 @@ openstack keypair create --public-key ~/.ssh/id_rsa.pub mykey
 openstack security group rule create --proto icmp default # 允许ping
 openstack security group rule create --proto tcp --dst-port 22 default # 允许ssh
 ```
-
 
 ### 5、运行实例
 
@@ -170,7 +155,7 @@ openstack security group list
 openstack server create --flavor m1.nano --image cirros \
   --nic net-id=27fed14d-f627-4991-89a1-f42940dcd8f2 --security-group default \
   --key-name mykey selfservice-instance
-	
+
 openstack server list
 ```
 
@@ -185,9 +170,6 @@ ssh连接
 * 创建浮动ip
 * 给实例分配浮动ip
 
-
 ### 6、其他可选配置
 
 略
-
-

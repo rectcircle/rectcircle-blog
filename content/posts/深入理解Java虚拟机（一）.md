@@ -8,7 +8,7 @@ aliases:
   - /detail/131
   - /detail/131/
 tags:
-  - java
+  - Java
 ---
 
 ## 目录

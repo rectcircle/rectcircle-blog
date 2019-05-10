@@ -2,7 +2,7 @@
 title: scala akka actor一种并发模型（四）
 date: 2017-11-14T20:36:52+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/115
@@ -11,23 +11,20 @@ tags:
   - scala
 ---
 
-* [三、Actors](#三、Actors)
-	* [5、邮箱](#5、邮箱)
-	* [6、路由](#6、路由)
-	* [7、FSM](#7、FSM)
-	* [8、持久化](#8、持久化)
-	* [9、测试Actor系统](#9、测试Actor系统)
-
-
 ## 三、Actors
-************************************
+
+***
+
 ### 5、邮箱
+
 Akka邮箱包含发往Actor的消息。通常每个Actor都有自己的邮箱，但是并非总是如此，例如一个BalancingPool所有路由将共享一个邮箱实例。
 
 邮箱仅仅是存放消息的容器
 
 #### （1）actor配置邮箱
+
 **为单独的Actor指定邮箱**
+
 ```scala
 import akka.dispatch.RequiresMessageQueue
 import akka.dispatch.BoundedMessageQueueSemantics
@@ -37,7 +34,9 @@ class MyBoundedActor extends MyActor
 ```
 
 RequiresMessageQueue特征的类型参数需要映射到配置中的邮箱，如下所示：
+
 ```conf
+
 bounded-mailbox {
   mailbox-type = "akka.dispatch.BoundedMailbox"
   mailbox-capacity = 1000
@@ -52,10 +51,11 @@ akka.actor.mailbox.requirements {
 现在，每当你创建一个MyBoundedActor类型的actor时，它将尝试获得一个有界的邮箱。如果参与者在部署中配置了不同的邮箱，则可以直接或通过具有指定邮箱类型的调度程序来重写此映射。
 
 **注意**
+
 为actor创建的邮箱中的队列类型将根据trait中所需的类型进行检查，如果队列未实现所需的类型，则actor创建将失败。
 
-
 **为一个调度器指定邮箱**
+
 ```scala
 my-dispatcher {
   mailbox-requirement = org.example.MyInterface
@@ -63,20 +63,23 @@ my-dispatcher {
 ```
 
 **Actor如何选择邮箱类型**
+
 当一个actor被创建时，ActorRefProvider首先决定执行它的调度器。然后邮箱确定如下：
+
 * 如果actor的部署配置选项包含邮箱key，则会指定描述要使用的邮箱类型的配置部分。
 * 如果actor的Props包含一个邮箱选择，例如`withMailbox`被调用。那么它会命名一个描述要使用的邮箱类型的配置节。
 * 如果调度器的配置部分包含对邮箱类型的配置的key，则将使用相同的部分来配置邮箱类型。
 * 如果调度器需要如上所述的邮箱类型，则将使用该要求的映射来确定要使用的邮箱类型。
 * 将使用默认邮箱`akka.actor.default`邮箱。
-	
 
 #### （2）默认邮箱
+
 它是一个无限制的邮箱，使用`java.util.concurrent.ConcurrentLinkedQueue`实现。
 
 SingleConsumerOnlyUnboundedMailbox是一个效率更高的邮箱，它可以用作默认邮箱，但不能与BalancingDispatcher一起使用。
 
 将SingleConsumerOnlyUnboundedMailbox配置为默认邮箱：
+
 ```
 akka.actor.default-mailbox {
   mailbox-type = "akka.dispatch.SingleConsumerOnlyUnboundedMailbox"
@@ -84,9 +87,11 @@ akka.actor.default-mailbox {
 ```
 
 **将哪个配置传递给邮箱类型**
+
 每个邮箱类型由扩展MailboxType的类实现，并带有两个构造函数参数：一个ActorSystem.Settings对象和一个Config部分。后者通过从actor系统的配置中获取命名的配置部分来计算，使用邮箱类型的配置路径覆盖它的id键，并将回退添加到默认邮箱配置部分。
 
 #### （3）内建邮箱实现
+
 * **UnboundedMailbox** (default)
 	* 默认邮箱
 	* 由`java.util.concurrent.ConcurrentLinkedQueue`支持
@@ -148,10 +153,11 @@ akka.actor.default-mailbox {
 	* Bounded: Yes
 	* 配置名称："akka.dispatch.BoundedControlAwareMailbox"
 
-
 #### （4）邮箱配置示例
+
 **PriorityMailbox（优先邮箱）**
 如何创建PriorityMailbox：
+
 ```scala
 // 在这种情况下，我们从UnboundedStablePriorityMailbox继承
 // and seed it with the priority generator
@@ -171,7 +177,7 @@ class MyPrioMailbox(settings: ActorSystem.Settings, config: Config)
 		  // We default to 1, which is in between high and low
 		  case otherwise => 1
 	  })
-		
+
 
 // We create a new Actor that just prints out what it processes
 class Logger extends Actor {
@@ -203,6 +209,7 @@ class Logger extends Actor {
 ```
 
 配置邮箱
+
 ```
 prio-dispatcher {
   type = Dispatcher
@@ -219,6 +226,7 @@ prio-dispatcher {
 ```
 
 也可以像这样直接配置邮箱类型：
+
 ```
 prio-mailbox {
   mailbox-type = "docs.dispatcher.DispatcherDocSpec$MyPrioMailbox"
@@ -241,6 +249,7 @@ val myActor = context.actorOf(Props[MyActor], "priomailboxactor")
 如果参与者需要能够立即接收控制消息，无论邮箱中已经有多少其他消息，ControlAwareMailbox会非常有用。
 
 它可以像这样配置：
+
 ```
 control-aware-dispatcher {
   mailbox-type = "akka.dispatch.UnboundedControlAwareMailbox"
@@ -249,12 +258,14 @@ control-aware-dispatcher {
 ```
 
 控制消息需要扩展ControlMessage特征：
+
 ```scala
 import akka.dispatch.ControlMessage
 case object MyControlMessage extends ControlMessage
 ```
 
 然后举一个例子说明如何使用它：
+
 ```scala
 // We create a new Actor that just prints out what it processes
 class Logger2 extends Actor {
@@ -279,6 +290,7 @@ MyControlMessage
 ```
 
 #### （5）创建您自己的邮箱类型
+
 ```scala
 // 一个标记特质，被用来做mailbox requirements映射
 trait MyUnboundedMessageQueueSemantics
@@ -335,6 +347,7 @@ class MyUnboundedMailbox extends MailboxType
 ```
 
 配置
+
 ```
 ## 自定义邮箱
 custom-dispatcher {
@@ -365,6 +378,7 @@ akka.actor.mailbox.requirements {
 ```
 
 使用
+
 ```scala
 //定义Actor时指定
 class MySpecialActor extends MyActor
@@ -377,6 +391,7 @@ system.actorOf(Props[MySpecialActor])
 ```
 
 ### 6、路由
+
 消息可以通过路由器发送，以便有效地将其路由到目标参与者，即路由。路由器可以在一个角色内部或外部使用，你可以自己管理路由，也可以使用一个独立的具有配置能力的路由器角色。
 
 根据您的应用需求，可以使用不同的路由策略。 Akka带来了几种有用的路由策略。但是，正如你将在本章中看到的那样，也可以创建自己的。
@@ -386,11 +401,14 @@ router即路由，消息传递到router后，router根据响应的策略将消�
 router将消息下发给其管理的很多个routee中的一个，根据负载或者路由策略选择发送给哪一个。
 
 Router又可分Pool和Group两种模式：
+
 * 在Router-Pool模式中Router负责构建所有的Routee。如此所有Routee都是Router的直属子级Actor，可以实现Router对Routees的直接监管。由于这种直接的监管关系，Router-Pool又可以按运算负载自动增减Routee，能更有效地分配利用计算资源。
 * Router-Group模式中的Routees由外界其它Actor产生，特点是能实现灵活的Routee构建和监控，可以用不同的监管策略来管理一个Router下的Routees，比如可以使用BackoffSupervisor。从另一方面来讲，Router-Group的缺点是Routees的构建和管理复杂化了，而且往往需要人为干预。
 
 #### （1）一个简单的路由
+
 以下示例说明如何使用路由器并管理actor中的路由。
+
 ```scala
 package com.lightbend.akka.sample
 
@@ -442,6 +460,7 @@ object RouterTest extends App {
 
 我们创建一个路由器，并指定在将消息路由到路由时使用RoundRobinRoutingLogic。
 Akka附带的路由策略是：
+
 * `akka.routing.RoundRobinRoutingLogic`
 * `akka.routing.RandomRoutingLogic`
 * `akka.routing.SmallestMailboxRoutingLogic`
@@ -457,9 +476,11 @@ Akka附带的路由策略是：
 路由器是不可变的，路由逻辑是线程安全的;这意味着它们也可以在演员之外使用。
 
 #### （2）一个路由器Actor
+
 路由器也可以创建为一个独立的角色，管理路由本身，并从配置中加载路由逻辑和其他设置。
 
 这种类型的路由器参与者有两种不同的风格：
+
 * pool - router创建routees为子actor，并在路由器终止时将其从路由器中删除。
 * 组 - routees actor在路由器外部创建，路由器使用参与者选择将消息发送到指定的路径，而不用观察终止。
 
@@ -468,8 +489,10 @@ Akka附带的路由策略是：
 您可以像普通Actor一样通过router发送消息给Actor，即通过ActorRef。router参与者将消息转发到其而不改变原始发送者。当路由器回复路由消息时，回复将被发送给原始发送者，而不是路由器Actor。
 
 **Pool**
+
 接下来的代码和配置片段展示如何创建一个round-robin路由器，将消息转发给五个工作者路由。
 配置
+
 ```
 akka.actor.deployment {
   /router1 {
@@ -478,18 +501,23 @@ akka.actor.deployment {
   }
 }
 ```
+
 代码
+
 ```scala
 val router1: ActorRef =
   context.actorOf(FromConfig.props(Props[Worker]), "router1")
 ```
+
 这里是相同的例子，但是以编程方式提供路由器配置而不是配置。
+
 ```scala
 val router2: ActorRef =
   context.actorOf(RoundRobinPool(5).props(Props[Worker]), "router2")
 ```
 
 **远程部署的路由**
+
 除了能够将本地Actor创建为路由之外，还可以指示Router将其创建的子项部署在一组远程主机上。Routees 将以 round-robin方式部署。为了远程部署routee，将router配置包装在RemoteRouterConfig中，附加要部署的节点的远程地址。远程部署需要将akka-remote模块包含在类路径中。
 
 ```scala
@@ -503,17 +531,22 @@ val routerRemote = system.actorOf(
 ```
 
 **Senders**
+
 默认情况下，routee 发送消息，将隐式的设置发送者为自己
+
 ```scala
 sender() ! x // replies will go to this actor
 ```
+
 但是，routee将router设置为发送者通常很有用。手动指定发件人
+
 ```scala
 sender().tell("reply", context.parent) // replies will go back to parent
 sender().!("reply")(context.parent) // alternative syntax (beware of the parens!)
 ```
 
 **监视**
+
 对于pool类型的router，他的routee的监视者就是router自己。
 
 router的监督策略的配置：pool的supervisorStrategy属性。如果没有提供配置，则路由器默认为始终escalate策略。这意味着错误传递给路由器的主管进行处理。路由器的主管将决定如何处理任何错误。
@@ -523,6 +556,7 @@ router的监督策略的配置：pool的supervisorStrategy属性。如果没有�
 应该提到的是，router的重启行为已被覆盖，以便重新启动，同时仍然重新创建子项，仍将保留池中相同数量的actor。
 
 设置监管策略：
+
 ```scala
 val escalator = OneForOneStrategy() {
   case e ⇒ testActor ! e; SupervisorStrategy.Escalate
@@ -532,9 +566,11 @@ val router = system.actorOf(RoundRobinPool(1, supervisorStrategy = escalator).pr
 ```
 
 **Group**
+
 有时候，不应该使用router创建他的routees。希望的是routees的创建及使用分离。这时，可以通过配置routees的路径给router。消息将通过ActorSelection发送到这些路径。
 
 配置
+
 ```scala
 akka.actor.deployment {
   /router3 {
@@ -543,7 +579,9 @@ akka.actor.deployment {
   }
 }
 ```
+
 编码
+
 ```scala
 	system.actorOf(Props[Worker], "w1")
 	system.actorOf(Props[Worker], "w2")
@@ -554,20 +592,22 @@ akka.actor.deployment {
 
 	router3 ! Worker.Work
 ```
+
 无配置方式
+
 ```scala
 val router4: ActorRef =
   context.actorOf(RoundRobinGroup(paths).props(), "router4")
 ```
 
-
-
-
 #### （3）路由器的使用
+
 各种router的配置和使用样例
 
 **RoundRobinPool**
+
 配置
+
 ```
 akka.actor.deployment {
   /parent/router1 {
@@ -576,16 +616,19 @@ akka.actor.deployment {
   }
 }
 ```
+
 使用
+
 ```scala
 val router1: ActorRef =
   context.actorOf(FromConfig.props(Props[Worker]), "router1")
-	
+
 val router2: ActorRef =
   context.actorOf(RoundRobinPool(5).props(Props[Worker]), "router2")
 ```
 
 **RoundRobinGroup**
+
 ```
 akka.actor.deployment {
   /parent/router3 {
@@ -598,13 +641,14 @@ akka.actor.deployment {
 ```scala
 val router3: ActorRef =
   context.actorOf(FromConfig.props(), "router3")
-	
+
 val paths = List("/user/workers/w1", "/user/workers/w2", "/user/workers/w3")
 val router4: ActorRef =
   context.actorOf(RoundRobinGroup(paths).props(), "router4")
 ```
 
 **RandomPool 和 RandomGroup**
+
 ```
 akka.actor.deployment {
   /parent/router5 {
@@ -620,16 +664,17 @@ akka.actor.deployment {
   }
 }
 ```
+
 ```scala
 val router5: ActorRef =
   context.actorOf(FromConfig.props(Props[Worker]), "router5")
-	
+
 val router6: ActorRef =
   context.actorOf(RandomPool(5).props(Props[Worker]), "router6")
-	
+
 val router7: ActorRef =
   context.actorOf(FromConfig.props(), "router7")
-	
+
 val paths = List("/user/workers/w1", "/user/workers/w2", "/user/workers/w3")
 val router8: ActorRef =
   context.actorOf(RandomGroup(paths).props(), "router8")
@@ -637,23 +682,28 @@ val router8: ActorRef =
 
 [其他参见](https://doc.akka.io/docs/akka/current/scala/routing.html#router-usage)
 
-
 #### （4）特别消息处理
+
 大多数发送给路由器参与者的消息将根据路由器的路由逻辑进行转发。但是有几种类型的消息具有特殊的行为。
 
 **Broadcast Messages（广播消息）**
+
 ```scala
 import akka.routing.Broadcast
 router4 ! Broadcast(Worker.Work)
 ```
+
 各个routee将收到`Worker.Work`消息
 
 **PoisonPill Messages**
+
 ```scala
 import akka.actor.PoisonPill
 router ! PoisonPill
 ```
+
 此消息是关闭router本身的消息，不会转发到routee，若要关闭routee
+
 ```scala
 import akka.actor.PoisonPill
 import akka.routing.Broadcast
@@ -661,23 +711,24 @@ router ! Broadcast(PoisonPill)
 ```
 
 **Kill Messages**
+
 类似于上一个
 
 **管理消息**
+
 * 将akka.routing.GetRoutees发送给路由器参与者将使其在akka.routing.Routees消息中发回其当前使用的路由。
 * 将akka.routing.AddRoutee发送给路由器actor会将该routee添加到其路由集合中。
 * 发送akka.routing.RemoveRoutee到路由器的演员将删除该路由器的路由集合。
 * 将akka.routing.AdjustPoolSize发送到池路由器actor将添加或删除路由数量到其路由集合。
 
-
-
-
 #### （5）动态可调整大小的池
+
 大多数池可以使用固定数量的路由，也可以使用调整策略来动态调整路由数量。
 
 有两种类型的调整器：默认调整器和OptimalSizeExploringResizer。
 
 **Default Resizer**
+
 默认的调整器会根据压力来调整池的大小，以池中繁忙路由的百分比来衡量。如果压力高于某个阈值，则会增加池的大小，如果压力低于某个阈值则会回退。两个阈值都是可配置的。
 
 ```
@@ -699,6 +750,7 @@ val router29: ActorRef =
 ```
 
 或者
+
 ```scala
 val resizer = DefaultResizer(lowerBound = 2, upperBound = 15)
 val router30: ActorRef =
@@ -711,6 +763,7 @@ val router30: ActorRef =
 OptimalSizeExploringResizer将池的大小调整为提供最多消息吞吐量的最佳大小。
 
 例子
+
 ```
 akka.actor.deployment {
   /parent/router31 {
@@ -725,23 +778,27 @@ akka.actor.deployment {
 ```
 
 #### （6）在Akk内路由是如何设计的
+
 在表面上，路由器看起来像普通的演员，但实际上它们的实现方式不同。路由器被设计为在接收消息并将其快速传递给路由时非常高效。
 
 普通的actor可以用来路由消息，但是actor的单线程处理可能成为瓶颈。路由器可以通过优化通常的消息处理管道来实现更高的吞吐量，从而允许并发路由。这是通过将路由器的路由逻辑直接嵌入到他们的ActorRef中而不是路由器中来实现的。发送到路由器的ActorRef消息可以立即路由到routee，完全绕过单线程路由器actor。
 
 当然，这样做的代价是路由代码的内部比用普通的角色实现路由器更复杂。幸运的是，所有这些复杂性对于路由API的消费者是不可见的。但是，在实现自己的路由器时需要注意一些事情。
 
-
 #### （7）定制路由器
+
 略
+
 [参见](https://doc.akka.io/docs/akka/current/scala/routing.html#custom-router)
 
 #### （8）配置调度器
+
 配置一个调度器为路由服务
 
 调度器根据Props中的信息创建孩子池
 
 为了方便定义routees池的调度器，您可以在配置的部署部分内联定义调度程序。
+
 ```
 akka.actor.deployment {
   /poolWithDispatcher {
@@ -754,6 +811,7 @@ akka.actor.deployment {
   }
 }
 ```
+
 这是你唯一需要做的事情，为一个池启用一个专门的调度器。
 
 ```scala
@@ -764,30 +822,32 @@ val router: ActorRef = system.actorOf(
   name = "poolWithDispatcher")
 ```
 
-
-
-
 ### 7、FSM
+
 FSM（有限状态机）和Akka Actor混合使用，FSM描述参见[Erlang design principles](#http://www.erlang.org/documentation/doc-4.8.2/doc/design_principles/fsm.html)
 
 一个FSM可以被描述为一组关系的形式：
+
 ```
 State(S) x Event(E) -> Actions (A), State(S’)
 ```
+
 这些关系被解释为：
 如果我们处于状态S并且事件E发生，那么我们应该执行动作A并转换到状态S'。
 
-
 #### （1）一个简单的例子
+
 为了演示FSM特征的大部分特征，考虑在突发到达时将接收并排队消息，并在突发结束或接收到刷新请求之后将其发送的参与者。
 
 首先，考虑下面的所有内容来使用这些导入语句：
+
 ```scala
 import akka.actor.{ ActorRef, FSM }
 import scala.concurrent.duration._
 ```
 
 我们的“Buncher”Actor的协议是接受或产生以下信息：
+
 ```scala
 // Buncher 接收可以接收的消息 events
 final case class SetTarget(ref: ActorRef)
@@ -812,9 +872,10 @@ sealed trait Data
 final case class Todo(target: ActorRef, queue: collection.immutable.Seq[Any]) extends Data //能接受的数据
 ```
 
-这个Actor可以有两种状态：没有消息排队（又名`Idle`（空闲））或一些消息排队（又名` Active`（活动））。只要消息持续到达，并且不需要刷新，它将一直处于`Active`状态。Actor的内部状态数据由发送批次的目标参与者引用和消息的实际队列组成。
+这个Actor可以有两种状态：没有消息排队（又名`Idle`（空闲））或一些消息排队（又名`Active`（活动））。只要消息持续到达，并且不需要刷新，它将一直处于`Active`状态。Actor的内部状态数据由发送批次的目标参与者引用和消息的实际队列组成。
 
 现在让我们来看看我们的FSM Actor的骨架：
+
 ```scala
 class Buncher extends FSM[State, Data] {
 
@@ -857,6 +918,7 @@ class Buncher extends FSM[State, Data] {
 ```
 
 基本策略是声明参与者，混合FSM特征并将可能的状态和数据值指定为类型参数。在演员身体内，DSL用于声明状态机：
+
 * `startWith`定义初始状态和初始数据
 * `when(<state>) { ... }` 声明每个状态的处理
 * 最后使用 `initialize` 启动它，执行转换到初始状态并设置定时器（如果需要的话）。
@@ -869,6 +931,7 @@ class Buncher extends FSM[State, Data] {
 但是，消息如何排队呢？由于这两个状态的工作原理是相同的，所以我们利用这个事实：任何不是由`when()`块处理的消息传递给`whenUnhandled()`块处理：
 
 **测试**
+
 ```scala
 class ParentActor extends Actor {
 
@@ -901,30 +964,35 @@ object FSMTest extends App{
 }
 ```
 
-
 #### （2）参考
+
 FSM特质直接继承自Actor，当你扩展FSM时，你必须意识到一个actor是实际创建的：
 
 FSM特质包含两个类型参数
+
 * 所有状态名类型的超类型，通常是一个密封的特质并使用object继承他
 * FSM模块自身跟踪的状态数据的类型
 
 状态数据与状态名一起描述状态机的内部状态；
 
 **定义状态**
+
 ```
 when(<name>[, stateTimeout = <timeout>])(stateFunction)
 ```
+
 给定的`name`必须是与FSM特征的第一个类型参数类型兼容的对象。这个对象被用作hash key，所以你必须确保它正确地实现了equals和hashCode。尤其注意的是，它必须是不可变的，最适合的类型是case objects
 
 tateFunction参数是一个`PartialFunction[Event，State]`
 
 **定义初始化状态**
+
 ```scala
 startWith(state, data[, timeout])
 ```
 
 **未处理状态**
+
 ```scala
 whenUnhandled {
   case Event(x: X, data) =>
@@ -937,6 +1005,7 @@ whenUnhandled {
 ```
 
 **初始化状态转化**
+
 ```scala
 when(SomeState) {
   case Event(msg, _) =>
@@ -945,14 +1014,15 @@ when(SomeState) {
 ```
 
 **监视状态转换**
+
 ```scala
 onTransition(handler)
 ```
 
 **转换状态**
 
-
 **定时器**
+
 ```scala
 setTimer(name, msg, interval, repeat)
 cancelTimer(name)
@@ -962,17 +1032,20 @@ isTimerActive(name)
 
 其他[参见](https://doc.akka.io/docs/akka/current/scala/fsm.html)
 
-
 ### 8、持久化
+
 通过Akka持久化，有状态的actor可以持久化内部状态，以便于在actor启动、或者崩溃、管理员重启或者在集群中迁移时恢复内部状态。Akka持久性背后的关键概念是，只有对actor的内部状态的改变才会被持久化。这些更改只能附加到存储上，没有任何变化，这允许非常高的事务率和高效的复制。
 
 #### （1）依赖
+
 ```scala
 "com.typesafe.akka" %% "akka-persistence" % "2.5.6"
 ```
+
 Akka持久性扩展带有一些内置的持久性插件，包括基于内存堆的日志，基于本地文件系统的快照存储和基于LevelDB的日志
 
 基于LevelDB的插件将需要下面的附加依赖声明：
+
 ```scala
 "org.iq80.leveldb"            % "leveldb"          % "0.9"
 "org.fusesource.leveldbjni"   % "leveldbjni-all"   % "1.8"
@@ -981,17 +1054,19 @@ Akka持久性扩展带有一些内置的持久性插件，包括基于内存堆�
 其他[参见](https://doc.akka.io/docs/akka/current/scala/persistence.html)
 
 #### （2）架构
+
 * `PersistentActor`：是一个持久的，有状态的Actor。它能够将事件持久化到日志中，并以线程安全的方式对它们做出反应。它可以用来实现命令以及事件源Actor。当一个持续的actor被启动或重新启动时，日志消息会被重放给这个actor，这样它就可以从这些消息中恢复内部状态。
 * `AtLeastOnceDelivery`：使用至少一次的传递语义将消息发送到目的地，同样在发送者和接收者JVM崩溃的情况下。
 * `AsyncWriteJournal`：日志存储发送给持久行为者的消息序列。一个应用程序可以控制哪些消息被记录，哪些消息被持续的演员接收而不被记录。日志维护每个消息中增加的highestSequenceNr。日志的存储后端是可插入的。持久性扩展带有一个“leveldb”日志插件，写入本地文件系统。
 * `Snapshot store`：快照存储持续存在持续角色内部状态的快照。快照用于优化恢复时间。快照存储的后端存储是可插入的。持久扩展带有一个“本地”快照存储插件，写入本地文件系统。
 * `Event sourcing`：基于上述构建模块，Akka持久性为事件源应用程序的开发提供了抽象（参见“事件源”部分）。复制快照存储可用作社区插件。
 
-
 #### （3）事件源
+
 事件源背后的基本理念非常简单。如果一个持久的actor可以应用到当前状态，那么它将接收一个首先验证的（非持久性）命令。如果验证成功，则从命令生成事件，表示命令的效果。然后这些事件被持续存在，并且在成功的持久化之后被用来改变演员的状态。当执行者需要恢复时，只有持续的事件被重放，我们知道他们可以被成功应用。换句话说，与命令相比，事件在重放到持续的角色时不会失败。当执行者需要恢复时，只有持续的事件被重放，我们知道他们可以被成功应用。换句话说，与命令相比，事件在重放到持续的角色时不会失败。事件源Actor当然也可以处理不改变应用状态的命令，例如查询命令。
 
 Akka持久化使用PersistentActor特质 支持事件源。扩展这个特性的actor使用持久化方法来保存和处理事件。PersistentActor的行为是通过实现receiveRecover和receiveCommand来定义的。以下示例演示了这一点。
+
 ```scala
 package com.lightbend.akka.sample.persistence
 
@@ -1067,6 +1142,7 @@ object PersistentActorExample extends App {
 ```
 
 配置文件`persistence.conf`
+
 ```
 akka.persistence.journal.plugin = "akka.persistence.journal.leveldb"
 akka.persistence.snapshot-store.plugin = "akka.persistence.snapshot-store.local"
@@ -1080,6 +1156,7 @@ akka.persistence.journal.leveldb.native = false
 ```
 
 依赖
+
 ```scala
   "com.typesafe.akka"          %% "akka-persistence" % "2.5.4",
   "org.iq80.leveldb"            % "leveldb"          % "0.7",
@@ -1087,15 +1164,19 @@ akka.persistence.journal.leveldb.native = false
 ```
 
 **第一次运行**
+
 ```
 List(foo-0, foo-1, baz-2, baz-3, bar-4, bar-5, buzz-6, buzz-7)
 ```
+
 **第二次运行**
+
 ```
 List(foo-0, foo-1, baz-2, baz-3, bar-4, bar-5, buzz-6, buzz-7, foo-8, foo-9, baz-10, baz-11, bar-12, bar-13, buzz-14, buzz-15)
 ```
 
 **说明**
+
 该示例定义了两种数据类型，Cmd和Evt分别表示命令和事件。 ExamplePersistentActor的状态是包含在ExampleState中的持久化事件数据的列表。
 
 持久化actor的 receiveRecover 方法定义 在恢复期间，如何 处理 Evt 和 SnapshotOffer 来更新状态。持久化actor的 receiveCommand 方法是一个命令处理程序。在这个例子中，一个命令是通过生成一个事件来处理的，然后这个事件被持久化和处理。事件的持久化通过调用 persist 方法，该方法的第一个参数是一个事件，第二个参数是事件处理程序。
@@ -1111,26 +1192,34 @@ persist方法异步持久化事件，事件处理程序为成功持久化事件�
 **持久化id**
 
 **恢复**
+
 默认情况下，持久化actor将会自动恢复，在启动和重启时通过重放日志消息。在恢复过程中发送给持久化actor的新消息不会干扰重放的消息。在恢复阶段结束之后，他们被一个持久化actor持久化并接收。
 
 在系统中可以配置最大并发恢复数：
+
 ```
 akka.persistence.max-concurrent-recoveries = 50
 ```
 
 **自定义恢复**
+
 默认情况下，首先找到快照进行恢复一部分，然后在使用事件进行恢复
 
 禁用使用快照恢复
+
 ```scala
 override def recovery =
   Recovery(fromSnapshot = SnapshotSelectionCriteria.None)
 ```
+
 恢复前457个
+
 ```scala
 override def recovery = Recovery(toSequenceNr = 457L)
 ```
+
 禁用使用恢复
+
 ```scala
 override def recovery = Recovery.none
 ```
@@ -1144,21 +1233,21 @@ override def recovery = Recovery.none
 其他略
 
 #### （4）快照（Snapshots）
+
 [参见](https://doc.akka.io/docs/akka/current/persistence.html?language=scala#snapshots)
 
-
-
-
-
 ### 9、测试Actor系统
+
 Akka配备了专门的模块akka-testkit来支持测试（添加akka-testkit依赖到项目）
 
 #### （1）异步测试：TestKit
+
 Testkit允许你在一个受控的但是现实的环境中测试你的Actor。当然，环境的定义很大程度上取决于您手头的问题以及您打算测试的级别，从简单的检查到完整的系统测试。
 
 测试的最小设置包括测试程序，测试程序提供期望值，被测试的Acto和接收回复消息的Actor。
 
 TestKit类包含一系列工具，使这个常见任务变得简单。
+
 ```scala
 package com.lightbend.akka.sample
 
@@ -1187,6 +1276,7 @@ class TestKitTest()
 }
 
 ```
+
 TestKit包含一个名为testActor的actor，它是使用下面详述的各种expectMsg ...断言来检查消息的入口点。当在特征ImplicitSender中混合时，当从测试过程分派消息时，这个测试参与者被隐式地用作发送者参考。testActor也可以像往常一样传递给其他参与者，通常将其订阅为通知监听器。有一套完整的检查方法，例如接收符合某些标准的所有连续的消息，接收整个固定的消息或类的序列，一段时间内什么都不接收。
 
 传递给TestKit构造函数的ActorSystem可以通过系统成员访问。
@@ -1194,7 +1284,9 @@ TestKit包含一个名为testActor的actor，它是使用下面详述的各种ex
 记住，在测试结束后（也是在失败的情况下）关闭角色系统，以便所有角色（包括测试角色）都停止。
 
 **内置断言**
+
 上面提到的expectMsg并不是唯一的关于接收消息的断言的方法，全套是这样的：
+
 ```scala
 val hello: String = expectMsg("hello")
 val any: String = expectMsgAnyOf("hello", "world")
@@ -1203,8 +1295,10 @@ val i: Int = expectMsgType[Int]
 expectNoMsg(200.millis)
 val two: immutable.Seq[AnyRef] = receiveN(2)
 ```
+
 所有断言是一个阻塞方法，等待到超时为止，若等待到期望的消息，将所有消息从收件箱中去除。继续执行，否则断言失败。所有断言的返回值都是他所测试过的消息，具体断言函数如下
-* `expectMsg[T](d: Duration, msg: T): T ` 给定的消息对象必须在指定的时间内被接收;该对象将被返回。
+
+* `expectMsg[T](d: Duration, msg: T): T` 给定的消息对象必须在指定的时间内被接收;该对象将被返回。
 * `expectMsgPF[T](d: Duration)(pf: PartialFunction[Any, T]): T` 给定消息匹配pf项，有匹配通过否者失败
 * `expectMsgClass[T](d: Duration, c: Class[T])` 断言给定消息的Class对象
 * `expectMsgType[T: Manifest](d: Duration)` 断言消息的类型（与上面比可以包含类型参数）
@@ -1218,6 +1312,7 @@ val two: immutable.Seq[AnyRef] = receiveN(2)
 * `fishForMessage(max: Duration, hint: String)(pf: PartialFunction[Any, Boolean]): Any`
 
 例子
+
 ```scala
 package com.lightbend.akka.sample
 
@@ -1294,4 +1389,3 @@ class TestKitTest()
 ```
 
 其他[参见](https://doc.akka.io/docs/akka/current/scala/testing.html)
-

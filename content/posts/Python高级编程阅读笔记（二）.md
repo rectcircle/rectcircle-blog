@@ -2,7 +2,7 @@
 title: Python高级编程阅读笔记（二）
 date: 2017-09-29T19:39:34+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/98
@@ -11,39 +11,21 @@ tags:
   - python
 ---
 
-## 目录
- 
-* [四、魔术方法](#四、魔术方法)
-    * [1、魔术方法语法](#1、魔术方法语法)
-    * [2、可用的魔术方法](#2、可用的魔术方法)
-    * [3、其他的魔术方法](#3、其他的魔术方法)
-* [五、元类](#五、元类)
-    * [1、类与对象](#1、类与对象)
-    * [2、编写元类](#2、编写元类)
-    * [3、使用元类](#3、使用元类)
-    * [4、何时使用元类](#4、何时使用元类)
-    * [5、显示选择的问题](#5、显示选择的问题)
-    * [6、meta-coding](#6、meta-coding)
-* [六、类工厂](#六、类工厂)
-    * [1、类工厂函数](#1、类工厂函数)
-    * [2、何时编写类工厂函数](#2、何时编写类工厂函数)
-* [七、抽象基类](#七、抽象基类)
-    * [1、使用抽象基类](#1、使用抽象基类)
-    * [2、声明虚拟子类](#2、声明虚拟子类)
-    * [3、声明协议](#3、声明协议)
-    * [4、内置抽象基类](#4、内置抽象基类)
-
-
 ## 四、魔术方法
-*********************************
+
+***
+
 ### 1、魔术方法语法
+
 在python类定义中的特殊函数，命名特点是方法名称两端含有两个下划线
 
 ### 2、可用的魔术方法
-#### （1）创建与销毁
-**`__init__`方法**
-创建类实例后立即执行此方法
 
+#### （1）创建与销毁
+
+**`__init__`方法**
+
+创建类实例后立即执行此方法
 
 ```python
 import random
@@ -51,34 +33,30 @@ class Dice(object):
     """初始化一个六面骰子"""
     def __init__(self, sides=6):
         self._sides = sides
-    
+
     def roll(self):
         return random.randint(1,self._sides)
-    
+
 die = Dice(sides=20)
 die._sides
 die.roll()
 ```
 
-
-
-
     8
 
-
-
 **`__new__`方法**
+
 一般不需要覆盖，用于创建实例
 
 **``__del__``方法**
-当对象被回时会触发此
 
+当对象被回时会触发此
 
 ```python
 class Xon(object):
     def __del__(self):
         print("__del__方法被执行")
-        
+
 Xon()
 print('foo')
 x = Xon()
@@ -89,12 +67,11 @@ del x
     foo
     __del__方法被执行
 
-
 #### （2）类型转换
+
 **`__str__`、`__unicode__`、`__bytes__`函数**
 
 python2中字符串使用ascii、python3中字符串使用unicode
-
 
 ```python
 
@@ -109,25 +86,24 @@ class MyObject(object):
 str(MyObject())
 ```
 
-
-
-
     '这是一个测试对象'
 
-
-
 **`__bool__`方法**
+
 在python2中为`__nonzero__`
 
 **`__int__`、`__float__`、`__complex__`**
 
 #### （3）比较
+
 **二元相等性**
+
 * `__eq__`，`==`判断是否相等，返回True或FALSE
 * `__ne__`，`!=`判断是否不相等，一般不要定义
 * 一般不需定义`__ne__`，解释器会自动推导
 
 **相对比较**
+
 * `__lt__`，`<`返回True或False
 * `__le__`，`<+`返回True或False
 * `__gt__`，`>`返回True或False
@@ -137,6 +113,7 @@ str(MyObject())
 **`__cmp__`**方法：已经废弃
 
 #### （4）运算符重载
+
 **二元运算符重载**
 
 | Operator | Method | Reverse | 即席（a x= b） |
@@ -155,14 +132,15 @@ str(MyObject())
 | `>>` | `__rshift__` | `__rrshift__` | `__irshift__` |
 
 **对于除法的说明**
+
 python2 中的 `/` 代表整除， python3中`/`代表浮点除法，`//`代表整除
 在python2中 只有 `__div__`，在python3中`__div__`等价于`__truediv__`
 
 **一元操作符**
+
 * `__pos__`表示`+`
 * `__neg__`表示`-`
 * `__invert__`表示`~`
-
 
 ```python
 class ReversibleString(object):
@@ -177,23 +155,16 @@ rs = ReversibleString("abcdefg")
 ~rs
 ```
 
-
-
-
     'gfedcba'
 
-
-
 **重载常见方法**
+
 * `__len__`方法，对`len(obj)`有效和`if obj`有效
 * `__repr__`方法，在交互式终端输出内容
 * `__hash__`方法，若对象定义了`__eq__`那么`__hash__`将隐式为None
 * `__format__`格式化方法
 * `__instancecheck__`和`__subclasscheck__`极少使用
 * `__abs__`和`__round__`，绝对值和前后取整
-
-
-
 
 ```python
 from datetime import datetime
@@ -215,11 +186,9 @@ print('{0:%Y-%m-%d}'.format(md))
     2012-04-21 11:00:00
     2012-04-21
 
-
 **集合**
 
 `__contains__`方法，在`needle in saystack`时调用
-
 
 ```python
 from datetime import date
@@ -238,11 +207,9 @@ print(date(2, 4, 21) in dr)
     True
     False
 
-
 * `__getitem__(self, key)` 当`obj[key]`时调用
 * `__setitem__(self, key, value)` 当`obj[key]=xxx`时调用
 * `__delitem__(self, key)` 当`del obg[key]`
-
 
 ```python
 class Items:
@@ -252,7 +219,7 @@ class Items:
         print('set', key,value)
     def __delitem__(self, key):
         print("del", key)
-        
+
 c = Items()
 c['A']
 c['A'] = 1
@@ -263,22 +230,21 @@ del c['A']
     set A 1
     del A
 
-
 `__getattr__`和`__setattr__`，可能在`obj.attrname`或者`getattr(obj,'attrname')`在常规情况下找不到对象属性时调用这两个方法
 `__getattribute__`，在`obj.attrname`或者`getattr(obj,'attrname')`下必然触发，这是基类的正常实现，在此可以理解为复写
 
 ### 3、其他的魔术方法
+
 * `__iter__`
 * `__next__`
 * `__enter__`
 * `__exit__`
 
-
-    
 ## 五、元类
-*******************************
-### 1、类与对象
 
+***
+
+### 1、类与对象
 
 ```python
 # 普通定义类的方法
@@ -290,14 +256,13 @@ class Animal(object):
         pass
     def go_to_vet(self):
         pass
-    
+
 class Cat(Animal):
     def meow(self):
         pass
     def purr(self):
         pass
 ```
-
 
 ```python
 # 通过type函数构造类
@@ -328,14 +293,15 @@ c = Cat("Tom")
 ```
 
 以上两种基本等价：
+
 在内部的普通定义类，内部其实是使用`type`函数
 `type`函数说明
+
 * 第一个参数为一个字符串，表示类名
 * 第二个为一个元组，表示基类
 * 第三个参数为一个字典，表示该类的方法和属性
 
 #### （2）type链
-
 
 ```python
 print(type(1))
@@ -349,20 +315,19 @@ print(type(type))
     <class 'type'>
     <class 'type'>
 
-
 #### （3）type所扮演的角色
+
 * type是python中的主要元类
 * 默认情况下，使用class关键字创建的普通类使用type作为其元类
 * type是元类层级的最高级
 
 ### 2、编写元类
 
-
 ```python
 class Meta(type):
     def __new__(cls, name, bases, attrs):
         return super(Meta, cls).__new__(cls, name, bases, attrs)
-    
+
 C = Meta('C', (object, ), {})
 print(type(C))
 
@@ -375,11 +340,10 @@ print(type(N))
     <class '__main__.Meta'>
     <class 'type'>
 
-
 元类继承：多重继承两个父类拥有不同的元类
+
 * 当两个元类一个是另一个直接子类type返回直接子类
 * 当两个元类不是直接子类关系，将报错
-
 
 ```python
 class Z(C, N):
@@ -391,7 +355,7 @@ class OtherMeta(type):
     def __new__(cls, name, bases, attrs):
         return super(Meta, cls).__new__(cls, name, bases, attrs)
 
-OtherC = OtherMeta('OtherC', (object, ),{})    
+OtherC = OtherMeta('OtherC', (object, ),{})
 class Invalid(C, OtherC):
     pass
 
@@ -399,25 +363,21 @@ class Invalid(C, OtherC):
 
     <class '__main__.Meta'>
 
-
-
     ---------------------------------------------------------------------------
 
     TypeError                                 Traceback (most recent call last)
 
     <ipython-input-17-3fb2e12f7cea> in <module>()
-          9 
+          9
          10 OtherC = OtherMeta('OtherC', (object, ),{})
     ---> 11 class Invalid(C, OtherC):
          12     pass
 
-
     TypeError: metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases
 
-
 ### 3、使用元类
-#### （1）python3
 
+#### （1）python3
 
 ```python
 class C(metaclass=Meta):
@@ -426,20 +386,21 @@ class C(metaclass=Meta):
 
 #### （2）python2
 
-
 ```python
 class C(object):
     __metaclass__ = Meta
 ```
 
 #### （3）跨平台执行代码
+
 引入six工具
+
 ```python
 import six
 
 class C(six.with_metaclass(Meta))
     pass
-    
+
 #或者
 @six.add_metaclass(Meta)
 class C(object):
@@ -449,8 +410,11 @@ class C(object):
 跨平台一般在python2转python3时使用
 
 ### 4、何时使用元类
+
 使用元类可以使代码更易理解
+
 #### （1）说明性声明
+
 ```python
 from django.db import models
 class Book(models.Model):
@@ -460,15 +424,17 @@ class Book(models.Model):
     publication_date = models.DateField()
     pages = models.PositiveIntegerField()
 ```
+
 实例说明：
+
 * `models.Model`的元类是框架自定义的`ModelBase`
 * 自己的类继承了`models.Model`类，其元类也是`ModelBase`
 * 解释器执行到自定义类时，会执行`ModelBase.__new__`函数
 * 在这个函数中对属性做了处理和替换
 
 #### （2）验证类
-要求某些类必须实现特定接口，一般通过默认值可以实现。但是有些不好实现。例如某个需要设置两个属性中的一个，不能同时都设置
 
+要求某些类必须实现特定接口，一般通过默认值可以实现。但是有些不好实现。例如某个需要设置两个属性中的一个，不能同时都设置
 
 ```python
 class FooOrBar(type):
@@ -481,11 +447,10 @@ class FooOrBar(type):
         'attribute or a `bar` attribute.' % name)
 
         return super(FooOrBar, cls).__new__(cls, name, bases, attrs)
-    
+
 class Valid(metaclass=FooOrBar):
     foo = 42
 ```
-
 
 ```python
 class Vaild1(metaclass=FooOrBar):
@@ -493,12 +458,10 @@ class Vaild1(metaclass=FooOrBar):
         pass
 ```
 
-
 ```python
 class Vaild2(metaclass=FooOrBar):
     pass
 ```
-
 
     ---------------------------------------------------------------------------
 
@@ -508,21 +471,18 @@ class Vaild2(metaclass=FooOrBar):
     ----> 1 class Vaild2(metaclass=FooOrBar):
           2     pass
 
-
     <ipython-input-21-1e4073c0520b> in __new__(cls, name, bases, attrs)
           6         if 'foo' not in attrs and 'bar' not in attrs:
           7             raise TypeError('Class %s must provide either a `foo` '
     ----> 8         'attribute or a `bar` attribute.' % name)
-          9 
+          9
          10         return super(FooOrBar, cls).__new__(cls, name, bases, attrs)
-
 
     TypeError: Class Vaild2 must provide either a `foo` attribute or a `bar` attribute.
 
-
 #### （3）非继承属性
-某框架一个元类为其提供一些功能，但是不希望为抽象类提供这些功能
 
+某框架一个元类为其提供一些功能，但是不希望为抽象类提供这些功能
 
 ```python
 class Meta(type):
@@ -546,16 +506,16 @@ class RegularClass(AbstractClass):
     正常类
     某框架的特别功能
 
-
 ### 5、显示选择的问题
+
 * 很多时候元类和装饰器可以实现同样功能
 * 装饰器必须用户显示声明
 * 元类对于用户是隐藏的
 * 一般来说"显示比隐式好"，显示更容易维护
 
 ### 6、meta-coding
-meta_coding指的是：用于查看应用程序中其他代码的代码。例如：应该记录其自身的代码
 
+meta_coding指的是：用于查看应用程序中其他代码的代码。例如：应该记录其自身的代码
 
 ```python
 class Logged(type):
@@ -567,7 +527,7 @@ class Logged(type):
             if callable(value):
                 attrs[key] = cls.log_call(value) #给所有函数进行装饰
         return super(Logged, cls).__new__(cls, name, bases, attrs)
-    
+
     @staticmethod
     def log_call(fxn):
         """
@@ -586,13 +546,13 @@ class Logged(type):
                 (fxn.__name__, exc))
             raise
         return inner
-    
+
 class MyClass(metaclass=Logged):
     def foo(self):
         pass
     def bar(self):
         raise TypeError('oh noes!')
-        
+
 mc = MyClass()
 mc.foo()
 mc.bar()
@@ -604,8 +564,6 @@ mc.bar()
     函数 bar 正在被调用，使用参数 (<__main__.MyClass object at 0x7f4720d9abe0>,) 和 关键字参数 {}.
     函数 bar 抛出一个异常 TypeError('oh noes!',)
 
-
-
     ---------------------------------------------------------------------------
 
     RuntimeError                              Traceback (most recent call last)
@@ -614,45 +572,37 @@ mc.bar()
          36 mc = MyClass()
          37 mc.foo()
     ---> 38 mc.bar()
-    
 
     <ipython-input-29-fdf194ee23b8> in inner(*args, **kwargs)
          25                 print('函数 %s 抛出一个异常 %r' %
          26                 (fxn.__name__, exc))
     ---> 27             raise
          28         return inner
-         29 
+         29
 
 
     RuntimeError: No active exception to reraise
 
-
 说明：
+
 * `__init__`并没有被装饰，因为该方法继承自object
 * 若希望`__init__`被装饰，重写此方法
 * 只用在定义类时定义的方法才会被装饰后来定义的不会生效
-
 
 ```python
 MyClass.foo = lambda self: 42
 mc.foo()
 ```
 
-
-
-
     42
 
-
-
 ## 六、类工厂
-**********************************
+
+***
+
 类工厂指的是在运行时根据情况动态创建类（注意不是对象），实现上一般使用上一章使用的元类或者返回一个class
 
 ### 1、类工厂函数
-
-
-
 
 ```python
 def create_animal_class():
@@ -665,7 +615,7 @@ def create_animal_class():
         pass
     def go_to_vet(self):
         pass
-    
+
     return type('Animal', (object,), {
             '__doc__': 'A class representing an arbitrary animal.',
             '__init__': init,
@@ -684,14 +634,14 @@ print(isinstance(animal1, Animal2))
     True
     False
 
-
 说明：
+
 * 上面的`create_animal_class`就是一个类工厂函数
 * 调用类工厂函数返回的类是不同的
 
 ### 2、何时编写类工厂函数
-#### （1）运行时属性
 
+#### （1）运行时属性
 
 ```python
 def get_credential_class(use_proxy=False, tfa=False):
@@ -722,10 +672,11 @@ def get_credential_class(use_proxy=False, tfa=False):
 ```
 
 #### （2）避免类属性一致性问题
+
 **类属性和实例属性**
+
 * 类属性不依赖于实例直接可以使用类名调用
 * 实例属性必须通过实例调用
-
 
 ```python
 # 类属性
@@ -743,23 +694,18 @@ print(I.foo)
 
     bar
 
-
-
     ---------------------------------------------------------------------------
 
     AttributeError                            Traceback (most recent call last)
 
     <ipython-input-5-1a7648de982d> in <module>()
-          9 
+          9
          10 print(C.foo)
     ---> 11 print(I.foo)
-    
 
     AttributeError: type object 'I' has no attribute 'foo'
 
-
 **实例属性隐藏类属性**
-
 
 ```python
 c1 = C()
@@ -777,15 +723,14 @@ print(c2.foo)
     baz
     bacon
 
-
 **类方法的限制**
-* 类方法无法访问实例方法
 
+* 类方法无法访问实例方法
 
 ```python
 class C(object):
     foo = 'bar'
-    
+
     @classmethod
     def classfoo(cls):
         return cls.foo
@@ -801,10 +746,9 @@ print(c1.classfoo())
     baz
     bacon
 
-
 **使用类工厂尝试**
-* 尝试动态创建子类并覆盖父类的类属性
 
+* 尝试动态创建子类并覆盖父类的类属性
 
 ```python
 def create_c_subclass(new_foo):
@@ -821,9 +765,7 @@ print(S.classfoo())
     spam
     eggs
 
-
 #### （3）实例工厂
-
 
 ```python
 def CPrime(new_foo='bar'):
@@ -835,93 +777,65 @@ def CPrime(new_foo='bar'):
 ```
 
 说明：
+
 * 返回实例的工厂函数，一般要使用类的命名方式
 * 对于需要需要传递构造函数参数情况下的工厂函数签名`def XxxFactory(param, *arg, **kwargs)`
 
-
 ## 七、抽象基类
-***********************************
+
+***
+
 python是一门动态类型语言，也就是说函数的参数返回值不需要声明类型。在动态语言中一个对象是否满足要求的也界定是：该对象是否包含一个特定的属性或者方法。这种现象称之为鸭子模型。他强调的对象有事么，而不再以对象的身份是什么
 
 但是在有些时候身份很重要，所以在python2.6和python3中引入了抽象基类的概念
 
-
-
 ### 1、使用抽象基类
+
 抽象基类的基本目的是测试一个对象是否符合某种身份
 
 如何确定你正在处理的对象是列表：通过调用`isinstance`函数
-
 
 ```python
 isinstance([],list)
 ```
 
-
-
-
     True
 
-
-
 但是，在编码中不一定真的只能是列表，如果这样就丧失了动态语言的灵活性，有时候元组也可以，`isinstance`也提供支持
-
 
 ```python
 isinstance([],(list,tuple))
 ```
 
-
-
-
     True
-
-
-
 
 ```python
 isinstance((),(list,tuple))
 ```
 
-
-
-
     True
 
-
-
 有时候，需要的对象是自定义的列表，此时可以使用`hasattr`函数
-
 
 ```python
 hasattr([],'__getitem__')
 ```
 
-
-
-
     True
-
-
-
 
 ```python
 hasattr(object(), '__getitem__')
 ```
 
-
-
-
     False
-
-
 
 但是不仅仅列表拥有此方法，字典也拥有此方法，可能带来问题
 
 ### 2、声明虚拟子类
-为了加强对代码的检查，需要声明虚拟子类
-#### （1）样例
 
+为了加强对代码的检查，需要声明虚拟子类
+
+#### （1）样例
 
 ```python
 import abc
@@ -937,8 +851,6 @@ print(isinstance({}, AbstractDict))
 
     True
 
-
-
     ---------------------------------------------------------------------------
 
     AttributeError                            Traceback (most recent call last)
@@ -947,17 +859,15 @@ print(isinstance({}, AbstractDict))
           6 AbstractDict.register(dict) #将dict作为此抽象基类的虚拟子类
           7 print(isinstance({}, AbstractDict))
     ----> 8 {}.foo()
-    
 
     AttributeError: 'dict' object has no attribute 'foo'
 
-
 说明：
+
 * 声明虚拟子类，不会给现有类对象添加方法
 * 只是给现存类或则新定义的类强加了一个身份标示，在使用`isinstance`时，会得到期望的结果
 
 #### （2）使用装饰器实现注册
-
 
 ```python
 import abc
@@ -977,16 +887,11 @@ class CustomListLikeClass(object):
 issubclass(CustomListLikeClass, MySequence)
 ```
 
-
-
-
     True
 
-
-
 #### （3）使用`__subclasshook__`
-例子：定义一个鸭子类型的基类
 
+例子：定义一个鸭子类型的基类
 
 ```python
 import abc
@@ -998,14 +903,14 @@ class AbstractDuck(metaclass=abc.ABCMeta):
         if callable(quack):
             return True
         return NotImplemented
-    
+
 class Duck(object):
     def quack(self):
         pass
-    
+
 class NotDuck(object):
     quack = 'foo'
-    
+
 print(issubclass(Duck, AbstractDuck))
 print(issubclass(NotDuck, AbstractDuck))
 
@@ -1017,21 +922,22 @@ print(issubclass(NotDuck, AbstractDuck))
     False
     True
 
-
 说明
+
 * 使用`__subclasshook__`可以批量检测鸭子类型
 * `issubclass`执行过程中会调用`__subclasshook__`方法，返回其返回值
 * `__subclasshook__`的优先级是高于register函数的，若其有明确的返回值（True或False），将不会检查register注册的类
 * 当`__subclasshook__`返回`NotImplemented`时，将自动执行register检查
 
-
 ### 3、声明协议
+
 抽象基类的另一个主要价值在于其具有声明协议的作用，类似于java中的接口
+
 #### （1）其他现有方法
+
 **使用`NotImplemented`实现**
 
 构建一个类省去一个关键的方法，以便于该方法可以被子类是实现
-
 
 ```python
 from datetime import datetime
@@ -1060,16 +966,14 @@ t = Task()
 t.run()
 ```
 
-
     ---------------------------------------------------------------------------
 
     NotImplementedError                       Traceback (most recent call last)
 
     <ipython-input-25-ecf3f64a04f7> in <module>()
-         22 
+         22
          23 t = Task()
     ---> 24 t.run()
-    
 
     <ipython-input-25-ecf3f64a04f7> in run(self)
           9     def run(self):
@@ -1084,14 +988,12 @@ t.run()
          19     def _run(self):
     ---> 20         raise NotImplementedError('Task subclasses must define '
          21                                     'a _run method.')
-         22 
+         22
 
 
     NotImplementedError: Task subclasses must define a _run method.
 
-
 **使用元类**
-
 
 ```python
 from datetime import timezone
@@ -1103,15 +1005,15 @@ class TaskMeta(type):
         # If this is an abstract class, do not check for a _run method.
         if attrs.pop('abstract', False):
             return super(TaskMeta, cls).__new__(cls, name, bases, attrs)
-        
+
         # Create the resulting class.
         new_class = super(TaskMeta, cls).__new__(cls, name, bases, attrs)
-        
+
         # Verify that a _run method is present and raise
         # TypeError otherwise.
         if not hasattr(new_class, '_run') or not callable(new__class.__run):
             raise TypeError('Task subclasses must define a _run method.')
-        
+
         # Return the new class object.
         return new_class
 
@@ -1123,7 +1025,7 @@ class Task(metaclass=TaskMeta):
 
     def __init__(self):
         self.runs = []
-    
+
     def run(self):
         start = datetime.now(tz=timezone.utc)
         result = self._run()
@@ -1134,21 +1036,19 @@ class Task(metaclass=TaskMeta):
                 'result': result,
             })
         return result
-    
+
 t = Task()
 t.run()
 ```
-
 
     ---------------------------------------------------------------------------
 
     AttributeError                            Traceback (most recent call last)
 
     <ipython-input-31-a65ef3b9a38f> in <module>()
-         41 
+         41
          42 t = Task()
     ---> 43 t.run()
-    
 
     <ipython-input-31-a65ef3b9a38f> in run(self)
          31     def run(self):
@@ -1157,15 +1057,14 @@ t.run()
          34         end = datetime.now(tz=timezone.utc)
          35         self.runs.append({
 
-
     AttributeError: 'Task' object has no attribute '_run'
 
-
 #### （2）抽象基类实现
+
 抽象类实现的意义：
+
 * 以上两种方法虽然可以实现，但是感觉上不够形式化，有点“即席”
 * 使用抽象类更加正式，符合习惯
-
 
 ```python
 class Task(metaclass=abc.ABCMeta):
@@ -1173,7 +1072,7 @@ class Task(metaclass=abc.ABCMeta):
     """
     def __init__(self):
         self.runs = []
-        
+
     def run(self):
         start = datetime.now(tz=timezone.utc)
         result = self._run()
@@ -1184,7 +1083,7 @@ class Task(metaclass=abc.ABCMeta):
                 'result': result,
             })
         return result
-    
+
     @abc.abstractmethod
     def _run(self):
         pass
@@ -1192,20 +1091,16 @@ class Task(metaclass=abc.ABCMeta):
 t = Task()
 ```
 
-
     ---------------------------------------------------------------------------
 
     TypeError                                 Traceback (most recent call last)
 
     <ipython-input-32-361afa5398fe> in <module>()
          20         pass
-         21 
+         21
     ---> 22 t = Task()
-    
 
     TypeError: Can't instantiate abstract class Task with abstract methods _run
-
-
 
 ```python
 class Subtask(Task):
@@ -1214,47 +1109,39 @@ class Subtask(Task):
 st = Subtask()
 ```
 
-
     ---------------------------------------------------------------------------
 
     TypeError                                 Traceback (most recent call last)
 
     <ipython-input-35-e93262e20bb3> in <module>()
           2     pass
-          3 
+          3
     ----> 4 st = Subtask()
-    
 
     TypeError: Can't instantiate abstract class Subtask with abstract methods _run
-
-
 
 ```python
 class OtherSubtask(Task):
     def _run(self):
         return 2+2
-    
+
 ost = OtherSubtask()
 ost.run()
 ost.runs
 ```
 
-
-
-
     [{'end': datetime.datetime(2017, 9, 29, 11, 11, 47, 769002, tzinfo=datetime.timezone.utc),
       'result': 4,
       'start': datetime.datetime(2017, 9, 29, 11, 11, 47, 768996, tzinfo=datetime.timezone.utc)}]
 
-
-
 优点：
+
 * 抽象类不可以被实例化，者更符合C++/Java的抽象类的实现
 * 这个方法更加正式，实现起来更加简单
 
 #### （3）抽象属性
-在python2.6到python3.2中
 
+在python2.6到python3.2中
 
 ```python
 import abc
@@ -1265,7 +1152,6 @@ class AbstractClass(metaclass=abc.ABCMeta):
 ```
 
 在python3.3及其以后
-
 
 ```python
 import abc
@@ -1281,20 +1167,17 @@ class InvalidChild(AbstractClass):
 ic = InvalidChild()
 ```
 
-
     ---------------------------------------------------------------------------
 
     TypeError                                 Traceback (most recent call last)
 
     <ipython-input-39-e743bf049d03> in <module>()
           9     pass
-         10 
+         10
     ---> 11 ic = InvalidChild()
-    
+
 
     TypeError: Can't instantiate abstract class InvalidChild with abstract methods foo
-
-
 
 ```python
 class InvalidChild(AbstractClass):
@@ -1305,16 +1188,11 @@ ic = InvalidChild()
 ic.foo()
 ```
 
-
-
-
     'bar'
 
-
-
 #### （4）抽象类或静态方法
-python3.3之后实现抽象静态方法
 
+python3.3之后实现抽象静态方法
 
 ```python
 class AbstractClass(metaclass=abc.ABCMeta):
@@ -1322,7 +1200,7 @@ class AbstractClass(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def foo(cls):
         return 42
-    
+
 class InvalidChild(AbstractClass):
     pass
 
@@ -1332,35 +1210,32 @@ ic = InvalidChild()
 
     42
 
-
-
     ---------------------------------------------------------------------------
 
     TypeError                                 Traceback (most recent call last)
 
     <ipython-input-42-7b1065197bdd> in <module>()
-          9 
+          9
          10 print(InvalidChild.foo())
     ---> 11 ic = InvalidChild()
-    
 
     TypeError: Can't instantiate abstract class InvalidChild with abstract methods foo
-
-
 
 ```python
 class ValidChild(AbstractClass):
     @classmethod
     def foo(cls):
         return 'bar'
-    
+
 vc = ValidChild()
 ```
 
 ### 4、内置抽象基类
+
 python3以后：
 
 #### （1）只包含一个方法的抽象基类
+
 * Callable (`__call__`)
 * Container (`__contains__`)
 * Hashable (`__hash__`)
@@ -1368,7 +1243,6 @@ python3以后：
 * Sized (`__len__`)
 
 所有包含这些方法的类都会自动作为该类的子类
-
 
 ```python
 from collections.abc import Sized
@@ -1380,14 +1254,10 @@ class Foo(object):
 issubclass(Foo, Sized)
 ```
 
-
-
-
     True
 
-
-
 #### （2）可供集合使用的抽象基类
+
 * `Sequence` 和 `MutableSequence` 类似于元组或列表，
     * `Sequence`：其虚拟子类有：list、tuple、set
         * `__getitem__` 和 `__len__` 是必须实现的抽象方法
@@ -1399,95 +1269,68 @@ issubclass(Foo, Sized)
 * `Set`
 
 **使用内置抽象基类**
+
 可以使代码更加灵活和严格，带来类型上的好处
 
 **其他的抽象基类**
+
 numbers模块包含众多用于数字类型的抽象基类
 
-
 ## 七、抽象基类
-***********************************
+
+***
+
 python是一门动态类型语言，也就是说函数的参数返回值不需要声明类型。在动态语言中一个对象是否满足要求的也界定是：该对象是否包含一个特定的属性或者方法。这种现象称之为鸭子模型。他强调的对象有事么，而不再以对象的身份是什么
 
 但是在有些时候身份很重要，所以在python2.6和python3中引入了抽象基类的概念
 
-
-
 ### 1、使用抽象基类
+
 抽象基类的基本目的是测试一个对象是否符合某种身份
 
 如何确定你正在处理的对象是列表：通过调用`isinstance`函数
-
 
 ```python
 isinstance([],list)
 ```
 
-
-
-
     True
 
-
-
 但是，在编码中不一定真的只能是列表，如果这样就丧失了动态语言的灵活性，有时候元组也可以，`isinstance`也提供支持
-
 
 ```python
 isinstance([],(list,tuple))
 ```
 
-
-
-
     True
-
-
-
 
 ```python
 isinstance((),(list,tuple))
 ```
 
-
-
-
     True
 
-
-
 有时候，需要的对象是自定义的列表，此时可以使用`hasattr`函数
-
 
 ```python
 hasattr([],'__getitem__')
 ```
 
-
-
-
     True
-
-
-
 
 ```python
 hasattr(object(), '__getitem__')
 ```
 
-
-
-
     False
-
-
 
 但是不仅仅列表拥有此方法，字典也拥有此方法，可能带来问题
 
 ### 2、声明虚拟子类
-为了加强对代码的检查，需要声明虚拟子类
-#### （1）样例
 
+为了加强对代码的检查，需要声明虚拟子类
+
+#### （1）样例
 
 ```python
 import abc
@@ -1503,8 +1346,6 @@ print(isinstance({}, AbstractDict))
 
     True
 
-
-
     ---------------------------------------------------------------------------
 
     AttributeError                            Traceback (most recent call last)
@@ -1513,17 +1354,15 @@ print(isinstance({}, AbstractDict))
           6 AbstractDict.register(dict) #将dict作为此抽象基类的虚拟子类
           7 print(isinstance({}, AbstractDict))
     ----> 8 {}.foo()
-    
 
     AttributeError: 'dict' object has no attribute 'foo'
 
-
 说明：
+
 * 声明虚拟子类，不会给现有类对象添加方法
 * 只是给现存类或则新定义的类强加了一个身份标示，在使用`isinstance`时，会得到期望的结果
 
 #### （2）使用装饰器实现注册
-
 
 ```python
 import abc
@@ -1543,16 +1382,11 @@ class CustomListLikeClass(object):
 issubclass(CustomListLikeClass, MySequence)
 ```
 
-
-
-
     True
 
-
-
 #### （3）使用`__subclasshook__`
-例子：定义一个鸭子类型的基类
 
+例子：定义一个鸭子类型的基类
 
 ```python
 import abc
@@ -1564,14 +1398,14 @@ class AbstractDuck(metaclass=abc.ABCMeta):
         if callable(quack):
             return True
         return NotImplemented
-    
+
 class Duck(object):
     def quack(self):
         pass
-    
+
 class NotDuck(object):
     quack = 'foo'
-    
+
 print(issubclass(Duck, AbstractDuck))
 print(issubclass(NotDuck, AbstractDuck))
 
@@ -1583,21 +1417,22 @@ print(issubclass(NotDuck, AbstractDuck))
     False
     True
 
-
 说明
+
 * 使用`__subclasshook__`可以批量检测鸭子类型
 * `issubclass`执行过程中会调用`__subclasshook__`方法，返回其返回值
 * `__subclasshook__`的优先级是高于register函数的，若其有明确的返回值（True或False），将不会检查register注册的类
 * 当`__subclasshook__`返回`NotImplemented`时，将自动执行register检查
 
-
 ### 3、声明协议
+
 抽象基类的另一个主要价值在于其具有声明协议的作用，类似于java中的接口
+
 #### （1）其他现有方法
+
 **使用`NotImplemented`实现**
 
 构建一个类省去一个关键的方法，以便于该方法可以被子类是实现
-
 
 ```python
 from datetime import datetime
@@ -1626,16 +1461,14 @@ t = Task()
 t.run()
 ```
 
-
     ---------------------------------------------------------------------------
 
     NotImplementedError                       Traceback (most recent call last)
 
     <ipython-input-25-ecf3f64a04f7> in <module>()
-         22 
+         22
          23 t = Task()
     ---> 24 t.run()
-    
 
     <ipython-input-25-ecf3f64a04f7> in run(self)
           9     def run(self):
@@ -1644,20 +1477,16 @@ t.run()
          12         end = datetime.now()
          13         self.runs.append({
 
-
     <ipython-input-25-ecf3f64a04f7> in _run(self)
          18         return result
          19     def _run(self):
     ---> 20         raise NotImplementedError('Task subclasses must define '
          21                                     'a _run method.')
-         22 
-
+         22
 
     NotImplementedError: Task subclasses must define a _run method.
 
-
 **使用元类**
-
 
 ```python
 from datetime import timezone
@@ -1669,15 +1498,15 @@ class TaskMeta(type):
         # If this is an abstract class, do not check for a _run method.
         if attrs.pop('abstract', False):
             return super(TaskMeta, cls).__new__(cls, name, bases, attrs)
-        
+
         # Create the resulting class.
         new_class = super(TaskMeta, cls).__new__(cls, name, bases, attrs)
-        
+
         # Verify that a _run method is present and raise
         # TypeError otherwise.
         if not hasattr(new_class, '_run') or not callable(new__class.__run):
             raise TypeError('Task subclasses must define a _run method.')
-        
+
         # Return the new class object.
         return new_class
 
@@ -1689,7 +1518,7 @@ class Task(metaclass=TaskMeta):
 
     def __init__(self):
         self.runs = []
-    
+
     def run(self):
         start = datetime.now(tz=timezone.utc)
         result = self._run()
@@ -1700,21 +1529,19 @@ class Task(metaclass=TaskMeta):
                 'result': result,
             })
         return result
-    
+
 t = Task()
 t.run()
 ```
-
 
     ---------------------------------------------------------------------------
 
     AttributeError                            Traceback (most recent call last)
 
     <ipython-input-31-a65ef3b9a38f> in <module>()
-         41 
+         41
          42 t = Task()
     ---> 43 t.run()
-    
 
     <ipython-input-31-a65ef3b9a38f> in run(self)
          31     def run(self):
@@ -1723,15 +1550,14 @@ t.run()
          34         end = datetime.now(tz=timezone.utc)
          35         self.runs.append({
 
-
     AttributeError: 'Task' object has no attribute '_run'
 
-
 #### （2）抽象基类实现
+
 抽象类实现的意义：
+
 * 以上两种方法虽然可以实现，但是感觉上不够形式化，有点“即席”
 * 使用抽象类更加正式，符合习惯
-
 
 ```python
 class Task(metaclass=abc.ABCMeta):
@@ -1739,7 +1565,7 @@ class Task(metaclass=abc.ABCMeta):
     """
     def __init__(self):
         self.runs = []
-        
+
     def run(self):
         start = datetime.now(tz=timezone.utc)
         result = self._run()
@@ -1750,7 +1576,7 @@ class Task(metaclass=abc.ABCMeta):
                 'result': result,
             })
         return result
-    
+
     @abc.abstractmethod
     def _run(self):
         pass
@@ -1758,20 +1584,16 @@ class Task(metaclass=abc.ABCMeta):
 t = Task()
 ```
 
-
     ---------------------------------------------------------------------------
 
     TypeError                                 Traceback (most recent call last)
 
     <ipython-input-32-361afa5398fe> in <module>()
          20         pass
-         21 
+         21
     ---> 22 t = Task()
-    
 
     TypeError: Can't instantiate abstract class Task with abstract methods _run
-
-
 
 ```python
 class Subtask(Task):
@@ -1780,47 +1602,39 @@ class Subtask(Task):
 st = Subtask()
 ```
 
-
     ---------------------------------------------------------------------------
 
     TypeError                                 Traceback (most recent call last)
 
     <ipython-input-35-e93262e20bb3> in <module>()
           2     pass
-          3 
+          3
     ----> 4 st = Subtask()
-    
 
     TypeError: Can't instantiate abstract class Subtask with abstract methods _run
-
-
 
 ```python
 class OtherSubtask(Task):
     def _run(self):
         return 2+2
-    
+
 ost = OtherSubtask()
 ost.run()
 ost.runs
 ```
 
-
-
-
     [{'end': datetime.datetime(2017, 9, 29, 11, 11, 47, 769002, tzinfo=datetime.timezone.utc),
       'result': 4,
       'start': datetime.datetime(2017, 9, 29, 11, 11, 47, 768996, tzinfo=datetime.timezone.utc)}]
 
-
-
 优点：
+
 * 抽象类不可以被实例化，者更符合C++/Java的抽象类的实现
 * 这个方法更加正式，实现起来更加简单
 
 #### （3）抽象属性
-在python2.6到python3.2中
 
+在python2.6到python3.2中
 
 ```python
 import abc
@@ -1831,7 +1645,6 @@ class AbstractClass(metaclass=abc.ABCMeta):
 ```
 
 在python3.3及其以后
-
 
 ```python
 import abc
@@ -1847,20 +1660,16 @@ class InvalidChild(AbstractClass):
 ic = InvalidChild()
 ```
 
-
     ---------------------------------------------------------------------------
 
     TypeError                                 Traceback (most recent call last)
 
     <ipython-input-39-e743bf049d03> in <module>()
           9     pass
-         10 
+         10
     ---> 11 ic = InvalidChild()
-    
 
     TypeError: Can't instantiate abstract class InvalidChild with abstract methods foo
-
-
 
 ```python
 class InvalidChild(AbstractClass):
@@ -1871,16 +1680,11 @@ ic = InvalidChild()
 ic.foo()
 ```
 
-
-
-
     'bar'
 
-
-
 #### （4）抽象类或静态方法
-python3.3之后实现抽象静态方法
 
+python3.3之后实现抽象静态方法
 
 ```python
 class AbstractClass(metaclass=abc.ABCMeta):
@@ -1888,7 +1692,7 @@ class AbstractClass(metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def foo(cls):
         return 42
-    
+
 class InvalidChild(AbstractClass):
     pass
 
@@ -1898,35 +1702,32 @@ ic = InvalidChild()
 
     42
 
-
-
     ---------------------------------------------------------------------------
 
     TypeError                                 Traceback (most recent call last)
 
     <ipython-input-42-7b1065197bdd> in <module>()
-          9 
+          9
          10 print(InvalidChild.foo())
     ---> 11 ic = InvalidChild()
-    
 
     TypeError: Can't instantiate abstract class InvalidChild with abstract methods foo
-
-
 
 ```python
 class ValidChild(AbstractClass):
     @classmethod
     def foo(cls):
         return 'bar'
-    
+
 vc = ValidChild()
 ```
 
 ### 4、内置抽象基类
+
 python3以后：
 
 #### （1）只包含一个方法的抽象基类
+
 * Callable (`__call__`)
 * Container (`__contains__`)
 * Hashable (`__hash__`)
@@ -1934,7 +1735,6 @@ python3以后：
 * Sized (`__len__`)
 
 所有包含这些方法的类都会自动作为该类的子类
-
 
 ```python
 from collections.abc import Sized
@@ -1946,14 +1746,10 @@ class Foo(object):
 issubclass(Foo, Sized)
 ```
 
-
-
-
     True
 
-
-
 #### （2）可供集合使用的抽象基类
+
 * `Sequence` 和 `MutableSequence` 类似于元组或列表，
     * `Sequence`：其虚拟子类有：list、tuple、set
         * `__getitem__` 和 `__len__` 是必须实现的抽象方法
@@ -1965,8 +1761,9 @@ issubclass(Foo, Sized)
 * `Set`
 
 **使用内置抽象基类**
+
 可以使代码更加灵活和严格，带来类型上的好处
 
 **其他的抽象基类**
-numbers模块包含众多用于数字类型的抽象基类
 
+numbers模块包含众多用于数字类型的抽象基类

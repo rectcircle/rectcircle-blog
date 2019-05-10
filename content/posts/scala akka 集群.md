@@ -2,7 +2,7 @@
 title: scala akka 集群
 date: 2017-11-19T21:42:07+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/119
@@ -11,66 +11,63 @@ tags:
   - scala
 ---
 
-## 目录
-
-* [六、集群](#六、集群)
-	*	[1、集群规范](#1、集群规范)
-	*	[2、简单例子——观察节点声明周期](#2、简单例子——观察节点声明周期)
-	*	[3、例子二——利用集群实现分布式计算](#3、例子二——利用集群实现分布式计算)
-	*	[4、Cluster Usage](#4、Cluster Usage)
-	*	[5、集群单例](#5、集群单例)
-	*	[6、在集群中分布式发布订阅](#6、在集群中分布式发布订阅)
-	*	[7、集群客户端](#7、集群客户端)
-	*	[8、集群分片](#8、集群分片)
-
 ## 六、集群
-******************************************
+
+***
+
 ### 1、集群规范
+
 Akka集群特性提供了容错的、去中心化的、基于集群成员关系点对点的，不存在单点问题、单点瓶颈的服务。其实现原理为闲聊协议和失败检查。
 
 #### （1）集群概念
+
 * 节点（node）：集群中的逻辑成员。允许一台物理机上有多个节点。由元组hostname:port:uid唯一确定。
 * 集群（cluster）：由成员关系服务构建的一组节点。
 * 领导（leader）：集群中唯一扮演领导角色的节点。
 * 种子节点（seed node）：作为其他节点加入集群的连接点的节点。实际上，一个节点可以通过向集群中的任何一个节点发送Join（加入）命令加入集群。
 
-
 #### （2）集群节点状态
-![](/res/PYOpODB-ARMMJ77QTA38ggME.png)
+
+![图8](/res/PYOpODB-ARMMJ77QTA38ggME.png)
 
 状态
+
 * joining：节点正在加入集群时的状态。
 * weekly up：配置了akka.cluster.allow-weakly-up-members=on时，启用的状态。
 * up：集群中节点的正常状态。
 * leaving/exiting：优雅的删除节点时，节点的状态。
 * down：标记为已下线的状态。
 * removed：墓碑状态，表示已经不再是集群的成员。
-	
+
 动作
+
 * join：加入集群。
 * leave：告知节点优雅的离开集群。
 * down：标记集群为已下线。
 
 领导有以下职责：
+
 * 将成员转入和转出集群
 	* joining -> up
 	* exiting -> removed
 
 故障检测和不可达性
+
 * **fd***  其中一个监控节点的故障检测器已经触发，导致被监控节点被标记为不可达
 * **unreachable* ** 不可达不是一个真正的成员状态，但更多的是一个标志，除了状态信号，表明集群无法与该节点通话，在不可达之后，故障检测器可以检测到它再次可达，从而移除标志
 
-
 ### 2、简单例子——观察节点声明周期
 
-
 #### （1）添加依赖
+
 ```scala
 "com.typesafe.akka" %% "akka-cluster" % "2.5.6"
 ```
 
 #### （2）创建配置文件
+
 在根目录添加`cluster.conf`
+
 ```
 akka {
   actor {
@@ -99,13 +96,16 @@ akka {
   }
 }
 ```
+
 配置说明
+
 * 首先任何一个集群都需要种子节点，作为基本的加入集群的连接点。本例中以本地的两个节点（分别监听2551和2552端口）作为种子节点。
 * 无论配置了多少个种子节点，除了在seed-nodes中配置的第一个种子节点需要率先启动之外（否则其它种子节点无法初始化并且其它节点也无法加入），其余种子节点都是启动顺序无关的。
 * 第一个节点需要率先启动的另一个原因是如果每个节点都可以率先启动，那么有可能造成一个集群出现几个种子节点都启动并且加入了自己的集群，此时整个集群实际上分裂为几个集群，造成孤岛。当你启动了超过2个以上的种子节点，那么第一个启动的种子节点是可以关闭下线的。
 * 如果第一个种子节点重启了，它将不会在自己创建集群而是向其它种子节点发送Join消息加入已存在的集群。
 
 #### （3）创建集群状态监听器Actor
+
 ```scala
 package com.lightbend.akka.sample.cluster
 
@@ -172,14 +172,19 @@ object SimpleClusterApp {
 ```
 
 #### （4）测试集群
+
 **在三个终端运行sbt**
 
 **启动种子节点**
+
 进入第一个终端，启动种子节点
+
 ```
 runMain com.lightbend.akka.sample.cluster.SimpleClusterApp 2551
 ```
+
 这是集群的第一个节点，是种子节点。会看到以下输出（去除不必要内容）
+
 ```
 [info] Running com.lightbend.akka.sample.cluster.SimpleClusterApp 2551
 [INFO] [11/20/2017 13:56:43.976] [run-main-1] [akka.remote.Remoting] Starting remoting
@@ -197,16 +202,20 @@ actor system 已经启动!
 ```
 
 输出说明
+
 * `:2551`种子节点的启动
 * `:2551`进入up状态
 
 **启动普通节点**
+
 进入第二个终端，启动普通节点
+
 ```
 runMain com.lightbend.akka.sample.cluster.SimpleClusterApp 0
 ```
 
 第二终端输出
+
 ```
 [INFO] [11/20/2017 14:03:18.443] [run-main-0] [akka.remote.Remoting] Starting remoting
 [INFO] [11/20/2017 14:03:18.666] [run-main-0] [akka.remote.Remoting] Remoting started; listening on addresses :[akka.tcp://ClusterSystem@127.0.0.1:3391]
@@ -219,7 +228,9 @@ runMain com.lightbend.akka.sample.cluster.SimpleClusterApp 0
 [WARN] [11/20/2017 14:03:19.972] [New I/O boss #3] [NettyTransport(akka://ClusterSystem)] Remote connection to [null] failed with java.net.ConnectException: Connection refused: no further information: /127.0.0.1:2552
 [INFO] [11/20/2017 14:03:20.264] [ClusterSystem-akka.actor.default-dispatcher-15] [akka.tcp://ClusterSystem@127.0.0.1:3391/user/clusterListener]  akka.tcp://ClusterSystem@127.0.0.1:3391 成员处于Up
 ```
+
 输出说明
+
 * `:3391` 普通节点启动
 * `:3391` 根据`seed-nodes`配置尝试连接种子节点，收到来自`:2551`的welcome，因为`:2552`没有启动所以连接失败
 * `:3391` 收到`:2551`的状态，应该向`:2551`发起join
@@ -229,36 +240,42 @@ runMain com.lightbend.akka.sample.cluster.SimpleClusterApp 0
 同时终端1也会收到状态信息
 
 **启动第二个种子节点**
+
 ```
 runMain com.lightbend.akka.sample.cluster.SimpleClusterApp 2552
 ```
 
 输出类似刚刚第二个终端的输出
 
-
-
 **启动关闭普通节点**
+
 在第二终端按回车
 
 第二终端结束，第一第三终端输出
+
 ```
 Member(address = akka.tcp://ClusterSystem@127.0.0.1:3391, status = Up) 成员被检测成unreachable
 akka.tcp://ClusterSystem@127.0.0.1:3391 成员正在Removed，之前的状态为 Down
 ```
 
-
 **在此启动普通节点**
+
 进入第二个终端，启动普通节点
+
 ```
 runMain com.lightbend.akka.sample.cluster.SimpleClusterApp 0
 ```
+
 输出类似于第一次启动
 
 **关闭:2551种子节点**
+
 在第一终端按回车
 
 **关闭再启动普通节点**
+
 在第二终端按回车，然后
+
 ```
 runMain com.lightbend.akka.sample.cluster.
 ```
@@ -266,29 +283,34 @@ runMain com.lightbend.akka.sample.cluster.
 此时就会向`:2552`发起join
 
 **关闭:2552种子节点**
+
 **关闭普通节点**
 
 **启动普通节点**
+
 此时没有其他节点运行，该普通节点不断尝试连接种子节点
 此时即使启动2552，也是不行的。只有第一个种子节点被启动整个集群才会正常工作
 当集群正常工作，关闭了第一个种子节点，普通节点还是可以正常启动的加入集群的只要指定的种子节点还有一个在线
 
-
 #### （5）总结
+
 * 集群中在运行时所有的节点的地位都是等价的
 * 只有在启动时被指定加入集群的节点才会成为种子节点
 * 整个集群的第一个节点（种子节点）的启动的地址端口也就是（`akka.remote.netty.tcp`）必须与集群配置的第一个种子节点（akka.cluster.seed-nodes[0]）相同，否者将会陷入不断寻找种子节点的尝试中
 * 在运行中的集群任意一个节点都可以作为种子节点作为加入集群的入口
 
-
 ### 3、例子二——利用集群实现分布式计算
+
 > [参考](http://blog.csdn.net/TIGER_XC/article/details/73777106)
 
 一个简单分布式计算，将加减乘除计算任务分别部署到不同的节点计算。
+
 设计：前端负责承接任务，分发任务给后端进行计算
+
 #### （1）手工进行集群的负载分配
 
 **消息**
+
 ```scala
 package com.lightbend.akka.sample.cluster.example2
 
@@ -307,9 +329,10 @@ object Message {
 }
 ```
 
-
 **后端**
+
 `CalculateActor.scala`承接具体运算
+
 ```scala
 package com.lightbend.akka.sample.cluster.example2.backend
 
@@ -339,7 +362,9 @@ class CalculateActor extends Actor {
 	}
 }
 ```
+
 `CalculateSupervisor.scala`管理计算单元的异常
+
 ```scala
 package com.lightbend.akka.sample.cluster.example2.backend
 
@@ -395,7 +420,9 @@ class CalculateSupervisor(mathOps: String) extends Actor {
 
 }
 ```
-`BackEnd.scala`后端入口 
+
+`BackEnd.scala`后端入口
+
 ```scala
 package com.lightbend.akka.sample.cluster.example2.backend
 
@@ -416,7 +443,9 @@ object BackEnd {
 ```
 
 **前端**
+
 `CalculateRouter.scala`
+
 ```scala
 package com.lightbend.akka.sample.cluster.example2.frontend
 
@@ -464,6 +493,7 @@ class CalculateRouter extends Actor {
 ```
 
 `FrontEnd.scala`前端入口
+
 ```scala
 package com.lightbend.akka.sample.cluster.example2.frontend
 
@@ -482,7 +512,9 @@ object FrontEnd {
 ```
 
 **配置文件**
+
 `cluster.conf`
+
 ```scala
 akka {
   actor {
@@ -513,6 +545,7 @@ akka {
 ```
 
 **测试**
+
 ```scala
 package com.lightbend.akka.sample.cluster.example2.frontend
 
@@ -531,6 +564,7 @@ object FrontEnd {
 ```
 
 **关键输出**
+
 ```scala
 3 * 7 由 Actor[akka://calculateClusterSystem/user/calculator/calculateActor#-54638959] 计算； 结果=21
 10 + 3 由 Actor[akka://calculateClusterSystem/user/calculator/calculateActor#-678012618] 计算； 结果=13
@@ -540,10 +574,13 @@ object FrontEnd {
 ```
 
 #### （2）Routing方式来分配负载
+
 使用akka提供的route自动的根据routing算法进行负载均衡。在此使用ConsistentHashing-Router模式
 
 **修改消息类型**
+
 使消息可序列化，并创建根据hash分类，去除了手动管理
+
 ```scala
 package com.lightbend.akka.sample.cluster.example3
 
@@ -566,6 +603,7 @@ object Message {
 ```
 
 **后端相关代码**
+
 ```scala
 package com.lightbend.akka.sample.cluster.example3.backend
 
@@ -643,8 +681,8 @@ class CalculateSupervisor extends Actor {
 }
 ```
 
-
 **前端**
+
 ```scala
 package com.lightbend.akka.sample.cluster.example3.frontend
 
@@ -686,7 +724,9 @@ object FrontEnd {
 ```
 
 **配置文件**
+
 `calculate2.conf`
+
 ```
 akka {
   actor {
@@ -710,7 +750,9 @@ akka {
   }
 }
 ```
+
 `hashing.conf`
+
 ```
 include "calculate2"
 akka.cluster.roles = [frontend]
@@ -728,10 +770,11 @@ akka.actor.deployment {
       use-role = backend //routees角色名称 backend
     }
   }
-}  
+}
 ```
 
 **测试代码`CalculateApp.scala`**
+
 ```scala
 package com.lightbend.akka.sample.cluster.example3
 
@@ -777,6 +820,7 @@ object CalculateApp extends App {
 ```
 
 **关键输出**
+
 ```
 45 - 3 由 Actor[akka://calculateClusterSystem/user/calculator/calculateActor#-641100062] 计算； 结果=42
 10 + 3 由 Actor[akka://calculateClusterSystem/user/calculator/calculateActor#-1012567989] 计算； 结果=13
@@ -791,11 +835,13 @@ object CalculateApp extends App {
 [WARN] [11/20/2017 20:28:12.314] [calculateClusterSystem-akka.actor.default-dispatcher-19] [akka://calculateClusterSystem/user/calculator/calculateActor] / by zero
 ```
 
-
 #### （3）自动Routing模式
+
 Akka-Cluster提供的Adaptive-Group是一种比较智能化的自动Routing模式，它是通过对各集群节点的具体负载情况来分配任务的。用户只需要定义adaptive-group的配置，按情况增减集群节点以及在不同的集群节点上构建部署Routee都是自动的。Adaptive-Group-Router可以在配置文件中设置
 在（2）中添加
+
 **配置`adaptive.conf`**
+
 ```
 include "calculate2"
 
@@ -824,11 +870,13 @@ akka.actor.deployment {
       allow-local-routees = off
     }
   }
-}  
+}
 ```
 
 **测试**
+
 `CalculateApp2.scala`
+
 ```scala
 package com.lightbend.akka.sample.cluster.example3
 
@@ -875,32 +923,38 @@ object CalculateApp2 extends App {
 ```
 
 **添加依赖**
+
 ```scala
 	"com.typesafe.akka" %% "akka-cluster-metrics" % akkaVersion,
 ```
 
-
-
 ### 4、Cluster Usage
+
 #### （1）例子
+
 参见 [2、简单例子——观察节点声明周期](#2、简单例子——观察节点声明周期)
 
 #### （2）加入种子节点
+
 一个新的节点准备加入集群所联系的节点称为种子节点。加入集群后，种子节点就不是特殊的。
 
 当一个新的节点启动时，会向所有的种子节点发送消息，然后以最先回复的种子节点作为接入点加入集群，如果没有一个节点回复，他会一直重试。
 
 种子节点的配置
+
 ```
 akka.cluster.seed-nodes = [
   "akka.tcp://ClusterSystem@host1:2552",
   "akka.tcp://ClusterSystem@host2:2552"]
 ```
+
 或者使用jvm参数
+
 ```
 -Dakka.cluster.seed-nodes.0=akka.tcp://ClusterSystem@host1:2552
 -Dakka.cluster.seed-nodes.1=akka.tcp://ClusterSystem@host2:2552
 ```
+
 这种配置通常由外部工具动态创建。
 
 种子节点可以以任何顺序启动，并且不需要运行所有的种子节点，但配置为种子节点配置列表中第一个元素的节点必须在最初启动集群时启动，否则其他种子节点将不会初始化，其他节点无法加入集群。否者可能一个集群可能分裂成几个孤岛。
@@ -912,6 +966,7 @@ akka.cluster.seed-nodes = [
 在配置属性seed-node-timeout中定义的时间段之后，不成功尝试联系种子节点将自动重试。在配置的retry-unsuccessful-join-after之后，会自动重试尝试加入特定种子节点的尝试。重试意味着它试图联系所有的种子节点，然后加入首先回答的节点。如果种子节点列表中的第一个节点无法联系配置的种子节点超时内的任何其他种子节点，它们将自行加入。
 
 给定种子节点的连接将默认无限期地重试，直到成功连接。如果配置超时失败，该进程可以中止。当中止时，它将运行Coordinated Shutdown（协调关闭），默认情况下会终止ActorSystem。 CoordinatedShutdown也可以配置为退出JVM。定义这个超时是非常有用的，如果种子节点是动态组装的，并且在尝试失败之后尝试使用新的种子节点重新开始。
+
 ```
 akka.cluster.shutdown-after-unsuccessful-join-seed-nodes = 20s
 akka.coordinated-shutdown.terminate-actor-system = on
@@ -921,50 +976,57 @@ akka.coordinated-shutdown.terminate-actor-system = on
 
 参与者系统只能加入一次集群。其他尝试将被忽略。成功加入后，必须重新启动才能加入另一个群集或再次加入同一个群集。重启后可以使用相同的主机名和端口，当它成为集群中已有成员的新化身，尝试加入时，现有的成员将被从集群中删除，然后它将被允许加入。
 
-
 **注意：**ActorSystem的名称必须与群集的所有成员相同。这个名字是在你启动ActorSystem的时候给出的。
 
 #### （3）Downing
+
 当失败探测器认为成员不可达时，领导者不能去让其履行职责。这个成员必须可达，否者将其状态改变为：down。将状态更改为“down”可以自动或手动执行。
 
 编程方式：
+
 ```scala
 Cluster(system).down(address)
 ```
 
 自动超时方式（不建议）
+
 ```scala
 akka.cluster.auto-down-unreachable-after = 120s
 ```
 
 #### （4）Leaving
+
 有两种方法可以从群集中删除成员。
 
 当成员不可达，可以手动关闭或超时关闭。
 
 更优雅方式是告诉集群，要离开
+
 ```scala
 val cluster = Cluster(system)
 cluster.leave(cluster.selfAddress)
 ```
+
 群集节点将其自身视为退出时，协调关闭将自动运行。使用Akka集群时，会自动添加适当离开集群的任务（包括集群单例和集群分片的正常关闭）
 
 通常这是自动处理的，但是在这个过程中出现网络故障的情况下，可能仍然需要将节点的状态设置为`Down`以完成删除。
 
 #### （5）WeaklyUp的成员
+
 如果一个节点`unreachable`，那么 `gossip` 收敛是不可能的，因此任何 `leader` 的行动也是不可能的。但是，在这种情况下，我们仍然可能需要新节点加入群集。
 
 加入成员将被提升为WeaklyUp，如果不能达成融合，则成为集群的一部分。一旦 `gossip` 趋于一致，领导者将把`WeaklyUp`成员移到`Up`。
 
 此功能默认启用，但可以使用配置选项禁用：
+
 ```
 akka.cluster.allow-weakly-up-members = off
 ```
 
 你可以订阅 `WeaklyUp` 来了解该成员是否处于这种状态，但是在网络的另一端不会知道该成员的存在。您不应将WeaklyUp成员计入法定人数。
 
-
 #### （6）订阅集群事件
+
 ```scala
 cluster.subscribe(self, classOf[MemberEvent], classOf[UnreachableMember])
 ```
@@ -974,6 +1036,7 @@ cluster.subscribe(self, classOf[MemberEvent], classOf[UnreachableMember])
 下面还有一个例子：监听集群成员声明周期事件，实现后端节点在前端的注册
 
 消息
+
 ```scala
 final case class TransformationJob(text: String)
 final case class TransformationResult(text: String)
@@ -982,6 +1045,7 @@ case object BackendRegistration
 ```
 
 后端工作actor
+
 ```scala
 class TransformationBackend extends Actor {
 
@@ -1006,9 +1070,8 @@ class TransformationBackend extends Actor {
 }
 ```
 
-
-
 前端负责任务分发的actor
+
 ```scala
 class TransformationFrontend extends Actor {
 
@@ -1035,8 +1098,8 @@ class TransformationFrontend extends Actor {
 
 例子[github地址](https://github.com/akka/akka-samples/tree/2.5/akka-sample-cluster-scala)
 
-
 #### （7）节点角色
+
 并不是所有节点都需要执行相同的功能：可能有一个运行Web前端的子集，一个运行数据访问层，一个运行数据运算。部署Actor（例如通过集群感知路由器）可以考虑节点角色来实现这种责任分配。
 
 一个节点的角色在名为akka.cluster.roles的配置属性中定义，通常在启动脚本中定义为系统属性或环境变量。
@@ -1044,14 +1107,17 @@ class TransformationFrontend extends Actor {
 节点的角色是MemberEvent中可以订阅的成员信息的一部分。
 
 #### （8）How To Startup when Cluster Size Reached
+
 一个常见的用例是 在集群已经初始化，成员已经加入，集群达到了一定的规模 后启动Actor
 
 使用配置选项，您可以在领导者将“joining”成员的成员状态更改为“Up”之前定义 **所需的成员数量**
+
 ```
 akka.cluster.min-nr-of-members = 3
 ```
 
 以类似的方式，您可以在领导者将“joining”成员的成员状态更改为“Up”之前，定义**所需角色成员的数量**
+
 ```
 akka.cluster.role {
   frontend.min-nr-of-members = 1
@@ -1066,14 +1132,17 @@ akka.cluster.role {
 参见上面两个例子
 
 #### （9）当成员被删除时如何清理
+
 您可以在`registerOnMemberRemoved`回调中进行一些清理，当当前成员状态更改为“已删除”或群集已关闭时，将会调用该回调。
 
 另一种方法是将任务注册到协调关闭。
 
 #### （10）集群单例
+
 参见集群[单例](https://doc.akka.io/docs/akka/current/scala/cluster-singleton.html)
 
 #### （11）集群分片
+
 将角色分布在集群中的多个节点上，并支持使用其逻辑标识符与角色进行交互，但不必关心集群中的物理位置。
 
 参见[分片](https://doc.akka.io/docs/akka/current/scala/cluster-sharding.html)
@@ -1084,8 +1153,8 @@ akka.cluster.role {
 
 #### [（14）分布式数据](https://doc.akka.io/docs/akka/current/scala/distributed-data.html)
 
-
 #### （15）故障检测器
+
 在一个集群中，每个节点被其他节点的几个（默认最多5个）监视，当这些节点中的任何一个检测到节点不可达时，该信息将通过gossip传播到集群的其余部分。
 
 故障检测器还将检测节点是否再次可达。当监控不可达节点的所有节点将其检测为可再次到达时，在八卦传播之后，将其视为可达。
@@ -1097,27 +1166,30 @@ akka.cluster.role {
 怀疑的失败水平是由phi给出的。 phi故障检测器的基本思想是通过动态调整以反映当前网络状况的等级来表示phi的值。
 
 phi的值计算如下：
+
 ```scala
 phi = -log10(1 - F(timeSinceLastHeartbeat))
 ```
+
 其中F是具有从历史心跳到达间隔时间估计的均值和标准差的正态分布的累积分布函数。
 
 其他[参见](https://doc.akka.io/docs/akka/current/scala/cluster-usage.html#failure-detector)
 
-
 #### （16）群集感知路由器
+
 所有的路由器都可以感知到集群中的成员节点，即部署新的路由或在集群中的节点上查找路由。当节点变得不可达或离开集群时，该节点的路由将自动从路由器注销。当新节点加入集群时，根据配置将其他路由添加到路由器。当一个节点在不能到达之后再次可达时，也添加管理者。
 
 如果启用了该功能，则群集感知型路由器将使用状态为WeaklyUp的成员。
 
 有两种不同类型的路由器。
+
 * **Group（组） - router， 使用actor selection将消息发送到指定路径的路由器** routee可以在集群中不同节点上运行的路由器之间共享。这种类型的路由器的用例的一个例子是在群集中的一些后端节点上运行的服务，并且由在群集中的前端节点上运行的路由器使用
 
 * **Pool（池） - router 将routee创建为子actor的router，并将其部署在远程节点上** 每个路由器都有自己的routee实例。例如，如果您在10节点群集中的3个节点上启动路由器，如果路由器配置为每个节点使用一个实例，则总共有30个路由。不同routee创建的路由不会被路由器共享。这种类型的路由器的用例的一个例子是协调作业并将实际工作委托给在集群中的其他节点上运行的路由的单个主控器。
 
-
 **Router with Group of Routees**
 在使用组时，您必须启动集群成员节点上的routee actor。这不是由路由器完成的。一个组的配置看起来像这样::
+
 ```
 akka.actor.deployment {
   /statsService/workerRouter {
@@ -1131,6 +1203,7 @@ akka.actor.deployment {
     }
 }
 ```
+
 以上配置了一个group-router actor，system将会创建这个actor，在编程中可以获得这个实例
 
 在启动actor系统时，应该尽早启动routee参与者，因为一旦成员状态改变为“Up”，路由器就会尝试使用它们。
@@ -1140,6 +1213,7 @@ routees.paths中定义的没有地址信息的参与者路径用于选择路由�
 `max-total-nr-of-instances`定义集群中routee的总数。默认情况下，max-total-nr-of-instances被设置为一个高值（10000），当节点加入集群时将导致新的路由添加到路由器中。如果要限制路线总数，请将其设置为较低的值。
 
 也可以在代码中定义相同类型的路由器：
+
 ```scala
 import akka.cluster.routing.{ ClusterRouterGroup, ClusterRouterGroupSettings }
 import akka.routing.ConsistentHashingGroup
@@ -1153,9 +1227,9 @@ val workerRouter = context.actorOf(
 
 **[group router的例子](https://doc.akka.io/docs/akka/current/scala/cluster-usage.html#router-example-with-group-of-routees)**
 
-
 **pool-route远程部署routee**
 当使用在集群成员节点上创建和部署路由的池时，路由器的配置如下所示：
+
 ```
 akka.actor.deployment {
   /statsService/singleton/workerRouter {
@@ -1169,9 +1243,11 @@ akka.actor.deployment {
     }
 }
 ```
+
 通过指定使用角色，可以限制将路由部署到标有特定角色集的成员节点。
 
 也可以在代码中定义相同类型的路由器：
+
 ```scala
 import akka.cluster.routing.{ ClusterRouterPool, ClusterRouterPoolSettings }
 import akka.routing.ConsistentHashingPool
@@ -1182,27 +1258,28 @@ val workerRouter = context.actorOf(
     allowLocalRoutees = false)).props(Props[StatsWorker]),
   name = "workerRouter3")
 ```
+
 **[pool-router例子](https://doc.akka.io/docs/akka/current/scala/cluster-usage.html#router-example-with-pool-of-remote-deployed-routees)**
 
 #### （17）群集度量
-群集的成员节点可以收集系统健康度量标准，并借助群集度量将其发布到其他群集节点和系统事件总线上的已注册用户。
 
+群集的成员节点可以收集系统健康度量标准，并借助群集度量将其发布到其他群集节点和系统事件总线上的已注册用户。
 
 #### [（18）如何测试](https://doc.akka.io/docs/akka/current/scala/cluster-usage.html#how-to-test)
 
 #### （19）管理
+
 * http
 * jmx
 
 #### [（20）相关配置](https://doc.akka.io/docs/akka/current/scala/cluster-usage.html#configuration)
 
-
-
-
 ### 5、集群单例
+
 在某些情况，需要某个Actor仅仅在集群中的的一处运行。
 
 例如：
+
 * 对某些整个集群一致决策负责的单一责任点，或整个集群系统内的行动协调
 * 单一入口指向外部系统
 * single master, many workers
@@ -1213,9 +1290,11 @@ val workerRouter = context.actorOf(
 集群单例模式由akka.cluster.singleton.ClusterSingletonManager实现。他使用一个特殊的角色标记管理单例Actor。他保证整个集群中最多有一个单例实例在运行。
 
 #### （1）例子
+
 假设我们需要单一入口点到外部系统。从JMS队列接收消息的actor，严格要求只有一个JMS消费者必须存在，以确保消息按顺序处理。
 
 **定义消息**
+
 ```scala
 object PointToPointChannel {
   case object UnregistrationOk
@@ -1229,6 +1308,7 @@ object Consumer {
 ```
 
 **注册集群节点**
+
 ```scala
 system.actorOf(
   ClusterSingletonManager.props(
@@ -1239,6 +1319,7 @@ system.actorOf(
 ```
 
 **消息处理**
+
 ```scala
 case End ⇒
   queue ! UnregisterConsumer
@@ -1250,6 +1331,7 @@ case Ping ⇒
 ```
 
 **获取集群单例**
+
 ```scala
 val proxy = system.actorOf(
   ClusterSingletonProxy.props(
@@ -1258,28 +1340,29 @@ val proxy = system.actorOf(
   name = "consumerProxy")
 ```
 
-
 **依赖**
+
 ```
 "com.typesafe.akka" %% "akka-cluster-tools" % "2.5.7"
 ```
 
 **配置**
+
 ```scala
 akka.cluster.singleton {
   # The actor name of the child singleton actor.
   singleton-name = "singleton"
-  
+
   # Singleton among the nodes tagged with specified role.
   # If the role is not specified it's a singleton among all nodes in the cluster.
   role = ""
-  
-  # When a node is becoming oldest it sends hand-over request to previous oldest, 
-  # that might be leaving the cluster. This is retried with this interval until 
-  # the previous oldest confirms that the hand over has started or the previous 
+
+  # When a node is becoming oldest it sends hand-over request to previous oldest,
+  # that might be leaving the cluster. This is retried with this interval until
+  # the previous oldest confirms that the hand over has started or the previous
   # oldest member is removed from the cluster (+ akka.cluster.down-removal-margin).
   hand-over-retry-interval = 1s
-  
+
   # The number of retries are derived from hand-over-retry-interval and
   # akka.cluster.down-removal-margin (or ClusterSingletonManagerSettings.removalMargin),
   # but it will never be less than this property.
@@ -1289,28 +1372,27 @@ akka.cluster.singleton {
 akka.cluster.singleton-proxy {
   # The actor name of the singleton actor that is started by the ClusterSingletonManager
   singleton-name = ${akka.cluster.singleton.singleton-name}
-  
-  # The role of the cluster nodes where the singleton can be deployed. 
+
+  # The role of the cluster nodes where the singleton can be deployed.
   # If the role is not specified then any node will do.
   role = ""
-  
+
   # Interval at which the proxy will try to resolve the singleton instance.
   singleton-identification-interval = 1s
-  
+
   # If the location of the singleton is unknown the proxy will buffer this
-  # number of messages and deliver them when the singleton is identified. 
+  # number of messages and deliver them when the singleton is identified.
   # When the buffer is full old messages will be dropped when new messages are
   # sent via the proxy.
   # Use 0 to disable buffering, i.e. messages will be dropped immediately if
   # the location of the singleton is unknown.
   # Maximum allowed buffer size is 10000.
-  buffer-size = 1000 
+  buffer-size = 1000
 }
 ```
 
-
-
 ### 6、在集群中分布式发布订阅
+
 如何发送消息给不知道在集群中那个节点运行的actor？
 如何发送消息给所有对此消息类型感兴趣的actor？
 
@@ -1325,17 +1407,17 @@ DistributedPubSubMediator Actor应该在集群中的所有节点或具有指定�
 有两种不同的消息传递模式，在下面的“发布和发送”部分进行了解释。
 
 #### （1）Publish（发布）
+
 这是真正的 pub/sub 模式。这种模式的典型用法是即时消息应用程序中的聊天室。
 
 参与者被注册到一个指定的主题。这使得每个节点上的许多订户。该消息将被传递给该主题的所有订阅者。
 
-
 其他略
 
-
 ### 7、集群客户端
+
 略
 
 ### 8、集群分片
-TODO
 
+TODO

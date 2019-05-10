@@ -2,7 +2,7 @@
 title: scala概况
 date: 2016-11-18T22:55:41+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/22
@@ -13,24 +13,29 @@ tags:
 
 > 代码优于描述
 
-
 ## 一、下载、安装、
+
 下载scala、sbt
 安装以上
 
 ## 二、函数编程思想
-没有副作用的函数
-引用透明性、不可变性
-函数是一等公民（类js）
-高阶函数
-闭包
+
+* 没有副作用的函数
+* 引用透明性、不可变性
+* 函数是一等公民（类js）
+* 高阶函数
+* 闭包
+
 **一切都是表达式**
-表达式求值策略
-递归函数
-尾递归
+
+* 表达式求值策略
+* 递归函数
+* 尾递归
 
 ## 三、语法基础
+
 ### 1、变量
+
 * val 定义常量
 * var 变量
 * lazy val 惰性求值常量
@@ -43,10 +48,11 @@ lazy val z=x*y                                  //> z: => Int
 z                                         //> res0: Int = 100
 var a = 1                                 //> a  : Int = 1
 a = 2
-a     
+a
 ```
 
 ### 2、数据类型
+
 ```scala
 val a:Byte = 10                           //> a  : Byte = 10
 val b:Short = 10                          //> b  : Short = 10
@@ -68,7 +74,9 @@ val s2:String = s"this is ${s1}"          //> s2  : String = this is s1
 ```
 
 ### 3、代码块
+
 也是表达式，其返回值是最后一个表达式 的值
+
 ```scala
 {
 //语句1
@@ -77,6 +85,7 @@ val s2:String = s"this is ${s1}"          //> s2  : String = this is s1
 ```
 
 ### 4、定义函数表达式
+
 > `def funcName(param: Type):returnType = {}`
 
 ```scala
@@ -97,6 +106,7 @@ add(1,2)                                  //> res1: Int = 3
 ```
 
 ### 5、if表达式
+
 > `if(loaical_exp) valA else valB`
 
 ```scala
@@ -109,6 +119,7 @@ if(a!=1) "test" else a                    //> res3: Any = 1
 ```
 
 ### 6、for 函数
+
 ```scala
 val l = List("a","b","cccc");             //> l  : List[String] = List(a, b, cccc)
 
@@ -130,38 +141,51 @@ var res = for {
 ```
 
 **高级用法**
+
 **1) This**
+
 ```scala
 for(x <- c1; y <- c2; z <-c3) {...}
 ```
+
 is translated into
+
 ```scala
 c1.foreach(x => c2.foreach(y => c3.foreach(z => {...})))
 ```
 
 **2) This**
+
 ```scala
 for(x <- c1; y <- c2; z <- c3) yield {...}
 ```
+
 is translated into
+
 ```scala
 c1.flatMap(x => c2.flatMap(y => c3.map(z => {...})))
 ```
 
 **3) This**
+
 ```scala
 for(x <- c; if cond) yield {...}
 ```
+
 is translated on Scala 2.7 into
+
 ```scala
 c.filter(x => cond).map(x => {...})
 ```
+
 or, on Scala 2.8, into
+
 ```scala
 c.withFilter(x => cond).map(x => {...})
 ```
 
 ### 7、try表达式
+
 > `try{}`
 > `catch{}`
 > `finally{}`
@@ -177,14 +201,16 @@ val res_try = try{
 																								//| res_try  : Int = 0
 ```
 
-
 ### 8、match表达式相当于switch
-> `exp match{`
-> `	case p1 => val1`
-> `	case p2 => val2`
-> `	...`
-> `	case _ => valn`
-> `}`
+
+> ```scala
+> exp match{
+> 	case p1 => val1
+> 	case p2 => val2
+> 	...
+> 	case _ => valn
+> }
+> ```
 
 ```scala
 val code=1                                //> code  : Int = 1
@@ -195,16 +221,18 @@ code match {
 }                                         //> res0: String = one
 ```
 
-
 ### 9、求值策略
+
 * call by value —— 对函数实参求值，且仅求一次
 * call by name —— 函数实参用到时再求值
+
 ```scala
 def foo(x: Int) = x //call by value
 def foo1(x: => Int) = x //call by name
 ```
 
 ### 10、高阶函数(把函数作为形参或者返回值)
+
 > 函数是第一等公民
 
 * 函数可以作为函数的参数
@@ -214,19 +242,22 @@ def foo1(x: => Int) = x //call by name
 * 函数和普通变量一样具有函数的类型
 
 函数类型
+
 > `A => B`
 
 #### 高阶函数
+
 ```scala
 def operate(f: (Int, Int) => Int) = {
 	f(4,4)
 }
 
 def greeting() = (name: String) => {"hello " + name + "!"}
-                                                  //> greeting: ()String => String																					
+                                                  //> greeting: ()String => String
 ```
 
 #### 匿名函数（函数常量、函数字面量）
+
 > (形参列表) => {函数体}
 
 ```scala
@@ -235,6 +266,7 @@ add(1,2)
 ```
 
 #### 柯里化
+
 > 把具有多个参数的函数转化为一个函数链，每个节点是单一参数
 
 ```scala
@@ -245,6 +277,7 @@ addOne(2)                                         //> res1: Int = 3
 ```
 
 #### 递归函数
+
 ```scala
 @annotation.tailrec
 def factorial(n:Int): Int =
@@ -261,8 +294,8 @@ def factorial(n:Int, m:Int): Int =
 factorial(5,1)
 ```
 
-
 #### 例子：求f(x)， x从a到b的值得和
+
 ```scala
 def sum(func: Int => Int)(a: Int)(b: Int): Int = {
 
@@ -282,9 +315,10 @@ val ans2 = sum(x => x*x)(1)(4)
 println(ans2)
 ```
 
-
 ### 11、集合
+
 #### （1）`List[T]`
+
 ```scala
 val a = List(1,2,3,4)                             //> a  : List[Int] = List(1, 2, 3, 4)
 val b = 0::a                                      //> b  : List[Int] = List(0, 1, 2, 3, 4)
@@ -349,6 +383,7 @@ a.foldLeft(1)(_+_)                                //> res15: Int = 11
 ```
 
 #### （2）`Range`
+
 ```scala
 (1 to 10)                                         //> res0: scala.collection.immutable.Range.Inclusive = Range(1, 2, 3, 4, 5, 6, 7,
                                                   //|  8, 9, 10)
@@ -358,6 +393,7 @@ a.foldLeft(1)(_+_)                                //> res15: Int = 11
 ```
 
 #### （3）`Stream` is lazy List
+
 ```scala
 val a =  1 #:: 2#:: 3 #::Stream.empty             //> a  : scala.collection.immutable.Stream[Int] = Stream(1, ?)
 a.head                                            //> res0: Int = 1
@@ -365,6 +401,7 @@ a.tail                                            //> res1: scala.collection.imm
 ```
 
 #### （4）`Tuple` 元组 相当于数据库的一个记录
+
 ```scala
 #定义
 (1, 2)                                            //> res0: (Int, Int) = (1,2)
@@ -387,9 +424,10 @@ sumSq(a)                                          //> res4: (Int, Int, Int) = (3
 ```
 
 #### （5）`Map[K,V]`
+
 ```scala
 val p =Map(1->"David", 9->"John")                 //> p  : scala.collection.immutable.Map[Int,String] = Map(1 -> David, 9 -> John)
-                                                  //| 
+                                                  //|
 p(1)                                              //> res0: String = David
 p(9)                                              //> res1: String = John
 
@@ -406,9 +444,11 @@ p - 1                                             //> res7: scala.collection.imm
 //添加、去除一组元素
 p ++ List(2-> "Bob", 3->"Tim")                    //> res8: scala.collection.immutable.Map[Int,String] = Map(1 -> David, 9 -> John
                                                   //| , 2 -> Bob, 3 -> Tim)
-p -- List(1,9)   
+p -- List(1,9)
 ```
+
 #### 例子scala实现快速排序
+
 ```scala
   def qSort(a:List[Int]): List[Int] = {
     if(a.length < 2) a

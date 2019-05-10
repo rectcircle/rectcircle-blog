@@ -19,7 +19,7 @@
                             <a href="{{.Permalink}}">
                                 <span
                                     class="post-title">{{.Title}}<span
-                                    	class="badge">{{ .Site.Taxonomies.tags.Count .Title}}</span></span>
+                                    	class="badge">{{ .Site.Taxonomies.tags.Count (lower .Title)}}</span></span>
                                 <span class="post-day">{{ if .Site.Params.dateformShort }}{{ .Date.Format .Site.Params.dateformShort }}{{ else }}{{ .Date.Format "Jan 2"}}{{ end }}</span>
                             </a>
                         </li>

@@ -2,7 +2,7 @@
 title: Mathjax与LaTex公式教程
 date: 2017-04-19T12:27:26+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/68
@@ -12,91 +12,71 @@ tags:
 ---
 
 <script src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js?config=default"></script>
+
 > http://mlworks.cn/posts/introduction-to-mathjax-and-latex-expression/
 > 以下的示例代码包含markdown的转义字符，即仅在markdown编辑器下才能正常显示
 
-## 目录
-* [一、MathJax简介](#一、MathJax简介)
-* [二、基础](#二、基础)
-	* [1、引入js](#1、引入js)
-	* [2、块公式](#2、块公式)
-	* [2、内联公式](#2、内联公式)
-* [三、符号列表](#三、符号列表)
-	* [1、希腊字母](#1、希腊字母)
-	* [2、上标下标顶部](#2、上标下标顶部)
-	* [3、括号](#3、括号)
-	* [4、求和和积分](#4、求和和积分)
-	* [5、分式和根式](#5、分式和根式)
-	* [6、三角函数](6、三角函数#)
-	* [7、比较运算符](#7、比较运算符)
-	* [8、四则运算](#8、四则运算)
-	* [9、集合运算](#9、集合运算)
-	* [10、箭头](#10、箭头)
-	* [11、逻辑运算符](#11、逻辑运算符)
-	* [12、其他符号](#12、其他符号)
-	* [13、空隙间隔](#13、空隙间隔)
-	* [14、转义字符](#14、转义字符)
-* [四、表格](#四、表格)
-* [五、矩阵](#五、矩阵)
-	* [1、矩阵基本用法](#1、矩阵基本用法)
-	* [2、给矩阵加括号](#2、给矩阵加括号)
-	* [3、省略号](#3、省略号)
-	* [4、增广矩阵](#4、增广矩阵)
-* [六、公式对齐](#六、公式对齐)
-* [七、分类表达式](#七、分类表达式)
-* [八、其他](#八、其他)
-	* [1、惯用法](#1、惯用法)
-	* [2、连分数](#2、连分数)
-	* [3、方程组](#3、方程组)
-	* [4、颜色](#4、颜色)
-	* [5、引用标记](#5、引用标记)
-
-
 ## 一、MathJax简介
-*********************************
+
+***
+
 [MathJax](http://www.mathjax.org/)是一款运行在浏览器中的开源的数学符号渲染引擎，使用MathJax可以方便的在浏览器中显示数学公式，不需要使用图片。目前，MathJax可以解析Latex、MathML和ASCIIMathML的标记语言。
 
 ## 二、基础
-*********************************
+
+***
+
 ### 1、引入js
+
 ```html
 <script type="text/javascript" src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=default"></script>
+
 或者国内cdn
+
 <script src="https://cdn.bootcss.com/mathjax/2.7.0/MathJax.js?config=default"></script>
 ```
 
 ### 2、块公式
+
 #### （1）公式分隔符
+
 ```
 $$公式内容$$
 \[公式内容\]
 ```
+
 注意：在markdown编辑器中，反斜杠`\`、下划线`_`、星号`*`需要使用`\`转义，以下的示例代码包含markdown的转义字符
 
 #### （2）示例
+
 `$$f(x)=3\times x$$`显示为：
+
 $$f(x)=3\times x$$
 
 `\\[f(x)=3\times x\\]`显示为：
+
 \\[f(x)=3\times x\\]
 
-
 ### 2、内联公式
+
 #### （1）公式分隔符
+
 ```
 \(公式内容\)
 ```
 
-
 #### （2）示例
+
 `\\(f(x)=3\times x\\)`显示为：\\(f(x)=3\times x\\)
 
-
 ## 三、符号列表
-*********************************
+
+***
+
 ### 1、希腊字母
+
 |名称|大写|Tex代码|小写|Tex代码|
-|----|---|------|-----|------| |
+|----|---|------|-----|------|
 |alpha |	A |	A | 	α |	\alpha |
 |beta |	B |	B | 	β |	\beta |
 |gamma |	Γ |	\Gamma |	γ |	\gamma |
@@ -122,37 +102,48 @@ $$f(x)=3\times x$$
 |psi |	Ψ |	\Psi |	ψ |	\psi |
 |omega |	Ω |	\Omega |	ω |	\omega |
 
-#### 2、上标下标顶部
+### 2、上标下标顶部
+
 **上标**：`^`号
+
 `\\(x^2\\)`显示为：\\(x^2\\)
 `\\(x^20\\)`显示为：\\(x^20\\)
 `\\(x^{20}\\)`显示为：\\(x^{20}\\)
 `\\(x^{5^6}\\)`显示为：\\(x^{5^6}\\)
 
 **下标**：`_`
+
 `\\(x\_i\\)`显示为：\\(x\_i\\)
 
 **顶部符号**：
+
 `$$\hat x \quad \overline {xyz} \quad \vec  a \quad \overrightarrow {x} \quad \dot x \quad \ddot x$$`：
 $$\hat x \quad \overline {xyz} \quad \vec  a \quad \overrightarrow {x} \quad \dot x \quad \ddot x$$
 
 ### 3、括号
+
 **小括号、中括号**：
+
 `\\((2+3)[4+4]\\)`显示为：\\((2+3)[4+4]\\)
 
 **大括号**需要转义、或者使用`\lbrace` 和`\rbrace`
+
 `\\(\\{a\*b\\}\\)`显示为：\\(\\{a\*b\\}\\)
 
 **尖括号**：`\langle` 和 `\rangle`
+
 `\\(\langle x \rangle\\)`：\\(\langle x \rangle\\)
 
 **上取整**：`\lceil` 和 `\rceil`
+
 `\\(\lceil x \rceil\\)`：\\(\lceil x \rceil\\)
 
 **下取整**：`\lfloor` 和 `\rfloor`
+
 `\\(\lfloor x \rfloor\\)`：\\(\lfloor x \rfloor\\)
 
 需要注意的是，原始符号并不会随着公式大小缩放。
+
 `$$\lbrace\sum\_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6}\rbrace (1.1)$$`
 
 $$\lbrace\sum\_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6}\rbrace (1.1)$$
@@ -164,41 +155,63 @@ $$\left \lbrace \sum\_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} \right\rbrace (1.2)$
 可以看到，第二个中的括号是经过缩放的。
 
 ### 4、求和和积分
+
 `\sum`表示求和
+
 `\\(\sum\_1^n\\)`：\\(\sum\_1^n\\)
 
 `\int`表示积分：
+
 `\\(\int\_1^\infty\\)`：\\(\int\_1^\infty\\)
 
 其他：
+
 `\prod`：∏，
+
 `\bigcup`:⋃，
+
 `\bigcap`：⋂，
+
 `\iint`：∬，
+
 `\iint`：∭，
+
 `\iiiint`：∬∬，
+
 `\partial`：∂，
+
 `\nabla`：∇，
+
 `\infty`：∞，
+
 `\oint`：∮，
+
 `\triangle`：△
 
 ### 5、分式和根式
+
 **分式**：`\frac{}` 或者 `{ \over }`
+
 `\\(\frac ab\\)`：\\(\frac ab\\)
+
 `\\(\frac {a}{bc}\\)`：\\(\frac {a}{bc}\\)
+
 或者
+
 `\\({a+1\over b+1}\\)`：\\({a+1\over b+1}\\)
 
 **根式**：\sqrt
+
 `\\(\sqrt[4]{\frac xy}\\)`：\\(\sqrt[4]{\frac xy}\\)
 
 ### 6、三角函数
+
 * `\\(\sin x\\)`：\\(\sin x\\)
 * `\\(\arctan x\\)`：\\(\arctan x\\)
 * `\\(\lim\_{1\to\infty}\\)`：\\(\lim\_{1\to\infty}\\)
 
 ### 7、比较运算符
+
 * `\\(\lt\\)`：\\(\lt\\)
 * `\\(\gt\\)`：\\(\gt\\)
 * `\\(\le\\)`：\\(\le\\)
@@ -207,6 +220,7 @@ $$\left \lbrace \sum\_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} \right\rbrace (1.2)$
 * 在前面加上\not表示否`\\(\not\lt\\)`：\\(\not\lt\\)
 
 ### 8、四则运算
+
 * `\\(\times\\)`：\\(\times\\)
 * `\\(\div\\)`：\\(\div\\)
 * `\\(\pm\\)`：\\(\pm\\)
@@ -214,6 +228,7 @@ $$\left \lbrace \sum\_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} \right\rbrace (1.2)$
 * `\\(x \cdot b\\)`：\\(x \cdot b\\)
 
 ### 9、集合运算
+
 * `\\(\cup\\)`: \\(\cup \\)
 * `\\(\cap\\)`: \\(\cap \\)
 * `\\(\setminus\\)`: \\(\setminus \\)
@@ -227,6 +242,7 @@ $$\left \lbrace \sum\_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} \right\rbrace (1.2)$
 * `\\(\varnothing\\)`：出错
 
 ### 10、箭头
+
 * `\\(\to\\)`：\\(\to\\)
 * `\\(\rightarrow\\)`：\\(\rightarrow\\)
 * `\\(\leftarrow\\)`：\\(\leftarrow\\)
@@ -235,6 +251,7 @@ $$\left \lbrace \sum\_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} \right\rbrace (1.2)$
 * `\\(\mapsto\\)`：\\(\mapsto\\)
 
 ### 11、逻辑运算符
+
 * `\\(\land\\)`：\\(\land\\)
 * `\\(\lor\\)`：\\(\lor\\)
 * `\\(\lnot\\)`：\\(\lnot\\)
@@ -245,34 +262,43 @@ $$\left \lbrace \sum\_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6} \right\rbrace (1.2)$
 * `\\(\vdash\\)`：\\(\vdash\\)
 * `\\(\vDash\\)`：出错
 
-#### 12、其他符号
+### 12、其他符号
+
 * `\\(\star \ast \oplus \circ \bullet\\)`：\\(\star \ast \oplus \circ \bullet\\)
 * `\\(\approx \sim \cong \equiv \prec \\)`：\\(\approx \sim \cong \equiv \prec \\)
 * `\\(\infty \aleph_0 \nabla \partial \nabla \partial \Im \Re\\)`：\\(\infty \aleph_0 \nabla \partial \nabla \partial \Im \Re\\)
 * 模运算`\\(a\equiv b\pmod n\\)`：\\(a\equiv b\pmod n\\)
 * `\ldots`与`\cdots`：\\(\ldots \cdots\\)
 
-
 ### 13、空隙间隔
-`\,`、`\quad` 与 `\qquad` 会增加更大的间隙\`\quad` 与 `\qquad` 会增加更大的间隙：
+
+`\,`、`\quad` 与 `\qquad` 会增加更大的间隙`\quad` 与 `\qquad` 会增加更大的间隙：
+
 $$a\qquad b$$
 $$a \, b$$
 
 ### 14、转义字符
+
 `\`反斜线
+
 `$$\$ \\_ $$`
 $$ \$ \\_ $$
 
-
 ## 四、表格
-********************************
+
+***
+
 略
 
 ## 五、矩阵
-******************************
+
+***
+
 ### 1、矩阵基本用法
+
 使用`$$\begin{matrix}…\end{matrix}$$`这样的形式来表示矩阵，在`\begin`与`\end`之间加入矩阵中的元素即可。矩阵的行之间使用`\\`分隔，列之间使用`&`分隔。
-```
+
+```latex
 $$
 \begin{matrix}
 1 & x & x^2 \\\\
@@ -291,7 +317,8 @@ $$
 $$
 
 ### 2、给矩阵加括号
-```
+
+```latex
 $$
 \begin{pmatrix}
 1&2\\\\
@@ -299,6 +326,7 @@ $$
 \end{pmatrix}
 $$
 ```
+
 $$
 \begin{pmatrix}
 1&2\\\\
@@ -306,8 +334,7 @@ $$
 \end{pmatrix}
 $$
 
-
-```
+```latex
 $$
 \begin{bmatrix}
 1&2\\\\
@@ -315,6 +342,7 @@ $$
 \end{bmatrix}
 $$
 ```
+
 $$
 \begin{bmatrix}
 1&2\\\\
@@ -322,8 +350,7 @@ $$
 \end{bmatrix}
 $$
 
-
-```
+```latex
 $$
 \begin{Bmatrix}
 1&2\\\\
@@ -331,6 +358,7 @@ $$
 \end{Bmatrix}
 $$
 ```
+
 $$
 \begin{Bmatrix}
 1&2\\\\
@@ -338,8 +366,7 @@ $$
 \end{Bmatrix}
 $$
 
-
-```
+```latex
 $$
 \begin{vmatrix}
 1&2\\\\
@@ -347,6 +374,7 @@ $$
 \end{vmatrix}
 $$
 ```
+
 $$
 \begin{vmatrix}
 1&2\\\\
@@ -354,7 +382,7 @@ $$
 \end{vmatrix}
 $$
 
-```
+```latex
 $$
 \begin{Vmatrix}
 1&2\\\\
@@ -362,6 +390,7 @@ $$
 \end{Vmatrix}
 $$
 ```
+
 $$
 \begin{Vmatrix}
 1&2\\\\
@@ -370,59 +399,66 @@ $$
 $$
 
 ### 3、省略号
-`\cdots` ⋯  
-`\ddots` ⋱ 
-`\vdots` ⋮
+
+* `\cdots` ⋯
+* `\ddots` ⋱
+* `\vdots` ⋮
 
 ### 4、增广矩阵
-```
-$$ \left[
-      \begin{array}{cc|c}
-        1&2&3\\\\
-        4&5&6
-      \end{array}
-    \right]
-$$
-```
-$$ \left[
-      \begin{array}{cc|c}
-        1&2&3\\\\
-        4&5&6
-      \end{array}
-    \right]
-$$
 
+```latex
+$$ \left[
+      \begin{array}{cc|c}
+        1&2&3\\\\
+        4&5&6
+      \end{array}
+    \right]
+$$
+```
+
+$$ \left[
+      \begin{array}{cc|c}
+        1&2&3\\\\
+        4&5&6
+      \end{array}
+    \right]
+$$
 
 ## 六、公式对齐
-**********************************
-```
+
+***
+
+```latex
 $$
 \begin{align}
 \sqrt{37} & = \sqrt{\frac{73^2-1}{12^2}} \\\\
- & = \sqrt{\frac{73^2}{12^2}\cdot\frac{73^2-1}{73^2}} \\\\ 
+ & = \sqrt{\frac{73^2}{12^2}\cdot\frac{73^2-1}{73^2}} \\\\
  & = \sqrt{\frac{73^2}{12^2}}\sqrt{\frac{73^2-1}{73^2}} \\\\
- & = \frac{73}{12}\sqrt{1 - \frac{1}{73^2}} \\\\ 
+ & = \frac{73}{12}\sqrt{1 - \frac{1}{73^2}} \\\\
  & \approx \frac{73}{12}\left(1 - \frac{1}{2\cdot73^2}\right)
 \end{align}
 $$
 ```
+
 $$
 \begin{align}
 \sqrt{37} & = \sqrt{\frac{73^2-1}{12^2}} \\\\
- & = \sqrt{\frac{73^2}{12^2}\cdot\frac{73^2-1}{73^2}} \\\\ 
+ & = \sqrt{\frac{73^2}{12^2}\cdot\frac{73^2-1}{73^2}} \\\\
  & = \sqrt{\frac{73^2}{12^2}}\sqrt{\frac{73^2-1}{73^2}} \\\\
- & = \frac{73}{12}\sqrt{1 - \frac{1}{73^2}} \\\\ 
+ & = \frac{73}{12}\sqrt{1 - \frac{1}{73^2}} \\\\
  & \approx \frac{73}{12}\left(1 - \frac{1}{2\cdot73^2}\right)
 \end{align}
 $$
 
 其中需要使用&来指示需要对齐的位置。请使用右键查看上述公式的代码。
 
-
 ## 七、分类表达式
-**********************************
+
+***
+
 定义函数的时候经常需要分情况给出表达式，可使用`\begin{cases}…\end{cases}`。其中，使用`\`来分类，使用`&`指示需要对齐的位置。如：
-```
+
+```latex
 $$
 f(n) =
 \begin{cases}
@@ -431,6 +467,7 @@ n/2,  & \text{if $n$ is even} \\\\
 \end{cases}
 $$
 ```
+
 $$
 f(n) =
 \begin{cases}
@@ -439,7 +476,7 @@ n/2,  & \text{if $n$ is even} \\\\
 \end{cases}
 $$
 
-```
+```latex
 $$
 \left.
 \begin{array}{l}
@@ -462,9 +499,13 @@ $$
 $$
 
 ## 八、其他
-******************************
+
+***
+
 ### 1、惯用法
+
 **不要在再指数或者积分中使用`\frac`而使用 `/`**
+
 $$
 \begin{array}{cc}
 \mathrm{Bad} & \mathrm{Better} \\\\
@@ -474,7 +515,8 @@ e^{i\frac{\pi}2} \quad e^{\frac{i\pi}2}& e^{i\pi/2} \\\\
 \end{array}
 $$
 
-**使用 `\mid `代替 `|` 作为分隔符**
+**使用 `\mid`代替 `|` 作为分隔符**
+
 $$
 \begin{array}{cc}
 \mathrm{Bad} & \mathrm{Better} \\\\
@@ -484,6 +526,7 @@ $$
 $$
 
 **对于多重积分，不要使用`\int\int`此类的表达，应该使用`\iint` `\iiint`等特殊形式。**
+
 $$
 \begin{array}{cc}
 \mathrm{Bad} & \mathrm{Better} \\\\
@@ -494,6 +537,7 @@ $$
 $$
 
 **在微分前应该使用\,来增加些许空隙，否则TEXTEX会将微分紧凑地排列在一起。如下：**
+
 $$
 \begin{array}{cc}
 \mathrm{Bad} & \mathrm{Better} \\\\
@@ -503,7 +547,9 @@ $$
 $$
 
 ### 2、连分数
+
 书写连分数表达式时，请使用`\cfrac`代替`\frac`或者`\over`两者效果对比如下：
+
 $$
 x = a\_0 + \cfrac{1^2}{a\_1 + \cfrac{2^2}{a\_2 + \cfrac{3^2}{a\_3 + \cfrac{4^4}{a\_4 + \cdots}}}} \tag{\cfrac}
 $$
@@ -513,10 +559,12 @@ x = a\_0 + \frac{1^2}{a\_1 + \frac{2^2}{a\_2 + \frac{3^2}{a\_3 + \frac{4^4}{a\_4
 $$
 
 ### 3、方程组
+
 #### （1）使用`\begin{array} … \end{array}`与`\left{…\right`.配合，表示方程组，如：
-```
+
+```latex
 $$
-\left\\{ 
+\left\\{
 \begin{array}{c}
 a\_1x+b\_1y+c\_1z=d\_1 \\\\
 a\_2x+b\_2y+c\_2z=d\_2 \\\\
@@ -525,8 +573,9 @@ a\_3x+b\_3y+c\_3z=d\_3
 \right.
 $$
 ```
+
 $$
-\left\\{ 
+\left\\{
 \begin{array}{c}
 a\_1x+b\_1y+c\_1z=d\_1 \\\\
 a\_2x+b\_2y+c\_2z=d\_2 \\\\
@@ -536,70 +585,76 @@ a\_3x+b\_3y+c\_3z=d\_3
 $$
 
 #### （2）同时，还可以使用`\begin{cases}…\end{cases}`表达同样的方程组，如：
-```
+
+```latex
 $$
 \begin{cases}
-a_1x+b\_1y+c\_1z=d\_1 \\\\ 
-a_2x+b\_2y+c\_2z=d\_2 \\\\ 
+a_1x+b\_1y+c\_1z=d\_1 \\\\
+a_2x+b\_2y+c\_2z=d\_2 \\\\
 a_3x+b\_3y+c\_3z=d\_3
 \end{cases}
 $$
 ```
+
 $$
 \begin{cases}
-a_1x+b\_1y+c\_1z=d\_1 \\\\ 
-a_2x+b\_2y+c\_2z=d\_2 \\\\ 
+a_1x+b\_1y+c\_1z=d\_1 \\\\
+a_2x+b\_2y+c\_2z=d\_2 \\\\
 a_3x+b\_3y+c\_3z=d\_3
 \end{cases}
 $$
 
 #### （3）对齐方程组中的 `=` 号，可以使用 `\being{aligned} .. \end{aligned}`，如：
-```
+
+```latex
 $$
 \left\\{
-\begin{aligned} 
-a\_1x+b\_1y+c\_1z &=d\_1+e\_1 \\\\ 
-a\_2x+b\_2y&=d\_2 \\\\ 
-a\_3x+b\_3y+c\_3z &=d\_3 
-\end{aligned} 
+\begin{aligned}
+a\_1x+b\_1y+c\_1z &=d\_1+e\_1 \\\\
+a\_2x+b\_2y&=d\_2 \\\\
+a\_3x+b\_3y+c\_3z &=d\_3
+\end{aligned}
 \right.
 $$
 ```
 
 $$
 \left\\{
-\begin{aligned} 
-a\_1x+b\_1y+c\_1z &=d\_1+e\_1 \\\\ 
-a\_2x+b\_2y&=d\_2 \\\\ 
-a\_3x+b\_3y+c\_3z &=d\_3 
-\end{aligned} 
+\begin{aligned}
+a\_1x+b\_1y+c\_1z &=d\_1+e\_1 \\\\
+a\_2x+b\_2y&=d\_2 \\\\
+a\_3x+b\_3y+c\_3z &=d\_3
+\end{aligned}
 \right.
 $$
 
 #### （4）如果要对齐 `=` 号 和项，可以使用`\being{array}{列样式} .. \end{array}`，如：
-```
+
+```latex
 $$
 \left\\{
 \begin{array}{ll}
-a\_1x+b\_1y+c\_1z &=d\_1+e\_1 \\\\ 
-a\_2x+b\_2y &=d\_2 \\\\ 
-a\_3x+b\_3y+c\_3z &=d\_3 
-\end{array} 
+a\_1x+b\_1y+c\_1z &=d\_1+e\_1 \\\\
+a\_2x+b\_2y &=d\_2 \\\\
+a\_3x+b\_3y+c\_3z &=d\_3
+\end{array}
 \right.
 $$
 ```
+
 $$
 \left\\{
 \begin{array}{ll}
-a\_1x+b\_1y+c\_1z &=d\_1+e\_1 \\\\ 
-a\_2x+b\_2y &=d\_2 \\\\ 
-a\_3x+b\_3y+c\_3z &=d\_3 
-\end{array} 
+a\_1x+b\_1y+c\_1z &=d\_1+e\_1 \\\\
+a\_2x+b\_2y &=d\_2 \\\\
+a\_3x+b\_3y+c\_3z &=d\_3
+\end{array}
 \right.
 $$
 
 ### 4、颜色
-```
+
+```latex
 $$
 \begin{array}{|rc|}
 \hline
@@ -649,7 +704,7 @@ $$
 \end{array}
 $$
 
-```
+```latex
 $$
 \begin{array}{|rrrrrrrr|}\hline
 \verb+#000+ & \color{#000}{text} & & &
@@ -680,12 +735,15 @@ $$
 $$
 
 ### 5、引用标记
+
 `\tag{yourtag}`
-```
+
+```latex
 $$
 a := x^2-y^3 \tag{\*}\label{\*}
 $$
 ```
+
 $$
 a := x^2-y^3 \tag{\*}\label{\*}
 $$

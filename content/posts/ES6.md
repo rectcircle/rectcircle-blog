@@ -14,5 +14,3 @@ tags:
 
 [github](https://github.com/rectcircle/es6-learn)
 [参考](http://es6.ruanyifeng.com)
-
-

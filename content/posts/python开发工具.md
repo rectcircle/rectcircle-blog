@@ -1,8 +1,8 @@
 ---
-title: python开发工具
+title: Python开发工具
 date: 2017-09-13T18:32:03+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/93
@@ -11,20 +11,18 @@ tags:
   - python
 ---
 
-## 目录
-* [一、IPython](#一、IPython)
-	* [1、常用的内建指令](#1、常用的内建指令)
-	* [2、重新加载模块](#2、重新加载模块)
-* [二、VSCode开发Python](#二、VSCode开发Python)
-
-
 ## 一、IPython
-********************************
+
+***
+
 ### 1、常用的内建指令
+
 * `%doctest_mode`：自动去除示例代码中的`>>>`提示符，不用手动删除
 
 ### 2、重新加载模块
+
 在进行代码试验中，修改代码后需要重新导入
+
 ```py
 >>> import mymode
 >>> from imp import reload  
@@ -90,7 +88,3 @@ pip install pylint pylint-django==0.11.1
 
 * 工作空间目录不要有`__init__.py`文件，**如果有的话pylint将报错**
 * python代码写在工作空间中的一个目录（包）中
-
-
-
-

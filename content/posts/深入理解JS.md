@@ -2,7 +2,7 @@
 title: 深入理解JS
 date: 2018-05-19T19:21:57+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/144
@@ -14,29 +14,22 @@ tags:
 > 纯属个人理解：以google v8引擎为例
 > 仅讨论理论等价模型，实际上为了优化，可能实现并非如此，比如对基本数据类型做了本地处理
 
-## 目录
-* [1、JS原理与理念](#1、JS原理与理念)
-* [2、JS对象如何产生](#2、JS对象如何产生)
-* [3、内置类型与内置构造器](#3、内置类型与内置构造器)
-* [4、对象属性查找过程](#4、对象属性查找过程)
-* [5、实现面向对象的效果](#5、实现面向对象的效果)
-* [6、this](#6、this)
-* [7、GetterSetter](#7、GetterSetter)
-
-
 ### 1、JS原理与理念
+
 * 在js中，一切实体都是`对象`（这个`对象`可以理解为类似与`{}`的键值对的结构）
 * 一切对象都是由`构造函数`产生的（`new`操作），特别的：`构造函数`也是由`构造函数`产生的（基本类型构造函数除外）
 * 其他所有语法概念都是以上两点的`语法糖`，也就是说，可以用以上方式模拟出来
 
-
 ### 2、JS对象如何产生
+
 主要是new操作的执行过程（基本数据类型也类似这样，只是存在字面量而已）：
+
 * 在内存中创建一个对象（在此记为`{}`）
 * 执行构造函数（记为：`Constructor`），向`{}`填充值（对象变为`{key:value}`）
 * 在这个对象中添加一个键值对`__proto__:Constructor.prototype`
 
 最终对象结构如下：
+
 ```js
 //执行
 var obj = new Constructor(/*...*/)
@@ -48,6 +41,7 @@ var obj = {
 ```
 
 #### （1）对于基本数据类型的创建效果上与上面一致
+
 ```js
 //执行此语句
 var n = 1
@@ -61,7 +55,9 @@ var n = {
 ```
 
 ### 3、内置类型与内置构造器
+
 以下展示的基本类型都是其构造函数，构造函数的基本结构为：
+
 ```js
 Constructor = {
 	//无法通过属性访问的代码
@@ -73,9 +69,10 @@ Constructor = {
 }
 ```
 
-
 #### （1）Object
+
 **最重要的类型**
+
 ```js
 Object = {
 	//函数的内容，本地代码，用户不可见
@@ -89,7 +86,9 @@ Object = {
 ```
 
 #### （2）Function
+
 **最重要的类型之二**
+
 ```js
 Function = {
 	//函数的内容，本地代码，用户不可见
@@ -102,9 +101,10 @@ Function = {
 }
 ```
 
-
 #### （3）Number
+
 Number构造器如下
+
 ```js
 Number = {
 	//函数的内容，本地代码，用户不可见
@@ -124,7 +124,9 @@ Number = {
 ```
 
 #### （4）String
+
 String构造器如下
+
 ```js
 String = {
 	//函数的内容，本地代码，用户不可见
@@ -138,20 +140,25 @@ String = {
 ```
 
 #### （5）Boolean
+
 略
 
 #### （6）Undefined
+
 略
 
-
 ### 4、对象属性查找过程
+
 #### （1）一个例子
+
 ```js
 var f = new Function('a','b','return a+b;');
 
 f.toString()
 ```
+
 f的内容
+
 ```js
 f = {
 	//内容
@@ -172,14 +179,17 @@ f = {
 * 不存在，再搜索`__proto__.__proto__`的属性
 * 依次类推，直到null为止
 
-
 ### 5、实现面向对象的效果
+
 #### （1）实现一个类
+
 **要求**
+
 * 每个对象，都有自己独立的成员变量
 * 所有对象，共享成员函数和类变量
 
 **实现**
+
 ```js
 //类定义
 function Person(firstname, lastname, age, eyecolor) {
@@ -191,7 +201,7 @@ function Person(firstname, lastname, age, eyecolor) {
 
 Person.prototype.description = "人类，一种哺乳动物" //这种方式就可以实现一个所有对象共享的属性（静态变量）
 Person.prototype.sayHello = function () { //这种方式就可以实现一个成员函数
-    console.log("Hello, My name is "+this.firstname); 
+    console.log("Hello, My name is "+this.firstname);
 }
 
 //生成实例
@@ -203,6 +213,7 @@ console.log(bill.sayHello === steve.sayHello); //true
 ```
 
 **结构**
+
 ```js
 Person = {
 	//代码
@@ -224,6 +235,7 @@ bill = {
 ```
 
 #### （2）实现继承
+
 * 子类可以访问父类的成员函数、成员变量
 
 ```js
@@ -260,6 +272,7 @@ c.sayName();
 ```
 
 结构如下：
+
 ```js
 c = {
 	color:"blank",
@@ -277,10 +290,12 @@ c = {
 }
 ```
 
-
 ### 6、this
+
 this指向调用者对象
+
 #### （1）纯粹函数调用
+
 ```js
 x = 0
 function test() {
@@ -291,9 +306,11 @@ function test() {
 test(); // 1
 console.log(x); //1
 ```
+
 因此this就代表全局对象Global。
 
 #### （2）作为对象方法的调用
+
 ```js
 var o = {};
 o.x = 0;
@@ -301,16 +318,20 @@ o.m = test;
 o.m(); // 1
 console.log(o.x); // 1
 ```
+
 函数还可以作为某个对象的方法调用，这时this就指这个上级对象。
 
 #### （3）作为构造函数调用
+
 ```js
 var o = new test();
 console.log(o.x); // 1
 ```
 
 #### （4）`apply()`调用
+
 apply()的参数为空时，默认调用全局对象，否则apply的第一个参数为this的指向
+
 ```js
 var o = {};
 o.x = 0;
@@ -318,8 +339,8 @@ test.apply(o)
 console.log(o.x);
 ```
 
-
 ### 7、GetterSetter
+
 * ES5新增 对象的get set
 * 这样对属性的访问变为：
 	* 先查找是否定义get、set访问器
@@ -328,6 +349,7 @@ console.log(o.x);
 * 可以将一个属性理解成一对默认的getset函数。读取，调用get；写入调用set，如果有同名，自定义的优先
 
 例子
+
 ```js
 var p = {
     name: "chen",
@@ -338,7 +360,7 @@ var p = {
     _age: 18, //按约定使用_开头，
     get age() {
         //return this.age; //无限递归，报错
-        return this._age; 
+        return this._age;
     },
     set age(val) {
         if (val < 0 || val > 100) { //如果年龄大于100就抛出错误
@@ -350,4 +372,3 @@ var p = {
 };
 console.log(p.name);
 ```
-

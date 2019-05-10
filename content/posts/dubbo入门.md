@@ -2,7 +2,7 @@
 title: dubbo入门
 date: 2018-09-11T16:10:36+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 aliases:
   - /detail/168
@@ -16,24 +16,12 @@ tags:
 > [github](https://github.com/apache/incubator-dubbo.git)
 > [samples](https://github.com/dubbo/dubbo-samples)
 
-## 目录
-***
-* [〇、介绍](#〇、介绍)
-	* [1、后端系统的演进](#1、后端系统的演进)
-	* [2、dubbo解决的问题](#2、dubbo解决的问题)
-	* [3、架构和组件](#3、架构和组件)
-	* [4、与SpringCloud比较](#4、与SpringCloud比较)
-* [一、HelloWorld](#一、HelloWord)
-	* [0、HelloWorld说明](#0、HelloWorld说明)
-	* [1、API方式配置](#1、API方式配置)
-	* [2、SpringXML方式](#2、SpringXML方式)
-	* [3、Spring注解方式](#3、Spring注解方式)
-	* [4、SpringBoot配置方式](#4、SpringBoot配置方式)
-
-
 ## 〇、介绍
+
 ***
+
 ### 1、后端系统的演进
+
 * 单一应用架构
 	* 当网站流量很小时，只需一个应用，将所有功能都部署在一起，以减少部署节点和成本。此时，用于简化增删改查工作量的数据访问框架(ORM)是关键。
 * 垂直应用架构
@@ -44,17 +32,19 @@ tags:
 	* 当服务越来越多，容量的评估，小服务资源的浪费等问题逐渐显现，此时需增加一个调度中心基于访问压力实时管理集群容量，提高集群利用率。此时，用于提高机器利用率的资源调度和治理中心(SOA)是关键。
 
 ### 2、dubbo解决的问题
+
 * 服务发现
 	* 使服务调用位置透明，省去URL配置
 	* 实现软负载均衡
 * 理清服务间依赖关系
 * 服务健康检测，动态分配计算资源
 
-
 ### 3、架构和组件
+
 ![架构图](http://dubbo.apache.org/docs/zh-cn/user/sources/images/dubbo-architecture.jpg)
 
 角色说明
+
 * Provider	暴露服务的服务提供方
 * Consumer	调用远程服务的服务消费方
 * Registry	服务注册与发现的注册中心
@@ -62,26 +52,27 @@ tags:
 * Container	服务运行容器
 
 调用说明
-* 0. 服务容器负责启动，加载，运行服务提供者。
-* 1. 服务提供者在启动时，向注册中心注册自己提供的服务。
-* 2. 服务消费者在启动时，向注册中心订阅自己所需的服务。
-* 3. 注册中心返回服务提供者地址列表给消费者，如果有变更，注册中心将基于长连接推送变更数据给消费者。
-* 4. 服务消费者，从提供者地址列表中，基于软负载均衡算法，选一台提供者进行调用，如果调用失败，再选另一台调用。
-* 5. 服务消费者和提供者，在内存中累计调用次数和调用时间，定时每分钟发送一次统计数据到监控中心。
 
-
+1. 服务容器负责启动，加载，运行服务提供者。
+2. 服务提供者在启动时，向注册中心注册自己提供的服务。
+3. 服务消费者在启动时，向注册中心订阅自己所需的服务。
+4. 注册中心返回服务提供者地址列表给消费者，如果有变更，注册中心将基于长连接推送变更数据给消费者。
+5. 服务消费者，从提供者地址列表中，基于软负载均衡算法，选一台提供者进行调用，如果调用失败，再选另一台调用。
+6. 服务消费者和提供者，在内存中累计调用次数和调用时间，定时每分钟发送一次统计数据到监控中心。
 
 ### 4、与SpringCloud比较
 
-
 ## 一、HelloWorld
+
 ***
+
 ### 0、HelloWorld说明
 
 * 使用mvn构建，使用多模块组织
 * 实现`sayHello`的远程方法调用
 
 **基本步骤**
+
 * 创建服务接口（api）
 * 创建服务提供者（provider），依赖服务接口
 	* 配置注册中心
@@ -92,12 +83,12 @@ tags:
 	* 获取服务代理对象
 	* 调用服务获取结果
 
-
 ### 1、API方式配置
 
 **特别说明：**使用组播方式进行服务发现
 
 项目结构
+
 ```
 .
 ├── dubbo-demo-api
@@ -122,7 +113,7 @@ tags:
 	* netty
 
 ```xml
-<project xmlns="http://maven.apache.org/POM/4.0.0" 
+<project xmlns="http://maven.apache.org/POM/4.0.0"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 		
@@ -134,7 +125,7 @@ tags:
 
 	<name>${project.artifactId}</name>
 	<description>The demo module of dubbo project</description>
-	
+
 	<modules>
 		<module>dubbo-demo-api</module>
 		<module>dubbo-demo-provider</module>
@@ -184,7 +175,9 @@ tags:
 ```
 
 #### （2）api模块
+
 没有依赖，仅声明接口
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
@@ -219,6 +212,7 @@ tags:
 ```
 
 源文件
+
 ```java
 
 package com.alibaba.dubbo.samples.api;
@@ -230,7 +224,8 @@ public interface GreetingsService {
 ```
 
 #### （3）服务提供者
-依赖api层，隐式依赖	`dubbo`、`netty`
+
+依赖api层，隐式依赖`dubbo`、`netty`
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -274,6 +269,7 @@ public interface GreetingsService {
 ```
 
 源码
+
 ```java
 
 package com.alibaba.dubbo.samples.provider;
@@ -313,6 +309,7 @@ public class Application {
 ```
 
 #### （4）服务消费者
+
 依赖api层，隐式依赖	`dubbo`、`netty`
 
 ```xml
@@ -358,6 +355,7 @@ public class Application {
 ```
 
 源码
+
 ```java
 package com.alibaba.dubbo.samples.consumer;
 
@@ -381,34 +379,39 @@ public class Application {
 ```
 
 #### （5）运行
+
 在根目录运行
+
 ```bash
 mvn install
 ```
 
 在提供者目录
+
 ```bash
 mvn -Djava.net.preferIPv4Stack=true -Dexec.mainClass=com.alibaba.dubbo.samples.provider.Application exec:java
 ```
 
 在消费者目录
+
 ```bash
 mvn -Djava.net.preferIPv4Stack=true -Dexec.mainClass=com.alibaba.dubbo.samples.consumer.Application exec:java
 ```
 
-
-
 ### 2、SpringXML方式
 
 **特别说明：**
+
 * 使用ZooKeeper方式进行服务发现
 * 基本目录结构与上相似
 * zookeeper服务与服务提供者在同一个应用内，生产环境将应该分别部署
 
 #### （1）接口
+
 略
 
 #### （2）服务提供者
+
 **创建嵌入式的Zookeeper服务类**
 略
 
@@ -416,6 +419,7 @@ mvn -Djava.net.preferIPv4Stack=true -Dexec.mainClass=com.alibaba.dubbo.samples.c
 同上
 
 **创建main类**
+
 ```java
 package com.alibaba.dubbo.samples.provider;
 
@@ -436,6 +440,7 @@ public class Application {
 
 **spring配置文件**
 `spring/dubbo-demo-provider.xml`
+
 ```xml
 <beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:dubbo="http://dubbo.apache.org/schema/dubbo"
@@ -463,9 +468,10 @@ public class Application {
 </beans>
 ```
 
-
 #### （3）服务消费者
+
 **创建main类**
+
 ```java
 package com.alibaba.dubbo.samples.consumer;
 
@@ -496,6 +502,7 @@ public class Application {
 ```
 
 **spring配置文件**
+
 ```xml
 <beans xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:dubbo="http://dubbo.apache.org/schema/dubbo"
@@ -516,38 +523,47 @@ public class Application {
 ```
 
 #### （5）运行
+
 在根目录运行
+
 ```bash
 mvn install
 ```
 
 在提供者目录
+
 ```bash
 mvn -Djava.net.preferIPv4Stack=true -Dexec.mainClass=com.alibaba.dubbo.samples.provider.Application exec:java
 ```
 
 在消费者目录
+
 ```bash
 mvn -Djava.net.preferIPv4Stack=true -Dexec.mainClass=com.alibaba.dubbo.samples.consumer.Application exec:java
 ```
 
-
 ### 3、Spring注解方式
 
 **特别说明：**
+
 * 使用ZooKeeper方式进行服务发现
 * 基本目录结构与上相似
 * zookeeper服务与服务提供者在同一个应用内，生产环境将应该分别部署
 
 #### （1）接口
+
 略
 
 #### （2）服务提供者
+
 **创建嵌入式的Zookeeper服务类**
+
 略
 
 **创建服务实现**
+
 添加Service注解
+
 ```java
 package com.alibaba.dubbo.samples.provider;
 
@@ -561,10 +577,10 @@ public class GreetingsServiceImpl implements GreetingsService {
         return "Hello " + name;
     }
 }
-
 ```
 
 **创建main类**
+
 ```java
 package com.alibaba.dubbo.samples.provider;
 
@@ -644,7 +660,9 @@ public class Application {
 ```
 
 **spring属性配置文件**
+
 `spring/dubbo-provider.properties`
+
 ```properties
 dubbo.application.name=externalized-configuration-provider
 dubbo.registry.address=zookeeper://127.0.0.1:2181
@@ -652,9 +670,10 @@ dubbo.protocol.name=dubbo
 dubbo.protocol.port=20880
 ```
 
-
 #### （3）服务消费者
+
 **创建main类**
+
 ```java
 package com.alibaba.dubbo.samples.consumer;
 
@@ -715,7 +734,7 @@ public class Application {
             return registryConfig;
         }
     }
-    
+
     /**
      * 使用注解+属性文件配置
      */
@@ -729,6 +748,7 @@ public class Application {
 ```
 
 **测试用的Bean**
+
 ```java
 package com.alibaba.dubbo.samples.consumer;
 
@@ -750,9 +770,10 @@ public class GreetingServiceConsumer {
 }
 ```
 
-
 **spring属性配置文件**
+
 `spring/dubbo-consumer.properties`
+
 ```properties
 dubbo.application.name=externalized-configuration-consumer
 dubbo.registry.address=zookeeper://127.0.0.1:2181
@@ -760,25 +781,23 @@ dubbo.consumer.timeout=3000
 ```
 
 #### （5）运行
+
 在根目录运行
+
 ```bash
 mvn install
 ```
 
 在提供者目录
+
 ```bash
 mvn -Djava.net.preferIPv4Stack=true -Dexec.mainClass=com.alibaba.dubbo.samples.provider.Application exec:java
 ```
 
 在消费者目录
+
 ```bash
 mvn -Djava.net.preferIPv4Stack=true -Dexec.mainClass=com.alibaba.dubbo.samples.consumer.Application exec:java
 ```
 
-
-
 ### 4、SpringBoot配置方式
-
-
-
-
