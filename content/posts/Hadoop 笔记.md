@@ -328,6 +328,28 @@ Unix用户账号
 
 * 为hdfs、MR、yarn创建独立的用户运行，他们属于同一个hadoop组（可选）
 
+相关配置文件（`$HADOOP_HOME/etc/hadoop`，或者通过 `HADOOP_CONF_DIR` 指定，或者通过 `--config` 指定）
+
+| 文件名称                  | 格式          | 描述                                                              |
+|---------------------------|-------------|-----------------------------------------------------------------|
+| hadoop-env.sh             | Bash脚本      | 脚本运行所需要的环境变量                                          |
+| maprd-env.sh              | Bash脚本      | 脚本运行所需要的环境变量，以运行MapReduce（覆盖hadoop-env.sh的配置） |
+| yarn-env.sh               | Bash脚本      | 脚本运行所需要的环境变量，以运行YARN（覆盖hadoop-env.sh的配置）      |
+| core-site.xml             | Hadoop配置XML | Hadoop核心配置项，例如HDFS、MapReduce和YARN常用的I/O配置等          |
+| hdfs-site.xml             | Hadoop配置XML | Hadoop守护进程的配置项，包括namenode辅助namenode和datanode等       |
+| maprd-site.xml            | Hadoop配置XML | MapReduce守护进程的配置项，包括历史作业服务器                      |
+| yarn-site.xml             | Hadoop配置XML | YARN守护进程的配置项，包括资源管理器、web应用代理服务器和节点管理器 |
+| slaves                    | 纯文本        | 运行datanode和节点管理器的机器列表                                |
+| hadoop-metric2.properties | Java属性      | 控制如何在Hadoop上发布度量的属性                                  |
+| log4j.properties          | Java属性      | 系统日志文件、namenode审计日志、任务JVM进程的任务日志的属性         |
+| hadoop-policy.xml         | Hadoop配置XML | 安全模式下运行 Hadoop 时的访问控制列表的配置项                    |
+
+Hadoop中每个节点都有自己的配置，而不是全局唯一的配置文件。所以需要管理员完成配置同步。可以通过并行shell dsh pdsh等工具或者Hadoop集群管理工具Cloudera Manager 和 Apache Ambari 管理集群配置。
+
+可以使用同一套配置管理集权。但是为了充分利用机器资源，可能需要为专门的节点配置专门的配置。可以考虑使用机器类进行管理例如 Chef、Puppet、CFEngine和Bcfg2 等
+
+访问 `8088/conf` 可以查看到当前系统的全部配置
+
 Hadoop配置
 
 * 配置脚本：`$HADOOP_HOME/etc/hadoop`
@@ -388,7 +410,7 @@ Hadoop配置
 		* `dfs.hosts` 记录允许作为datanode加入集群的列表（排除：`dfs.hosts.exclude`）
 		* `yarn.resourcemanager.nodes.include-path` 记录允许作为节点管理器加入集群的列表（排除：`yarn.resourcemanager.nodes.exclude-path`）
 	* IO缓冲区大小：默认4K字节，`io.file.buffer.size`
-	* HDFS块大小：`dfs.blocksize`
+	* HDFS块大小：`dfs.blocksize` ，默认 128mb
 	* 保留储存空间：`dfs.datanode.du.reserved` 单位字节（保留部分空间给系统使用）
 	* 回收站：`fs.trash.interval` 回收站过期时间（分钟），默认为0表示不启用回收站（只有shell操作有效，程序不启用，程序可以通过Trash类实现），启用后每个用户目录小都会存在一个隐藏目录`.Trash`
 	* 作业调度（略）
@@ -535,6 +557,22 @@ start-yarn.sh
 #终止
 stop-yarn.sh
 ```
+
+Hadoop自带脚本可以在真个集群范围内启动和停止和守护进程（通过SSH方式）。脚本位置在 `$HADOOP_HOME/sbin` 目录下。配置文件中的 `slaves` 文件列举了集群中datanode节点和nodemanage节点的网络位置，可以通过`HADOOP_SLAVES`环境变量进行配置。且配置文件仅需要在namenode节点或者resourcemanage节点配置即可。
+
+hdfs 启动命令 `$HADOOP_HOME/sbin/start-dfs.sh`
+
+该启动脚本通过 `hdfs getconf -namenodes` 和 `hdfs getconf -secondarynamenodes` 来决定在哪一台机器启动namendoe和辅助namenode及诶单。具体启动流程如下
+
+* 通过 `hdfs getconf -namenodes` 和 `hdfs getconf -secondarynamenodes` 获取host，并在该节点启动namenode和辅助namenode守护进程
+* 在 `slaves` 文件指定的host上启动 datanode
+
+类似的 yarn 启动命令为 `$HADOOP_HOME/sbin/start-dfs.sh`
+
+* 在本地机器上启动一个资源管理器
+* 在 `slaves` 文件制动的host上启动一个nodemanage
+
+如果想更细粒度的控制激动集群可以使用 `hadoop-daemon.sh` 和 `hadoop-daemons.sh`
 
 启动过程中会使用ssh登录，所以过程中可能需要输入`yes`
 

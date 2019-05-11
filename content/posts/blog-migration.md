@@ -866,6 +866,10 @@ command = "hugo --gc --minify"
 
 然后在 [netlify](https://app.netlify.com) 上注册一个账号。然后在github中选择相应的代码库，即可完成。最后需要在 [domain设置页面](https://app.netlify.com/sites/rectcircle/settings/domain) 设置URL或者自定义域名即可完成部署。
 
+## 注意事项
+
+* Hugo使用的Markdown解析器 `Blackfriday` 存在无法正确识别两个空格的无序列表的Bug https://github.com/russross/blackfriday/issues/329
+
 [^1]: https://www.techiediaries.com/jekyll-hugo-hexo/
 [^2]: https://stackshare.io/stackups/hexo-vs-hugo_2-vs-jekyll
 [^3]: https://www.npmtrends.com/elasticlunr-vs-fuse.js-vs-fuzzy-vs-fuzzysearch-vs-lunr-vs-reds-vs-search-index

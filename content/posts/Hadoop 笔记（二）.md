@@ -822,3 +822,119 @@ fsck工具，用于检查HDFS中文件健康状态
 量度：http://localhost:50070/jmx
 
 ### 4、维护
+
+#### （1）日常管理过程
+
+**元数据备份**
+
+```bash
+hdfs dfsadmin -fetchImage fsimage.backup
+```
+
+**数据备份**
+
+使用 `distcp` 工具
+
+支持文件快照
+
+**文件系统检查**
+
+定期使用 `fsck` 进行文件系统检查
+
+**文件系统均衡器**
+
+通过`start-balancer.sh` 启动
+
+#### （2）委任和解除节点
+
+**新增节点**
+
+默认情况下，新的节点需要加入现有集群，只需要配置namenode和resourcemanage，使用 `$HADOOP_HOME/bin/hadoop-daemon.sh start datanode` 、 `$HADOOP_HOME/bin/hadoop-daemon.sh start tasktracker` 和 `yarn-daemon.sh  start nodemanager`。
+
+最后，在namenode节点
+
+* `hdfs dfsadmin -refreshNodes`
+* `yarn rmadmin -refreshNodes`
+* `start-balancer.sh -threshold 5` 平衡节点
+
+这样存在安全问题，可能存在未授权的Hadoop节点加入集群。
+
+通过配置 `dfs.hosts` 指定一个 datanode 的白名单，新加入的节点必须在此文件内才允许被加入集群。namenode会读取该配置。
+
+同样同个配置 `yarn.resourcemanager.nodes.include-path` 指定 nodemanager 的白名单，通常两者配置相同。
+
+可以理解如果两者都不配置，相当于所有主机都允许加入集群（相当于 `*`）
+
+> `slaves` 和 `dfs.hosts`、`yarn.resourcemanager.nodes.include-path` 的区别，`slaves`只对启动脚本有效，Hadoop守护进程永远不会读取其配置。而后者在hadoop守护进程有效
+
+此时的新增节点的步骤如下：
+
+* 将网络地址加入到 `include` 文件中
+* 使用 `hdfs dfsadmin -refreshNodes` 将审核后的datanode更新到namenode
+* 使用 `yarn rmadmin -refreshNodes` 将审核后的nodemanager接入resourcemanager
+* 将节点加入到 `slaves` 文件，在未来的集群管理中使用
+* 启动新的节点的datanode和nodemanager进程
+  * `$HADOOP_HOME/bin/hadoop-daemon.sh start datanode`
+  * `$HADOOP_HOME/bin/hadoop-daemon.sh start tasktracker`
+  * `yarn-daemon.sh  start nodemanager`
+* 访问Web页面查看是添加成功
+* 最后在合适的时候平衡集群
+
+**解除旧节点**
+
+优雅的解除节点必须使用exclude文件。分别通过 `dfs.hosts.exclude` 和 `yarn.resourcemanager.nodes.exclude-path` 配置，通常指向同一文件。
+
+节点出现在include和exclude文件组合情况的说明
+
+| 节点是否出现在include文件 | 节点是否出现在exclude文件 | 解释                  |
+|--------------------------|--------------------------|---------------------|
+| 否                        | 否                        | 节点无法连接          |
+| 否                        | 是                        | 节点无法连接          |
+| 是                        | 否                        | 节点可以连接          |
+| 是                        | 是                        | 节点可以连接，将被解除 |
+
+从集群中解除节点的步骤如下：
+
+* 将要解除的节点的网络地址添加到exclude文件中，不更新include文件
+* 执行 `hdfs dfsadmin -refreshNodes` 更新授权的node列表
+* 使用 `yarn rmadmin -refreshNodes` 更新授权的node列表
+* 访问Web页面，查看状态是否是“正在解除”（Decommission In Progress），并等待状态变为“解除完毕”（Decommissioned）
+* 从include文件中移除节点，并运行
+  * `hdfs dfsadmin -refreshNodes`
+  * `yarn rmadmin -refreshNodes`
+* 从slaves中移除节点
+
+#### （3）升级
+
+需要做好规划，对数据和元数据进行备份，考虑兼容性。
+
+如果HDFS文件系统布局没有发生变化，升级非常容易且可撤销升级：
+
+* 安装新版本的Hadoop客户端和守护进程
+* 关闭旧的守护进程
+* 升级配置文件
+* 启动新的守护进程
+* 客户端使用新的库
+* 升级后执行两步清理步骤
+  * 从集群中移除旧的安装和配置文件
+  * 在代码和配置文件中针对被被启用API进行修复
+
+如果HDFS文件系统布局发生变化，执行上述升级过程，namenode将无法启动，此时升级步骤如下，且不可撤销升级：
+
+* 在执行任务之前，确保前一升级已经定妥（前一次升级的历史文件已经删除，不可回退）
+* 关闭YARN和MapReduce守护进程
+* 关闭HDFS，并备份namenode目录
+* 在集群和客户端安装新版本的Hadoop
+* 使用 -upgrade 选项来启动HDFS
+	* `$NEW_HADOOP_HOME/sbin/start-dfs.sh -upgrade`
+	* `$NEW_HADOOP_HOME/bin/hdfs dfsadmin -upgradeProgress status` 查看升级状态
+* 等待升级完成
+* 检查HDFS是否运行正常
+* 启动YARN和MapReduce守护进程
+* 回滚或定妥升级任务
+	* 回滚：
+		* `$NEW_HADOOP_HOME/sbin/stop-dfs.sh`
+		* `$OLD_HADOOP_HOME/sbin/start-dfs.sh rollback`
+	* 定妥：
+		* `$NEW_HADOOP_HOME/bin/hdfs dfsadmin -finalizeUpgrade`
+		* `$NEW_HADOOP_HOME/bin/hdfs dfsadmin -upgradeProgress status`
