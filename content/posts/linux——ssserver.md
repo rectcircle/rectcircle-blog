@@ -25,15 +25,14 @@ yum install python-setuptools && easy_install pip
 
 ### 3、vim /root/ss.json
 
-```vim
-按i键输入
+```json
 {
-"server":"0.0.0.0",
-"server_port":137,
-"local_port":1080,
-"password":"123456",
-"timeout":600,
-"method":"aes-256-cfb"
+  "server":"0.0.0.0",
+  "server_port":137,
+  "local_port":1080,
+  "password":"123456",
+  "timeout":600,
+  "method":"aes-256-cfb"
 }
 ```
 
@@ -49,3 +48,15 @@ ssserver -c /root/ss.json -d start
 ### 5、启动服务
 
 ssserver -c /root/ss.json -d start
+
+### P.S
+
+安装最新版server端
+
+```bash
+pip install https://github.com/shadowsocks/shadowsocks/archive/master.zip -U
+```
+
+协议选择：
+
+https://github.com/shadowsocks/shadowsocks-windows/issues/1243#issuecomment-316714974
