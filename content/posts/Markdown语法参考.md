@@ -310,28 +310,28 @@ This is [本站主页](/ "主页") inline link.
 
 #### 参考式
 
-This is [an example] [id] reference-style link.
+This is [an example][id] reference-style link.
 
 [id]: / "title"
 
 ```markdown
-This is [an example] [id] reference-style link.
+This is [an example][id] reference-style link.
 
 [id]: /article "title"
 ```
 
 例子
 
-I get 10 times more traffic from [Google] [1] than from
-[Yahoo] [2] or [MSN] [3].
+I get 10 times more traffic from [Google][1] than from
+[Yahoo][2] or [MSN][3].
 
 [1]: http://google.com/        "Google"
 [2]: http://search.yahoo.com/  "Yahoo Search"
 [3]: http://search.msn.com/    "MSN Search"
 
 ```markdown
-I get 10 times more traffic from [Google] [1] than from
-[Yahoo] [2] or [MSN] [3].
+I get 10 times more traffic from [Google][1] than from
+[Yahoo][2] or [MSN][3].
 
 [1]: http://google.com/        "Google"
 [2]: http://search.yahoo.com/  "Yahoo Search"
@@ -449,7 +449,7 @@ dsvffd
 
 这是段文字参考文献 [^1]
 
-[^1]: https://github.com/gohugoio/hugoBasicExample/blob/master/content/post/markdown-syntax.md
+[^1]: https://github.com/gohugoio/hugoBasicExample/blob/master/content/post/markdown-syntax.md "参考链接"
 
 ```markdown
 
