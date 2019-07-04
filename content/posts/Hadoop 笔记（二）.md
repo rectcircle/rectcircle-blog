@@ -8,7 +8,7 @@ aliases:
   - /detail/191
   - /detail/191/
 tags:
-  - untagged
+  - 大数据
 ---
 
 > http://hadoop.apache.org/docs/r2.6.5/
