@@ -32,6 +32,8 @@ brew install sbt@1
 
 ### 3、新建HelloWorld项目
 
+> 出现网络问题先看下一步
+
 ```bash
 sbt new scala/hello-world.g8
 ```
@@ -54,22 +56,26 @@ sbt new file://$(pwd)/hello-world.g8
 ```ini
 [repositories]
   local
-  maven-local
   aliyun: https://maven.aliyun.com/repository/public/
   aliyun-ivy: https://maven.aliyun.com/repository/public/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
-
-  sbt-releases-repo: http://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
-  sbt-plugins-repo: http://repo.scala-sbt.org/scalasbt/sbt-plugin-releases/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
-
-  sonatype-oss-releases
-#  maven-central
-  sonatype-oss-snapshots
 ```
 
-> **这是无奈的解决办法**，最好有一个可以fanqiang的路由器，使用默认配置。
->
-> 经测试，以上配置在sbt第一运行的时候不能存在，否则将永远等待，
-> 还有，以上配置在 VScode 扩展 Scala (Metals) 初始化时也会永远等待
+添加 coursier 插件，`vim ~/.sbt/1.0/plugins/coursier.sbt`
+这一步很重要，如果没有这个插件，速度会巨慢
+
+```scala
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.0.3")
+```
+
+测试akka项目
+
+```bash
+sbt new akka/akka-quickstart-scala.g8
+cd akka-quickstart-scala
+sbt
+```
+
+> 阿里云不宕机的情况下应该还是很快的(阿里云的镜像也会宕机)
 > SBT真得难用！
 
 ### 5、命令行测试
@@ -83,7 +89,7 @@ run
 
 ### 6、VSCode 开发环境
 
-#### （1）安装如下插件：
+#### （1）安装如下插件
 
 * [Scala Syntax (official)](https://marketplace.visualstudio.com/items?itemName=scala-lang.scala)
 * [Scala (Metals)](https://marketplace.visualstudio.com/items?itemName=scalameta.metals)

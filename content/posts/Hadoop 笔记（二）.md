@@ -938,3 +938,46 @@ hdfs dfsadmin -fetchImage fsimage.backup
 	* 定妥：
 		* `$NEW_HADOOP_HOME/bin/hdfs dfsadmin -finalizeUpgrade`
 		* `$NEW_HADOOP_HOME/bin/hdfs dfsadmin -upgradeProgress status`
+
+## 七、Hadoop相关开源项目
+
+### 1、Avro
+
+[Apache Avro](http://avro.apache.org)，独立于编程语言的序列化系统。
+
+其他待补充
+
+### 2、Parquet
+
+[Apache Parquet](http://parquet.apache.org/)，能够高效存储嵌套数据的列式存储格式。
+
+列式存储占用空间更小、查询性能更优。
+
+其他待补充
+
+### 3、Flume
+
+[Apache Flume](http://flume.apache.org)，日志收集器。设计宗旨是：向Hadoop批量导入基于事件的海量数据。类似kafka。
+
+* 多消费者使用kafka
+* 面对hadoop使用Flume
+
+其他待补充
+
+### 4、 Sqoop
+
+[Apache Sqoop](http://sqoop.apache.org)，dump工具。将传统数据库的数据dump到hadoop中或从hadoop导出到RDBMS，使用特定api连接数据库。推荐使用 阿里的 Canal （binlog方式）。
+
+其他待补充
+
+### 5、Pig
+
+[Apache Pig](http://pig.apache.org)，提供了mapreduce工作流。使用领域语言Pig Latin定义数据处理方式，同时可以结合UDF，获取比hivesql更高的定制性和灵活性
+
+其他待补充
+
+### 6、Hive
+
+[Apache Hive](http://hive.apache.org)，构建在Hadoop上地数据仓库框架。支持HiveSQL操作，语法类似于MySQL。
+
+其他待补充
