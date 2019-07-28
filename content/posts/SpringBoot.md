@@ -198,6 +198,9 @@ public class AmazonProperties {
 	* `application.yml`等配置文件激活`spring.profiles.active=production`
 	* 启动参数激活`java -jar XXX.jar --spring.profiles.active=production`
 	* 环境变量激活`export SPRING_PROFILES_ACTIVE=production`
+	* spring-boot 插件
+		* spring-boot 1.x 使用 `mvn spring-boot:run -Dspring.profiles.active=test`
+		* spring-boot 2.x 使用 `mvn spring-boot:run -Dspring-boot.run.profiles=test`
 
 ### 3、定制应用程序错误页面
 

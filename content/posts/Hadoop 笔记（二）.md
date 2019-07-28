@@ -978,6 +978,157 @@ hdfs dfsadmin -fetchImage fsimage.backup
 
 ### 6、Hive
 
-[Apache Hive](http://hive.apache.org)，构建在Hadoop上地数据仓库框架。支持HiveSQL操作，语法类似于MySQL。
+[Apache Hive](http://hive.apache.org)，构建在Hadoop上地数据仓库框架。
 
-其他待补充
+* 支持HiveSQL操作，语法类似于MySQL
+* 不强制要求文件的存储结构
+* 可以选择多种执行引擎比如（默认mr、spark等）`set hive.execution.engine=spark`
+* 日志文件在 `hive.log.dir`
+* Hive命令提供三种类型的服务：
+  * cli 默认，一个交互式的shell
+  * hiveserver2 一个Thrift服务器、支持认证、Thrift、JDBC、ODBC连接器
+  * beeline
+  * hwi
+  * jar
+  * metastore
+* Hive客户端需要连接到HiveServer2（上一条），thrift或jdbc
+* 元数据（Metastore），默认使用Derby，但只支持单用户，多用户可选使用MySQL作为存储
+* 与传统数据库相比
+  * 传统数据是写时模式（写入时进行检查、进行解析）
+  * Hive是读时模式（读取时检查），在写入时速度非常快
+* Hive 不支持更新、事务和索引
+
+#### HiveQL
+
+* 一种SQL方言
+* 元数据放在关系型数据库中
+* 数据放在hdfs
+  * 托管表：放在指定的目录下
+  * 外部表：放在任意hive可访问的地方
+* 分区
+  * 按照某字段对数据进行物理划分（hive实现为HDFS的目录）
+* 分桶bucket
+  * 将分区按照hash或者其他继续划分
+  * 如果两个表按照相同的方式和字段分桶（分桶数必须成倍数关系），name表连接就可以更快速的进行连接
+  * 桶中的数据可以按照某种方式排序，这样表连接就可以进行归并排序
+* Hive存储格式：分为行格式、文件格式
+  * 行格式定义一行如何存储
+  * 文件格式
+    * 默认为分割的文本文件
+    * 可选择二进制存储格式：顺序文件、Avro、Parquet文件等
+    * 自定义格式使用：SerDe
+
+导入数据
+
+* 支持 `insert overwrite xxx select xxx`
+* 多表插入 `from source insert overwrite xxx insert overwrite xxx select xxx`
+
+排序与聚集
+
+* order by 全局有序，效率低下
+* sort by 部分有序（每个reducer有序）
+* distribute by 聚集规则，如果字段相同将下发到相同的reducer中
+
+连接
+
+* 内连接：表连接通过完整的mr过程实现（大表放在最后）
+* 外连接
+* 半连接：连接两个超大数据集（用户日志和OLTP的用户数据）
+  * 限制：左连接右表只能出现在on子句内
+* map连接（存在小数据集是）
+
+子查询
+
+* 只允许出现在 from 语句中，和优先的where语句中
+
+视图
+
+略
+
+#### 用户自定义函数（UDF）
+
+> 参考：https://www.jianshu.com/p/ca9dce6b5c37
+> https://www.jianshu.com/p/772bead323d0
+> https://www.jianshu.com/p/7ebc8f9c9b78
+
+创建步骤：
+
+* 添加依赖
+
+```xml
+<dependency>
+  <groupId>org.apache.hive</groupId>
+  <artifactId>hive-exec</artifactId>
+  <version>${hive.version}</version>
+  <scope>provided</scope>
+</dependency>
+```
+
+* 创建一个类继承UDF
+
+```java
+package cn.rectcircle.hadooplearn.udf;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.hadoop.hive.ql.exec.UDF;
+import org.apache.hadoop.io.Text;
+
+/**
+ * Strip
+ */
+public class Strip extends UDF {
+
+	private Text result = new Text();
+
+	public Text evaluate(Text str) {
+		if (str == null) {
+			return null;
+		}
+		result.set(StringUtils.strip(str.toString()));
+		return result;
+	}
+
+	public Text evaluate(Text str, String stripChars) {
+		if (str == null) {
+			return null;
+		}
+		result.set(StringUtils.strip(str.toString(), stripChars));
+		return result;
+	}
+}
+```
+
+* 编译、加载到hive中、并测试（临时函数）
+
+```java
+mvn package
+hive
+add jar /xxx/xxx/experiment.jar
+CREATE TEMPORARY FUNCTION a_strip as 'cn.rectcircle.hadooplearn.udf.Strip';
+show functions;
+select a_strip('   aaa   ');
+```
+
+### 7、Crunch
+
+[Apache Crunch](http://crunch.apache.org)，用来写MR管线的高级API，对程序员更友好，类似于Pig，但是提供的是编程的API接口，而不是领域特定语言。
+
+其他略
+
+### 8、Spark
+
+[Apache Spark](http://spark.apache.org)，Spark是一种分布式大数据计算引擎，但是Spark和其他引擎不同，没有使用MR作为执行引擎，而是自己实现了一套有向无环图执行引擎。其效率往往比MR高1个数量级。
+
+其他略
+
+### 9、HBase
+
+[Apache HBase](http://hbase.apache.org)，HBase是在HDFS上开发的面向列的分布式数据库。支持实时随机访问超大规模数据集。
+
+* 行上分多个region，存在一个key（主键），每个region都是有序的（主键），ragion会分裂和合并
+* 列上分为多个列簇，列簇是包含相同前缀的列，不同的列簇存储在不同文件中，且列簇必须预先定义（有Schema），列簇中的子列没有schema
+
+与RDBMS相比
+
+* 非关系型数据库，有限支持事务（行ACID保证）
+* 默认不支持SQL，只支持按照键查询（可通过Phoenix支持SQL）
