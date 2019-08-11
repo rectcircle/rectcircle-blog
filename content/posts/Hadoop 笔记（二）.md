@@ -1132,3 +1132,7 @@ select a_strip('   aaa   ');
 
 * 非关系型数据库，有限支持事务（行ACID保证）
 * 默认不支持SQL，只支持按照键查询（可通过Phoenix支持SQL）
+
+### 10、ZooKeeper
+
+参见 [ZooKeeper笔记](/detail/183)

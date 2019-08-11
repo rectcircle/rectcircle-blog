@@ -126,3 +126,83 @@ sbin/stop-all.sh
 访问Master节点8080端口`http://192.168.3.20:8080/`
 
 将看到两个worker
+
+## 二、模型与机制
+
+### 1、术语定义
+
+用户程序相关
+
+* Application 指用户编写的程序，包含Driver和Executor
+* Dirver 一般指Application上的Main函数创建的SparkContext， SparkContext是：
+  * Spark应用程序的运行环境
+  * 负责与ClusterManager通讯，申请资源、任务的分配和监控
+* Executor 指运行在Worker节点上的一个进程，负责运行Task，并负责将数据存储在内存或磁盘上，每个Executor并行Task的数目默认取决于CPU数
+
+集群管理相关
+
+* Cluster Manager 集群管理者
+  * standalone
+  * yarn
+* Worker 工作机器守护进行，负责启动管理Executor
+
+运行时相关
+
+* Job 包含多个Task组成
+* Stage Job被拆分为多组的Task，每组任务被称为Stage，也可称TaskSet，一个作业分为多个阶段，阶段之间存在上下游关系
+* Task 被送到某个Executor上的工作任务
+
+### 2、执行过程
+
+* 创建应用程序计算 RDD DAG（有向无环图）
+* 创建RDD DAG逻辑执行方案，将计算过程应用到Stage
+* 获取Executor来调度并执行各个Stage对应的ShuffleMapResult和ResultTask等任务，必须是一个Stage执行完成后下一个Stage才能执行
+
+#### （1）Stage划分
+
+划分Stage的方式是判断是算子之间是否产生宽依赖（宽依赖就是指父RDD的分区被多个子RDD的分区所依赖），Stage之间必然有Shuffle产生
+
+#### （2）partition与并行度的划分
+
+partition决定了Task的数目和每个分区文件的大小，partition越大，分区文件越小，Task数目越多，占用资源越高，额外开销越大，运行速度越快
+
+## 三、参数与优化
+
+### 1、自适应shuffle分区
+
+> 参考 https://blog.csdn.net/u013332124/article/details/90677676
+
+Adaptive Execution简称AE。原理是：
+
+* 在Shuffle过程中设定最大分区数目和分区文件期望大小。
+* 针对小分区，将对分区文件进行合并，使之达到期望文件大小的尺寸以减少task
+
+开启方式
+
+```sql
+set spark.sql.adaptive.enabled=true;
+set spark.sql.adaptive.join.enabled=true;
+```
+
+最大并行度（也是初始并行度）（最大分区数目）
+
+```sql
+set spark.sql.adaptive.maxNumPostShufflePartitions = 300
+```
+
+* 要保证 `targetPostShuffleInputSize * maxNumPostShufflePartitions * 1.2 > 最大stage的shuffle read size` 否者会导致运行速度变慢（因为stage的分区太大）
+
+Shuffle read从每个上游task拿到的文件尺寸的最大值
+
+```sql
+set spark.sql.adaptive.shuffle.targetPostShuffleInputSize;
+```
+
+执行过程
+
+* 上游stage的每个task进行Shuffle Write，分区数为 `spark.sql.adaptive.maxNumPostShufflePartitions`
+* dirver 会汇总每个上游stage中每个task的Shuffle Write的每个分区的编号和文件大小，计算出下游任务数和每个任务读取每个上游任务的那几个partition
+  * 规则是，针对每个上游task从0号分区其获取连续的、总大小小于`spark.sql.adaptive.shuffle.targetPostShuffleInputSize`的连续分区作为下游一个任务的输入
+  * 按照上述规则划分分区，最后得到的分区组的数目就是下游task的数目，每个分区需要读取的分区编号就是这个连续的范围
+  * 创建这些task
+* 下游task并行获取分区数据

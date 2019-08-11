@@ -9,7 +9,120 @@ tags:
   - sql
 ---
 
+> 《Hive编程指南》
+
 ## 一、基本知识
+
+### 0、基本操作
+
+#### （1）Hive命令
+
+查看帮助
+
+```bash
+hive --help
+```
+
+查看版本
+
+```bash
+hive --version
+```
+
+全部服务
+
+```bash
+hive --[cli beeline help hiveburninclient hiveserver2 hiveserver hwi jar lineage metastore metatool orcfiledump rcfilecat schemaTool version]
+```
+
+查看各个服务的帮助
+
+```bash
+hive --help --service cli
+```
+
+#### （2）Hive变量
+
+启动定义变量
+
+```
+hive
+  --define key=value 指定变量, 使用`hivevar:key`访问变量 参见
+  --hivevar key=value 指定变量, 使用`hivevar:key`访问变量
+```
+
+以键值对形式展现，key包含名字空间和名字以`:`隔开
+
+内置的名字空间：
+
+* hivevar
+  * 读写
+  * 通过--define或者--hivevar定义，前缀可省略
+* hiveconf
+  * 读写
+* system
+  * 读写
+* env
+  * 只读
+  * 如`set env:HOME`
+
+可以使用`${key}`的方式进行替换
+
+```bash
+hive --define test=test
+
+set test;
+set hivevar:test;
+select '${test}';
+```
+
+在cli中定义变量
+
+```sql
+set test1=1;
+set test1; -- 输出1
+set hivevar:test1; -- 显示未定义
+
+set hivevar:test2=1;
+set test2; -- 输出1
+set hivevar:test2; -- 输出1
+```
+
+查看变量
+
+```sql
+set; -- 打印全部变量
+set -v; -- 打印全部变量（包含hadoop变量）
+```
+
+#### （3）一次性使用hive命令
+
+```bash
+hive -e "select 1;" # 一次性执行命令输出到控制台（包括日志和结果）
+hive -S -e "select 1;" > test.txt # 一次性执行命令输出到控制台（只输出结果到标准输出，错误到标准出错），所以可保存到文件
+cat test.txt
+hive -S -e "set;" | grep warehouse # 查看配置
+```
+
+#### （4）从文件中执行Hive查询
+
+```bash
+hive -f /path/to/file/sql.hql
+# 或者
+hive
+hive> source /path/to/file/sql.hql;
+```
+
+#### （5）hiverc文件
+
+默认执行 `~/.hiverc`。或者通过 `hive -i` 指定
+
+#### （6）执行Bash命令或Hadoop命令
+
+```sql
+! echo 'test';
+dfs -ls /;
+```
 
 ### 1、HiveSQL数据类型
 
@@ -71,6 +184,175 @@ CREATE TABLE complex(
 
 * NULL与任何值做运算结果都为NULL
 * 判断是否是NULL：`field is NULL`
+
+### 4、DDL语法
+
+https://cwiki.apache.org/confluence/display/Hive/LanguageManual+DDL
+
+https://www.cnblogs.com/fanzhenyong/p/9746796.html
+
+#### （1）数据库
+
+```sql
+-- 创建
+-- CREATE (DATABASE|SCHEMA) [IF NOT EXISTS] database_name
+--   [COMMENT database_comment]
+--   [LOCATION hdfs_path]
+--   [WITH DBPROPERTIES (property_name=property_value, ...)];
+create database if not exists `database_name`; -- 默认创建在 set hive.metastore.warehouse.dir;
+create database `database_name` location '/path'; -- 指定数据库文件存放位置
+create database `database_name` commit '描述'; -- 添加注释
+create database `database_name` with dbproperties('creator'='rectcircle'); -- 添加附加信息
+
+-- 查询数据库列表
+show databases;
+show databases like 'ori.*';
+-- show databases rlike 'mu.*';
+
+-- 使用某个数据库
+use `database_name`;
+
+-- 删除
+-- DROP (DATABASE|SCHEMA) [IF EXISTS] database_name [RESTRICT|CASCADE];
+drop database if exists `database_name`; -- 不允许删除包含包含表的库
+drop database if exists `database_name` cascade; -- 先删除数据库中的表
+
+-- 修改
+alter database `database_name` set dbproperties('editor-by'='rectcircle', 'comment'='xxx')
+-- ALTER (DATABASE|SCHEMA) database_name SET DBPROPERTIES (property_name=property_value, ...);   -- (Note: SCHEMA added in Hive 0.14.0)
+-- ALTER (DATABASE|SCHEMA) database_name SET OWNER [USER|ROLE] user_or_role;   -- (Note: Hive 0.13.0 and later; SCHEMA added in Hive 0.14.0)
+-- ALTER (DATABASE|SCHEMA) database_name SET LOCATION hdfs_path; -- (Note: Hive 2.2.1, 2.4.0 and later)
+```
+
+* 以上`database`关键字都可以由`schema`替换
+
+#### （2）表
+
+```sql
+-- 创建
+create [temporary] [external] table [if not exists] [db_name.]table_name -- (Note: TEMPORARY available in Hive 0.14.0 and later)
+  [(col_name data_type [COMMENT col_comment], ... [constraint_specification])] -- 字段声明
+  [COMMENT table_comment] -- 表注释
+  [PARTITIONED BY (col_name data_type [COMMENT col_comment], ...)] -- 分区字段
+  [CLUSTERED BY (col_name, col_name, ...) [SORTED BY (col_name [ASC|DESC], ...)] INTO num_buckets BUCKETS] -- 分桶
+  [SKEWED BY (col_name, col_name, ...) ON ((col_value, col_value, ...), (col_value, col_value, ...), ...) [STORED AS DIRECTORIES] -- (Note: Available in Hive 0.10.0 and later)] 倾斜
+  [
+   [ROW FORMAT row_format]
+   [STORED AS file_format]
+     | STORED BY 'storage.handler.class.name' [WITH SERDEPROPERTIES (...)]  -- (Note: Available in Hive 0.6.0 and later)
+  ] -- 存储格式
+  [LOCATION hdfs_path] -- 存储路径
+  [TBLPROPERTIES (property_name=property_value, ...)]   -- (Note: Available in Hive 0.6.0 and later) 附加信息
+  [AS select_statement];   -- (Note: Available in Hive 0.5.0 and later; not supported for external tables) 使用查询信息填充表
+
+CREATE [TEMPORARY] [EXTERNAL] TABLE [IF NOT EXISTS] [db_name.]table_name -- 通过拷贝的方式创建
+  LIKE existing_table_or_view_name
+  [LOCATION hdfs_path];
+
+file_format:
+  : SEQUENCEFILE
+  | TEXTFILE    -- (Default, depending on hive.default.fileformat configuration)
+  | RCFILE
+  | ORC
+  | PARQUET
+  | AVRO
+  | JSONFILE    -- (Note: Available in Hive 4.0.0 and later)
+  | INPUTFORMAT input_format_classname OUTPUTFORMAT output_format_classname
+
+constraint_specification:
+  : [, PRIMARY KEY (col_name, ...) DISABLE NOVALIDATE ]
+    [, CONSTRAINT constraint_name FOREIGN KEY (col_name, ...) REFERENCES table_name(col_name, ...) DISABLE NOVALIDATE
+```
+
+* temporary 临时表：仅对当前session有效，session结束后自动删除
+* PARTITIONED BY 用于指定分区字段（将数据以目录层级结构存储）
+* external 外部表，不声明则表示为内部表
+  * 内部表LOAD数据时，会将数据移动到数据仓库指向的路径。外部表不会
+  * 内部表删除时，同时删除数据。外部表仅删除元数据
+* TBLPROPERTIES包含其他属性，其中 last_modified_user和last_modified_time 由hive管理，其他预定义属性：
+  * TBLPROPERTIES ("comment"="table_comment")
+  * TBLPROPERTIES ("hbase.table.name"="table_name") – 见集成HBASE.
+  * TBLPROPERTIES ("immutable"="true") 或("immutable"="false")– 见通过查询查插入数据到Hive表.
+  * TBLPROPERTIES ("orc.compress"="ZLIB") 或("orc.compress"="SNAPPY") 或 ("orc.compress"="NONE") 和其他ORC属性– 见ORC文件.
+  * TBLPROPERTIES ("transactional"="true")或 ("transactional"="false")– 见Hive事务.
+  * TBLPROPERTIES ("NO\_AUTO\_COMPACTION"="true") 或 ("NO\_AUTO\_COMPACTION"="false"), 缺省是 "false" – 见Hive事务.
+  * TBLPROPERTIES ("compactor.mapreduce.map.memory.mb"="mapper_memory") – 见Hive事务.
+  * TBLPROPERTIES ("compactorthreshold.hive.compactor.delta.num.threshold"="threshold_num") –见Hive事务.
+  * TBLPROPERTIES ("compactorthreshold.hive.compactor.delta.pct.threshold"="threshold_pct") – 见Hive事务.
+  * TBLPROPERTIES ("auto.purge"="true") 或 ("auto.purge"="false") – 见删除表、删除分区、截断表和覆盖式插入数据.
+  * TBLPROPERTIES ("EXTERNAL"="TRUE")–修改托管表为外部表，反之亦然为“FALSE”.
+    * 在Hive2.4.0中（HIVE-16324）属性“EXTERNAL”的值被解析为布尔型（不区分大小写的true或false），而不是比较时区分大小写字符串。
+* CREATE TABLE AS SELECT（CTAS）
+  * 表也可以通过一个CREATE-TABLE-AS-SELECT(CTAS)语句中的查询结果来创建和填充。CTAS创建的表是原子的，这意味着在填充所有查询结果之前，其他用户不会看到该表。因此，其他用户要么会看到具有完整查询结果的表，要么根本不会看到该表。
+  * CTAS有以下限制：
+    * 目标表不能是分区表。
+    * 目标表不能是外部表。
+    * 目标表不能是列表桶表。
+* `create table like` 复制表元数据
+
+```sql
+-- 查看数据库列表
+use db_name;
+show tables;
+show tables in db_name; -- 明确指定数据库
+show tables 'test.*'; -- 正则匹配
+
+-- 查看表的结构信息
+describe extended `table_name`;
+describe formatted `table_name`;
+describe 'db.table.field'
+desc `table_name`;
+show create table `table_name`;
+
+-- 删除表
+drop table if exists `table_name`;
+
+-- 表重命名
+alter table `old_table_name` rename to `new_table_name`;
+
+-- 查看分区列表
+show partitions `table_name`;
+-- 添加表分区
+alter table `table_name` add if not exists
+  partition (date='yyyymmdd') location ''
+  partition (date='yyyymmdd') location '';
+-- 修改表分区位置（不会删除数据）
+alter table `table_name` partition (date='yyyymmdd') set location '';
+-- 删除表分区（内部表同时删除数据）
+alter table `table_name` drop if exists partition (date='yyyymmdd');
+
+-- 删除表中的数据
+TRUNCATE TABLE table_name [PARTITION partition_spec];
+partition_spec:
+  : (partition_column = partition_col_value, partition_column = partition_col_value, ...)
+
+-- 修改列信息（修改类型只会更改元数据，不会更改数据，所以可能导致元数据与真实数据对不上的问题）
+alter table `table_name`
+change column `old_field_name` `new_field_name` type comment '' after xxx;
+-- 添加列
+alter table `table_name` add columns ();
+-- 替换列 完全替换
+alter table `table_name` replace columns ();
+-- 修改表属性
+alter table `table_name` set tblproperties ('key'='value');
+-- 修改存储方式
+alter table `table_name`
+[partition()]
+set fileformat  file_format
+
+-- 执行钩子 （不会创建表或分区）
+alter table `table_name` touch
+partition();
+-- 归档
+alter table `table_name` archive
+partition();
+-- 反归档
+alter table `table_name` unarchive
+partition();
+-- 分区保护
+alter table `table_name` [partition()] enable|disable NO_DROP;
+alter table `table_name` [partition()] enable|disable OFFLINE;
+```
 
 ## 二、常用函数与语法
 

@@ -11,6 +11,7 @@ tags:
 > 版本 1.36.0
 > 参考：https://www.rust-lang.org/zh-CN/
 > https://doc.rust-lang.org/stable/book/
+> https://kaisery.github.io/trpl-zh-cn/
 > https://doc.rust-lang.org/stable/reference/
 
 ## 一、安装和配置
@@ -29,7 +30,7 @@ curl https://sh.rustup.rs -sSf | sh
 
 正常情况下，默认会将环境变量配置好，即在 `~/.bash_profile` 文件中添加一行 `export PATH="$HOME/.cargo/bin:$PATH"`
 
-## 3、配置集成开发环境（VSCode）
+### 3、配置集成开发环境（VSCode）
 
 开发环境安装
 
@@ -282,7 +283,7 @@ fn main() {
 
 ### 3、数据类型
 
-主要分为两类：标量（基本数据类型）和复合（复杂数据类型）
+主要分为两类：标量（scalar基本数据类型）和复合（compound）
 
 #### （1）标量数据——整型
 
@@ -521,3 +522,455 @@ fn main() {
 
 * 都支持 break, continue 类似Java支持label, 使用break goto
 * while 支持模式匹配
+
+## 四、所有权系统
+
+所有权系统是 Rust 不同其他语言的最重要的部分。是为了解决内存分配问题而设计的。
+
+同其他编程语言一样rust内存也被划分为堆（heap）和栈（stack）。在函数中：
+
+* 值类型的变量将被防止在栈中
+* 复合类型的引用放置于栈中，数据放置与堆中
+
+### 1、所有权规则
+
+* 所有的值都有一个叫做owner的变量
+* 一次只能有一个owner
+* 当owner超出的作用域，值将被回收
+
+### 2、变量作用域
+
+和其他预览类似：一个花括号将创建一个作用域，超出作用域的变量将无法访问
+
+```rust
+    {                      // s 非法，因为还没有声明
+        let s = "hello";   // s 是合法的
+        println!("{}", s);
+        // 使用 s 做一些事情
+    }                      // 超出作用域 s 不可用
+```
+
+#### `String` 类型示例
+
+`String`是标准库提供的一个可变字符串。示例如下：
+
+```rust
+    let s = String::from("hello");    // 这样声明表示不可变，从一个字符串字面量创建String
+
+    let mut s = String::from("hello"); // 声明可变的string
+
+    s.push_str(", world!"); // push_str() 字符串拼接
+
+    println!("{}", s); // 将打印出 `hello, world!`
+```
+
+#### 内存分配
+
+`String::from` 实际上是在堆上申请了内存空间用于存放字符串。但是何时free，一般有两种做法：
+
+* 自动化垃圾回收器Java等
+  * 缺点：带来额外的开销
+* 手动回收类似于C、C++
+  * 极易出现错误和严重的漏洞
+
+Rust不同于以上两种：
+
+* 一旦变量超出作用域，将自动回收
+
+```rs
+    {
+        let s = String::from("hello"); // s 从改点可以访问
+
+        // do stuff with s
+    }                                  // 作用域结束，s不可访问（伴随drop）
+                                   // longer valid
+```
+
+#### 所有权转移
+
+针对赋值，分配在堆上的变量将发生所有权转移，在栈上的变量将进行赋值
+
+栈上的情况
+
+```rs
+    {
+        let x = 5;
+        let y = x; // x 分配在栈上，x将copy到y上，所以x, y都可以访问
+        println!("{}", x);
+    }
+```
+
+堆上的情况
+
+```rs
+    let s1 = String::from("hello");
+    let s2 = s1; // 可以称之为所有权转移，浅拷贝，同时让s1失效
+
+    // println!("{}, world!", s1); // 报错：borrow of moved value: `s1` value borrowed here after moverustc(E0382)
+```
+
+堆上拷贝的方法
+
+```rs
+    {
+        let s1 = String::from("hello");
+        let s2 = s1.clone();
+
+        println!("s1 = {}, s2 = {}", s1, s2); // 不会报错
+    }
+```
+
+### 3、变量覆盖和所有权
+
+```rs
+    {
+        let s1 = String::from("hello");
+        let s1 = String::from("hello"); // 变量覆盖不会带来内存回收，在花括号结束后自动回收
+        let s1 = String::from("hello");
+    }
+```
+
+### 4、所有权和函数
+
+函数的传参和变量赋值类似
+
+```rs
+    let s = String::from("hello");  // s 进入作用域
+
+    takes_ownership(s);             // s 被移动到函数内部
+                                    // ... 不在合法
+    // println!("所有权已转移 {}", s); // 报错
+    let x = 5;                      // x 进入作用域
+
+    makes_copy(x);                  // x 所有权转移到函数
+                                    // but i32 被拷贝，所以x仍能访问
+                                    // 可以使用x
+    println!("标量数据类型直接拷贝，仍然可访问{}", x);
+
+fn takes_ownership(some_string: String) { // some_string 进入作用域
+    println!("{}", some_string);
+} // 在这, some_string 超出作用域 `drop` 被调用. 返回
+  // 内存被释放
+
+fn makes_copy(some_integer: i32) { // some_integer 进入作用域
+    println!("{}", some_integer);
+} // 在这, some_integer 超出作用域. 没有什么发生.
+```
+
+函数返回值同样包含所有权转移
+
+```rs
+    let s1 = gives_ownership();         // 函数返回值的所有权转移到s1
+                                        // value into s1
+
+    let s2 = String::from("hello");     // s2 进入作用域
+
+    let s3 = takes_and_gives_back(s2);  // s2 移动到函数内
+                                        // takes_and_gives_back, 返回值
+                                        // 移动到s3
+    // println!("s2 {}", s2); // 报错
+    println!("s3 {}", s3);
+
+
+
+fn gives_ownership() -> String {             // gives_ownership 所有权将移动到作用域内
+                                             // 返回值所有权将移动到调用者所在作用域
+
+    let some_string = String::from("hello"); // some_string 进入作用域
+
+    some_string                              // some_string 所有权将移动到调用者所在作用域
+}
+
+// takes_and_gives_back 将接受一个参数并返回一个参数
+fn takes_and_gives_back(a_string: String) -> String { // a_string 进入
+                                                      // 作用域
+
+    a_string  // a_string 所有权将移动到调用者所在作用域
+}
+```
+
+### 5、所有权总结
+
+变量的所有权每次都遵循相同的模式：
+
+* 赋值（函数传参、返回值）给另一个变量，所有权将转移到被赋值变量，原有变量将不可访问
+* 当指向堆上数据的变量（所有权转移除外）超出作用域，将会调用 `drop` 回收内存
+
+在不使用引用的情况下，如果需要同时想使用函数参数和返回值，则需要使用元组在返回回来：
+
+```rs
+fn main() {
+    let s1 = String::from("hello");
+
+    let (s2, len) = calculate_length(s1);
+
+    println!("The length of '{}' is {}.", s2, len);
+}
+
+fn calculate_length(s: String) -> (String, usize) {
+    let length = s.len(); // len() returns the length of a String
+
+    (s, length)
+}
+
+```
+
+### 6、引用
+
+为了解决上文的问题，引入引用。
+
+```rs
+    {
+        let s1 = String::from("hello");
+
+        let len = calculate_length2(&s1);
+
+        println!("The length of '{}' is {}.", s1, len);
+    }
+
+fn calculate_length2(s: &String) -> usize {
+    s.len()
+}
+```
+
+以上引用声明的方式不允许修改，因此可以使用`&mut`声明可变引用
+
+```rs
+fn main() {
+    let mut s = String::from("hello");
+
+    change(&mut s);
+}
+
+fn change(some_string: &mut String) {
+    some_string.push_str(", world");
+}
+```
+
+可变引用存在如下限制
+
+* 对于特定范围内的特定数据，您只能有一个可变引用。
+* 这样设计的原因：竞争发生不一致
+  * 两个或更多指针同时访问同一数据。
+  * 至少有一个指针被用来写入数据。
+  * 没有同步数据访问的机制。
+
+```rs
+    {
+        let mut s = String::from("hello");
+
+        let r1 = &mut s;
+        // let r2 = &mut s; // 报错：cannot borrow `s` as mutable more than once at a time
+
+        // println!("{}, {}", r1, r2);
+    }
+```
+
+可以通过创建作用域解决
+
+```rs
+    {
+        let mut s = String::from("hello");
+
+        {
+            let r1 = &mut s;
+
+        } // r1 goes out of scope here, so we can make a new reference with no problems.
+
+        let r2 = &mut s;
+    }
+```
+
+同样可变与不可变混用也会导致报错
+
+```rs
+    {
+        let mut s = String::from("hello");
+
+        let r1 = &s; // no problem
+        let r2 = &s; // no problem
+        // let r3 = &mut s; // BIG PROBLEM：cannot borrow `s` as mutable because it is also borrowed as immutable
+
+        // println!("{}, {}, and {}", r1, r2, r3);
+    }
+```
+
+判断的依据是是否同时使用：
+
+```rs
+let mut s = String::from("hello");
+
+let r1 = &s; // no problem
+let r2 = &s; // no problem
+println!("{} and {}", r1, r2);
+// r1 and r2 are no longer used after this point
+
+let r3 = &mut s; // no problem
+println!("{}", r3);
+```
+
+总结
+
+* 在任意给定时间，要么 只能有一个可变引用，要么 只能有多个不可变引用。
+* 以上规则在调用有改变的时候回触发检查
+
+### 7、引用悬空
+
+编辑器保证不会出现引用悬空：通过检测引用作用域必须在变量的作用域及子孙作用域内。
+
+```rs
+fn main() {
+    let reference_to_nothing = dangle();
+}
+
+fn dangle() -> &String { // 报错引用超出变量作用域
+    let s = String::from("hello");
+
+    &s
+}
+```
+
+总结
+
+* 引用必须总是有效。
+
+### 8、切片类型
+
+切片是另一种没有所有权的类型（就是一种引用）。
+
+字符串切片
+
+```rs
+let s = String::from("hello world");
+
+let hello = &s[0..5];
+let world = &s[6..11];
+```
+
+一个例子：查找字符串的第一个单词
+
+```rs
+    {
+        let mut s = String::from("hello world");
+        s.push_str(" 123");
+        let word = first_word(&s);
+
+        // s.clear(); // error! 类似引用计数机制，因为 work 引用了 s
+
+        println!("the first word is: {}", word);
+    }
+    {
+        let mut s = String::from("hello world");
+
+        let word = first_word(&s);
+
+        // s.clear(); // error! cannot borrow `s` as mutable because it is also borrowed as immutable
+
+        println!("the first word is: {}", word);
+    }
+
+fn first_word(s: &String) -> &str {
+    let bytes = s.as_bytes();
+
+    for (i, &item) in bytes.iter().enumerate() {
+        if item == b' ' {
+            return &s[0..i];
+        }
+    }
+
+    &s[..]
+}
+```
+
+调用 `s.clear();` 报错的原因：
+
+* 在获取一个不可变引用时，就不能使用可变引用了。
+
+### 9、应用使用规则
+
+为了确保引用不会带来很多运行时错误（悬空、竞争），应用有如下规则：
+
+* 引用作用域必须在变量的作用域内（防止悬空）
+* 出现一个不可变引用后，将
+  * 可变引用或变量将**不允许**调用其声明为 `&mut self` 的方法
+* 出现一个可引用后，则
+  * **不允许**在同一作用域再声明一个可变引用
+  * **不允许**使用上边声明的不可变对象
+
+### 10、引用总结
+
+* 在任意给定时间，**要么** 只能有一个可变引用，**要么** 只能有多个不可变引用。
+* 引用必须总是有效。
+
+## 五、结构体
+
+### 1、定义并实例化结构体
+
+#### （1）基本示例
+
+```rs
+// 结构体
+struct User {
+    username: String,
+    email: String,
+    sign_in_count: u64,
+    active: bool,
+}
+
+// 方便的构造函数
+fn build_user(email: String, username: String) -> User {
+    User {
+        email, // 相同可以省略
+        username,
+        active: true,
+        sign_in_count: 1,
+    }
+}
+
+// 元组结构体
+struct Color(i32, i32, i32);
+struct Point(i32, i32, i32);
+
+fn main() {
+    let user1 = User {
+        email: String::from("someone@example.com"),
+        username: String::from("username123"),
+        active: true,
+        sign_in_count: 1,
+    };
+    println!("User: username={} email={} sign_in_count={} active={}", user1.username, user1.email, user1.sign_in_count, user1.active);
+    let user1_1 = build_user(String::from("test@example.com"), String::from("test"));
+    let user2 = User {
+        email: String::from("another@example.com"),
+        username: String::from("anotherusername567"),
+        ..user1 // 从其他实例中拷贝
+    };
+
+    let black = Color(0, 0, 0);
+    let origin = Point(0, 0, 0);
+
+    println!("Hello, world!");
+}
+```
+
+####（2）结构体与所有权
+
+可以使结构体存储被其他对象拥有的数据的引用，不过这么做的话需要用上 生命周期（lifetimes），这是一个第十章会讨论的 Rust 功能。生命周期确保结构体引用的数据有效性跟结构体本身保持一致。如果你尝试在结构体中存储一个引用而不指定生命周期将是无效的，比如这样：
+
+```rs
+struct User {
+    username: &str, // 报错
+    email: &str, //  报错
+    sign_in_count: u64,
+    active: bool,
+}
+
+fn main() {
+    let user1 = User {
+        email: "someone@example.com",
+        username: "someusername123",
+        active: true,
+        sign_in_count: 1,
+    };
+}
+```
