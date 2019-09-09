@@ -1,7 +1,7 @@
 ---
 title: "Nginx笔记"
 date: 2019-07-09T19:13:22+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
@@ -26,15 +26,24 @@ web服务器、反向代理服务器、邮件服务器、负载均衡服务器
 
 ### 3、基本配置
 
+配置所在位置： `/etc/nginx`
+
+核心配置文件：
+
+* `/etc/nginx/nginx.conf` Nginx配置文件的入口配置
+* `/etc/nginx/conf.d/*` 各个站点的位置
+
+配置文件更新后，重载： `nginx -s reload`
+
 #### （1）静态web网站配置
 
 创建测试用静态文件目录
 
 ```bash
 mkdir -p /data/www
-echo '<h1>Hello Nginx</h1>' > ~/www/index.html
+echo '<h1>Hello Nginx</h1>' > /data/www/index.html
 mkdir -o /data/test
-echo '<h1>alias</h1>' > ~/www/index.html
+echo '<h1>alias</h1>' > /data/www/index.html
 ```
 
 编辑 `/etc/nginx/conf.d/default.conf`
@@ -48,7 +57,6 @@ server {
     #access_log  /var/log/nginx/host.access.log  main;
 
     location / {
-#        root   /usr/share/nginx/html;
         root /data/www;
         index  index.html index.htm;
     }
@@ -56,41 +64,12 @@ server {
         alias /data/test/;
         index index.html index.htm;
     }
-#    location /test/ {
-#        alias /data;
-#        index index.html index.htm;
-#    }
-    #error_page  404              /404.html;
 
-    # redirect server error pages to the static page /50x.html
-    #
     error_page   500 502 503 504  /50x.html;
     location = /50x.html {
         root   /usr/share/nginx/html;
     }
 
-    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
-    #
-    #location ~ \.php$ {
-    #    proxy_pass   http://127.0.0.1;
-    #}
-
-    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
-    #
-    #location ~ \.php$ {
-    #    root           html;
-    #    fastcgi_pass   127.0.0.1:9000;
-    #    fastcgi_index  index.php;
-    #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
-    #    include        fastcgi_params;
-    #}
-
-    # deny access to .htaccess files, if Apache's document root
-    # concurs with nginx's one
-    #
-    #location ~ /\.ht {
-    #    deny  all;
-    #}
 }
 ```
 
@@ -133,24 +112,10 @@ server {
     listen       80;
     server_name  localhost;
 
-    #charset koi8-r;
-    #access_log  /var/log/nginx/host.access.log  main;
-
-
-    #error_page  404              /404.html;
-
-    # redirect server error pages to the static page /50x.html
-    #
     error_page   500 502 503 504  /50x.html;
     location = /50x.html {
         root   /usr/share/nginx/html;
     }
-
-    # proxy the PHP scripts to Apache listening on 127.0.0.1:80
-    #
-    #location ~ \.php$ {
-    #    proxy_pass   http://127.0.0.1;
-    #}
 
     location / {
         proxy_pass http://localhost:5000;
@@ -160,22 +125,6 @@ server {
         proxy_pass http://localhost:5000;
     }
 
-    # pass the PHP scripts to FastCGI server listening on 127.0.0.1:9000
-    #
-    #location ~ \.php$ {
-    #    root           html;
-    #    fastcgi_pass   127.0.0.1:9000;
-    #    fastcgi_index  index.php;
-    #    fastcgi_param  SCRIPT_FILENAME  /scripts$fastcgi_script_name;
-    #    include        fastcgi_params;
-    #}
-
-    # deny access to .htaccess files, if Apache's document root
-    # concurs with nginx's one
-    #
-    #location ~ /\.ht {
-    #    deny  all;
-    #}
 }
 ```
 
@@ -196,3 +145,27 @@ location 末尾是否加  `/` 的区别：
 ```
 
 * 不以 `/` 结尾：localhost/test/a -> localhost:5000/test/a
+
+#### （3）反向代理传递原始信息
+
+反向代理后需要添加请求者的请求头信息，这样后端的重定向相关功能才能正常使用。
+
+```nginx
+location /path {
+    proxy_pass       http://localhost:8000;
+    proxy_set_header Host              $http_host; # 重要
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme; # 如果出问题后可以手动指定为https
+}
+```
+
+#### （4）Nginx实现302跳转
+
+```nginx
+location /test {
+    rewrite ^(/test.*)$ https://example.com$1;
+}
+```
+
+* 访问 `your_host/test/xxx` -> 302 `https://example.com/test/xxx`
