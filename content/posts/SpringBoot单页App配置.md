@@ -1,7 +1,7 @@
 ---
 title: "SpringBoot单页App配置"
 date: 2019-09-10T16:44:03+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
@@ -13,7 +13,7 @@ tags:
 ## 场景
 
 在开发某项目过程中，前端使用React、后端使用SpringBoot，前后端分离的方案。当在部署上，
-在没有方便的前端独立部署的方案时，需要前端编译好的html放入SpringBoot作为静态文件。至于CSS、JS等资源，将上传到CDN中，不需要后端参与。
+在没有方便的前端独立部署的方案时，需要前端编译好的`index.html`放入SpringBoot作为静态文件。至于CSS、JS等资源，将上传到CDN中，不需要后端参与。
 
 后端的相关内容如下：
 
