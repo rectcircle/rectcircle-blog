@@ -156,7 +156,7 @@ String result = restOperations.getForObject(url, String.class, uriVariables);
 ```java
 HttpHeaders jsonHeaders = new HttpHeaders();// header参数
 jsonHeaders.add(HttpHeaders.COOKIE, "sessionid=" + sessionid);
-jsonHeaders.add(HttpHeaders.USER_AGENT, "dwauto");
+jsonHeaders.add(HttpHeaders.USER_AGENT, "test");
 jsonHeaders.add(HttpHeaders.ACCEPT, "application/json");
 jsonHeaders.add(HttpHeaders.CONTENT_TYPE, "application/json");
 // request 为 requestbody （任意对象）
@@ -171,7 +171,7 @@ return response.getBody();
 ```java
 HttpHeaders formHeaders = new HttpHeaders();// header参数
 formHeaders.add(HttpHeaders.COOKIE, "sessionid=" + sessionid);
-formHeaders.add(HttpHeaders.USER_AGENT, "dwauto");
+formHeaders.add(HttpHeaders.USER_AGENT, "test");
 formHeaders.add(HttpHeaders.ACCEPT, "application/json");
 formHeaders.add(HttpHeaders.CONTENT_TYPE, "application/x-www-form-urlencoded");
 // request 为Map<String, ?>
