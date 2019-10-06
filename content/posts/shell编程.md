@@ -575,3 +575,222 @@ done
 	cmd="mv -f"$opts" /tmp/trash""
 	$($cmd)
 ```
+
+## 七、备忘小技巧
+
+### 1、内置选项解析器getopts
+
+基本用法
+
+```bash
+D=""
+P=""
+C="False"
+while getopts "hd:p:c" opt; do
+    case $opt in
+    h)
+        echo "Usage: xxx"
+        echo "    Option:"
+        echo "        -c open mysql cli"
+        exit 0
+        ;;
+    d)
+        D="$OPTARG"
+        ;;
+    p)
+        P="$OPTARG"
+        ;;
+    c)
+        C="True"
+        ;;
+    \?)
+        echo "Invalid option: -$OPTARG" >&2
+        ;;
+    :)
+        echo "Option -$OPTARG requires an argument." >&2
+        exit 1
+        ;;
+    esac
+done
+
+echo D
+echo P
+echo C
+```
+
+### 2、常用的条件判断
+
+**某命令是否存在**
+
+```bash
+if type "vim" > /dev/null 2>&1; then
+  echo "已安装"
+else
+  echo "未安装"
+fi
+
+if ! type "fasdfgasd" > /dev/null 2>&1; then
+  echo "未安装"
+else
+  echo "已安装"
+fi
+```
+
+**某命令执行是否成功**
+
+```bash
+# grep -q 判断文件内容是否存在
+if ! grep -q '待查找字符串' 文件名; then
+	echo '字符串不存在'
+fi
+```
+
+**字符串是否为空或相等**
+
+```bash
+if [ ""z == "$STR"z ]; then
+	echo '字符串相等'
+fi
+```
+
+**文件是否存在**
+
+```bash
+if [  -f  "/usr/bin/code" ]; then
+  echo "VSCode 已安装"
+fi
+```
+
+**目录是否存在**
+
+```bash
+if [ ! -d $DPATH  ]; then
+  mkdir -p $DPATH
+fi
+```
+
+### 3、动态执行字符串命令
+
+```bash
+CMD='ls -al'
+eval $CMD
+```
+
+### 4、多行文本处理
+
+**定义多行文本变量**
+
+```bash
+A=$(cat <<EOF
+abc
+def
+EOF
+)
+echo -e $A
+```
+
+**某命令输出的多行文本赋值到变量**
+
+```bash
+OUTPUT=$(python <<EOF
+print 'hello'
+EOF
+)
+```
+
+**输出多行文本到标准输出或管道**
+
+```bash
+A=$(cat <<EOF
+abc
+def
+EOF
+)
+LAST=$(echo -e "$A" | tail -1)
+```
+
+### 5、常见的循环操作
+
+**数组遍历**
+
+```bash
+DNS_ARR=("114.114.114.114" "8.8.8.8" "8.8.4.4")
+DNS=""
+
+for ONE in ${DNS_ARR[@]}
+do
+  DNS="$DNS\nnameserver $ONE"
+done
+```
+
+**目录遍历**
+
+```bash
+for p in ./gnome-shell-extendsion/*
+do
+	echo $p
+done
+```
+
+### 6、获取用户输入
+
+```bash
+read -p 'tips' VAR
+```
+
+### 7、常见字符串操作
+
+参考： https://www.cnblogs.com/sparkdev/p/10006970.html
+
+**字符串长度**
+
+```bash
+string="abcde"
+echo ${#string}
+```
+
+**字符串切片**
+
+```bash
+MyString=abcABC123ABCabc
+echo ${MyString:3}       # ABC123ABCabc，注意：此时索引是从 0 开始的。
+echo ${MyString:1:5}     # bcABC
+```
+
+**删除子串**
+
+```bash
+MyString=abcABC123ABCabc
+MyPath="/path/to/file.tar.gz"
+
+# ${string#substring} # 从 $string 的开头位置截掉最短匹配的 $substring。
+# 截掉 'a' 到 'C' 之间最短的匹配字符串。
+echo ${MyString#a*C} # 123ABCabc
+ext=${MyPath#*.} # 获取后缀
+echo ${ext}
+
+# ${string##substring} # 从 $string 的开头位置截掉最长匹配的 $substring。
+# 截掉 'a' 到 'C' 之间最长的匹配字符串。
+echo ${MyString##a*C} # abc
+filename=${MyPath##*/} # 获取文件名
+echo $filename # file.tar.gz
+
+# ${string%substring} # 从 $string 的结尾位置截掉最短匹配的 $substring。
+# 从 $MyString 的结尾位置截掉 'b' 到 'c' 之间最短的匹配。
+echo ${MyString%b*c} # abcABC123ABCa
+dirPath=${MyPath%/*} # 获取文件所在目录
+echo $dirPath # /path/to
+
+# ${string%%substring} # 从 $string 的结尾位置截掉最长匹配的 $substring。
+# 从 $MyString 的结尾位置截掉 'b' 到 'c' 之间最长的匹配。
+echo ${MyString%%b*c} # a
+filenameNoExt=${filename%%.*} # 获取不包含后缀的文件名
+echo $filenameNoExt # file
+```
+
+**子串替换**
+
+* `${string/substring/replacement}` 使用 `$replacement` 来替换第一个匹配的 `$substring`。
+* `${string//substring/replacement}` 使用 `$replacement` 来替换所有匹配的 `$substring`。
+* `${string/#substring/replacement}` 如果 `$substring` 匹配 `$string` 的开头部分，那么就用 `$replacement` 来替换 `$substring`。
+* `${string/%substring/replacement}` 如果 `$substring` 匹配 `$string` 的结尾部分，那么就用 `$replacement` 来替换 `$substring`。
