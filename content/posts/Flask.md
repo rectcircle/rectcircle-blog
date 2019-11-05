@@ -417,3 +417,16 @@ app.wsgi_app = LighttpdCGIRootFix(app.wsgi_app)
 
 * [扩展](#http://flask.pocoo.org/docs/1.0/extensions/#extensions)
 * [部署](http://flask.pocoo.org/docs/1.0/deploying/#deployment)
+
+## 三、flask-login session解密
+
+https://www.cnblogs.com/shengulong/p/7488226.html
+
+```python
+from itsdangerous import URLSafeTimedSerializer
+from flask.sessions import TaggedJSONSerializer
+import hashlib
+s=URLSafeTimedSerializer('some_random_key','cookie-session',serializer=TaggedJSONSerializer(),signer_kwargs={'key_derivation':'hmac','digest_method':hashlib.sha1})
+result = s.loads('.eJytkkFv4jAQhf_KymcOxLSHReohUVg30noiUBLvuEIoCSmOY1OJQAmu-O91aFW19z1ZGr_3ed6M38jm2ZS9anoyf3ojv44fR0XmpBT3tjo_PJDr5LOSs8HgPzAJG14lNafkcfWasD8aaeHqSzQtmXHJY6QkzU_kur75vgHrWfEh_QEV4neQMKW2Nt-hLUzVRn1Ft3splrtS3P0fUDUrpn93o3p9XU_Ipt2S-adNxvWU6y6QejcDhxRdSNNMae4iAywPOC06sPkAMZ65Tc7goOVaGdDhkGboQNcUdH4GVhi0iwu62teV5QwHtHgBtwhQJ05afpeKlfW6FrPIooXWt2mlxgEcD0Ag5Y77HgrLM6-OO8rZksqY3_MsUjxejmFJ3R-eN8eXrtl_RQANejSj4xTFYpA66vxTOo3DAV2hUx9DarCoPdYZhWPc8DY70vbh1raedTycmgk59c3hi7sUq6NfwU03XuxL24wf42a4vgOsyrm7.DJDfoQ.lPf6Vla0QXeI1yOYs0riql1Lywk')
+print '破解后：',result
+```
