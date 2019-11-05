@@ -1,5 +1,7 @@
 # Rectcircle 个人博客
 
+[![Netlify Status](https://api.netlify.com/api/v1/badges/9a948925-95c9-4287-a9f6-f6c9cdfd5948/deploy-status)](https://app.netlify.com/sites/rectcircle/deploys)
+
 ## 步骤
 
 ### 前置依赖
