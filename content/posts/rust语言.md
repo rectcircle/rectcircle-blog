@@ -1,5 +1,5 @@
 ---
-title: "Rust"
+title: "Rust语言"
 date: 2019-07-28T10:24:54+08:00
 draft: false
 toc: true
@@ -70,6 +70,7 @@ Rust是mozilla推出的一款系统级的编程语言，其两大特点在于零
 * 手动内存管理
 * 静态类型语言，自动类型推断
 * 系统级别语言效率类似于C++
+* 无null类型设计
 
 ### 1、HelloWorld
 
@@ -84,6 +85,13 @@ cd hello_world
 fn main() {
     println!("Hello, world!");
 }
+```
+
+编译运行
+
+```bash
+rustc main.rs
+./main
 ```
 
 从HelloWorld可以看出Rust语言的一些特性：
@@ -120,7 +128,7 @@ cargo new hello_cargo
 [package]
 name = "hello_cargo"
 version = "0.1.0"
-authors = ["sunben <sunben.96@bytedance.com>"]
+authors = ["rectcircle <rectcircle96@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -151,7 +159,7 @@ cargo new guessing_game
 [package]
 name = "guessing_game"
 version = "0.1.0"
-authors = ["sunben <sunben.96@bytedance.com>"]
+authors = ["rectcircle <rectcircle96@gmail.com>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -399,7 +407,7 @@ fn another_function(x: i32) {
   * 声明没有返回值（比如let, fn）
 * `{}` 包裹的（scala和传统语法的合体）
   * 最后一个语句如果没有分号，则最后一个表达式的结果是该语句块的结果
-  * 最后一个语句有分号，怎该语句块无返回值
+  * 最后一个语句有分号，则语句块无返回值
 
 ```rs
 fn add(a: i32, b: i32) -> i32 {
@@ -886,7 +894,7 @@ fn first_word(s: &String) -> &str {
 
 * 在获取一个不可变引用时，就不能使用可变引用了。
 
-### 9、应用使用规则
+### 9、引用使用规则
 
 为了确保引用不会带来很多运行时错误（悬空、竞争），应用有如下规则：
 
@@ -953,7 +961,7 @@ fn main() {
 }
 ```
 
-####（2）结构体与所有权
+#### （2）结构体与所有权
 
 可以使结构体存储被其他对象拥有的数据的引用，不过这么做的话需要用上 生命周期（lifetimes），这是一个第十章会讨论的 Rust 功能。生命周期确保结构体引用的数据有效性跟结构体本身保持一致。如果你尝试在结构体中存储一个引用而不指定生命周期将是无效的，比如这样：
 
@@ -974,3 +982,585 @@ fn main() {
     };
 }
 ```
+
+### 2、方法
+
+```rs
+#[derive(Debug)] // 注解
+struct Rectangle {
+    width: u32,
+    height: u32,
+}
+
+impl Rectangle { //实现方法
+    fn area(&self) -> u32 {
+        self.width * self.height
+    }
+
+}
+
+impl Rectangle {
+    fn can_hold(&self, other: &Rectangle) -> bool {
+        self.width > other.width && self.height > other.height
+    }
+}
+
+fn main() {
+    let rect1 = Rectangle { width: 30, height: 50 };
+
+    println!("rect1 is {:?}", rect1);
+    println!("rect1 is {:#?}", rect1);
+
+    println!(
+        "The area of the rectangle is {} square pixels.",
+        rect1.area()
+    );
+
+    let rect1 = Rectangle { width: 30, height: 50 };
+    let rect2 = Rectangle { width: 10, height: 40 };
+    let rect3 = Rectangle { width: 60, height: 45 };
+
+    println!("Can rect1 hold rect2? {}", rect1.can_hold(&rect2));
+    println!("Can rect1 hold rect3? {}", rect1.can_hold(&rect3));
+}
+```
+
+* 方法必须定义在结构头上下文（或者是枚举或 trait 对象的上下文）
+* 第一个参数总是self，可以是：
+  * `&self`
+  * `&mut self`
+  * `self` 不常见（仅在将当前对象转换为另一个对象）
+* 类似于go，rust不使用`->`，只使用`.`，会进行自动解引用
+
+## 六、枚举和模式匹配
+
+创建测试项目 `cargo new enums`
+
+### 1、定义枚举
+
+基本语法
+
+```rs
+// 定义枚举
+enum IpAddrKind {
+    V4,
+    V6,
+}
+
+    // 使用枚举
+    let four = IpAddrKind::V4;
+    let six = IpAddrKind::V6;
+```
+
+* 通过`::`引用枚举
+
+枚举作为函数参数
+
+```rs
+// 枚举值作为函数参数
+fn route(ip_type: IpAddrKind) {
+
+}
+
+    // 调用参数为枚举方法
+    route(four);
+```
+
+枚举值作为结构体成员
+
+```rs
+// 枚举值作为结构体成员
+struct IpAddr {
+    kind: IpAddrKind,
+    address: String,
+}
+
+    // 使用枚举结构体
+    let home = IpAddr {
+        kind: IpAddrKind::V4,
+        address: String::from("127.0.0.1"),
+    };
+    let loopback = IpAddr {
+        kind: IpAddrKind::V6,
+        address: String::from("::1"),
+    };
+```
+
+枚举与值绑定
+
+```rs
+// 将数值与枚举属性绑定
+enum IpAddr2 {
+    V4(String),
+    V6(String),
+}
+
+    let home = IpAddr2::V4(String::from("127.0.0.1"));
+    let loopback = IpAddr2::V6(String::from("::1"));
+```
+
+标准库中的IPAddr的例子
+
+```rs
+
+// 标准库中ip的封装
+struct Ipv4Addr {
+    // --snip--
+}
+struct Ipv6Addr {
+    // --snip--
+}
+enum IpAddr3 {
+    V4(Ipv4Addr),
+    V6(Ipv6Addr),
+}
+```
+
+更复杂的关联数据与关联方法
+
+```rs
+//更复杂的关联数据的例子
+enum Message {
+    Quit, //没有关联任何数据
+    Move { x: i32, y: i32 }, //包含一个匿名结构体
+    Write(String), //包含单独一个 String
+    ChangeColor(i32, i32, i32), //包含三个 i32
+}
+
+// 结构体同样支持方法
+impl Message {
+    fn call(&self) {
+        // 在这里定义方法体
+    }
+}
+
+    // 方法调用
+    let m = Message::Write(String::from("hello"));
+    m.call();
+```
+
+option实现与无null设计
+
+```rs
+// 标准库中的enum实现例子
+/*
+enum Option<T> {
+    Some(T),
+    None,
+}
+*/
+    // Option例子
+    let some_number = Some(5);
+    let some_string = Some("a string");
+
+    let absent_number: Option<i32> = None;
+
+    let x: i8 = 5;
+    let y: Option<i8> = Some(5);
+
+    // let sum = x + y; //报错 no implementation for `i8 + std::option::Option<i8>`
+
+```
+
+### 2、模式匹配
+
+例子1：枚举类型模式匹配
+
+```rs
+enum Coin {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter,
+}
+
+fn value_in_cents(coin: Coin) -> u32 {
+    match coin {
+        Coin::Penny => 1,
+        Coin::Nickel => 5,
+        Coin::Dime => 10,
+        Coin::Quarter => 25,
+    }
+}
+```
+
+* 一个硬币类型的模式匹配
+* 根据类型返回不同值
+
+例子2：带有绑定值的模式匹配
+
+```rs
+enum Coin2 {
+    Penny,
+    Nickel,
+    Dime,
+    Quarter(UsState),
+}
+
+fn value_in_cents2(coin: Coin2) -> u32 {
+    match coin {
+        Coin2::Penny => 1,
+        Coin2::Nickel => 5,
+        Coin2::Dime => 10,
+        Coin2::Quarter(state) => {
+            println!("State quarter from {:?}!", state);
+            25
+        }
+    }
+}
+```
+
+匹配Option的一个例子
+
+```rs
+fn plus_one(x: Option<i32>) -> Option<i32> {
+    match x {
+        None => None,
+        Some(i) => Some(i + 1),
+    }
+}
+
+let five = Some(5);
+let six = plus_one(five);
+let none = plus_one(None);
+```
+
+通配符
+
+```rs
+    let some_u8_value = 0u8;
+    match some_u8_value {
+        1 => println!("one"),
+        3 => println!("three"),
+        5 => println!("five"),
+        7 => println!("seven"),
+        _ => (),
+    }
+```
+
+* 支持类似scala的通配符
+
+### 3、if let 单条件模式匹配符
+
+```rs
+let some_u8_value = Some(0u8);
+match some_u8_value {
+    Some(3) => println!("three"),
+    _ => (),
+}
+```
+
+等价于
+
+```rs
+if let Some(3) = some_u8_value {
+    println!("three");
+}
+```
+
+```rs
+    let mut count = 0;
+    let coin = Coin2::Dime;
+    match coin {
+        Coin2::Quarter(state) => println!("State quarter from {:?}!", state),
+        _ => count += 1,
+    }
+```
+
+等价于
+
+```rs
+    let mut count = 0;
+    let coin1 = Coin2::Dime;
+    if let Coin2::Quarter(state) = coin1 {
+        println!("State quarter from {:?}!", state);
+    } else {
+        count += 1;
+    }
+```
+
+## 七、模块化系统
+
+### 1、基本概念
+
+一般情况下，一个Cargo项目就是模块系统中的一个包；一个包可以包含多个二进制crate项
+
+* 包（Packages）： Cargo 的一个功能，它允许你构建、测试和分享 crate。
+* Crates ：一个模块的树形结构，它形成了库或二进制项目。
+* 模块（Modules）和 use： 允许你控制作用域和路径的私有性。
+* 路径（path）：一个命名例如结构体、函数或模块等项的方式
+
+### 2、餐馆模拟样例
+
+一个餐馆一般有两个部分：
+
+* 前台 front of house
+* 后台 back of house
+
+以下命令将创建一个名为 restaurant 的库
+
+```bash
+cargo new --lib restaurant
+```
+
+和不带 `--lib` 创建的项目区别在于 `src/main.rs` 变成了 `src/lib.rc`
+
+### 3、定义模块
+
+删除 `src/lib.rc` 原本的内容，填写如下内容
+
+```rs
+// mod 定义了一个模块
+mod front_of_house {
+    // 定义了一个子模块
+    mod hosting {
+        // 模块的内容
+        fn add_to_waitlist() {}
+
+        fn seat_at_table() {}
+    }
+
+    mod serving {
+        fn take_order() {}
+
+        fn server_order() {}
+
+        fn take_payment() {}
+    }
+
+}
+```
+
+* `mod 模块名 {}` 表示定义了一个有名字的模块
+* 花括号内可以定义：子模块、结构体、枚举、常量、特性、或者函数
+* 模块树的根节点叫做 `crate`
+
+上述代码定义的模块树结构如下：
+
+```
+crate
+ └── front_of_house
+     ├── hosting
+     │   ├── add_to_waitlist
+     │   └── seat_at_table
+     └── serving
+         ├── take_order
+         ├── serve_order
+         └── take_payment
+```
+
+### 4、路径来使用模块中的项
+
+修改 `src/lib.rs` 如下：
+
+```rs
+// Version1： 模拟餐馆前台的模块
+// mod 定义了一个模块
+mod front_of_house {
+    // 定义了一个子模块
+    pub mod hosting {
+        // 模块的内容
+        pub fn add_to_waitlist() {}
+
+        fn seat_at_table() {}
+    }
+
+    pub mod serving {
+        pub fn take_order() {}
+
+        fn server_order() {}
+
+        fn take_payment() {}
+    }
+
+}
+
+pub fn eat_at_restaurant() {
+
+    // 绝对路径调用
+    crate::front_of_house::hosting::add_to_waitlist();
+
+    // 相对路径调用：当前内容在 crate 模块，相对于 crate
+    front_of_house::hosting::add_to_waitlist();
+}
+
+```
+
+* rust中定义的所有元素默认都是私有的。可以通过 `pub` 关键字来使其可见
+  * 子模块中的定义可以访问祖宗模块的所有内容
+  * 同一模块内的内容可以相互访问
+  * 只能访问子孙模块的pub定义的内容（整个路径都必须是pub的）
+* 调用支持使用相对路径和绝对路径
+  * 绝对路径以 crate 开头（类似于文件系统 `/`）
+  * 其他情况为 相对路径，相对于当前所在模块
+
+### 5、使用`super`访问父路径
+
+`super` 类似于 文件系统中的 `../`
+
+在 `src/lib.rc` 中添加
+
+```rs
+fn serve_order() {}
+
+mod back_of_house {
+    fn fix_incorrect_order() {
+        cook_order();
+        super::serve_order(); // 调用父模块中的成员
+    }
+
+    fn cook_order() {}
+}
+```
+
+### 6、创建公有的结构体和枚举
+
+在 `src/lib.rs` 模块 `back_of_house` 中添加
+
+```rs
+    // 定义了一个公有的结构体
+    pub struct Breakfast {
+        pub toast: String, // 公有字段
+        seasonal_fruit: String, // 默认是私有字段
+    }
+
+    // 实现结构体方法
+    impl Breakfast {
+        pub fn summer(toast: &str) -> Breakfast {
+            Breakfast {
+                toast: String::from(toast),
+                seasonal_fruit: String::from("peaches"),
+            }
+        }
+    }
+
+    // 定义一个公有结构体
+    pub enum Appetizer {
+        Soup, // 默认是公有
+        Salad, // 默认是公有
+    }
+```
+
+在 `src/lib.rs` 函数 `eat_at_restaurant` 中添加
+
+```rs
+    // 夏天订购黑麦面包早餐 Order a breakfast in the summer with Rye toast
+    let mut meal = back_of_house::Breakfast::summer("Rye");
+    // 改变主意，想吃什么面包 Change our mind about what bread we'd like
+    meal.toast = String::from("Wheat"); // 修改公有字段
+    println!("I'd like {} toast please", meal.toast);
+
+    // The next line won't compile if we uncomment it; we're not allowed
+    // to see or modify the seasonal fruit that comes with the meal
+    // 如果我们取消注释，则下一行将不会编译；我们不允许
+    // 查看或修改随餐提供的时令水果
+    // meal.seasonal_fruit = String::from("blueberries"); // 不可以修改
+
+    // 公有的可直接访问
+    let order1 = back_of_house::Appetizer::Soup; 
+    let order2 = back_of_house::Appetizer::Salad;
+```
+
+### 7、使用use引入到作用域
+
+和其他语言类似
+
+`src/lib.rc`
+
+```rs
+use crate::front_of_house::hosting;
+
+pub fn eat_at_restaurant1() {
+    hosting::add_to_waitlist();
+    hosting::add_to_waitlist();
+    hosting::add_to_waitlist();
+}
+
+use crate::front_of_house::hosting::add_to_waitlist; // 直接引入函数
+
+pub fn eat_at_restaurant2() {
+    add_to_waitlist();
+    add_to_waitlist();
+    add_to_waitlist();
+}
+
+use std::fmt::Result;
+use std::io::Result as IoResult; // 重命名
+
+// 引入并暴露，这样在外部就可以通过 类似 serving::take_order 方式调用
+// 相当于在当前作用域定义了 serving 模块并 pub
+pub use crate::front_of_house::serving;
+
+use rand::Rng;
+
+use std::collections::HashMap;
+
+use std::{cmp::Ordering, alloc};
+use std::io::{self, Write};
+
+use std::collections::*;
+
+```
+
+* `use xxx::xxx::A` 导入路径，导入后，内部就可以 `A` 名使用 `A` 访问其内容
+* `use xxx::xxx::A as B` 重命名，内部就可以通过名字B访问A
+* `pub use xxx::xxx::A` 外部可以访问A
+* `use xxx::xxx` 使用外部包
+  * `Cargo.toml` 添加依赖 `rand = "0.5.5"`
+  * 此时 `use xxx` 中 `xxx` 就是外部包名
+* `use std::xxx` 使用 `std` 包
+  * `std` 包和其他外部包使用方式一致
+  * `std` 不需要显示引入依赖，是标准库，直接可以使用
+* `use std::{cmp::Ordering, alloc};` 一次性引入多个包
+* `use std::io::{self, Write};`
+  * self表示同时引入`io`
+* `use xxx::xxx::*;` 一次性引入全部
+
+### 8、多文件模块
+
+`src/lib.rs` 添加模块声明
+
+```rs
+mod front_of_house2;
+
+pub use crate::front_of_house2::hosting as hosting2 ;
+
+pub fn eat_at_restaurant3() {
+    hosting2::add_to_waitlist();
+    hosting2::add_to_waitlist();
+    hosting2::add_to_waitlist();
+}
+
+mod front_of_house3;
+```
+
+`src/front_of_house2.rs`
+
+```rs
+pub mod hosting;
+```
+
+`src/front_of_house2/hosting.rs`
+
+```rs
+pub fn add_to_waitlist() {}
+```
+
+`src/front_of_house3/mod.rs`
+
+```rs
+pub mod hosting;
+```
+
+`src/front_of_house3/hosting.rs`
+
+```rs
+pub fn add_to_waitlist() {}
+```
+
+* 使用 `mod xxx;` 或者 `pub mod xxx;` 声明一个模块后，有两种方式实现定义：
+  * 方式1：定义文件 `xxx.rs`，文件内直接编写模块定义
+  * 方式2：创建目录 `xxx`，创建文件 `xxx/mod.rs`，并在该文件内直接编写模块定义
+* 推荐方式（可读性更高）：
+  * 针对非叶子模块使用方式2
+  * 针对叶子节点使用方式1
