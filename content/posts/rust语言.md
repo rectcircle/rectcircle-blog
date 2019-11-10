@@ -1457,7 +1457,7 @@ mod back_of_house {
     // meal.seasonal_fruit = String::from("blueberries"); // 不可以修改
 
     // 公有的可直接访问
-    let order1 = back_of_house::Appetizer::Soup; 
+    let order1 = back_of_house::Appetizer::Soup;
     let order2 = back_of_house::Appetizer::Salad;
 ```
 
@@ -1564,3 +1564,215 @@ pub fn add_to_waitlist() {}
 * 推荐方式（可读性更高）：
   * 针对非叶子模块使用方式2
   * 针对叶子节点使用方式1
+
+## 八、常见的集合
+
+### 1、Vector
+
+```rs
+    // 1. Vector 可变数组
+
+    // 通过构造函数创建
+    let v: Vec<i32> = Vec::new();
+    // 通过宏创建，可以推断出类型
+    let v = vec![1, 2, 3];
+
+    // 更新Vector
+    let mut v = Vec::new(); // 必须是不可变，否则报错
+    v.push(5);
+    v.push(6);
+    v.push(7);
+    v.push(8);
+
+    // 垃圾回收
+    {
+        let v = vec![1,2,3,4,5];
+        // 处理变量
+    } //  <- 这里 v 离开作用域并被丢弃，包括内部的整数元素
+
+    // 读取元素
+    let v = vec![1,2,3,4,5];
+    let third: &i32 = &v[2];
+    println!("第三个元素是 {}", third);
+    match v.get(2) { // get 返回一个Option
+        Some(third) => println!("第三个元素是 {}", third),
+        None => println!("没有第三个元素"),
+    }
+
+    let v = vec![1, 2, 3, 4, 5];
+    // 使用 [] 访问不存在的元素将触发 panic
+    // let does_not_exist = &v[100];
+    // 使用get会返回一个None 不会触发异常
+    let does_not_exist = v.get(100);
+
+    let mut v = vec![1, 2, 3, 4, 5];
+    let first = &v[0];
+    // 此句将编译报错，因为上一句已经将 可变的v借用给不可便的first了
+    // 原因是：v是可变数组，push可能触发内存分配，这样会破坏first的引用，导致引用悬空
+    // v.push(6);
+    println!("The first element is: {}", first);
+
+    // 元素遍历
+    let v = vec![100, 32, 57];
+    for i in &v {
+        println!("{}", i);
+    }
+
+    // 遍历过程中改变元素值
+    let mut v = vec![100, 32, 57];
+    for i in &mut v {
+        *i += 50;
+    }
+
+    // 使用枚举来存储多种类型
+    enum SpreadsheetCell {
+        Int(i32),
+        Float(f64),
+        Text(String),
+    }
+    let row = vec![
+        SpreadsheetCell::Int(3),
+        SpreadsheetCell::Text(String::from("blue")),
+        SpreadsheetCell::Float(10.12),
+    ];
+
+    // 访问并修改值
+    let mut v = vec![1, 2, 4];
+    if v[2] != 3 {
+        v[2] = 3;
+    }
+```
+
+### 2、字符串
+
+```rs
+    // 2. String 可变字符串
+    // Rust 中的字符串常用的有两种：
+    //   str rust核心字符串，字面量字符串类型，utf8编码
+    //   String 标准库字符串，可变字符串，utf8编码
+    // 除了以上两种还有其他字符串实现，比如：OsString、OsStr、CString 和 CStr
+
+    // 创建一个空的String字符串，通过构造函数
+    let mut s = String::new();
+
+    // 通过字面量字符串&str创建字符串String
+    let data = "initial contents";
+    let s = data.to_string();
+    // 该方法也可直接用于字符串字面值：
+    let s = "initial contents".to_string();
+
+    // 以上方法等价于 String::from
+    let hello = String::from("السلام عليكم");
+    let hello = String::from("Dobrý den");
+    let hello = String::from("Hello");
+    let hello = String::from("שָׁלוֹם");
+    let hello = String::from("नमस्ते");
+    let hello = String::from("こんにちは");
+    let hello = String::from("안녕하세요");
+    let hello = String::from("你好");
+    let hello = String::from("Olá");
+    let hello = String::from("Здравствуйте");
+    let hello = String::from("Hola");
+
+    // 更新字符串
+    let mut s1 = String::from("foo");
+    let s2 = "bar";
+    s1.push_str(s2); // 并不会获取s2所有权
+    println!("s2 is {}", s2);
+
+    let mut s = String::from("lo");
+    s.push('l'); // 添加一个字符
+
+    // 字符串拼接
+    let s1 = String::from("Hello, ");
+    let s2 = String::from("world!");
+    // + 的签名类似与： fn add(self, s: &str) -> String {
+    // 注意 s1 被移动了，不能继续使用，因为self声明类型为 String 而不是 引用，所有权转移了
+    // 同时 s2 使用 解引用强制多态 转换为 &str 类型（&s2[..]）所以s2仍能使用
+    let s3 = s1 + &s2;
+
+    // 使用 format! 宏进行拼接
+    let s1 = String::from("tic");
+    let s2 = String::from("tac");
+    let s3 = String::from("toe");
+    let s = format!("{}-{}-{}", s1, s2, s3);
+
+    // String 不支持 索引
+    let s1 = String::from("hello");
+    // let h = s1[0]; // 报错
+
+    // String 内部实现为 Vec<u8> 的封装，编码方式为utf8
+    // 不提供索引的原因是：utf8是边长编码。无法精确定位字符
+    // str支持索引，slice，但是遇到多字节字符可能引发panic
+    let hello = "Здравствуйте";
+    let s = &hello[0..4]; // 实际上返回 Зд
+    // let s = &hello[0..1]; // 报错，因为返回的字符串是不合法的utf8编码
+
+    // 遍历字符串
+    for c in "नमस्ते".chars() {
+        println!("{}", c);
+    }
+```
+
+### 3、HashMap
+
+```rs
+    // 3. HashMap
+    // key需要实现 Hash 和 Eq 特质，才能全功能使用
+    // 创建
+    use std::collections::HashMap;
+    let mut scores = HashMap::new();
+    scores.insert(String::from("Blue"), 10);
+    scores.insert(String::from("Yellow"), 50);
+    // 通过 zip创建
+    let teams  = vec![String::from("Blue"), String::from("Yellow")];
+    let initial_scores = vec![10, 50];
+    let scores: HashMap<_, _> = teams.iter().zip(initial_scores.iter()).collect();
+
+    // 哈希 map 和所有权
+    let field_name = String::from("Favorite color");
+    let field_value = String::from("Blue");
+    let mut map = HashMap::new();
+    map.insert(field_name, field_value);
+    // 这里 field_name 和 field_value 不再有效，
+    // 尝试使用它们看看会出现什么编译错误！
+    // println!("{}", field_name); // 报错
+    // println!("{}", field_value); // 报错
+
+    // 访问HashMap中的值
+    let mut scores = HashMap::new();
+    scores.insert(String::from("Blue"), 10);
+    scores.insert(String::from("Yellow"), 50);
+    let team_name = String::from("Blue");
+    let score = scores.get(&team_name);
+
+    // 遍历HashMap
+    let mut scores = HashMap::new();
+    scores.insert(String::from("Blue"), 10);
+    scores.insert(String::from("Yellow"), 50);
+    for (key, value) in &scores {
+        println!("{}: {}", key, value);
+    }
+
+    // 更新哈希 map
+    let mut scores = HashMap::new();
+    scores.insert(String::from("Blue"), 10);
+    scores.insert(String::from("Blue"), 25);
+    println!("{:?}", scores);
+
+    // 只在键没有对应值时插入
+    let mut scores = HashMap::new();
+    scores.insert(String::from("Blue"), 10);
+    scores.entry(String::from("Yellow")).or_insert(50);
+    scores.entry(String::from("Blue")).or_insert(50);
+    println!("{:?}", scores);
+
+    // 根据旧值更新一个值
+    let text = "hello world wonderful world";
+    let mut map = HashMap::new();
+    for word in text.split_whitespace() {
+        let count = map.entry(word).or_insert(0);
+        *count += 1;
+    }
+    println!("{:?}", map);
+```
