@@ -531,6 +531,172 @@ fn main() {
 * 都支持 break, continue 类似Java支持label, 使用break goto
 * while 支持模式匹配
 
+### 6、错误处理
+
+Rust 异常一般分为两类：可恢复错误（recoverable）和 不可恢复错误（unrecoverable）可恢复错误通常代表向用户报告错误和重试操作是合理的情况，比如未找到文件。不可恢复错误通常是 bug 的同义词，比如尝试访问超过数组结尾的位置。
+
+在Rust中表现不是异常，而是`Result<T, E>`以及 `panic!`
+
+#### （1） `panic!` 与不可恢复错误
+
+`panic!` 一旦被触发程序将直接 exit！
+
+`panic!` 宏的调用默认将会打印程序调用堆栈。当然可以通过配置在生产环境中关闭（编译文件更小，相当于exit）：
+
+```toml
+[profile.release]
+panic = 'abort'
+```
+
+自己的程序触发的panic
+
+```rs
+fn main() {
+    panic!("crash and burn");
+}
+```
+
+运行结果
+
+```
+$ cargo run
+    Finished dev [unoptimized + debuginfo] target(s) in 0.00s
+     Running `target/debug/error_handle`
+thread 'main' panicked at 'crash and burn', src/main.rs:2:5
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
+```
+
+第三方库触发的panic，比如数组越界
+
+```rs
+    let v = vec![1, 2, 3];
+    v[99];
+```
+
+运行结果
+
+```
+$ cargo run
+   Compiling error_handle v0.1.0 (/Users/sunben/Workspace/learn/rust/error_handle)
+    Finished dev [unoptimized + debuginfo] target(s) in 0.64s
+     Running `target/debug/error_handle`
+thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 99', /rustc/4560ea788cb760f0a34127156c78e2552949f734/src/libcore/slice/mod.rs:2717:10
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
+```
+
+以上只会报告异常出现的位置，但是不会打印调用堆栈。根据提示使用 `RUST_BACKTRACE=1` 环境变量可以打印错误堆栈
+
+```bash
+$ RUST_BACKTRACE=1 cargo run
+    Finished dev [unoptimized + debuginfo] target(s) in 0.01s
+     Running `target/debug/error_handle`
+thread 'main' panicked at 'index out of bounds: the len is 3 but the index is 99', /rustc/4560ea788cb760f0a34127156c78e2552949f734/src/libcore/slice/mod.rs:2717:10
+stack backtrace:
+   0: backtrace::backtrace::libunwind::trace
+             at /Users/runner/.cargo/registry/src/github.com-1ecc6299db9ec823/backtrace-0.3.37/src/backtrace/libunwind.rs:88
+  省略...
+  26: std::rt::lang_start
+             at /rustc/4560ea788cb760f0a34127156c78e2552949f734/src/libstd/rt.rs:64
+  27: error_handle::main
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+```
+
+注意以上追踪必须启用 debug 标识。当不使用 --release 参数运行 cargo build 或 cargo run 时 debug 标识会默认启用。
+
+#### （2） Result 与可恢复的错误
+
+类似于go语言，可能出错的调用一般返回被封装到 `std::result::Result` 中，针对 `Result`，我们可选的处理方式：
+
+* 使用模式匹配进行处理
+* 调用快捷方法，当出现错误时触发panic方式退出
+
+```rs
+use std::fs::File;
+use std::io::ErrorKind;
+use std::io;
+use std::io::Read;
+use std::fs::File;
+use std::fs;
+
+
+fn main() {
+    let f = File::open("hello.txt");
+
+    // 模式匹配处理错误
+    let f = match f {
+        Ok(file) => file,
+        Err(error) => {
+            panic!("There was a problem opening the file: {:?}", error)
+        },
+    };
+
+    // 匹配不同错误
+    let f = match f {
+        Ok(file) => file,
+        Err(error) => match error.kind() {
+            ErrorKind::NotFound => match File::create("hello.txt") {
+                Ok(fc) => fc,
+                Err(e) => panic!("Tried to create file but there was a problem: {:?}", e),
+            },
+            other_error => panic!("There was a problem opening the file: {:?}", other_error),
+        },
+    };
+
+    //调用快捷方法，以简化模式匹配
+    let f = File::open("hello.txt").unwrap_or_else(|error| {
+        if error.kind() == ErrorKind::NotFound {
+            File::create("hello.txt").unwrap_or_else(|error| {
+                panic!("Problem creating the file: {:?}", error);
+            })
+        } else {
+            panic!("Problem opening the file: {:?}", error);
+        }
+    });
+
+    // 出现错误时直接退出的快捷方法
+    let f = File::open("hello.txt").unwrap(); //`unwarp` 直接展开错误
+    let f = File::open("hello.txt").expect("Failed to open hello.txt"); // `expect` 可以打印自定义字符串
+}
+
+// 错误传递：返回一个Result<R,E>
+// 去取文件到内存字符串
+fn read_username_from_file() -> Result<String, io::Error> {
+    let f = File::open("hello.txt");
+
+    let mut f = match f {
+        Ok(file) => file,
+        Err(e) => return Err(e),
+    };
+
+    let mut s = String::new();
+
+    match f.read_to_string(&mut s) {
+        Ok(_) => Ok(s),
+        Err(e) => Err(e),
+    }
+}
+
+// 使用? 简写异常传递 和read_username_from_file完全等价
+// 注意 ? 只能被用于返回 Result 的函数
+fn read_username_from_file1() -> Result<String, io::Error> {
+    let mut f = File::open("hello.txt")?;
+    let mut s = String::new();
+    f.read_to_string(&mut s)?; // 表示如果出现异常直接返回 Err(e)
+    Ok(s)
+}
+
+// 当然对于读取到字符串的操作rust提供了一个函数
+fn read_username_from_file2() -> Result<String, io::Error> {
+    fs::read_to_string("hello.txt")
+}
+```
+
+#### （3） 选择`panic!`还是`Result`
+
+* 一般情况最好使用 `Result`，因为其给调用者更多的选择（调用者可以选择是处理还是`panic`）
+* 示例、代码原型和测试都非常适合 panic
+* 在当有可能会导致有害状态的情况下建议使用 `panic!`，比如：用于规范调用者的输入
+
 ## 四、所有权系统
 
 所有权系统是 Rust 不同其他语言的最重要的部分。是为了解决内存分配问题而设计的。
