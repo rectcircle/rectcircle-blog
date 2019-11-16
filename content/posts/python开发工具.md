@@ -29,6 +29,24 @@ tags:
 >>> reload(mymode)  
 ```
 
+### 3、自动重新载入已修改文件
+
+```py
+%load_ext autoreload
+%autoreload 2
+```
+
+自动执行
+
+```bash
+ipython profile create
+~/.ipython/profile_default/ipython_config.py
+```
+
+```
+c.InteractiveShellApp.exec_lines = [ '%load_ext autoreload', '%autoreload 2' ]
+```
+
 ## 二、VSCode开发Python
 
 ### 安装python插件包

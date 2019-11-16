@@ -136,7 +136,7 @@ location 末尾是否加  `/` 的区别：
     }
 ```
 
-* 以 `/` 结尾： localhost/test/a -> localhost:5000/a
+* 以 `/` 结尾： localhost/test/<mark>a</mark> -> localhost:5000/<mark>a</mark>
 
 ```nginx
     location /test {
@@ -144,7 +144,11 @@ location 末尾是否加  `/` 的区别：
     }
 ```
 
-* 不以 `/` 结尾：localhost/test/a -> localhost:5000/test/a
+* 不以 `/` 结尾：localhost/test<mark>/a</mark> -> localhost:5000<mark>/test/a</mark>
+
+> 以上可能有问题
+> https://blog.csdn.net/ruihaol/article/details/79526749
+> https://m.jb51.net/article/146975.htm
 
 #### （3）反向代理传递原始信息
 

@@ -794,3 +794,12 @@ echo $filenameNoExt # file
 * `${string//substring/replacement}` 使用 `$replacement` 来替换所有匹配的 `$substring`。
 * `${string/#substring/replacement}` 如果 `$substring` 匹配 `$string` 的开头部分，那么就用 `$replacement` 来替换 `$substring`。
 * `${string/%substring/replacement}` 如果 `$substring` 匹配 `$string` 的结尾部分，那么就用 `$replacement` 来替换 `$substring`。
+
+### 8、获取当前脚本所在目录
+
+```bash
+#!/usr/bin/env bash
+
+DIR=$(dirname $(readlink -f "$0"))
+echo $DIR
+```

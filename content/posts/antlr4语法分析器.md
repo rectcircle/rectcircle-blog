@@ -327,3 +327,15 @@ line 11: 未定义的标识符 d
 res5: 8
 
 ```
+
+### 说明
+
+该语法分析器的使用流程是：
+
+* 定义一个语法定义文件（后缀名`.g4`）
+* 通过antlr4的编译器把g4文件生成Java代码，核心文件如下（开启vistor）
+  * XxxParser
+  * XxxLexer
+  * XxxBaseVistor
+  * XxxVisitor
+* 继承 XxxBaseVistor 实现逻辑，将用户输入经过antlr4创建的语法树，通过遍历转换为内部数据结构、或其他操作

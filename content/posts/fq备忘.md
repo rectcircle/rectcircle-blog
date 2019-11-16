@@ -18,3 +18,7 @@ tags:
 * [v2ray-issues](https://github.com/v2ray/v2ray-core/issues/833)
 * [proxifier 官方网站](https://www.proxifier.com/)
 * [proxifier mac 注册码](https://www.jianshu.com/p/7fb184d58713)
+
+## 配置文件位置
+
+mac homebrew-v2ray `vim /usr/local/etc/v2ray/config.json`

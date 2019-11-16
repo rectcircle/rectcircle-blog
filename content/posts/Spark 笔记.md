@@ -206,3 +206,32 @@ set spark.sql.adaptive.shuffle.targetPostShuffleInputSize;
   * 按照上述规则划分分区，最后得到的分区组的数目就是下游task的数目，每个分区需要读取的分区编号就是这个连续的范围
   * 创建这些task
 * 下游task并行获取分区数据
+
+## 四、Spark原理与实现
+
+> * https://spark-internals.books.yourtion.com/index.html
+> * https://github.com/JerryLead/SparkInternals
+
+### 1、总体介绍
+
+> https://spark-internals.books.yourtion.com/markdown/1-Overview.html
+
+![部署图](/image/spark-deploy.png)
+
+* 上图的 Master Node 的 Master 为 Master Domain Process （Master 守护进程），每个集群一个，生命周期和**集群**一致
+* 上图的 Worker Node 存在 Worker Domain Process （Worker守护进程），每个集群多个，一般一台机器一个，生命周期和**集群**一致
+* 上图的 Driver 可以运行在 Master Node 或者 Worker Node，和Application一一对应，生命周期和**Application**一致
+* 上图的 Executor 存在于 每个Worker中，由 Worker Domain Process 创建，每个Worker可能存在多个
+  * 每个 Executor 存在一个线程池，线程池的数目受 `spark.executor.cores` 参数影响
+  * 每个 Executor 的每个线程会运行一个 task，同一个 Executor 执行同一个任务
+
+其他参考文档
+
+## 五、场景
+
+### 1、MySQL binlog Dump
+
+* 搭建 Canal 接入MySQLBinLog
+* Canal 将数据发送到 Kafka
+* Kafka 同步到 hdfs
+* spark读取增量数据并做成虚表，进行merge  

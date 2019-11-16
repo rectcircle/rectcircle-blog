@@ -354,9 +354,200 @@ alter table `table_name` [partition()] enable|disable NO_DROP;
 alter table `table_name` [partition()] enable|disable OFFLINE;
 ```
 
-## 二、常用函数与语法
+### 5、加载/插入/导出数据
 
-### `row_number() over` 组内编号 窗口函数
+```sql
+-- 向管理表中加载数据
+load data [local] inpath 'filepath' [overwrite]
+into table [partition()];
+```
+
+* `local` 表示操作系统文件路径
+* `overwrite` 是否覆盖重写
+* 支持相对路径：
+  * `local` 模式下相对于启动cli的用户家目录
+  * 非 `local` 模式下hadoop用户的路径
+
+```sql
+-- 通过查询插入数据
+insert overwrite table `table_name`
+partition ()
+select_statement;
+
+-- 一次插入多个表或多个分区
+from table `origin_table`
+insert overwrite table `table_name`
+  partition()
+  select xxx where xxx
+insert overwrite table `table_name`
+  partition()
+  select xxx where xxx;
+
+-- 动态分区插入
+insert overwrite table `table_name`
+partition(country, state)
+select ..., se.cnty, se.st
+from `origin_table` as se;
+```
+
+* 动态分区是根据位置匹配的而不是命名
+* 动态分区默认不开启，开启后以严格模式运行（必须有一个静态分区）
+
+```sql
+-- ctas方式创建库并插入数据
+create table `table_name`
+as select xxx from `origin_table`;
+```
+
+导出数据
+
+```bash
+# 直接使用hadoop cp导出（数据格式一致的话）
+hadoop fs -cp source_path target_path
+
+```
+
+使用`insert select`
+
+```sql
+-- 数据将转换为文本格式
+insert overwrite local directory `local_path`
+select xxx from xxx where;
+```
+
+## 二、查询
+
+### 1、基本语法
+
+```sql
+[WITH CommonTableExpression (, CommonTableExpression)*]    (Note: Only available starting with Hive 0.13.0)
+
+select
+  [ALL | DISTINCT] select_expr, select_expr ...
+from table_reference
+[WHERE where_condition]
+[GROUP BY col_list]
+[ORDER BY col_list]
+[CLUSTER BY col_list
+  | [DISTRIBUTE BY col_list] [SORT BY col_list]
+]
+[LIMIT [offset,] rows];
+```
+
+#### （1）select_expr
+
+* 支持select列名
+* 取map的某个键的值 `column_name["key"]`
+* 取Strut中的一个元素 `column_name.field_name`
+* 支持使用正则表达式 ``price.*``
+* 支持加减乘除算数运算
+* 支持数学函数
+* 支持聚合函数
+* 支持表生成函数（一个函数生成多个列，例如`parse_url_tuple(url, 'HOST', 'PATH', 'QUERY') as (host, path, query)`），常见的如下（也支持使用`lateral view`）
+  * explode
+  * json_tuple
+  * stack
+* 其他常用内置函数
+* 可以通过 `as` 指定列别名
+* 支持`case when then`子句
+
+#### （2）Limit子句
+
+只返回少量几行
+
+#### （3）table_reference
+
+* 支持表名
+* 支持子查询
+
+#### （5）where_condition
+
+* 支持 `and` `or`
+* 支持常见谓词，特殊的如下
+  * `<=>` 类似于 `=`，如果左右都为null，也返回true
+  * `<>`、`!=`
+  * `[not] between and`
+  * `is null`
+  * `is not null`
+  * `[not] like`
+  * `rlike`、`regexp`正则匹配
+
+#### （6）group by子句
+
+* 支持 `group by 字段列表`
+* 和 `having 条件`
+* 另外额外支持
+  * with cube
+  * with rollup
+  * grouping sets
+
+#### （7）join
+
+* 默认为`inner join`
+* Hive 不支持非等值连接（on条件不是等于的）
+* Hive 不支持 `OR`
+* 大多数情况下为每一个Join将会启动一次MR（多张表连接到一张表，使用相同的连接键，将只会产生一个）
+* Hive假定最后一个表为大表，并尝试将左边表（驱动表）放入内存中（也就是说应该将大表放在右边，小表放在左边）
+* 可以使用注释显示标注 `SELECT /*+ STREAMTABLE(a) */ a.val, b.val, c.val FROM a JOIN b ON (a.key = b.key1) JOIN c ON (c.key = b.key1)` 这表示，表a表将不尝试加载在内存中
+* 同时支持 `left join` 和 `right join`
+* 支持 `left semi join` 和 `left join` 不同，但是类似于`inner join`，只返回满足on条件的左边表的记录（引用右表将报错）
+* map-side JOIN 小表load进内存，不用产生一个reduce
+  * 可以通过 `set hive.auto.convert.join=true` 开启此优化
+  * 可以配置小表阈值 `hive.mapjoin.smalltable,filesize=250000000`
+  * 右外连接、全外连接不支持
+* `bucketJoin` 优化（支持分桶join）
+
+#### （8）order by 和 sort by
+
+* order by 全局排序 慢（严格模式下必须使用limit）
+* sort by （保证每个reducer有序）
+
+#### (9) distribute by
+
+表示MR的Shuffle阶段按照那个字段进行分发到reducer，通常与sort by一起使用。这样能保证reducer间不会重复
+
+```sql
+distribute by t.a
+sort by t.a
+```
+
+#### （10）cluster by
+
+等价于`distribute by t.a sort by t.a`
+
+#### （11）数据抽样
+
+```sql
+select
+from
+table_name tablesample(bucket x out of y [on column_name])
+```
+
+* 按照任意表进行取样
+* 将数据按照 `column_name` 进行分桶，分桶数为y，取编号为x的桶的值，分区方法为hash
+* `column_name` 还可以是 `rand()` 函数，表示每一行给一个随机数，按照这个随机数进行划分分桶
+* 对于特定分桶表则不用扫全表而是去特定桶即可，其他表需要扫全表
+
+```sql
+select
+from
+table_name tablesample(x percent)
+```
+
+* 数据块抽样
+* x为抽取的最少比例，取值为0~1，抽取的最小范围是hdfs的一个块大小
+
+#### （12）UNION ALL
+
+将两次查询结果取并集，前提条件是列数相同，每列的数据类型相同
+
+### 2、常用函数与语法
+
+#### `cast()` 类型转换
+
+`case(t.a as string)`
+
+#### `row_number() over` 组内编号 窗口函数
 
 语法详解
 
@@ -383,7 +574,7 @@ select t.*,
 from db.table t;
 ```
 
-### `first_value` 或 `last_vale` 窗口函数
+#### `first_value` 或 `last_vale` 窗口函数
 
 ```sql
 first_value(field, true) over (partition by col1 order by col2) as col3,
@@ -426,7 +617,7 @@ row between unbounded preceding and unbounded following
 
 对于last_value一般都会跟着order by所以一般不要使用默认值
 
-### `case-when-else-end` 多条件
+#### `case-when-else-end` 多条件
 
 语法
 
@@ -438,13 +629,13 @@ case
 end as alias,
 ```
 
-### `if` 条件
+#### `if` 条件
 
 ```sql
 if(exp, true, false)
 ```
 
-### `nvl` 函数
+#### `nvl` 函数
 
 ```sql
 NVL(expr1, expr2)
@@ -453,13 +644,13 @@ NVL(expr1, expr2)
 * 如果expr1为NULL，返回值为 expr2，否则返回expr1。
 * 适用于数字型、字符型和日期型，但是 expr1和expr2的数据类型必须为同类型。
 
-### `cast` 类型转换函数
+#### `cast` 类型转换函数
 
 ```sql
 cast(expr as type)
 ```
 
-### `get_json_object(json:string, p:string)` 从json中提取对象
+#### `get_json_object(json:string, p:string)` 从json中提取对象
 
 ```sql
 set hivevar:msg='{
@@ -480,7 +671,7 @@ set hivevar:msg='{
 select get_json_object('${hivevar:msg}','$.server');
 ```
 
-### `from_unixtime(unixtime:number, format:'yyyy-MM-dd')` 时间戳转
+#### `from_unixtime(unixtime:number, format:'yyyy-MM-dd')` 时间戳转
 
 * unixtime 秒时间戳
 * format
@@ -492,7 +683,7 @@ select from_unixtime(1556803199);
 select from_unixtime(1556803199, 'yyyy-MM-dd');
 ```
 
-### `json_tuple` 提取json方式2
+#### `json_tuple` 提取json方式2
 
 ```sql
 select b.key1,
@@ -504,7 +695,28 @@ from db.table a lateral view json_tuple (a.value, 'key1', 'key2', 'key3') b as k
                  key4;
 ```
 
-## 三、优化与注意点
+### 3、视图
+
+语法
+
+```sql
+create view [if not exists] view_name(colunm_name...)
+[comment '']
+[tblproperties ('xxx'='xxx')]
+as
+select_statement
+
+drop table [if exists] view_name
+```
+
+* 不支持插入
+* 必须拥有视图所依赖的表的权限
+
+### 4、索引
+
+略
+
+## END、优化与注意点
 
 ### 1、对于重复语句可以使用with语法
 
@@ -554,3 +766,24 @@ join (
   select -1 as b, 0 as o -- 这是查询结果2（需要额外添加一个字段，用于join）
 ) t2 on t1.o = t2.o;
 ```
+
+### 3、Hive设计模式
+
+* 按天划分表： 使用分区表实现
+* 唯一键和标准化： 大数据场景一般反范式化
+* 同一份数据多种处理
+* 使用分桶表存储
+* 使用列式存储（如Parquet）
+* 总是使用压缩
+
+### 4、Hive引擎调优
+
+* 使用`explain`或者`explain extended`获取执行计划
+* 使用limit
+* join优化：使用map-side机制
+* 本地模式
+* 扩大并行度
+* 严格模式
+* 调整mr数目
+* JVM重用
+* 推测执行
