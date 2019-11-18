@@ -265,8 +265,8 @@ public class IdServiceProxy implements IdService {
 ```yaml
 # 是否启用zookeeper协调（目前用于数据库id生成器的workerId）
 xxx.common.zookeeper-enabled: true
-xxx.common.zookeeper-addr: 10.110.148.25:2181
-xxx.common.zookeeper-worker-ids-path: /dw_auto/worker_ids
+xxx.common.zookeeper-addr: xx.xx.xx.xx:2181
+xxx.common.zookeeper-worker-ids-path: /xxxx/worker_ids
 ```
 
 添加依赖如下

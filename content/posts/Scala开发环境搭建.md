@@ -68,7 +68,8 @@ coursier 插件的作用： 解决sbt依赖串行下载的问题。该插件将�
 操作步骤： `vim ~/.sbt/1.0/plugins/coursier.sbt`
 
 ```scala
-addSbtPlugin("io.get-coursier" % "sbt-coursier" % "latest.integration")
+// addSbtPlugin("io.get-coursier" % "sbt-coursier" % "latest.integration") // 可能出问题
+addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.1.0-M14")
 ```
 
 > 该步骤建议可以全局fq的用户也进行进行配置
