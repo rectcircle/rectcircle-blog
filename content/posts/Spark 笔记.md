@@ -235,3 +235,94 @@ set spark.sql.adaptive.shuffle.targetPostShuffleInputSize;
 * Canal 将数据发送到 Kafka
 * Kafka 同步到 hdfs
 * spark读取增量数据并做成虚表，进行merge  
+
+## 六、疑问自答
+
+### 1、什么是AE
+
+全称 adaptive execution，有如下作用
+
+* 根据配置的ShufflePartition文件大小，自动配置每个Stage的Partition数
+* 每个Stage执行完成之后，根据统计信息动态改变物理执行计划，重新生成RDD代码
+  * 决定是否使用boardcast
+* 打开AE，Spark History UI的Stage DAG图会出现很多跳过Stage
+* 打开AE后，Spark History UI 的 SQL DAG图会随运行过程中不断变化
+
+### 2、Spark Application、Driver、Job、Stage、Partition、Task及如何划分
+
+Spark Application:
+
+* 通过spark-submit提交的一个程序称之为Application
+* 一个spark-shell称之为一个Application
+
+Driver:
+
+* 运行用户提交主代码的进程，负责
+  * 解析用户输入
+  * 构建执行图
+  * 调度协调Task
+
+Job:
+
+* 一个Application可以划分为1个或多个Job
+* 划分Job的依据是：调用了action算子（ResultTask），action算子：
+  * 收集信息到Driver程序
+* 一般情况下
+  * AE：一个SparkSQL的每个Stage就是一个Job（因为AE会动态调整执行计划，需要收集信息到Driver）
+  * 非AE：一个SparkSQL（insert into）一般对应一个一个Stage（因为物理执行图一旦确定就不会变，直到action操作insert into）
+
+Stage:
+
+* 一个Job包含一个或者多个Stage，以Shuffle为界
+
+Partition
+
+* Partition 是一个数据分片，完整的数据会分为多个Partition
+
+Task
+
+* 一个Stage会启动多个Task，这些Task封装了相同的计算流水线，只是处理的数据不同。
+* 一个任务task的个数和**Stage最后一个RDD**的partition数目相同。（[参考](https://spark-internals.books.yourtion.com/markdown/3-JobPhysicalPlan.html) 不管是 1:1 还是 N:1 ...）
+* task执行会以流水线的方式向上追溯到读表或者ShuffleRead，然后依次处理
+
+### 3、Random等不确定函数作为joinkey时的问题
+
+当在使用Random函数作为joinkey处理数据倾斜问题时，在失败重试的情况会导致数据不一致。
+
+Join下游Task某个shuffle fetch faild，就需要重跑上游Stage，此时Random函数式不确定函数，重跑导致前后数据不一致。从而造成数据不一致
+
+解决办法： 使用其他确定字段代替random生成JoinKey
+
+### 4、前缀优化
+
+```sql
+select
+  t1.a, t1.b,
+  count(1) as uv,
+  sum(vv) as vv
+from
+(
+  select
+    t1.a, t1.b, t1.c,
+    count(1) as vv
+  from t1
+  left join t2
+  on t1.a = t2.a
+  group by t1.a, t1.b, t1.c
+) x
+group by t1.a, t1.b
+```
+
+以上SQL如果没有优化的话会产生3个Shuffle，分别是
+
+* Shuffle1：
+  * t1 join t2
+  * shaffle key 为 t1.a
+* Shuffle2：
+  * group by t1.a, t1.b, t1.c
+  * shaffle key 为 t1.a, t1.b, t1.c
+* Shuffle3：
+  * group by t1.a, t1.b
+  * shaffle key 为 t1.a, t1.b
+
+可以观察到，shuffle1 的 key 是 shuffle2 key 的前缀。所以 shuffle2 可以优化为窄依赖

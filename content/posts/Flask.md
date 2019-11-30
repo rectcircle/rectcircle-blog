@@ -11,7 +11,7 @@ tags:
   - 后端
 ---
 
-> 参考：[官方网站](http://flask.pocoo.org)
+> 参考：[官方网站](http://flask.pocoo.org) [中文文档](https://dormousehole.readthedocs.io/en/latest/)
 
 ## 一、Flask介绍
 
