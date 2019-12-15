@@ -286,7 +286,7 @@ int main(){
 ```
 
 ```markdown
-```cpp
+//```cpp 请忽略前面双斜线
 #include <iostream>
 
 using namespace std;
@@ -295,7 +295,7 @@ int main(){
 	cout<<"hello world"<<endl;
 	return 0;
 }
-//这里有三个`
+//``` 请忽略前面双斜线
 ```
 
 ## 链接
@@ -447,7 +447,7 @@ dsvffd
 
 ### 参考文献
 
-这是段文字参考文献 [^1]
+这是段文字参考文献，将会自动移动到文末 [^1]
 
 [^1]: https://github.com/gohugoio/hugoBasicExample/blob/master/content/post/markdown-syntax.md "参考链接"
 
