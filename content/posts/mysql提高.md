@@ -863,3 +863,32 @@ SELECT * FROM `student` WHERE MATCH(`name`,`address`) AGAINST('聪 广东')
 * R/W比较小，频繁更新大字段
 * 表数据量超过1000万，并发高
 * 安全性和可用性要求高
+
+## Binlog
+
+> [https://www.jianshu.com/p/ea666baf0d82](https://www.jianshu.com/p/ea666baf0d82)
+
+BinLog 是MySQL中 数据更新 （Insert Delete Update）相关事件记录的二进制文件。
+
+Binlog有的三种工作模式：
+
+* Row level 日志中会记录成每一行数据被修改的形式，然后在slave端再对相同的数据进行修改。
+* Statement level 每一条会修改数据的sql都会记录到 master的bin-log中。slave在复制的时候sql进程会解析成和原来master端执行
+* Mixed（混合模式）实际上就是前两种模式的结合。在Mixed模式下，MySQL会根据执行的每一条具体的sql语句来区分对待记录的日志形式，也就是在Statement和Row之间选择一种。
+
+一般情况会选择第一种 Row level 方式，这种方式记录了最细粒度的数据变更，利于下游应用解析。
+
+用途
+
+* 主从同步高可用 （运维）
+* 数据增量Dump到数据仓库 （数仓）
+* 用于业务处理 （业务开发）
+
+### 使用Binlog对增量数据做处理
+
+#### 方案
+
+* MySQL开启 Row level 登记Binlog
+* 使用[Canal](https://github.com/alibaba/canal)接入Binlog进行处理转发
+  * Canal伪造成MySQL的从库，接收MySQL的Binlog，并将Binlog转化为[预定义好的PB格式](https://github.com/alibaba/canal/blob/master/protocol/src/main/java/com/alibaba/otter/canal/protocol/EntryProtocol.proto)的二进制数据并发送给Kafka等
+* 用户消费Kafka里的数据进行业务处理
