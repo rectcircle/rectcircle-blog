@@ -1958,3 +1958,529 @@ pub fn add_to_waitlist() {}
     }
     println!("{:?}", map);
 ```
+
+## 九、泛型、特质
+
+### 1、泛型
+
+rust 的 泛型类型实现方式C++中的模板，在编译时会被具象化出二进制代码（单态化（monomorphization））。（与Java泛型不同，Java泛型运行时擦除实现）
+
+* 单态化优缺点
+  * 运行时没有额外性能损失
+  * 编译产物体积相对较大
+* 类型擦除
+  * 运行时有额外的性能损失
+  * 编译产物体积相对较小
+
+```rs
+    // 结构体使用泛型声明
+    struct Point<T> {
+        x: T,
+        y: T,
+    }
+    let integer = Point { x: 5, y: 10 };
+    let float = Point { x: 1.0, y: 4.0 };
+
+    // 结构体使用多个泛型
+    struct Point1<T, U> {
+        x: T,
+        y: U,
+    }
+    let both_integer = Point1 { x: 5, y: 10 };
+    let both_float = Point1 { x: 1.0, y: 4.0 };
+    let integer_and_float = Point1 { x: 5, y: 4.0 };
+
+    // 枚举中使用泛型
+    enum Option<T> {
+        Some(T),
+        None,
+    }
+    enum Result<T, E> {
+        Ok(T),
+        Err(E),
+    }
+
+    // 为泛型实现方法
+    impl<T> Point<T> {
+        fn x(&self) -> &T {
+            &self.x
+        }
+    }
+
+    // 实现一个泛型的具象化方法
+    // 本例为浮点类型的点实现计算欧拉距离的方法
+    impl Point<f32> {
+        fn distance_from_origin(&self) -> f32 {
+            (self.x.powi(2) + self.y.powi(2)).sqrt()
+        }
+    }
+
+    // 为泛型结构体实现一个泛型方法
+    impl<T, U> Point1<T, U> {
+        fn mixup<V, W>(self, other: Point1<V, W>) -> Point1<T, W> {
+            Point1 {
+                x: self.x,
+                y: other.y,
+            }
+        }
+    }
+```
+
+### 2、特质（trait）
+
+类似go语言的接口
+
+```rs
+use std::fmt::Display;
+
+fn main() {
+    // 结构体使用泛型声明
+    struct Point<T> {
+        x: T,
+        y: T,
+    }
+    let integer = Point { x: 5, y: 10 };
+    let float = Point { x: 1.0, y: 4.0 };
+
+    // 结构体使用多个泛型
+    struct Point1<T, U> {
+        x: T,
+        y: U,
+    }
+    let both_integer = Point1 { x: 5, y: 10 };
+    let both_float = Point1 { x: 1.0, y: 4.0 };
+    let integer_and_float = Point1 { x: 5, y: 4.0 };
+
+    // 枚举中使用泛型
+    enum Option<T> {
+        Some(T),
+        None,
+    }
+    enum Result<T, E> {
+        Ok(T),
+        Err(E),
+    }
+
+    // 为泛型实现方法
+    impl<T> Point<T> {
+        fn x(&self) -> &T {
+            &self.x
+        }
+    }
+
+    // 实现一个泛型的具象化方法
+    // 本例为浮点类型的点实现计算欧拉距离的方法
+    impl Point<f32> {
+        fn distance_from_origin(&self) -> f32 {
+            (self.x.powi(2) + self.y.powi(2)).sqrt()
+        }
+    }
+
+    // 为泛型结构体实现一个泛型方法
+    impl<T, U> Point1<T, U> {
+        fn mixup<V, W>(self, other: Point1<V, W>) -> Point1<T, W> {
+            Point1 {
+                x: self.x,
+                y: other.y,
+            }
+        }
+    }
+
+    // 定义一个 特质
+    pub trait Summary {
+        fn summarize(&self) -> String;
+    }
+
+    // 为类型实现 trait
+    pub struct NewsArticle {
+        pub headline: String,
+        pub location: String,
+        pub author: String,
+        pub content: String,
+    }
+
+    impl Summary for NewsArticle {
+        fn summarize(&self) -> String {
+            format!("{}, by {} ({})", self.headline, self.author, self.location)
+        }
+    }
+
+    pub struct Tweet {
+        pub username: String,
+        pub content: String,
+        pub reply: bool,
+        pub retweet: bool,
+    }
+
+    impl Summary for Tweet {
+        fn summarize(&self) -> String {
+            format!("{}: {}", self.username, self.content)
+        }
+    }
+
+    // 特质默认实现
+    pub trait Summary1 {
+        fn summarize(&self) -> String {
+            String::from("(Read more...)")
+        }
+    }
+    pub struct NewsArticle1 {
+        pub headline: String,
+        pub location: String,
+        pub author: String,
+        pub content: String,
+    }
+    impl Summary1 for NewsArticle1 {
+    }
+    let article = NewsArticle {
+    headline: String::from("Penguins win the Stanley Cup Championship!"),
+        location: String::from("Pittsburgh, PA, USA"),
+        author: String::from("Iceburgh"),
+        content: String::from("The Pittsburgh Penguins once again are the best
+        hockey team in the NHL."),
+    };
+    println!("New article available! {}", article.summarize());
+
+    // trait 作为函数参数
+    pub fn notify(item: impl Summary) {
+        println!("Breaking news! {}", item.summarize());
+    }
+    // trait 作为函数参数（Trait Bound）
+    pub fn notify2<T: Summary>(item: T) {
+        println!("Breaking news! {}", item.summarize());
+    }
+
+    pub fn notify3<T: Summary>(item1: T, item2: T) {
+    }
+
+    // 通过 + 指定多个 trait bound
+    pub fn notify4(item: impl Summary + Display) {
+    }
+
+    pub fn notify5<T: Summary + Display>(item: T) {
+    }
+
+    // 使用where语法
+    trait Debug{}
+    fn some_function<T: Display + Clone, U: Clone + Debug>(t: T, u: U) -> i32 {0}
+    fn some_function1<T, U>(t: T, u: U) -> i32
+        where T: Display + Clone,
+              U: Clone + Debug
+    {
+        0
+    }
+
+    // trait 作为函数返回值
+    fn returns_summarizable() -> impl Summary { // 只能返回单一类型
+        Tweet {
+            username: String::from("horse_ebooks"),
+            content: String::from("of course, as you probably already know, people"),
+            reply: false,
+            retweet: false,
+        }
+    }
+
+    // 以下代码报错：因为只能返回单一类型
+    // fn returns_summarizable1(switch: bool) -> impl Summary {
+    //     if switch {
+    //         NewsArticle {
+    //             headline: String::from("Penguins win the Stanley Cup Championship!"),
+    //             location: String::from("Pittsburgh, PA, USA"),
+    //             author: String::from("Iceburgh"),
+    //             content: String::from("The Pittsburgh Penguins once again are the best
+    //             hockey team in the NHL."),
+    //         }
+    //     } else {
+    //         Tweet {
+    //             username: String::from("horse_ebooks"),
+    //             content: String::from("of course, as you probably already know, people"),
+    //             reply: false,
+    //             retweet: false,
+    //         }
+    //     }
+    // }
+
+    // 例子：实现 largest 函数
+    fn largest<T: PartialOrd + Copy>(list: &[T]) -> T {
+        let mut largest = list[0];
+        for &item in list.iter() {
+            if item > largest {
+                largest = item;
+            }
+        }
+        largest
+    }
+    let number_list = vec![34, 50, 25, 100, 65];
+
+    let result = largest(&number_list);
+    println!("The largest number is {}", result);
+
+    let char_list = vec!['y', 'm', 'a', 'q'];
+
+    let result = largest(&char_list);
+    println!("The largest char is {}", result);
+
+    // 使用 trait bound 有条件地实现方法
+    struct Pair<T> {
+        x: T,
+        y: T,
+    }
+    impl<T> Pair<T> {
+        fn new(x: T, y: T) -> Self {
+            Self {
+                x,
+                y,
+            }
+        }
+    }
+    impl<T: Display + PartialOrd> Pair<T> {
+        fn cmp_display(&self) {
+            if self.x >= self.y {
+                println!("The largest member is x = {}", self.x);
+            } else {
+                println!("The largest member is y = {}", self.y);
+            }
+        }
+    }
+}
+```
+
+## 十、生命周期
+
+rust 特有，声明周期也是一种泛型，用来防止引用悬空，辅助借用检查器进行检查。
+
+### 1、显示使用
+
+每个引用都有声明周期，声明方式如下：
+
+```rs
+&i32        // 引用
+&'a i32     // 带有显式生命周期的引用
+&'a mut i32 // 带有显式生命周期的可变引用
+
+fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+}
+```
+
+样例
+
+```rs
+    // 1. 生命周期避免了悬垂引用
+    // {
+    //     let r; // 不可便变量只允许赋值一次
+    //     {
+    //         let x = 5;
+    //         r = &x; // Error `x` does not live long enough，声明周期不同借用检查器不允许
+    //     }
+    //     println!("r: {}", r);
+    // }
+
+    // 2. 生命周期一致才可以
+    {
+        let x = 5;            // ----------+-- 'b
+                              //           |
+        let r = &x;           // --+-- 'a  |
+                              //   |       |
+        println!("r: {}", r); //   |       |
+                              // --+       |
+    }
+
+    // 3. 函数中的泛型生命周期
+    // 'a 表示一个生命周期注解，表示x、y参数和返回值必须拥有相同的生命周期
+    // 调用时，'a 取x、y最小的生命周期
+    fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
+        if x.len() > y.len() {
+            x
+        } else {
+            y
+        }
+    }
+    // 正确调用，'a = string2 的声明周期
+    {
+        let string1 = String::from("long string is long");
+        {
+            let string2 = String::from("xyz");
+            let result = longest(string1.as_str(), string2.as_str());
+            println!("The longest string is {}", result);
+        }
+    }
+    // // 错误调用，'a = string2 的声明周期，result是 'a 的父声明周期
+    // {
+    //     let string1 = String::from("long string is long");
+    //     let result;
+    //     {
+    //         let string2 = String::from("xyz");
+    //         result = longest(string1.as_str(), string2.as_str());
+    //     }
+    //     println!("The longest string is {}", result);
+    // }
+
+    // 4. 结构体定义中的生命周期注解
+    // 这个注解意味着 ImportantExcerpt 的实例不能比其 part 字段中的引用存在的更久。
+    struct ImportantExcerpt<'a> {
+        part: &'a str,
+    }
+    impl<'a> ImportantExcerpt<'a> {
+        fn level(&self) -> i32 {
+            3
+        }
+        fn announce_and_return_part(&self, announcement: &str) -> &str {
+            println!("Attention please: {}", announcement);
+            self.part
+        }
+    }
+    {
+        let novel = String::from("Call me Ishmael. Some years ago...");
+        let first_sentence = novel.split('.')
+            .next()
+            .expect("Could not find a '.'");
+        let i = ImportantExcerpt { part: first_sentence };
+    }
+```
+
+### 2、生命周期省略规则
+
+* 第一条规则是每一个是引用的参数都有它自己的生命周期参数。换句话说就是，有一个引用参数的函数有一个生命周期参数：`fn foo<'a>(x: &'a i32)`，有两个引用参数的函数有两个不同的生命周期参数，fn `foo<'a, 'b>(x: &'a i32, y: &'b i32)`，依此类推。
+* 第二条规则是如果只有一个输入生命周期参数，那么它被赋予所有输出生命周期参数：`fn foo<'a>(x: &'a i32) -> &'a i32`。
+* 第三条规则是如果方法有多个输入生命周期参数，不过其中之一因为方法的缘故为 `&self` 或 `&mut self`，那么 self 的生命周期被赋给所有输出生命周期参数。第三条规则使得方法更容易读写，因为只需更少的符号。
+
+### 3、静态生命周期
+
+'static，其生命周期能够存活于整个程序期间。所有的字符串字面值都拥有 'static 生命周期，我们也可以选择像下面这样标注出来：
+
+```rs
+let s: &'static str = "I have a static lifetime.";
+```
+
+### 4、结合泛型类型参数、trait bounds 和生命周期
+
+```rs
+    fn longest_with_an_announcement<'a, T>(x: &'a str, y: &'a str, ann: T) -> &'a str
+        where T: Display
+    {
+        println!("Announcement! {}", ann);
+        if x.len() > y.len() {
+            x
+        } else {
+            y
+        }
+    }
+```
+
+## 十一、测试
+
+### 1、单元测试
+
+* 使用 `#[cfg(test)] ` 注解的模块
+  * 在模块中使用 `#[test]` 注解的函数为单元测试函数
+* 代码写在 `src` 目录下
+
+创建一个测试模块 `cargo new rusttest --lib`
+
+编写 `src/lib.rc` 文件
+
+```rc
+pub fn add_two(base: i32) -> i32{
+    base + 2
+}
+
+// src 内部的一般是单元测试
+#[cfg(test)] // 只在执行 cargo test 时才编译和运行测试代码 cargo build 将忽略该模块
+mod tests {
+    #[test] // 表示当前函数为测试函数
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
+    }
+
+    #[test]
+    fn another() {
+        panic!("Make this test fail");
+    }
+
+    #[test]
+    #[should_panic] // 抛出所有异常都将测试通过
+    fn should_panic() {
+        panic!("应该抛出异常");
+    }
+
+    #[test]
+    #[should_panic(expected = "应该抛出异常")] // 只期望指定的异常
+    fn should_special_panic() {
+        panic!("应该抛出异常");
+    }
+
+    #[test]
+    fn should_fail() {
+        assert_ne!(1, 2);
+        assert!(true, "测试失败的消息");
+        assert_eq!(1, 2, "{} == {} 测试失败", 1, 2);
+    }
+
+    #[test]
+    fn result() -> Result<(), String> { // 使用Result报告测试结果，如果返回Ok测试通过，返回Err测试失败
+        if 2 + 2 == 5 {
+            Ok(())
+        } else {
+            Err(String::from("two plus two does not equal four"))
+        }
+    }
+
+    #[test]
+    #[ignore]  // 忽略该测试
+    fn ignore() {
+        assert!(true);
+    }
+}
+```
+
+运行测试
+
+```bash
+cargo test  # 运行测试
+cargo test --help  # 查看相关参数
+cargo test -- --test-threads=1  # 测试二进制文件的测试线程数
+cargo test -- --nocapture  # 不显示println! 命令行输出
+cargo test it_works  # 运行指定的测试
+cargo test should  # 运行指定的测试包含should的测试
+cargo test -- --ignored  # 运行`#[ignore]`的测试函数
+```
+
+* `--` 分隔符之后的参数将被传递到测试二进制文件
+
+### 2、集成测试
+
+创建 `tests` 目录
+
+编写测试文件 `tests/mytest.rs`
+
+```rs
+// test 目录只能测试src/lib.rs中声明的包，不能测试src/main.rs
+// use rusttest; // 此种方式也可以
+// 声明被测试的外部 crate，就像其他使用该 crate 的程序要声明的那样。
+extern crate rusttest;
+
+mod common;
+
+
+#[test]
+fn it_adds_two() {
+    common::setup();
+    assert_eq!(4, rusttest::add_two(2));
+}
+
+```
+
+测试使用的模块建议使用目录方式创建，创建文件 `tests/common/mod.rs`
+
+```rs
+pub fn setup() {
+    // 编写特定库测试所需的代码
+}
+```
+
+运行集成测试
+
+```bash
+cargo test it_adds_two # 运行指定测试
+cargo test --test mytest # 运行指定测试文件中的测试
+```
