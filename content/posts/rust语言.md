@@ -2379,7 +2379,7 @@ let s: &'static str = "I have a static lifetime.";
 
 编写 `src/lib.rc` 文件
 
-```rc
+```rs
 pub fn add_two(base: i32) -> i32{
     base + 2
 }
