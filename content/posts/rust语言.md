@@ -709,6 +709,9 @@ fn read_username_from_file2() -> Result<String, io::Error> {
 
 * struct、方法、trait抽象（类似于Golang）
 * 函数式编程特性
+  * 模式匹配
+  * 闭包
+  * 迭代器
 * 元编程（宏系统）
 
 细节参见下文
@@ -1214,11 +1217,13 @@ fn main() {
   * `self` 不常见（仅在将当前对象转换为另一个对象）
 * 类似于go，rust不使用`->`，只使用`.`，会进行自动解引用
 
-## 六、枚举和模式匹配
+## 六、函数式语言特性
+
+### 1、枚举和模式匹配
 
 创建测试项目 `cargo new enums`
 
-### 1、定义枚举
+#### 定义枚举
 
 基本语法
 
@@ -1344,7 +1349,7 @@ enum Option<T> {
 
 ```
 
-### 2、模式匹配
+#### 模式匹配
 
 例子1：枚举类型模式匹配
 
@@ -1422,7 +1427,7 @@ let none = plus_one(None);
 
 * 支持类似scala的通配符
 
-### 3、if let 单条件模式匹配符
+#### if let 单条件模式匹配符
 
 ```rs
 let some_u8_value = Some(0u8);
@@ -1460,6 +1465,10 @@ if let Some(3) = some_u8_value {
         count += 1;
     }
 ```
+
+### 2、闭包
+
+### 3、迭代器
 
 ## 七、模块化系统
 
@@ -2483,4 +2492,171 @@ pub fn setup() {
 ```bash
 cargo test it_adds_two # 运行指定测试
 cargo test --test mytest # 运行指定测试文件中的测试
+```
+
+## 十二、最佳实践
+
+### 1、二进制项目的组织结构
+
+main 函数负责多个任务的组织问题在许多二进制项目中很常见。所以 Rust 社区开发出一类在 main 函数开始变得庞大时进行二进制程序的关注分离的指导性过程。这些过程有如下步骤：
+
+* 将程序拆分成 main.rs 和 lib.rs 并将程序的逻辑放入 lib.rs 中。
+* 当命令行解析逻辑比较小时，可以保留在 main.rs 中。
+* 当命令行解析开始变得复杂时，也同样将其从 main.rs 提取到 lib.rs 中。
+
+经过这些过程之后保留在 main 函数中的责任应该被限制为：
+
+* 使用参数值调用命令行解析逻辑
+* 设置任何其他的配置
+* 调用 lib.rs 中的 run 函数
+* 如果 run 返回错误，则处理这个错误
+
+## 十三、例子：grep
+
+创建项目 `cargo new minigrep`
+
+编写主逻辑 `src/lib.rs`
+
+```rs
+use std::fs;
+use std::error::Error;
+use std::env;
+
+
+// 命令行输入结构体
+pub struct Config {
+    pub query: String,
+    pub filename: String,
+    pub case_sensitive: bool,
+}
+
+impl Config {
+    // 构造函数
+    pub fn new(args: &[String]) -> Result<Config, &'static str> { // 使用Result包裹返回
+        if args.len() < 3 {
+            return Err("not enough arguments");
+        }
+
+        let query = args[1].clone();
+        let filename = args[2].clone();
+        let case_sensitive = env::var("CASE_INSENSITIVE").is_err(); // 读取环境变量
+
+        Ok(Config { query, filename, case_sensitive })
+    }
+}
+
+
+pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
+    let contents = fs::read_to_string(config.filename)?; // ? 传递出错误
+
+    // println!("With text:\n{}", contents);
+
+    let results = if config.case_sensitive { // 根据是否区分大小写调用函数
+        search(&config.query, &contents)
+    } else {
+        search_case_insensitive(&config.query, &contents)
+    };
+
+    for line in results { // 输出结果
+        println!("{}", line);
+    }
+
+    Ok(())
+}
+
+pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> { // 返回结果生命周期与content一致
+    let mut results = Vec::new();
+    // 遍历每一行进行判断
+    for line in contents.lines() {
+        if line.contains(query) {
+            results.push(line);
+        }
+    }
+
+    results
+}
+
+pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+    let query = query.to_lowercase();
+    let mut results = Vec::new();
+
+    for line in contents.lines() {
+        if line.to_lowercase().contains(&query) {
+            results.push(line);
+        }
+    }
+
+    results
+}
+
+// 单元测试： TDD 应该优先实现单元测试函数
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // 测试用例：对不区分大消息进行测试
+    #[test]
+    fn one_result() {
+        let query = "duct";
+        let contents = "\
+Rust:
+safe, fast, productive.
+Pick three.";
+
+        assert_eq!(
+            vec!["safe, fast, productive."],
+            search(query, contents)
+        );
+    }
+
+    #[test]
+    fn case_insensitive() {
+        let query = "rUsT";
+        let contents = "\
+Rust:
+safe, fast, productive.
+Pick three.
+Trust me.";
+
+        assert_eq!(
+            vec!["Rust:", "Trust me."],
+            search_case_insensitive(query, contents)
+        );
+    }
+}
+```
+
+编写入口函数 `src/main.rs`
+
+```rs
+use std::env;
+use minigrep::Config;
+use std::process;
+
+
+/**
+ * 实现一个类似grep的命令行工具
+ */
+fn main() {
+    // println!("Hello, world!");
+    // 读取命令行参数
+    let args: Vec<String> = env::args().collect(); // 读取命令行参数
+    // println!("{:?}", args);
+
+    // 解析命令行参数
+    let config = Config::new(&args).unwrap_or_else(|err| { // 闭包函数处理异常
+        eprintln!("Problem parsing arguments: {}", err); // 输出到标准出错流
+        process::exit(1);
+    });
+
+    // println!("Searching for {}", config.query);
+    // println!("In file {}", config.filename);
+
+    // 执行主函数
+    if let Err(e) = minigrep::run(config) {
+        eprintln!("Application error: {}", e);
+
+        process::exit(1);
+    }
+}
 ```
