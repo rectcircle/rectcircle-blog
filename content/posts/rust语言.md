@@ -1468,6 +1468,142 @@ if let Some(3) = some_u8_value {
 
 ### 2、闭包
 
+新建项目 `cargo new closures` 编辑 `src/main.rs`
+
+闭包的基本语法
+
+```rs
+use std::thread;
+use std::time::Duration;
+
+
+/// 一个生成训练计划的程序
+/// 根据用户提供的强度值和随机因子计算接下来要做的事情
+fn generate_workout(intensity: u32, random_number: u32) {
+    // 用来计算运动项目的次数
+    let expensive_closure = |num| { // 一个闭包，类型参数根据下方调用传的参数推断出来
+        println!("缓慢计算中...");
+        thread::sleep(Duration::from_secs(2));
+        num
+    };
+
+    if intensity < 25 {
+        println!(
+            "今天, 先做 {} 个 俯卧撑 !",
+            expensive_closure(intensity) // 在此处推断出闭包的参数类型和返回值类型
+        );
+        println!(
+            "接下来, 在做 {} 个 仰卧起坐 !",
+            expensive_closure(intensity) // 此处传参和返回值必须与第一次调用一致
+        );
+        // expensive_closure(1.2); // 报错：expected u32, found floating-point number
+    } else {
+        if random_number == 3 {
+            println!("今天休息一下！记住要保持水分！ ");
+        } else {
+            println!(
+                "今天, 跑 {} 分钟步!",
+                expensive_closure(intensity)
+            );
+        }
+    }
+}
+
+    generate_workout(25, 10);
+```
+
+闭包与函数
+
+```rs
+fn add_one(a: u32, version: u32) -> u32 {
+    fn  add_one_v1   (x: u32) -> u32 { x + 1 }; // 这是定义了一个函数
+    let add_one_v2 = |x: u32| -> u32 { x + 1 }; // 定义闭包方式1
+    // 以下两种定义必须在作用域内使用才能使编译器推断出参数类型，不适用的将报错，让用户明确声明类型
+    let add_one_v3 = |x|             { x + 1 }; // 定义闭包方式2
+    let add_one_v4 = |x|               x + 1  ; // 定义闭包方式3
+    let add_one_v5 = | |               a + 1  ; // 闭包可以捕获作用域内的变量，但是函数不能
+    // fn  add_one_v6   () -> u32       { a + 1 }; // 报错：can't capture dynamic environment in a fn item
+
+
+    match version {
+        1 => add_one_v1(a),
+        2 => add_one_v2(a),
+        3 => add_one_v3(a),
+        4 => add_one_v4(a),
+        5 => add_one_v5(),
+        _ => a+1,
+    }
+}
+
+    add_one(1,5);
+```
+
+闭包作为结构体成员
+
+```rs
+
+struct Cacher<T>
+    where T: Fn(u32) -> u32 // 闭包有三种triat类型参见下文
+{
+    calculation: T,
+    value: Option<u32>,
+}
+
+impl<T> Cacher<T>
+    where T: Fn(u32) -> u32
+{
+    fn new(calculation: T) -> Cacher<T> {
+        Cacher {
+            calculation,
+            value: None,
+        }
+    }
+
+    fn value(&mut self, arg: u32) -> u32 {
+        match self.value {
+            Some(v) => v,
+            None => {
+                let v = (self.calculation)(arg);
+                self.value = Some(v);
+                v
+            },
+        }
+    }
+}
+
+
+    let mut add_one_cacher = Cacher::new(|x: u32| x+1);
+    println!("{}", add_one_cacher.value(1));
+```
+
+闭包与所有权系统（闭包的三种特质）
+
+* 闭包可以通过三种方式捕获其环境，他们直接对应函数的三种获取参数的方式：
+  * 获取所有权
+  * 可变引用借用
+  * 不可变引用借用
+* 闭包都实现如下几个特质，然后根据调用上下文选择其中的一个特质，下面的self表示对自由变量使用的方式
+  * FnOnce(self)
+  * FnMut(&mut self)
+  * Fn(&self)
+* 更多参考 https://tonydeng.github.io/2019/11/09/rust-closure-type/
+
+```rs
+
+fn main() {
+
+    let x = vec![1, 2, 3];
+
+    let equal_to_x = move |z| z == x; // 强制指定为FnOnce，且将 x 所有权移动到闭包中，当闭包执行完毕x将被回收
+
+    // println!("can't use x here: {:?}", x); // 报错： value borrowed here after moverustc(E0382)
+
+    let y = vec![1, 2, 3];
+
+    assert!(equal_to_x(y));
+}
+```
+
 ### 3、迭代器
 
 ## 七、模块化系统
