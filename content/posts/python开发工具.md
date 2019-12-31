@@ -15,6 +15,18 @@ tags:
 
 ***
 
+### 0、安装
+
+Python2的安装，使用如下命令（只能安装5.x版本），因为Python2被废弃了
+
+```bash
+# python2
+pip install ipython==5.8.0
+
+# python3
+pip install ipython
+```
+
 ### 1、常用的内建指令
 
 * `%doctest_mode`：自动去除示例代码中的`>>>`提示符，不用手动删除
@@ -106,3 +118,14 @@ pip install pylint pylint-django==0.11.1
 
 * 工作空间目录不要有`__init__.py`文件，**如果有的话pylint将报错**
 * python代码写在工作空间中的一个目录（包）中
+
+## 三、virtualenv
+
+```bash
+# 创建一个环境 （使用系统包）
+virtualenv --system-site-packages venv
+# 激活环境
+source venv/bin/activate
+# 退出环境
+deactivate
+```
