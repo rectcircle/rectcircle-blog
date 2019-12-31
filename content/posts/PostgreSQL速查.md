@@ -74,7 +74,7 @@ sudo -u postgres psql # 进入交互终端
 
 #### 允许远程连接
 
-`/etc/postgresql/9.x/main/pg_hba.conf` 添加
+`/etc/postgresql/9.x/main/postgresql.conf` 添加
 
 ```conf
 listen_addresses = '*'     # what IP address(es) to listen on;
