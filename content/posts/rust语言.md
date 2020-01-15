@@ -9,10 +9,12 @@ tags:
 ---
 
 > 版本 1.36.0
-> 参考：https://www.rust-lang.org/zh-CN/
-> https://doc.rust-lang.org/stable/book/
-> https://kaisery.github.io/trpl-zh-cn/
-> https://doc.rust-lang.org/stable/reference/
+> 参考：
+> * https://www.rust-lang.org/zh-CN/
+> * https://doc.rust-lang.org/stable/book/
+> * https://kaisery.github.io/trpl-zh-cn/
+> * https://doc.rust-lang.org/stable/reference/
+> * [绅士地介绍 Rust](http://llever.com/gentle-intro/readme.zh.html)
 
 ## 一、安装和配置
 
@@ -718,6 +720,8 @@ fn read_username_from_file2() -> Result<String, io::Error> {
 
 ## 四、所有权系统
 
+> https://zhuanlan.zhihu.com/p/27571264
+
 所有权系统是 Rust 不同其他语言的最重要的部分。是为了解决内存分配问题而设计的。
 
 同其他编程语言一样rust内存也被划分为堆（heap）和栈（stack）。在函数中：
@@ -1094,6 +1098,13 @@ fn first_word(s: &String) -> &str {
 
 * 在任意给定时间，**要么** 只能有一个可变引用，**要么** 只能有多个不可变引用。
 * 引用必须总是有效。
+
+> http://llever.com/gentle-intro/pain-points.zh.html#a%E5%8F%AF%E5%8F%98%E5%BC%95%E7%94%A8
+
+关于可变引用规则是:
+
+* 一次只有一个可变引用。 原因在于，当 到处都是 都是可变性引用，那跟踪他们就很难。在笨蛋小程序中不明显，但在大型代码库中可能会变得糟糕。
+* 进一步的限制是，当已有一个可变引用时，你不能再拥有不可变引用， 否则，任何有这些引用的人都不能保证他们不会改变。 C++也有不可变的引用 (例如`const string&`) ，但是 不能 给你这个保证，因为有人可能在你背后，保留一个string&引用并修改它。
 
 ## 五、结构体
 
@@ -1606,6 +1617,272 @@ fn main() {
 
 ### 3、迭代器
 
+迭代器的原理与基本使用
+
+* 本质上是一个系列 系统定义 的特质
+
+```rs
+        // 迭代器原理与直接使用
+        // Iterator 特质定义的方法如下
+        // pub trait Iterator {
+        //     // 这段代码表明实现 Iterator trait 要求同时定义一个 Item 类型，这个 Item 类型被用作 next 方法的返回值类型。换句话说，Item 类型将是迭代器返回元素的类型。
+        //     type Item;
+        //     fn next(&mut self) -> Option<Self::Item>;
+        //     // 此处省略了方法的默认实现
+        // }
+        let values = vec![1, 2, 3];
+        // iter 必须声明为可变的
+        let mut iter = values.iter(); // 声明为 pub fn iter(&self) -> Iter<'_, T>
+        println!("迭代器原理与直接使用");
+        loop {
+            match iter.next() {
+                Some(val) => println!("{}", val),
+                None => break,
+            }
+        }
+```
+
+可变迭代器在遍历的过程中修改值
+
+```rs
+        println!("使用可变迭代器，所有值+1");
+        let mut values = vec![1, 2, 3];
+
+        let mut iter = values.iter_mut(); // 声明为 pub fn iter_mut(&mut self) -> IterMut<'_, T>
+        // 修改值
+        loop {
+            match iter.next() {
+                Some(val) => {
+                    *val = *val + 1;
+                },
+                None => break,
+            }
+        }
+        // 打印查看
+        for val in values.iter() {
+            println!("{}", val);
+        }
+```
+
+迭代器的常见用法
+
+```rs
+        // 迭代器常见用法
+        // https://rustforce.net/article?id=3874fb6c-30d8-4409-b78f-6d39763074c6
+        let v = vec![1, 2, 3];
+        println!("同时获取索引号");
+        for (i, n) in v.iter().enumerate() {
+            println!("v[{}] = {}", i, n);
+        }
+        println!("最大最小值");
+        let max = v.iter().max();
+        let min = v.iter().min();
+        println!("max = {:?}, min = {:?}", max, min);
+
+        // 迭代器流式处理
+        println!("迭代器流式处理，高阶函数（消费）");
+        let v1 = vec![1, 2, 3];
+        // let v1_iter = v1.iter();
+        // let total: i32 = v1_iter.sum();
+        println!("sum = {}", v1.iter().sum::<i32>());
+        let v2: Vec<_> = v1.iter().map(|x| x + 1).collect();
+        println!("{:?}", v2);
+        let v3: Vec<_> = v1.iter().filter(|&&x| x != 1).collect();
+        println!("{:?}", v3);
+        let v4 = (0..10).filter(|x| x % 2 == 0).collect::<Vec<_>>();
+        println!("{:?}", v4);
+        let v5 = v1.iter().fold(0, |acc, x| acc + x * x);
+        println!("{}", v5);
+        println!("{:?}", v1.iter().rev()); // 翻转
+        println!("{:?}", v1.iter().chain( (vec![4, 5, 6]).iter() ).collect::<Vec<_>>()); // 连接
+        println!("{:?}", v1.iter().zip( (vec![4, 5, 6]).iter() ).collect::<Vec<_>>()); // 连接
+        // 更多工具: https://docs.rs/itertools/0.6.0/itertools
+```
+
+for in 语法糖的原理探究
+
+```rs
+fn for_in_debug(){
+    // https://doc.rust-lang.org/std/iter/index.html
+    // let values = vec![1, 2, 3];
+    // for val in values {
+    //     println!("Got: {}", val);
+    // }
+    let values = vec![1, 2, 3];
+    {
+        let result = match IntoIterator::into_iter(values) {
+            mut iter => loop {
+                let next;
+                match iter.next() {
+                    Some(val) => next = val,
+                    None => break,
+                };
+                let x = next;
+                let () = { println!("{}", x); };
+            },
+        };
+        result
+    }
+}
+
+fn for_in_debug2() {
+    // for val in values {
+    //     println!("Got: {}", val);
+    // }
+    let values:Vec<i32> = vec![1, 2, 3];
+    {
+        // let mut iter = IntoIterator::into_iter(values);
+        // IntoIterator 特质定义内容如下
+        // pub trait IntoIterator {
+        //     type Item;
+
+        //     type IntoIter: Iterator<Item=Self::Item>;
+
+        //     fn into_iter(self) -> Self::IntoIter;
+        // }
+        // IntoIterator 的作用 1.返回一个迭代器 2.所有权转移
+        let result = loop {
+            let next;
+            let next_option = iter.next();
+            if next_option.is_some() {
+                next = next_option.unwrap();
+            } else {
+                break;
+            }
+            let x = next;
+            let () = { println!("{}", x); };
+        };
+        result
+    }
+}
+fn main() {
+    {
+        // for 语法糖原理探究
+        // https://doc.rust-lang.org/std/iter/index.html#implementing-iterator
+        let values = vec![1, 2, 3];
+        // 使用 for 迭代迭代器（注意所有权已经转移）
+        println!("for 语法糖原理探究");
+        for val in values.iter() { // 这样写不会转移values的所有权，values.iter()返回值的所有权被转移了
+            println!("{}", val);
+        }
+        for val in values {
+            println!("{}", val);
+        }
+        // println!("{:?}", values); // 报错
+        // 以上将编译成如下内容
+        for_in_debug();
+        // 原理如下
+        for_in_debug2();
+    }
+}
+```
+
+为结构体实现迭代器
+
+```rs
+// 自定义结构体
+
+pub struct MyRange {
+    start: i32,
+    end: i32,
+    step: i32,
+}
+
+impl MyRange {
+    pub fn new(start: i32, end: i32, step: i32) -> Self {
+        MyRange { start, end, step }
+    }
+
+    pub fn iter(&self) -> MyRangeIteratorRef<'_> { // '_ 表示匿名声明周期
+    // pub fn iter<'a>(&'a self) -> MyRangeIteratorRef<'a> {
+        MyRangeIteratorRef {
+            range: self,
+            now: self.start,
+        }
+    }
+}
+
+// 为自定义结构体实现的迭代器（为引用类型实现）
+
+pub struct MyRangeIteratorRef<'a> {
+    range: &'a MyRange,
+    now: i32,
+}
+
+impl Iterator for MyRangeIteratorRef<'_> {
+    type Item = i32;
+    fn next(&mut self) -> Option<i32> {
+        if self.now == self.range.end {
+            None
+        } else {
+            let r = Some(self.now);
+            self.now += self.range.step;
+            r
+        }
+    }
+}
+
+impl<'a> IntoIterator for &'a MyRange { // 这个impl是对 MyRange 引用类型的实现
+    type Item = i32;
+    type IntoIter = MyRangeIteratorRef<'a>;
+
+    fn into_iter(self: &'a MyRange) -> Self::IntoIter { // 这里的self是个引用类型
+        self.iter()
+    }
+}
+
+// 为自定义结构体实现的迭代器（为生命周期转移实现）
+
+pub struct MyRangeIterator{
+    range: MyRange,
+    now: i32,
+}
+
+impl Iterator for MyRangeIterator {
+    type Item = i32;
+    fn next(&mut self) -> Option<i32> {
+        if self.now == self.range.end {
+            None
+        } else {
+            let r = Some(self.now);
+            self.now += self.range.step;
+            r
+        }
+    }
+}
+
+impl IntoIterator for MyRange { // 这个方法是对 MyRange 本身类型的实现
+    type Item = i32;
+    type IntoIter = MyRangeIterator;
+
+    fn into_iter(self: MyRange) -> Self::IntoIter { // 这里的self是个本身类型
+        MyRangeIterator {
+            now: self.start,
+            range: self,
+        }
+    }
+}
+
+
+    // 自定义迭代器
+    // 参考 https://stackoverflow.com/questions/30218886/how-to-implement-iterator-and-intoiterator-for-a-simple-struct
+    println!("自定义迭代器");
+    let r = MyRange::new(0, 10, 1);
+    for i in r.iter() {
+        println!("{}", i);
+    }
+    for i in r {  // 调用了 `MyRange::into_iter`
+        println!("{}", i);
+    }
+    // println!("{}", r.start); // 报错：borrow of moved value: `r`
+    // 重复问题：暂时无法解决，只能期望 GAT 特性 https://github.com/rust-lang/rfcs/blob/master/text/1598-generic_associated_types.md
+    let r2 = &MyRange::new(0, 10, 1);
+    for i in r2 { // 调用了 `&MyRange::into_iter`
+        println!("{}", i);
+    }
+    println!("{}", r2.start); // 不报错
+```
+
 ## 七、模块化系统
 
 ### 1、基本概念
@@ -1891,6 +2168,238 @@ pub fn add_to_waitlist() {}
 * 推荐方式（可读性更高）：
   * 针对非叶子模块使用方式2
   * 针对叶子节点使用方式1
+
+### 9、Cargo 和 模块发布
+
+#### （1）自定义构建
+
+在 Rust 中 发布配置（release profiles）是预定义的、可定制的带有不同选项的配置，他们允许程序员更灵活地控制代码编译的多种选项。每一个配置都彼此相互独立。
+
+Cargo 有两个主要的配置：运行 `cargo build` 时采用的 dev 配置和运行 `cargo build --release` 的 release 配置。`dev` 配置被定义为开发时的好的默认配置，`release` 配置则有着良好的发布构建的默认配置。
+
+覆盖 `[profile.*]` 配置
+
+```toml
+[profile.dev]
+opt-level = 0 # 优化级别
+
+[profile.release]
+opt-level = 3
+```
+
+#### （2）让模块更好用的建议
+
+**编写文档注释**
+
+* 支持Markdown
+* `cargo doc --open` 可以进行文档预览
+* `cargo test` 文档注释中的代码可以作为测试样例
+
+```rs
+/// 将给定的数字加一
+///
+/// # Examples
+///
+/// ```
+/// let arg = 5;
+/// let answer = my_crate::add_one(arg);
+///
+/// assert_eq!(6, answer);
+/// ```
+pub fn add_one(x: i32) -> i32 {
+    x + 1
+}
+```
+
+**模块文档注释**
+
+文件名: `src/lib.rs`
+
+```rs
+
+//! # My Crate
+//!
+//! `my_crate` 是一个使得特定计算更方便的
+//! 工具集合
+
+/// 将给定的数字加一。
+// --snip--
+```
+
+**使用 pub use 重导出合适的公有 API**
+
+* 相当于批量导出模块
+* 同时给模块一个别名
+* 生成的模块在首页会有一个超链接
+
+文件名: `src/lib.rs`
+
+```rs
+//! # Art
+//!
+//! 一个描述美术信息的库。
+
+pub use self::kinds::PrimaryColor;
+pub use self::kinds::SecondaryColor;
+pub use self::utils::mix;
+
+pub mod kinds {
+    // --snip--
+}
+
+pub mod utils {
+    // --snip--
+}
+```
+
+文件名: `src/main.rs`
+
+```rs
+use art::PrimaryColor;
+use art::mix;
+
+fn main() {
+    // --snip--
+}
+```
+
+#### （3）将 crate 发布到 Crates.io
+
+**创建登录账号**
+
+* 创建 Crates.io 账号
+* 查看位于 https://crates.io/me/ 的账户设置页面并获取 API token。
+* 接着使用该 API token 运行 `cargo login $token` 命令
+
+**确定元数据**
+
+* `name` 确定模块名（不能重复）
+* `license` 许可证
+* `license-file` 私有许可证
+
+```toml
+[package]
+name = "guessing_game"
+license = "MIT"
+version = "0.1.0"
+authors = ["Your Name <you@example.com>"]
+edition = "2018"
+description = "A fun game where you guess what number the computer has chosen."
+```
+
+**执行发布**
+
+* `cargo publish`
+
+**发布新版**
+
+* 更新 `version` 字段 遵循 [语义化版本规则](http://semver.org/)
+* `cargo publish`
+
+**撤回版本**
+
+* `cargo yank --vers 1.0.1`
+* 撤销撤回 `cargo yank --vers 1.0.1 --undo`
+* 撤回 并没有 删除任何代码。举例来说，撤回功能并不意在删除不小心上传的秘密信息。如果出现了这种情况，请立即重新设置这些秘密信息。
+
+#### （4）Cargo 自定义扩展命令
+
+Cargo 的设计使得开发者可以通过新的子命令来对 Cargo 进行扩展，而无需修改 Cargo 本身。如果 `$PATH` 中有类似 cargo-something 的二进制文件，就可以通过 cargo something 来像 Cargo 子命令一样运行它。像这样的自定义命令也可以运行 cargo --list 来展示出来。能够通过 cargo install 向 Cargo 安装扩展并可以如内建 Cargo 工具那样运行他们是 Cargo 设计上的一个非常方便的优点！
+
+### 10、工作空间
+
+创建工作空间，并创建配置文件 `Cargo.toml`
+
+```bash
+mkdir workspace
+cd workspace
+vim Cargo.toml
+```
+
+```toml
+[workspace]
+
+members = [
+    "adder",
+    "add-one",
+]
+```
+
+创建项目
+
+```bash
+cargo new adder
+cargo new add-one --lib
+```
+
+编写库 `add-one` 程序依赖配置 `add-one/Cargo.toml`
+
+```toml
+[dependencies]
+rand = "0.5.5"
+```
+
+编写库 `add-one` 库文件 `add-one/src/lib.rs`
+
+```rs
+pub fn add_one(x: i32) -> i32 {
+    x + 1
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn it_works() {
+        assert_eq!(3, add_one(2));
+    }
+}
+```
+
+编写 `adder` 程序依赖配置 `adder/Cargo.toml`
+
+```toml
+[dependencies]
+
+add-one = { path = "../add-one" }
+```
+
+编写 `adder` 程序入口 `adder/src/main.rs`
+
+```rs
+use add_one;
+
+fn main() {
+    let num = 10;
+    println!("Hello, world! {} plus one is {}!", num, add_one::add_one(num));
+}
+```
+
+在 `workspace` 目录中运行 编译 调试
+
+```bash
+cargo test
+cargo test -p add-one
+cargo run -p adder
+cargo build
+```
+
+最终目录结构如下
+
+```
+.
+├── Cargo.lock
+├── Cargo.toml
+├── add-one
+│   ├── Cargo.toml
+│   └── src
+├── adder
+│   ├── Cargo.toml
+│   └── src
+└── target
+    └── debug
+```
 
 ## 八、常见的集合
 
@@ -2679,6 +3188,25 @@ impl Config {
 
         Ok(Config { query, filename, case_sensitive })
     }
+
+    // 使用迭代器的构造函数
+    pub fn new1(mut args: std::env::Args) -> Result<Config, &'static str> {
+        args.next();
+
+        let query = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a query string"),
+        };
+
+        let filename = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a file name"),
+        };
+
+        let case_sensitive = env::var("CASE_INSENSITIVE").is_err();
+
+        Ok(Config { query, filename, case_sensitive })
+    }
 }
 
 
@@ -2701,15 +3229,20 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 }
 
 pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> { // 返回结果生命周期与content一致
-    let mut results = Vec::new();
-    // 遍历每一行进行判断
-    for line in contents.lines() {
-        if line.contains(query) {
-            results.push(line);
-        }
-    }
+    // let mut results = Vec::new();
+    // // 遍历每一行进行判断
+    // for line in contents.lines() {
+    //     if line.contains(query) {
+    //         results.push(line);
+    //     }
+    // }
 
-    results
+    // results
+
+    // 性能上与上面的实现没有额外损失
+    contents.lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
 
 pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
@@ -2795,4 +3328,475 @@ fn main() {
         process::exit(1);
     }
 }
+```
+
+## 十四、智能指针
+
+### 1、Rust结构体内存情况
+
+* 类似与C语言Rust结构体必须大小确定，不允许直接递归定义类型
+* 枚举类型存在4字节的类型标签
+
+```rs
+// 以下结构体/枚举占用的空间为 32 字节（类型标签4字节，最长成员Write(String) 24，内存对齐4字节）
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(i32, i32, i32),
+}
+
+    // Rust 结构体内存大小
+    println!("Message Size is {}", std::mem::size_of::<Message>());
+    println!("String Size is {}", std::mem::size_of::<String>());
+```
+
+### 2、Box 类型——实现递归定义类型
+
+* `Box` 分配包裹的变量将分配到堆内
+* `Box` 实现了 `Deref` 特质将其当做引用使用
+
+```rs
+// rust 结构体必须能计算出结构体的确定占用内存打下（类似于C的结构体）
+// 所以递归类型需要使用Box或者引用
+
+// 以下实现一个函数式的List
+
+enum List {
+    // Cons(i32, List), // 报错 recursive type `List` has infinite size
+    Cons(i32, Box<List>),
+    Nil,
+}
+
+use crate::List::{Cons, Nil};
+
+    // Box<T>类型
+    println!("List Size is {}", std::mem::size_of::<List>());
+    println!("Box<List> Size is {}", std::mem::size_of::<Box<List>>());
+
+    let list = Cons(1,
+        Box::new(Cons(2,
+            Box::new(Cons(3,
+                Box::new(Nil))))));
+
+    // Box 类型实现了Deref特质，所以允许使用 *y 解引用符
+    let x = 5;
+    let y = Box::new(x);
+
+    assert_eq!(5, x);
+    assert_eq!(5, *y);
+```
+
+### 3、通过 Deref trait 将智能指针当作常规引用处理
+
+```rs
+    // Box 类型实现了Deref特质，所以允许使用 *y 解引用符
+    let x = 5;
+    let y = Box::new(x)
+
+    assert_eq!(5, x);
+    assert_eq!(5, *y)
+```
+
+自定义MyBox并实现Box类似解引用运算符的支持
+
+```rs
+
+struct MyBox<T>(T);
+
+impl<T> MyBox<T> {
+    fn new(x: T) -> MyBox<T> {
+        MyBox(x)
+    }
+}
+
+use std::ops::Deref;
+
+impl<T> Deref for MyBox<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+
+    // 自定义结构体实现 Deref特质
+    let x = 5;
+    let y = MyBox::new(x);
+
+    assert_eq!(5, x);
+    assert_eq!(5, *y); // 编译成 *(y.deref())
+```
+
+函数和方法的隐式解引用强制多态
+
+```rs
+fn hello(name: &str) {
+    println!("Hello, {}!", name);
+}
+
+    let m = MyBox::new(String::from("Rust"));
+    // 以下三者等价
+    hello(&m); // 效率最高（编译期分析最终引用，直接传递）
+    hello(m.deref().deref());
+    hello(&(*m)[..]);
+```
+
+解引用强制多态如何与可变性交互
+
+类似于如何使用 Deref trait 重载不可变引用的 `*` 运算符，Rust 提供了 DerefMut trait 用于重载可变引用的 `*` 运算符。
+Rust 在发现类型和 trait 实现满足三种情况时会进行解引用强制多态：
+
+* 当 `T: Deref<Target=U>` 时从 `&T` 到 `&U`。
+* 当 `T: DerefMut<Target=U>` 时从 `&mut T` 到 `&mut U`。
+* 当 `T: Deref<Target=U>` 时从 `&mut T` 到 `&U`。
+
+头两个情况除了可变性之外是相同的：第一种情况表明如果有一个 `&T`，而 `T` 实现了返回 `U` 类型的 `Deref`，则可以直接得到 `&U`。第二种情况表明对于可变引用也有着相同的行为。
+
+第三个情况有些微妙：Rust 也会将可变引用强转为不可变引用。但是反之是 不可能
+
+### 4、使用 Drop Trait 运行清理代码
+
+```rs
+// Drop 特质，在超出作用域后执行清理操作
+struct CustomSmartPointer {
+    data: String,
+}
+
+impl Drop for CustomSmartPointer {
+    fn drop(&mut self) {
+        println!("清理 CustomSmartPointer 的 data `{}`!", self.data);
+    }
+}
+
+    // Drop 特质
+    {
+        let c = CustomSmartPointer { data: String::from("my stuff") };
+        let d = CustomSmartPointer { data: String::from("other stuff") };
+        println!("CustomSmartPointers 被创建.");
+    }
+
+    // 通过 std::mem::drop 提早丢弃值
+    {
+        let c = CustomSmartPointer { data: String::from("some data") };
+        println!("CustomSmartPointer 被创建");
+        // c.drop(); // explicit destructor calls not allowed 不允许显式的析构函数调用
+        drop(c); // 本质上就是个空函数 pub fn drop<T>(_x: T) { } 利用所有权转移实现析构😂
+        println!("CustomSmartPointer 在这个作用域之前就被Drop了");
+    }
+```
+
+### 5、`Rc<T>` 引用计数智能指针
+
+```rs
+
+// 使用引用计数实现
+enum List2 {
+    Cons2(i32, Rc<List2>),
+    Nil2,
+}
+
+use crate::List2::{Cons2, Nil2};
+
+    // 引用计数指针Rc<T> （仅单线程使用、避免循环引用）
+    // Box 不支持多个变量持有同一份数据的所有权
+    // let a = Cons(5,
+    //     Box::new(Cons(10,
+    //         Box::new(Nil))));
+    // let b = Cons(3, Box::new(a));
+    // let c = Cons(4, Box::new(a)); // 报错 use of moved value: `a`
+    let a = Rc::new(Cons2(5, Rc::new(Cons2(10, Rc::new(Nil2)))));
+    let b = Cons2(3, Rc::clone(&a));
+    let c = Cons2(4, Rc::clone(&a));
+
+    {
+        let a = Rc::new(Cons2(5, Rc::new(Cons2(10, Rc::new(Nil2)))));
+        println!("创建 a 后的引用计数 = {}", Rc::strong_count(&a)); // 1
+        let b = Cons2(3, Rc::clone(&a));
+        println!("创建 b 后的引用计数 = {}", Rc::strong_count(&a)); // 2
+        {
+            let c = Cons2(4, Rc::clone(&a));
+            println!("创建 c 后的引用计数 = {}", Rc::strong_count(&a)); // 3
+        }
+        println!("c 离开作用域后的引用计数 = {}", Rc::strong_count(&a)); // 2
+    }
+```
+
+### 6、`RefCell<T>` 和内部可变性模式
+
+使用 `RefCell<T>` 实现运行时借用规则检查以实现内不可变性的例子
+
+```rs
+
+// 例子： 测试mock
+
+// 这是待测试对象依赖的外部对象
+pub trait Messenger {
+    fn send(&self, msg: &str);
+}
+
+// 下面是待测试对象：检查消息体大小，如果消息体大小超过阈值，则使用Messenger发送一个消息
+pub struct LimitTracker<'a, T: Messenger> {
+    messenger: &'a T,
+    value: usize,
+    max: usize,
+}
+
+impl<'a, T> LimitTracker<'a, T>
+    where T: Messenger {
+    pub fn new(messenger: &T, max: usize) -> LimitTracker<T> {
+        LimitTracker {
+            messenger,
+            value: 0,
+            max,
+        }
+    }
+
+    pub fn set_value(&mut self, value: usize) {
+        self.value = value;
+
+        let percentage_of_max = self.value as f64 / self.max as f64;
+
+        if percentage_of_max >= 1.0 {
+            self.messenger.send("Error: You are over your quota!");
+        } else if percentage_of_max >= 0.9 {
+             self.messenger.send("Urgent warning: You've used up over 90% of your quota!");
+        } else if percentage_of_max >= 0.75 {
+            self.messenger.send("Warning: You've used up over 75% of your quota!");
+        }
+    }
+}
+
+// 下面是一个Messenger的Mock实现
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::cell::RefCell;
+
+    struct MockMessenger {
+        // sent_messages: Vec<String>, // 此种方案将报错
+        sent_messages: RefCell<Vec<String>>,
+    }
+
+    impl MockMessenger {
+        fn new() -> MockMessenger {
+            MockMessenger { sent_messages: RefCell::new(vec![]) }
+        }
+    }
+
+    impl Messenger for MockMessenger {
+        fn send(&self, message: &str) {
+            // self.sent_messages.push(String::from(message));  // 使用sent_messages: Vec<String>, 将报错 cannot borrow `self.sent_messages` as mutable, as it is behind a `&` reference(E0596)
+            // 解决方案1：（不推荐）修改send方法的&self为&mut self（需要修改特质声明和调用者）
+            // 解决方案2：使用 RefCell<T> 保证对外不可变，对内可变，如下
+            self.sent_messages.borrow_mut().push(String::from(message));
+        }
+    }
+
+    #[test]
+    fn it_sends_an_over_75_percent_warning_message() {
+        let mock_messenger = MockMessenger::new();
+        let mut limit_tracker = LimitTracker::new(&mock_messenger, 100);
+
+        limit_tracker.set_value(80);
+
+        assert_eq!(mock_messenger.sent_messages.borrow().len(), 1);
+    }
+
+}
+```
+
+`RefCell<T>` 原理探究
+
+* 标准库实现，不是编译器实现，不是语言核心
+* 运行时借用规则检查
+* 运行时违反规则将触发 panic
+* 有额外的运行时开销
+
+```rs
+    // RefCell<T> 在运行时检查借用规则，必须满足借用规则
+    {
+        let sent_messages:RefCell<Vec<String>> = RefCell::new(vec![]);
+        let mut one_borrow = sent_messages.borrow_mut();
+        // let mut two_borrow = sent_messages.borrow_mut(); // 编译不报错，运行时触发panic，因为违反了只有一个可变引用 already borrowed: BorrowMutError
+
+        one_borrow.push(String::from("a"));
+        // two_borrow.push(String::from("b"));
+    }
+    {
+        // 同样不能同时借出可变和不可变引用
+        let sent_messages:RefCell<Vec<String>> = RefCell::new(vec![]);
+        let mut one_borrow = sent_messages.borrow_mut();
+        // let mut two_borrow = sent_messages.borrow(); // 编译不报错，运行时触发panic，因为已经借出不可便引用了 already mutably borrowed: BorrowError
+
+        one_borrow.push(String::from("a"));
+        // println!("{}", two_borrow.len());
+    }
+```
+
+实现拥有可变List（结合 `Rc<T>` 和 `RefCell<T>` 来拥有多个可变数据所有者）
+
+```rs
+use std::rc::Rc;
+use std::cell::RefCell;
+
+#[derive(Debug)]
+enum List3 {
+    Cons3(Rc<RefCell<i32>>, Rc<List3>),
+    Nil3,
+}
+
+use crate::List3::{Cons3, Nil3};
+
+    // 结合 Rc<T> 和 RefCell<T> 来拥有多个可变数据所有者
+    // 实现拥有可变List
+    {
+        let value = Rc::new(RefCell::new(5));
+
+        let a = Rc::new(Cons3(Rc::clone(&value), Rc::new(Nil3)));
+
+        let b = Cons3(Rc::new(RefCell::new(6)), Rc::clone(&a));
+        let c = Cons3(Rc::new(RefCell::new(10)), Rc::clone(&a));
+
+        *value.borrow_mut() += 10;
+
+        println!("a after = {:?}", a);
+        println!("b after = {:?}", b);
+        println!("c after = {:?}", c);
+    }
+```
+
+### 7、引用循环与内存泄漏
+
+制造一个循环引用导致的内存泄漏
+
+```rs
+#[derive(Debug)]
+enum List4 {
+    Cons4(i32, RefCell<Rc<List4>>),
+    Nil4,
+}
+
+use crate::List4::{Cons4, Nil4};
+
+impl List4 {
+    fn tail(&self) -> Option<&RefCell<Rc<List4>>> {
+        match self {
+            Cons4(_, item) => Some(item),
+            Nil4 => None,
+        }
+    }
+}
+
+    {
+        // 制造一个循环引用导致的内存泄漏
+        // a = (5, nil)
+        let a = Rc::new(Cons4(5, RefCell::new(Rc::new(Nil4))));
+
+        println!("a 初始化引用计数 = {}", Rc::strong_count(&a));
+        println!("a 的 tail = {:?}", a.tail());
+
+        // b = (10, a)
+        let b = Rc::new(Cons4(10, RefCell::new(Rc::clone(&a))));
+
+        println!("a 在 b 创建后的引用计数 = {}", Rc::strong_count(&a));
+        println!("b 初始化引用计数 = {}", Rc::strong_count(&b));
+        println!("b 的 tail = {:?}", b.tail());
+
+        // a = (5, b)
+        if let Some(link) = a.tail() {
+            *link.borrow_mut() = Rc::clone(&b);
+        }
+
+        println!("改变 a 的 tail 为 b 后, b 的引用计数 = {}", Rc::strong_count(&b));
+        println!("改变 a 的 tail 为 b 后, a 的引用计数 = {}", Rc::strong_count(&a));
+
+        // Uncomment the next line to see that we have a cycle;
+        // it will overflow the stack
+        // println!("a next item = {:?}", a.tail());
+    }
+```
+
+使用 `Weak<T>` 弱引用防止循环引用
+
+```rs
+
+// 双向链表类似的结构的实现使用弱引用防止循环引用
+// 例子：树结构，节点持有所有孩子的引用和指向父亲的引用
+
+#[derive(Debug)]
+struct Node {
+    value: i32,
+    parent: RefCell<Weak<Node>>, // 指向父亲的弱引用（不持有所有权，通过Rc::downgrade创建，Rc<T> 类型使用 weak_count 来记录其存在多少个 Weak<T> 引用）
+    children: RefCell<Vec<Rc<Node>>>,
+}
+
+    {
+        // 弱引用应用样例
+        // 创建叶子
+        let leaf = Rc::new(Node {
+            value: 3,
+            parent: RefCell::new(Weak::new()),
+            children: RefCell::new(vec![]),
+        });
+
+        println!("leaf 的 父亲 = {:?}", leaf.parent.borrow().upgrade());
+
+        // 创建父节点
+        let branch = Rc::new(Node {
+            value: 5,
+            parent: RefCell::new(Weak::new()),
+            children: RefCell::new(vec![Rc::clone(&leaf)]),
+        });
+
+        // 叶子节点的 parent 引用指向 父亲
+        *leaf.parent.borrow_mut() = Rc::downgrade(&branch);
+
+        println!("leaf 的 父亲 = {:?}", leaf.parent.borrow().upgrade());
+    }
+
+    {
+        // 查看 Rc 内部 强引用 strong_count 和 弱引用 weak_count 的值
+        let leaf = Rc::new(Node {
+            value: 3,
+            parent: RefCell::new(Weak::new()),
+            children: RefCell::new(vec![]),
+        });
+
+        println!(
+            "leaf strong = {}, weak = {}",
+            Rc::strong_count(&leaf), // 1
+            Rc::weak_count(&leaf),  // 0
+        );
+
+        {
+            let branch = Rc::new(Node {
+                value: 5,
+                parent: RefCell::new(Weak::new()),
+                children: RefCell::new(vec![Rc::clone(&leaf)]),
+            });
+
+            *leaf.parent.borrow_mut() = Rc::downgrade(&branch);
+
+            println!(
+                "branch strong = {}, weak = {}",
+                Rc::strong_count(&branch), // 1
+                Rc::weak_count(&branch), // 1
+            );
+
+            println!(
+                "leaf strong = {}, weak = {}",
+                Rc::strong_count(&leaf), // 2
+                Rc::weak_count(&leaf), // 0
+            );
+        } // branch.strong_count == 0, branch.T 被回收，
+
+        println!("leaf parent = {:?}", leaf.parent.borrow().upgrade()); // 父亲已经被回收, 返回 None（is_dangling(branch.ptr) 已经悬空了）
+        println!(
+            "leaf strong = {}, weak = {}",
+            Rc::strong_count(&leaf), // 1
+            Rc::weak_count(&leaf), // 0
+        );
+    }
 ```
