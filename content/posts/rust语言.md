@@ -216,7 +216,7 @@ fn main() {
 * 创建变量，使用 `let`，`mut`表示可变，不加表示不可变变量
 * `new()` 相当于构造函数，`::`调用函数表示调用静态函数
 * 使用 `use std::io;`，就可以使用`io::stdin()`调用，否则只能使用`std::io::stdin()`调用
-  * 可以这么做 `use std::io::stdin;`，直接引入函数，`stdin()`调用
+    * 可以这么做 `use std::io::stdin;`，直接引入函数，`stdin()`调用
 * `loop` 类似 `while(true)`
 * `&` 表示传引用，默认引用不可便，`&mut`声明引用可变
 * `read_line` 将返回一个Result对象，可能是Ok或Err，expect方法将返回真正的结果，如果Err将展示异常信息然后直接退出程序（调用panic!）
@@ -405,11 +405,11 @@ fn another_function(x: i32) {
 
 * 定义顺序和调用顺序不相关
 * 函数体可以包含表达式和声明（rust是一门表达式语言）
-  * 表达式必须有返回值（比如：宏、函数调用、`{}`包裹的语句）
-  * 声明没有返回值（比如let, fn）
+    * 表达式必须有返回值（比如：宏、函数调用、`{}`包裹的语句）
+    * 声明没有返回值（比如let, fn）
 * `{}` 包裹的（scala和传统语法的合体）
-  * 最后一个语句如果没有分号，则最后一个表达式的结果是该语句块的结果
-  * 最后一个语句有分号，则语句块无返回值
+    * 最后一个语句如果没有分号，则最后一个表达式的结果是该语句块的结果
+    * 最后一个语句有分号，则语句块无返回值
 
 ```rs
 fn add(a: i32, b: i32) -> i32 {
@@ -711,9 +711,9 @@ fn read_username_from_file2() -> Result<String, io::Error> {
 
 * struct、方法、trait抽象（类似于Golang）
 * 函数式编程特性
-  * 模式匹配
-  * 闭包
-  * 迭代器
+    * 模式匹配
+    * 闭包
+    * 迭代器
 * 元编程（宏系统）
 
 细节参见下文
@@ -766,9 +766,9 @@ fn read_username_from_file2() -> Result<String, io::Error> {
 `String::from` 实际上是在堆上申请了内存空间用于存放字符串。但是何时free，一般有两种做法：
 
 * 自动化垃圾回收器Java等
-  * 缺点：带来额外的开销
+    * 缺点：带来额外的开销
 * 手动回收类似于C、C++
-  * 极易出现错误和严重的漏洞
+    * 极易出现错误和严重的漏洞
 
 Rust不同于以上两种：
 
@@ -948,9 +948,9 @@ fn change(some_string: &mut String) {
 
 * 对于特定范围内的特定数据，您只能有一个可变引用。
 * 这样设计的原因：竞争发生不一致
-  * 两个或更多指针同时访问同一数据。
-  * 至少有一个指针被用来写入数据。
-  * 没有同步数据访问的机制。
+    * 两个或更多指针同时访问同一数据。
+    * 至少有一个指针被用来写入数据。
+    * 没有同步数据访问的机制。
 
 ```rs
     {
@@ -1089,10 +1089,10 @@ fn first_word(s: &String) -> &str {
 
 * 引用作用域必须在变量的作用域内（防止悬空）
 * 出现一个不可变引用后，将
-  * 可变引用或变量将**不允许**调用其声明为 `&mut self` 的方法
+    * 可变引用或变量将**不允许**调用其声明为 `&mut self` 的方法
 * 出现一个可引用后，则
-  * **不允许**在同一作用域再声明一个可变引用
-  * **不允许**使用上边声明的不可变对象
+    * **不允许**在同一作用域再声明一个可变引用
+    * **不允许**使用上边声明的不可变对象
 
 ### 10、引用总结
 
@@ -1223,9 +1223,9 @@ fn main() {
 
 * 方法必须定义在结构头上下文（或者是枚举或 trait 对象的上下文）
 * 第一个参数总是self，可以是：
-  * `&self`
-  * `&mut self`
-  * `self` 不常见（仅在将当前对象转换为另一个对象）
+    * `&self`
+    * `&mut self`
+    * `self` 不常见（仅在将当前对象转换为另一个对象）
 * 类似于go，rust不使用`->`，只使用`.`，会进行自动解引用
 
 ## 六、函数式语言特性
@@ -1590,13 +1590,13 @@ impl<T> Cacher<T>
 闭包与所有权系统（闭包的三种特质）
 
 * 闭包可以通过三种方式捕获其环境，他们直接对应函数的三种获取参数的方式：
-  * 获取所有权
-  * 可变引用借用
-  * 不可变引用借用
+    * 获取所有权
+    * 可变引用借用
+    * 不可变引用借用
 * 闭包都实现如下几个特质，然后根据调用上下文选择其中的一个特质，下面的self表示对自由变量使用的方式
-  * FnOnce(self)
-  * FnMut(&mut self)
-  * Fn(&self)
+    * FnOnce(self)
+    * FnMut(&mut self)
+    * Fn(&self)
 * 更多参考 https://tonydeng.github.io/2019/11/09/rust-closure-type/
 
 ```rs
@@ -1991,12 +1991,12 @@ pub fn eat_at_restaurant() {
 ```
 
 * rust中定义的所有元素默认都是私有的。可以通过 `pub` 关键字来使其可见
-  * 子模块中的定义可以访问祖宗模块的所有内容
-  * 同一模块内的内容可以相互访问
-  * 只能访问子孙模块的pub定义的内容（整个路径都必须是pub的）
+    * 子模块中的定义可以访问祖宗模块的所有内容
+    * 同一模块内的内容可以相互访问
+    * 只能访问子孙模块的pub定义的内容（整个路径都必须是pub的）
 * 调用支持使用相对路径和绝对路径
-  * 绝对路径以 crate 开头（类似于文件系统 `/`）
-  * 其他情况为 相对路径，相对于当前所在模块
+    * 绝对路径以 crate 开头（类似于文件系统 `/`）
+    * 其他情况为 相对路径，相对于当前所在模块
 
 ### 5、使用`super`访问父路径
 
@@ -2110,14 +2110,14 @@ use std::collections::*;
 * `use xxx::xxx::A as B` 重命名，内部就可以通过名字B访问A
 * `pub use xxx::xxx::A` 外部可以访问A
 * `use xxx::xxx` 使用外部包
-  * `Cargo.toml` 添加依赖 `rand = "0.5.5"`
-  * 此时 `use xxx` 中 `xxx` 就是外部包名
+    * `Cargo.toml` 添加依赖 `rand = "0.5.5"`
+    * 此时 `use xxx` 中 `xxx` 就是外部包名
 * `use std::xxx` 使用 `std` 包
-  * `std` 包和其他外部包使用方式一致
-  * `std` 不需要显示引入依赖，是标准库，直接可以使用
+    * `std` 包和其他外部包使用方式一致
+    * `std` 不需要显示引入依赖，是标准库，直接可以使用
 * `use std::{cmp::Ordering, alloc};` 一次性引入多个包
 * `use std::io::{self, Write};`
-  * self表示同时引入`io`
+    * self表示同时引入`io`
 * `use xxx::xxx::*;` 一次性引入全部
 
 ### 8、多文件模块
@@ -2163,11 +2163,11 @@ pub fn add_to_waitlist() {}
 ```
 
 * 使用 `mod xxx;` 或者 `pub mod xxx;` 声明一个模块后，有两种方式实现定义：
-  * 方式1：定义文件 `xxx.rs`，文件内直接编写模块定义
-  * 方式2：创建目录 `xxx`，创建文件 `xxx/mod.rs`，并在该文件内直接编写模块定义
+    * 方式1：定义文件 `xxx.rs`，文件内直接编写模块定义
+    * 方式2：创建目录 `xxx`，创建文件 `xxx/mod.rs`，并在该文件内直接编写模块定义
 * 推荐方式（可读性更高）：
-  * 针对非叶子模块使用方式2
-  * 针对叶子节点使用方式1
+    * 针对非叶子模块使用方式2
+    * 针对叶子节点使用方式1
 
 ### 9、Cargo 和 模块发布
 
@@ -2620,11 +2620,11 @@ cargo build
 rust 的 泛型类型实现方式C++中的模板，在编译时会被具象化出二进制代码（单态化（monomorphization））。（与Java泛型不同，Java泛型运行时擦除实现）
 
 * 单态化优缺点
-  * 运行时没有额外性能损失
-  * 编译产物体积相对较大
+    * 运行时没有额外性能损失
+    * 编译产物体积相对较大
 * 类型擦除
-  * 运行时有额外的性能损失
-  * 编译产物体积相对较小
+    * 运行时有额外的性能损失
+    * 编译产物体积相对较小
 
 ```rs
     // 结构体使用泛型声明
@@ -3026,7 +3026,7 @@ let s: &'static str = "I have a static lifetime.";
 ### 1、单元测试
 
 * 使用 `#[cfg(test)] ` 注解的模块
-  * 在模块中使用 `#[test]` 注解的函数为单元测试函数
+    * 在模块中使用 `#[test]` 注解的函数为单元测试函数
 * 代码写在 `src` 目录下
 
 创建一个测试模块 `cargo new rusttest --lib`
@@ -3799,4 +3799,108 @@ struct Node {
             Rc::weak_count(&leaf), // 0
         );
     }
+```
+
+## 十五、并发
+
+### 1、线程
+
+```rs
+use std::thread;
+use std::time::Duration;
+
+fn main() {
+    // 创建新线程
+    // 为了减小运行时，rust 线程与 操作系统线程 1:1 关系
+    let handle = thread::spawn(|| {
+        for i in 1..10 {
+            println!("子线程 {}", i);
+            thread::sleep(Duration::from_millis(1));
+        }
+    });
+
+    for i in 1..5 {
+        println!("主线程 {}", i);
+        thread::sleep(Duration::from_millis(1));
+    }
+    // 默认主线程结束后子线程也自动结束
+    // 使用join等待子线程结束
+    handle.join().unwrap();
+
+    // 线程闭包
+    {
+        let v = vec![1, 2, 3];
+
+        let handle = thread::spawn(move || { // 不适用move将报错，因为编译器推断出是引用
+            println!("闭包环境v = {:?}", v);
+        });
+
+        handle.join().unwrap();
+    }
+}
+```
+
+### 2、消息传递
+
+```rs
+use std::thread;
+use std::time::Duration;
+use std::sync::mpsc;
+
+
+fn main() {
+    // 类似Go语言消息通道
+    {
+        // let (tx, rx) = mpsc::channel::<String>();
+        let (tx, rx) = mpsc::channel();
+        let tx2 = mpsc::Sender::clone(&tx); // 通过clone创建多个发送者
+        // tx 和 rx 通常作为 发送者（transmitter）和 接收者（receiver）的缩写
+
+        // 子线程1发送消息
+        thread::spawn(move || {
+            let val = String::from("hi");
+            // 调用时 rx 没有被 drop 则返回OK，否则返回Err
+            tx.send(val).unwrap();
+
+             let vals = vec![
+                String::from("hi"),
+                String::from("from"),
+                String::from("the"),
+                String::from("thread"),
+            ];
+
+            for val in vals {
+                tx.send(val).unwrap();
+                thread::sleep(Duration::from_secs(1));
+            }
+        });
+
+        // 子线程2发送消息
+        thread::spawn(move || {
+            let vals = vec![
+                String::from("more"),
+                String::from("messages"),
+                String::from("for"),
+                String::from("you"),
+            ];
+
+            for val in vals {
+                tx2.send(val).unwrap();
+                thread::sleep(Duration::from_secs(1));
+            }
+        });
+        // 阻塞直到收到消息
+        let received = rx.recv().unwrap();
+        println!("收到消息: {}", received);
+        // 迭代器接收消息
+        for received in rx.iter() { // 当通道关闭不迭代器返回
+            println!("迭代器方式: {}", received);
+        }
+        // 立即返回
+        match rx.try_recv() {
+            Ok(m) => println!("try_recv 收到消息: {}", m),
+            Err(e) => println!("try_recv 异常 {:?}", e),
+        };
+    }
+}
 ```
