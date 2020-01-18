@@ -3904,3 +3904,67 @@ fn main() {
     }
 }
 ```
+
+### 3、共享状态
+
+```rs
+use std::thread;
+use std::time::Duration;
+use std::sync::mpsc;
+use std::sync::{Mutex, Arc};
+
+
+fn main() {
+    // 共享状态
+
+    // 创建一个锁（这个锁持有一个共享变量）
+    let m = Mutex::new(5); // 提供了内部可变性
+    // Rust 编译器不能避免死锁
+
+    {
+        // lock 获取锁，如果被其他进程持有，将阻塞
+        // unwrap 获取锁持有变量的智能指针
+        let mut num = m.lock().unwrap();
+        *num = 6; // 修改共享变量的值
+    }
+
+    println!("m = {:?}", m);
+
+    // 多线程共享状态
+    // let counter = Mutex::new(0); //直接使用counter报错，因为所有权没移动了多次
+    let counter = Arc::new(Mutex::new(0));
+    let mut handles = vec![];
+
+    for _ in 0..10 {
+        let counter = Arc::clone(&counter); // 创建线程安全引用计数
+        let handle = thread::spawn(move || {
+            // 使用线程安全引用计数
+            let mut num = counter.lock().unwrap();
+
+            *num += 1;
+        });
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
+    println!("多线程共享变量值: {}", *counter.lock().unwrap());
+
+}
+```
+
+### 4、使用 Sync 和 Send trait 的可扩展并发
+
+Send 特质
+
+* 只有实现了 Send 特质的类型的所有权才能在多个线程中移动
+* Send 特质没有方法，仅仅作为编译器标记
+* `Rc<T>` 并未实现该特质
+
+Sync 特质
+
+* 只有实现了 Sync 特质的类型的引用才能发送的其他线程
+* Sync 特质没有方法，仅仅作为编译器标记
+* `Rc<T>` 并未实现该特质
