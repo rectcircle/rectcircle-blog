@@ -3968,3 +3968,166 @@ Sync 特质
 * 只有实现了 Sync 特质的类型的引用才能发送的其他线程
 * Sync 特质没有方法，仅仅作为编译器标记
 * `Rc<T>` 并未实现该特质
+
+## 十六、面向对象
+
+### 1、封装
+
+Rust中的封装：通过结构体和impl语句块实现
+
+```rs
+pub struct AveragedCollection {
+    list: Vec<i32>,
+    average: f64,
+}
+
+impl AveragedCollection {
+    pub fn add(&mut self, value: i32) {
+        self.list.push(value);
+        self.update_average();
+    }
+
+    pub fn remove(&mut self) -> Option<i32> {
+        let result = self.list.pop();
+        match result {
+            Some(value) => {
+                self.update_average();
+                Some(value)
+            },
+            None => None,
+        }
+    }
+
+    pub fn average(&self) -> f64 {
+        self.average
+    }
+
+    fn update_average(&mut self) {
+        let total: i32 = self.list.iter().sum();
+        self.average = total as f64 / self.list.len() as f64;
+    }
+}
+```
+
+### 2、继承
+
+Rust 不支持传统意义上的继承，可以通过默认方法实现继承的效果
+
+```rs
+
+trait MyTrait {
+    fn defaultMethod(&self){
+        println!("Default Impl");
+    }
+}
+
+struct MyStruct {}
+
+impl MyTrait for MyStruct {}
+
+    let myStruct = MyStruct{};
+    myStruct.defaultMethod();
+
+```
+
+### 3、多态
+
+```rs
+通过 trait 和 dyn 关键字实现
+
+// 通用方法抽象为Trait
+// 本例中为 GUI中通用方法 draw 绘制
+pub trait Draw {
+    fn draw(&self);
+}
+
+// 屏幕持有持有实现了Draw特质的Vec
+pub struct Screen {
+    pub components: Vec<Box<dyn Draw>>, // Trait对象: 这种方式允许存放异质元素，会带来额外的运行时负担，实现上类似Java类型擦除
+    // Trait 对象安全限制，只允许对象安全的Trait使用 dyn 修饰 规则如下两条
+    // 返回值类型不为 Self
+    // 方法没有任何泛型类型参数
+    // （因为运行时类型擦除，返回Self类型，但是运行时并不知道Self和泛型是什么）
+}
+
+// screen 有一个 run 方法 调用 draw
+impl Screen {
+    pub fn run(&self) {
+        for component in self.components.iter() {
+            component.draw();
+        }
+    }
+}
+
+// 实现Draw子类
+// 模拟一个Button
+pub struct Button {
+    pub width: u32,
+    pub height: u32,
+    pub label: String,
+}
+
+impl Draw for Button {
+    fn draw(&self) {
+        // 实际绘制按钮的代码
+        println!("Button")
+    }
+}
+
+// 模拟一个选择器
+struct SelectBox {
+    width: u32,
+    height: u32,
+    options: Vec<String>,
+}
+
+impl Draw for SelectBox {
+    fn draw(&self) {
+        // code to actually draw a select box
+        println!("SelectBox");
+    }
+}
+
+// 以下这种方式不允许，因为编译后具象化出来了
+// pub struct Screen<T: Draw> {
+//     pub components: Vec<T>,
+// }
+
+// impl<T> Screen<T>
+//     where T: Draw {
+//     pub fn run(&self) {
+//         for component in self.components.iter() {
+//             component.draw();
+//         }
+//     }
+// }
+
+    let screen = Screen {
+        components: vec![
+            Box::new(SelectBox {
+                width: 75,
+                height: 10,
+                options: vec![
+                    String::from("Yes"),
+                    String::from("Maybe"),
+                    String::from("No")
+                ],
+            }),
+            Box::new(Button {
+                width: 50,
+                height: 10,
+                label: String::from("OK"),
+            }),
+        ],
+    };
+
+    screen.run();
+```
+
+### 4、状态模式
+
+通过将系统状态维护在各个状态对象中，利用多态，消除代码case when
+
+参考 https://kaisery.github.io/trpl-zh-cn/ch17-03-oo-design-patterns.html
+
+Rust 推荐将 状态转换转化为不同类型之间的转换
