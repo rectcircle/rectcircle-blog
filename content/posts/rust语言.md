@@ -4511,3 +4511,200 @@ impl Draw for SelectBox {
 参考 https://kaisery.github.io/trpl-zh-cn/ch17-03-oo-design-patterns.html
 
 Rust 推荐将 状态转换转化为不同类型之间的转换
+
+## 十七、高级特性
+
+### 1、不安全的Rust
+
+`unsafe` 关键字可以切换到不安全 Rust，可以做到如下功能
+
+* 解引用裸指针
+* 调用不安全的函数或方法
+* 访问或修改可变静态变量
+* 实现不安全 `trait`
+* 访问 `union` 的字段
+
+特别注意
+
+* unsafe 并不会关闭借用检查器或禁用任何其他 Rust 安全检查：如果在不安全代码中使用引用，它仍会被检查。
+* 为了尽可能隔离不安全代码，将不安全代码封装进一个安全的抽象并提供安全 API 是一个好主意
+
+**解引用裸指针**
+
+不安全 Rust 有两个被称为 裸指针（raw pointers）的类似于引用的新类型。
+
+和引用一样，裸指针是可变或不可变的，分别写作：（这里的星号不是解引用运算符；它是类型名称的一部分）
+
+* 不可变 `*const T`
+* 可变`*mut T`
+
+引用和智能指针的区别在于，记住裸指针
+
+* 允许忽略借用规则，可以同时拥有不可变和可变的指针，或多个指向相同位置的可变指针
+* 不保证指向有效的内存
+* 允许为空
+* 不能实现任何自动清理功能
+
+创建裸指针
+
+```rs
+    {
+        let mut num = 5;
+        // 创建裸指针不需要使用unsafe包裹
+        let r1 = &num as *const i32; // 通过as强转为裸指针
+        println!("addr={:x}", r1 as usize);
+        let r2 = &mut num as *mut i32;
+        println!("addr={:x}", r2 as usize);
+    }
+```
+
+创建一个不可用的裸指针
+
+```rs
+    {
+        let address = 0x012345usize;
+        let r = address as *const i32;
+        println!("addr={:x}", r as usize);
+    }
+```
+
+使用裸指针
+
+```rs
+    {
+        let mut num = 5;
+
+        let r1 = &num as *const i32;
+        let r2 = &mut num as *mut i32;
+
+        unsafe {
+            println!("r1 is: {}", *r1);
+            println!("r2 is: {}", *r2);
+        }
+    }
+```
+
+**调用不安全函数或方法**
+
+```rs
+    {
+        unsafe fn dangerous() {
+            println!("unsafe function")
+        }
+        // dangerous(); //报错 call to unsafe function is unsafe and requires unsafe function or block
+        unsafe {
+            dangerous();
+        }
+    }
+```
+
+例子：模拟实现 `split_at_mut`
+
+```rs
+    // 例子：模拟实现 split_at_mut
+    {
+        // 将一个Vec的切片一分为两个
+        let mut v = vec![1, 2, 3, 4, 5, 6];
+
+        let r = &mut v[..];
+
+        let (a, b) = r.split_at_mut(3); // 切分函数
+
+        assert_eq!(a, &mut [1, 2, 3]);
+        assert_eq!(b, &mut [4, 5, 6]);
+
+        // 模拟实现
+        use std::slice;
+        fn split_at_mut(slice: &mut [i32], mid: usize) -> (&mut [i32], &mut [i32]) {
+            let len = slice.len();
+            let ptr = slice.as_mut_ptr(); // 获取裸指针
+
+            assert!(mid <= len);
+
+            unsafe { // 调用不安全的实现
+                (slice::from_raw_parts_mut(ptr, mid),
+                slice::from_raw_parts_mut(ptr.offset(mid as isize), len - mid))
+            }
+        }
+        let (a, b) = split_at_mut(r, 3); // 切分函数
+        assert_eq!(a, &mut [1, 2, 3]);
+        assert_eq!(b, &mut [4, 5, 6]);
+    }
+```
+
+调用外部其他语言库
+
+```rs
+    // 使用 extern 函数调用外部代码（c语言函数）
+    {
+        extern "C" {
+            fn abs(input: i32) -> i32;
+        }
+        unsafe {
+            println!("Absolute value of -3 according to C: {}", abs(-3));
+        }
+    }
+```
+
+从其它语言调用 Rust 函数
+
+```rs
+#[no_mangle] //还需增加 #[no_mangle] 注解来告诉 Rust 编译器不要 mangle 此函数的名称
+pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
+    println!("Just called a Rust function from C!");
+}
+```
+
+**访问或修改可变静态变量**
+
+* rust 本身支持全局变量（静态变量）
+    * `static HELLO_WORLD: T`
+    * `static mut HELLO_WORLD: T`
+* 修改或者访问可变的全局变量需要 `unsafe` 代码块
+
+```rs
+    // 访问或修改静态变量
+    {
+        static mut COUNTER: u32 = 0;
+
+        fn add_to_count(inc: u32) {
+            unsafe {
+                COUNTER += inc;
+            }
+        }
+
+        add_to_count(3);
+
+        unsafe {
+            println!("COUNTER: {}", COUNTER);
+        }
+    }
+```
+
+**实现不安全的trait**
+
+* unsafe 标记 trait 仅仅是作为对于实现者的警告（因为实现者必须也使用`unsafe impl`）
+* 编译器不会做上述之外的任何操作
+* 一般当一个 trait 的内存安全与否依赖于实现者时，需要增加 `unsafe` 标记以警告实现者
+* 一些例子 `Searcher`、`Send`、`Sync`
+* [stackoverflow参考](https://stackoverflow.com/questions/31628572/when-is-it-appropriate-to-mark-a-trait-as-unsafe-as-opposed-to-marking-all-the)
+
+```rs
+    {
+        // 实例参考 Searcher
+        unsafe trait Foo {
+            // methods go here
+            fn test(&self);
+        }
+
+        unsafe impl Foo for i32 { // 约束在这，实现者必须也使用unsafe标记
+            // method implementations go here
+            fn test(&self){
+                let ptr = self as *const i32;
+                unsafe { println!("unsafe trait value={}", *ptr) };
+            }
+        }
+        let i:i32 = 1;
+        i.test();
+    }
+```
