@@ -12,9 +12,17 @@ tags:
 > 参考：
 > * https://www.rust-lang.org/zh-CN/
 > * https://doc.rust-lang.org/stable/book/
-> * https://kaisery.github.io/trpl-zh-cn/
-> * https://doc.rust-lang.org/stable/reference/
+> * [Rust 程序设计语言 简体中文版](https://kaisery.github.io/trpl-zh-cn/)
+> * [通过例子学 Rust](https://rustwiki.org/zh-CN/rust-by-example/)
+> * [Rust 社区文档](https://learnku.com/rust/docs)
+> * [Rust 高级编程](https://learnku.com/docs/nomicon/2018/brief-introduction/4702)
+> * [The Rust Reference 官方权威参考手册](https://doc.rust-lang.org/stable/reference/)
 > * [绅士地介绍 Rust](http://llever.com/gentle-intro/readme.zh.html)
+> * [The Little Book of Rust Macros 元编程](https://danielkeep.github.io/tlborm/book/index.html)
+> * [Rust 单页手册](https://cheats.rs/)
+> * [Rust 官方论坛](https://users.rust-lang.org/)
+> * [Rust 技术论坛](https://learnku.com/rust)
+> * [Rust 语言中文社区](https://rust.cc/)
 
 ## 一、安装和配置
 
@@ -3279,6 +3287,8 @@ fn main() {
 }
 ```
 
+高级Trait 参见 第十七.2
+
 ## 十、生命周期
 
 rust 特有，声明周期也是一种泛型，用来防止引用悬空，辅助借用检查器进行检查。
@@ -3535,6 +3545,15 @@ main 函数负责多个任务的组织问题在许多二进制项目中很常见
 * 设置任何其他的配置
 * 调用 lib.rs 中的 run 函数
 * 如果 run 返回错误，则处理这个错误
+
+### 2、newtype 模式封装细节
+
+* `Millimeters` 和 `Meters` 封装了一个 `i32`
+* 本质上创建一个新的 struct 内部持有一个成员，这个类型用来
+    * 表示一个值的单元
+    * 确保某值不被混淆
+    * 抽象掉一些类型的实现细节
+    * 隐藏其内部的泛型类型
 
 ## 十三、例子：grep
 
@@ -4707,4 +4726,552 @@ pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
         let i:i32 = 1;
         i.test();
     }
+```
+
+### 2、高级 Trait
+
+关联类型在 trait 定义中指定占位符类型
+
+```rs
+    {
+        // 带有关联类型的特质
+        pub trait MyTrait {
+            type A; // 在一个特质中使用type关键字定义，一般作为函数返回值（每一个实现者只需要指定一次，会出现指定多次）
+            type B; // 可以定义多个
+
+            fn get_a_option(&self, a: Self::A) -> Option<Self::A>;
+            fn get_b_option(&self, b: Self::B) -> Option<Self::B>;
+        }
+        // 实现带有关联类型的特质
+        pub struct MyStruct {}
+        impl MyTrait for MyStruct {
+            type A = i32;
+            type B = &'static str;
+
+            fn get_a_option(&self, a: Self::A) -> Option<Self::A> {
+                println!("a = {}", a);
+                Some(a)
+            }
+            fn get_b_option(&self, b: Self::B) -> Option<Self::B> {
+                println!("b = {}", b);
+                Some(b)
+            }
+        }
+        let s = MyStruct{};
+        s.get_a_option(1);
+        let b_o = s.get_b_option("str");
+        println!("{:?}", b_o);
+        // 为什么不使用泛型<T>，因为泛型的话在调用的时候需要手动指定类型，对调用方不友好
+        // 例子如下
+        pub trait MyTrait2<T> {
+            fn get_t_option(&self) -> Option<T>;
+        }
+        pub struct MyStruct2 {};
+        impl MyTrait2<i32> for MyStruct2 {
+            fn get_t_option(&self) -> Option<i32>{
+                Some(1)
+            }
+        }
+        impl MyTrait2<&'static str> for MyStruct2 {
+            fn get_t_option(&self) -> Option<&'static str>{
+                Some("str")
+            }
+        }
+        let s2 = MyStruct2{};
+        println!("{:?}", s2.get_t_option() as Option<i32>); // 调用时需要明确类型
+        let o2:Option<&str> = s2.get_t_option();  // 调用时需要明确类型
+        println!("{:?}",o2);
+    }
+```
+
+默认泛型参数和运算符重载
+
+默认参数语法 `trait Add<RHS=Self> {}`
+
+```rs
+    {
+        // Rust的运算符重载通过实现std::ops下定义的trait来实现
+        // 下面一个例子为 二元操作符 + 例子
+        use std::ops::Add;
+
+        #[derive(Debug, PartialEq)]
+        struct Point {
+            x: i32,
+            y: i32,
+        }
+
+        impl Add for Point {
+            type Output = Point;
+
+            fn add(self, other: Point) -> Point {
+                Point {
+                    x: self.x + other.x,
+                    y: self.y + other.y,
+                }
+            }
+        }
+
+        // Add trait的定义如下
+        /*
+        trait Add<RHS=Self> { // RHS 为右侧被操作值默认为Self，即实现者的类型
+            type Output;
+
+            fn add(self, rhs: RHS) -> Self::Output;
+        }
+        */
+        // RHS 存在目的是不同类型之间的计算
+        struct Millimeters(u32);
+        struct Meters(u32);
+
+        impl Add<Meters> for Millimeters { // 实现了毫米 + 米的运算
+            type Output = Millimeters; // 结果是毫米
+
+            fn add(self, other: Meters) -> Millimeters {
+                Millimeters(self.0 + (other.0 * 1000))
+            }
+        }
+    }
+```
+
+完全限定语法与消歧义：调用相同名称的方法
+
+语法为：`<Type as Trait>::function(receiver_if_method, next_arg, ...);`
+
+```rs
+    {
+        // 一个结构体实现多个trait，如何消除歧义
+        // 方法通过 TraitName::method(self) 调用
+        // 关联函数通过 <StructName as TraitName>::functionName()
+        // 一般来说语法为： <Type as Trait>::function(receiver_if_method, next_arg, ...);
+        trait Pilot { fn fly(&self); }
+        trait Wizard { fn fly(&self); }
+        struct Human;
+        impl Pilot for Human {
+            fn fly(&self) {
+                println!("This is your captain speaking.");
+            }
+        }
+        impl Wizard for Human {
+            fn fly(&self) {
+                println!("Up!");
+            }
+        }
+        impl Human {
+            fn fly(&self) {
+                println!("*waving arms furiously*");
+            }
+        }
+        let person = Human;
+        person.fly(); // 默认调用定义在结构体上的方法
+        // 调用特质上的方法
+        Pilot::fly(&person);
+        Wizard::fly(&person);
+        // 关联函数如何调用（第一个参数不是self）
+        trait Animal {
+            fn baby_name() -> String;
+        }
+        struct Dog;
+        impl Dog {
+            fn baby_name() -> String {
+                String::from("Spot")
+            }
+        }
+        impl Animal for Dog {
+            fn baby_name() -> String {
+                String::from("puppy")
+            }
+        }
+        println!("A baby dog is called a {}", Dog::baby_name());
+        // println!("A baby dog is called a {}", Animal::baby_name()); // 报错，编译器不知道使用哪一个实现
+        println!("A baby dog is called a {}", <Dog as Animal>::baby_name());
+    }
+```
+
+Trait 继承语法： `trait SubTrait : ParentTrait {}`
+
+```rs
+    {
+        // 父 trait 用于在另一个 trait 中使用某 trait 的功能
+        // 语法如下： trait SubTrait : ParentTrait {}
+        use std::fmt;
+        trait OutlinePrint: fmt::Display {
+            fn outline_print(&self) {
+                let output = self.to_string();
+                let len = output.len();
+                println!("{}", "*".repeat(len + 4));
+                println!("*{}*", " ".repeat(len + 2));
+                println!("* {} *", output);
+                println!("*{}*", " ".repeat(len + 2));
+                println!("{}", "*".repeat(len + 4));
+            }
+        }
+        struct Point {
+            x: i32,
+            y: i32,
+        }
+        impl OutlinePrint for Point {} // 如果没有下方实现将报错 `main::Point` doesn't implement `std::fmt::Display`
+        impl fmt::Display for Point {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "({}, {})", self.x, self.y)
+            }
+        }
+        let p = Point { x:1, y:1 };
+        p.outline_print();
+    }
+```
+
+newtype 模式用以在外部类型上实现外部 trait
+
+* 孤儿规则：只要 trait 或类型对于当前 crate 是本地的话就可以在此类型上实现该 trait （也就是说trait和struct都不在当前crate将不允许impl）
+* 解决方案：创建一个新的包裹类型
+    * 必须直接在 Wrapper 上实现所有方法，这样就可以代理到 `self.0` 上 —— 这就允许我们完全像 被包裹类型一样 那样对待 Wrapper。
+    * 或者为封装类型实现 Deref trait 方法，返回 `self.0`
+
+```rs
+    {
+        use std::fmt;
+        // impl fmt::Display for Vec<T> {} // 报错 only traits defined in the current crate can be implemented for arbitrary types
+        struct Wrapper(Vec<String>);
+        impl fmt::Display for Wrapper {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "[{}]", self.0.join(", "))
+            }
+        }
+        let w = Wrapper(vec![String::from("hello"), String::from("world")]);
+        println!("w = {}", w);
+    }
+```
+
+### 3、高级类型
+
+为了类型安全和抽象而使用 newtype 模式
+
+参见 十二、最佳实践.2
+
+**类型别名用来创建类型同义词**
+
+```rs
+    {
+        // 类型别名
+        type Kilometers = i32;
+        let x: i32 = 5;
+        let y: Kilometers = 5;
+        println!("x + y = {}", x + y);
+        // 减少重复
+        /*
+        Box<dyn Fn() + Send + 'static>
+        let f: Box<dyn Fn() + Send + 'static> = Box::new(|| println!("hi"));
+        fn takes_long_type(f: Box<dyn Fn() + Send + 'static>) {
+            // --snip--
+        }
+        fn returns_long_type() -> Box<dyn Fn() + Send + 'static> {
+            // --snip--
+        }
+        type Thunk = Box<dyn Fn() + Send + 'static>; // 类型别名减少重复
+        let f: Thunk = Box::new(|| println!("hi"));
+        fn takes_long_type(f: Thunk) {
+            // --snip--
+        }
+        fn returns_long_type() -> Thunk {
+            // --snip--
+        }
+        */
+        // type Result<T> = std::result::Result<T, std::io::Error>;
+    }
+```
+
+**从不返回的 never type**
+
+```rs
+    {
+        // never type 或者 empty type rust 中用 ! 表示
+        fn bar() -> ! {
+            unimplemented!()
+            // 或者
+            // loop {
+            // }
+        }
+        // 表示 函数 bar 从不返回（可能有两种情况：死循环、panic），所以：
+        // panic! 返回 ! 类型
+        // continue 返回 ! 类型
+        // loop 返回 ! 类型值（没有break情况）
+        // 因此 ! 类型可以强转为 任意类型
+    }
+```
+
+**动态大小类型和 Sized trait**
+
+```rs
+    {
+        // let s1: str = "Hello there!"; // 报错，因为不能直接引用str类型，因为str是动态大小类型，编译期不可知
+        let s2: &'static str = "Hello there!"; // &str 则是 两个 值：str 的地址和其长度
+        // 为了处理 DST，Rust 有一个特定的 trait 来决定一个类型的大小是否在编译时可知：这就是 Sized trait。
+        fn generic<T>(t: T) {
+            // --snip--
+        }
+        // 等价于
+        fn generic2<T: Sized>(t: T) {
+            // --snip--
+        }
+        // 如果允许接收动态大小类型，显示 `T: ?Sized`
+        fn generic3<T: ?Sized>(t: &T) {
+            // --snip--
+        }
+        // 另外： Trait 也是动态类型，不能直接返回，需要使用Box<dyn> 包裹
+    }
+```
+
+### 4、高阶函数和闭包
+
+高阶函数
+
+```rs
+    {
+        fn add_one(x: i32) -> i32 {
+            x + 1
+        }
+        // fn 类型接受函数指针作为参数
+        // fn 是一个类型而不是一个 trait
+        // 函数指针实现了所有三个闭包 trait（Fn、FnMut 和 FnOnce）
+        fn do_twice(f: fn(i32) -> i32, arg: i32) -> i32 {
+            f(arg) + f(arg)
+        }
+        let answer = do_twice(add_one, 5);
+        println!("The answer is: {}", answer);
+        let list_of_numbers = vec![1, 2, 3];
+        // 传递闭包
+        let list_of_strings = list_of_numbers
+            .iter()
+            .map(|i| i.to_string())
+            .collect::<Vec<String>>();
+        // 传递函数指针
+        let list_of_strings: Vec<String> = list_of_numbers
+            .iter()
+            .map(ToString::to_string)
+            .collect();
+        // 传递初始化函数
+        enum Status {
+            Value(u32),
+            Stop,
+        }
+        let list_of_statuses: Vec<Status> =
+            (0u32..20)
+            .map(Status::Value)
+            .collect();
+    }
+```
+
+返回闭包
+
+```rs
+    {
+        // fn returns_closure() -> Fn(i32) -> i32 { // 报错：因为Trait为尺寸运行时不可知
+        //     |x| x + 1
+        // }
+        fn returns_closure() -> Box<dyn Fn(i32) -> i32> { // 使用box封装
+            Box::new(|x| x + 1)
+        }
+        println!("returns_closure result = {}", returns_closure()(1));
+    }
+```
+
+### 5、宏
+
+所谓的元编程，rust 提供了
+
+* 一种声明宏 `macro_rules!`
+* 三种过程宏
+    * 自定义 `#[derive]` 宏在结构体和枚举上指定通过 derive 属性添加的代码
+    * 类属性（Attribute）宏定义可用于任意项的自定义属性
+    * 类函数宏看起来像函数不过作用于作为参数传递的 token。
+
+**宏核函数的区别**
+
+* 宏是编写生成代码的代码
+* 宏可以减少代码量，可以做到函数无法做到事情
+* 函数必须声明函数参数个数和类型
+* 宏只接受一个可变参数
+* 宏在编译前将被展开
+* 函数在运行时被调用
+* 宏代码更加难以理解与维护
+* 宏和函数的最后一个重要的区别是：在调用宏 之前 必须定义并将其引入作用域，而函数则可以在任何地方定义和调用。
+
+**使用 `macro_rules!` 的声明宏用于通用元编程**
+
+更多参考 https://danielkeep.github.io/tlborm/book/index.html
+
+```rs
+    {
+        // 使用 macro_rules! 声明宏
+        // 本例中模拟了 vec! 实现
+        // 注意：标准库中实际定义的 vec! 包括预分配适当量的内存的代码。这部分为代码优化，为了让示例简化，此处并没有包含在内。
+        #[macro_export] // #[macro_export] 注解说明宏应该是可用的。 如果没有该注解，这个宏不能被引入作用域。
+        // 定义时宏名不带感叹号
+        macro_rules! my_vec { // 开始宏体
+            // 本质上是模式匹配 (模式) => {}
+            // $(  ) 表示一个模式
+            // $x:expr 表示匹配一个表达式，并命名为x
+            // ,* 表示以逗号分隔，匹配0个或者多个
+            ( $( $x:expr ),* ) => { // 这是一个代码块
+                {
+                    let mut temp_vec = Vec::new();
+                    $( // 表示内部会使用捕获的变量
+                        temp_vec.push($x); // $x 引用捕获的变量
+                    )*
+                    temp_vec
+                }
+            };
+        }
+        let v = vec!(1,2,3);
+        let v2 = vec![1,2,3];
+        let v3 = vec!{1,2,3};
+        println!("{:?}", v);
+        println!("{:?}", v2);
+        println!("{:?}", v3);
+        let v4 = my_vec!(1,2,3);
+        let v5 = my_vec![1,2,3];
+        // 展开后如下
+        let v6 = {
+            let mut temp_vec = Vec::new();
+            temp_vec.push(1);
+            temp_vec.push(2);
+            temp_vec.push(3);
+            temp_vec
+        };
+        println!("{:?}", v4);
+        println!("{:?}", v5);
+        println!("{:?}", v6);
+    }
+```
+
+`macro_rules!` 中有一些奇怪的地方。在将来，会有第二种采用 `macro` 关键字的声明宏，其工作方式类似但修复了这些极端情况。在此之后，macro_rules! 实际上就过时（deprecated）了。
+
+**如何编写自定义 derive 宏**
+
+rust 提供了一种为结构体或者枚举自动生成代码的宏，并与一个Trait绑定
+
+trait定义者提供两个库，分别声明trait的库和声明过程宏的库
+
+实现步骤
+
+* 库编写者
+    * 实现 声明trait的库
+    * 实现 过程宏的库
+* 库使用者
+    * 引入以上两个库
+    * 声明自己的结构体/枚举
+    * 在结构体/枚举上方添加 `#[derive(TraitName)]` 注解
+
+创建 声明trait的库 `cargo new hello_macro --lib` 并编写 `hello_macro/src/lib.rs`
+
+```rs
+pub trait HelloMacro {
+    fn hello_macro();
+}
+```
+
+在hello_macro项目下创建 `cargo new hello_macro_derive --lib`
+
+添加依赖 `hello_macro/hello_macro_derive/Cargo.toml`
+
+```toml
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = "0.14.4"
+quote = "0.6.3"
+```
+
+编写 `hello_macro/hello_macro_derive/src/lib.rs`
+
+```rs
+extern crate proc_macro; // 声明外部的crate （rust自带 编译器用来读取和操作我们 Rust 代码的 API）
+
+use crate::proc_macro::TokenStream;
+use quote::quote; // quote 则将 syn 解析的数据结构反过来传入到 Rust 代码中
+use syn; // syn crate 将字符串中的 Rust 代码解析成为一个可以操作的数据结构。
+
+#[proc_macro_derive(HelloMacro)] // 为 HelloMacro 特质实现一个默认的过程宏
+pub fn hello_macro_derive(input: TokenStream) -> TokenStream {
+    // 构建 Rust 代码所代表的语法树
+    // 以便可以进行操作
+    let ast = syn::parse(input).unwrap(); // 这里选择用 unwrap 来简化了这个例子；在生产代码中，则应该通过 panic! 或 expect 来提供关于发生何种错误的更加明确的错误信息。
+    println!("过程宏代码，编译器执行");
+    // 构建 trait 实现
+    impl_hello_macro(&ast)
+}
+
+
+fn impl_hello_macro(ast: &syn::DeriveInput) -> TokenStream {
+    let name = &ast.ident; // 获取被注解的结构体名
+    let gen = quote! { // 编写生成代码
+        impl HelloMacro for #name { // #name 是一种模板机制，使用值来替换 https://docs.rs/quote
+            fn hello_macro() {
+                println!("Hello, Macro! My name is {}", stringify!(#name)); // stringify! 一个内置宏，将内容转换为字符串
+            }
+        }
+    };
+    gen.into()
+}
+```
+
+库使用方
+
+添加依赖 `advanced-features/Cargo.toml`
+
+```toml
+[dependencies]
+hello_macro = { path = "../hello_macro" }
+hello_macro_derive = { path = "../hello_macro/hello_macro_derive" }
+```
+
+使用 `advanced-features/src/main.rs`
+
+```rs
+    {
+        use hello_macro::HelloMacro; // 导入特质
+        use hello_macro_derive::HelloMacro; //导入过程宏
+        // 过程宏
+        #[derive(HelloMacro)] // 声明使用过程宏
+        struct Pancakes;
+        Pancakes::hello_macro();
+    }
+```
+
+**类属性宏**
+
+编写方式是和自定义派生宏相似
+
+相关实例参见： [rocket框架rocket_codegen模块](https://docs.rs/crate/rocket_codegen/0.4.0/source/src/attribute/route.rs)
+
+使用
+
+```rs
+#[route(GET, "/")]
+fn index() {
+```
+
+过程宏定义
+
+```rs
+#[proc_macro_attribute]
+pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream {
+```
+
+**类函数宏**
+
+编写方式是和自定义派生宏相似
+
+使用
+
+```rs
+let sql = sql!(SELECT * FROM posts WHERE id=1);
+```
+
+过程宏编写
+
+```rs
+#[proc_macro]
+pub fn sql(input: TokenStream) -> TokenStream {
 ```
