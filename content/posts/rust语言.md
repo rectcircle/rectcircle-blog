@@ -71,6 +71,21 @@ https://github.com/vadimcn/vscode-lldb/blob/v1.2.3/MANUAL.md#cargo-support
 }
 ```
 
+### 4、实用开发工具
+
+参考：https://kaisery.github.io/trpl-zh-cn/appendix-04-useful-development-tools.html
+
+* `rustfmt` 自动格式化
+    * 安装 `rustup component add rustfmt`
+    * 使用 `cargo fmt`
+* `rustfix` 修复代码
+    * 使用 `cargo fix`
+* 通过 `clippy` 提供更多 lint 功能
+    * `rustup component add clippy`
+    * 使用 `cargo clippy`
+* 使用 Rust Language Server 的 IDE 集成
+    * 安装 `rustup component add rls`
+
 ## 二、起步
 
 ### 0、语言特点
@@ -4807,7 +4822,7 @@ pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
     }
 ```
 
-默认泛型参数和运算符重载
+默认泛型参数和[运算符重载](https://kaisery.github.io/trpl-zh-cn/appendix-02-operators.html#%E8%BF%90%E7%AE%97%E7%AC%A6)
 
 默认参数语法 `trait Add<RHS=Self> {}`
 
@@ -5170,6 +5185,15 @@ newtype 模式用以在外部类型上实现外部 trait
 `macro_rules!` 中有一些奇怪的地方。在将来，会有第二种采用 `macro` 关键字的声明宏，其工作方式类似但修复了这些极端情况。在此之后，macro_rules! 实际上就过时（deprecated）了。
 
 **如何编写自定义 derive 宏**
+
+[标准库提供的可派生trait](https://kaisery.github.io/trpl-zh-cn/appendix-03-derivable-traits.html)
+
+* Debug
+* PartialEq 和 Eq
+* 次序比较的 PartialOrd 和 Ord
+* 复制值的 Clone 和 Copy
+* 固定大小的值到值映射的 Hash
+* 默认值的 Default
 
 rust 提供了一种为结构体或者枚举自动生成代码的宏，并与一个Trait绑定
 
