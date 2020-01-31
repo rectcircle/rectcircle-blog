@@ -726,6 +726,29 @@ fn read_username_from_file2() -> Result<String, io::Error> {
 
 细节参见下文
 
+### 9、特别说明字面量
+
+创建字面量 `cargo new literal` 项目
+
+#### （1） 多行字符串
+
+```rs
+    // raw-string-literals
+    // https://doc.rust-lang.org/reference/tokens.html#raw-string-literals
+    // https://rahul-thakoor.github.io/rust-raw-string-literals/
+    println!(r"多行字符串
+    多行字符串，不能表达引号
+    ");
+    println!(r#"多行字符串
+    多行字符串，不能表达引号""""" 可以表达引号，可以表达#号
+    不能表达"紧接着#
+    "#);
+    println!(r##"多行字符串
+    多行字符串，不能表达引号""""" 可以表达引号，可以表达#号，可以表达"#
+    不能表达"紧接着##
+    "##);
+```
+
 ## 四、所有权系统
 
 > https://zhuanlan.zhihu.com/p/27571264
