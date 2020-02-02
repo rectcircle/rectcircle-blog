@@ -12,6 +12,8 @@ tags:
 > 参考：
 > * https://www.rust-lang.org/zh-CN/
 > * https://doc.rust-lang.org/stable/book/
+> * [标准库doc官方](https://doc.rust-lang.org/std/)
+> * [标准库doc中文](https://s0doc0rust-lang0org.icopy.site/std/index.html)
 > * [Rust 程序设计语言 简体中文版](https://kaisery.github.io/trpl-zh-cn/)
 > * [通过例子学 Rust](https://rustwiki.org/zh-CN/rust-by-example/)
 > * [Rust 社区文档](https://learnku.com/rust/docs)
@@ -20,6 +22,7 @@ tags:
 > * [绅士地介绍 Rust](http://llever.com/gentle-intro/readme.zh.html)
 > * [The Little Book of Rust Macros 元编程](https://danielkeep.github.io/tlborm/book/index.html)
 > * [Rust 单页手册](https://cheats.rs/)
+> * [Rust 版本指南](https://erasin.wang/books/edition-guide-cn/)
 > * [Rust 官方论坛](https://users.rust-lang.org/)
 > * [Rust 技术论坛](https://learnku.com/rust)
 > * [Rust 语言中文社区](https://rust.cc/)
@@ -85,6 +88,10 @@ https://github.com/vadimcn/vscode-lldb/blob/v1.2.3/MANUAL.md#cargo-support
     * 使用 `cargo clippy`
 * 使用 Rust Language Server 的 IDE 集成
     * 安装 `rustup component add rls`
+
+### 5、crates国内镜像配置
+
+https://lug.ustc.edu.cn/wiki/mirrors/help/rust-crates
 
 ## 二、起步
 
