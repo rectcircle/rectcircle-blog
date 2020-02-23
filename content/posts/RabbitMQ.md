@@ -120,3 +120,30 @@ public class Recv {
 #### （3）Spring AMQP
 
 略
+
+### 2、AMQP
+
+RabbitMQ 是 AMQP 协议的一个最主流的实现。
+
+AMQP （Advanced Message Queuing Protocol） 是一个 消息队列协议。特点如下：
+
+* 应用层协议
+* 消息传递方式为二进制
+* 语言无关性
+
+### 2、Exchange
+
+> https://www.cnblogs.com/vipstone/p/9295625.html
+> https://490.github.io/RabbitMQ/
+
+### 3、消费ACK、生产confirms与事务
+
+消费ACK：表示消费者告诉MQ，这个消息是否处理完成
+
+* 未ACK的消息
+  * 消费者仍然连接：MQ将会保存这个消息，但是不会投递给其他消费者
+  * 消费者异常退出或者NACK：
+    * requeue=False 删除这个消息
+    * requeue=True MQ将会将这个消息投递给其他消费者
+* ACK的消息
+  * MQ会删除该消息，表示该消息彻底处理完成

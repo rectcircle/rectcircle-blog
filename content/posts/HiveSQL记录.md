@@ -56,15 +56,15 @@ hive
 内置的名字空间：
 
 * hivevar
-  * 读写
-  * 通过--define或者--hivevar定义，前缀可省略
+    * 读写
+    * 通过--define或者--hivevar定义，前缀可省略
 * hiveconf
-  * 读写
+    * 读写
 * system
-  * 读写
+    * 读写
 * env
-  * 只读
-  * 如`set env:HOME`
+    * 只读
+    * 如`set env:HOME`
 
 可以使用`${key}`的方式进行替换
 
@@ -129,28 +129,28 @@ dfs -ls /;
 #### （1）基本数据类型
 
 * 整型
-  * TINYINT - 微整型，只占用1个字节，只能存储0-255的整数。
-  * SMALLINT - 小整型，占用2个字节，存储范围–32768 到 32767。
-  * INT - 整型，占用4个字节，存储范围-2147483648到2147483647。
-  * BIGINT - 长整型，占用8个字节，存储范围-2^63到2^63-1。
+    * TINYINT - 微整型，只占用1个字节，只能存储0-255的整数。
+    * SMALLINT - 小整型，占用2个字节，存储范围–32768 到 32767。
+    * INT - 整型，占用4个字节，存储范围-2147483648到2147483647。
+    * BIGINT - 长整型，占用8个字节，存储范围-2^63到2^63-1。
 * 布尔型
-  * BOOLEAN - TRUE/FALSE
+    * BOOLEAN - TRUE/FALSE
 * 浮点型
-  * FLOAT - 单精度浮点数。
-  * DOUBLE - 双精度浮点数。
+    * FLOAT - 单精度浮点数。
+    * DOUBLE - 双精度浮点数。
 * 字符串型
-  * STRING - 不设定长度。
+    * STRING - 不设定长度。
 * [时间日期类型](https://www.jianshu.com/p/e18a7fd2de5c)
-  * String - 格式为 `yyyy-MM-dd` 或者 `yyyy-MM-dd hh:mm:ss`
-  * Date - 格式为 `yyyy-MM-dd`
-  * Timestamp - 格式为 `yyyy-MM-dd hh:mm:ss`
-  * 比较
-    * 日期级别：是可以直接比较的，但是Date和Timestamp之间需要强转 `a_table join b_table on (a_table.timestamp_column = cast(b_table.date_column as timestamp));`
-    * 时间级别：String 与 Timestamp 表达的时间相同时是可以直接比较的，Date 不能表示带时分秒的信息。
-  * 插入
-    * String -> String： 原样
-    * String -> Date：仅包含日期
-    * String -> Timestamp：补上时分秒
+    * String - 格式为 `yyyy-MM-dd` 或者 `yyyy-MM-dd hh:mm:ss`
+    * Date - 格式为 `yyyy-MM-dd`
+    * Timestamp - 格式为 `yyyy-MM-dd hh:mm:ss`
+    * 比较
+        * 日期级别：是可以直接比较的，但是Date和Timestamp之间需要强转 `a_table join b_table on (a_table.timestamp_column = cast(b_table.date_column as timestamp));`
+        * 时间级别：String 与 Timestamp 表达的时间相同时是可以直接比较的，Date 不能表示带时分秒的信息。
+    * 插入
+        * String -> String： 原样
+        * String -> Date：仅包含日期
+        * String -> Timestamp：补上时分秒
 
 #### （2）复杂数据类型
 
@@ -267,27 +267,27 @@ constraint_specification:
 * temporary 临时表：仅对当前session有效，session结束后自动删除
 * PARTITIONED BY 用于指定分区字段（将数据以目录层级结构存储）
 * external 外部表，不声明则表示为内部表
-  * 内部表LOAD数据时，会将数据移动到数据仓库指向的路径。外部表不会
-  * 内部表删除时，同时删除数据。外部表仅删除元数据
+    * 内部表LOAD数据时，会将数据移动到数据仓库指向的路径。外部表不会
+    * 内部表删除时，同时删除数据。外部表仅删除元数据
 * TBLPROPERTIES包含其他属性，其中 last_modified_user和last_modified_time 由hive管理，其他预定义属性：
-  * TBLPROPERTIES ("comment"="table_comment")
-  * TBLPROPERTIES ("hbase.table.name"="table_name") – 见集成HBASE.
-  * TBLPROPERTIES ("immutable"="true") 或("immutable"="false")– 见通过查询查插入数据到Hive表.
-  * TBLPROPERTIES ("orc.compress"="ZLIB") 或("orc.compress"="SNAPPY") 或 ("orc.compress"="NONE") 和其他ORC属性– 见ORC文件.
-  * TBLPROPERTIES ("transactional"="true")或 ("transactional"="false")– 见Hive事务.
-  * TBLPROPERTIES ("NO\_AUTO\_COMPACTION"="true") 或 ("NO\_AUTO\_COMPACTION"="false"), 缺省是 "false" – 见Hive事务.
-  * TBLPROPERTIES ("compactor.mapreduce.map.memory.mb"="mapper_memory") – 见Hive事务.
-  * TBLPROPERTIES ("compactorthreshold.hive.compactor.delta.num.threshold"="threshold_num") –见Hive事务.
-  * TBLPROPERTIES ("compactorthreshold.hive.compactor.delta.pct.threshold"="threshold_pct") – 见Hive事务.
-  * TBLPROPERTIES ("auto.purge"="true") 或 ("auto.purge"="false") – 见删除表、删除分区、截断表和覆盖式插入数据.
-  * TBLPROPERTIES ("EXTERNAL"="TRUE")–修改托管表为外部表，反之亦然为“FALSE”.
-    * 在Hive2.4.0中（HIVE-16324）属性“EXTERNAL”的值被解析为布尔型（不区分大小写的true或false），而不是比较时区分大小写字符串。
+    * TBLPROPERTIES ("comment"="table_comment")
+    * TBLPROPERTIES ("hbase.table.name"="table_name") – 见集成HBASE.
+    * TBLPROPERTIES ("immutable"="true") 或("immutable"="false")– 见通过查询查插入数据到Hive表.
+    * TBLPROPERTIES ("orc.compress"="ZLIB") 或("orc.compress"="SNAPPY") 或 ("orc.compress"="NONE") 和其他ORC属性– 见ORC文件.
+    * TBLPROPERTIES ("transactional"="true")或 ("transactional"="false")– 见Hive事务.
+    * TBLPROPERTIES ("NO\_AUTO\_COMPACTION"="true") 或 ("NO\_AUTO\_COMPACTION"="false"), 缺省是 "false" – 见Hive事务.
+    * TBLPROPERTIES ("compactor.mapreduce.map.memory.mb"="mapper_memory") – 见Hive事务.
+    * TBLPROPERTIES ("compactorthreshold.hive.compactor.delta.num.threshold"="threshold_num") –见Hive事务.
+    * TBLPROPERTIES ("compactorthreshold.hive.compactor.delta.pct.threshold"="threshold_pct") – 见Hive事务.
+    * TBLPROPERTIES ("auto.purge"="true") 或 ("auto.purge"="false") – 见删除表、删除分区、截断表和覆盖式插入数据.
+    * TBLPROPERTIES ("EXTERNAL"="TRUE")–修改托管表为外部表，反之亦然为“FALSE”.
+        * 在Hive2.4.0中（HIVE-16324）属性“EXTERNAL”的值被解析为布尔型（不区分大小写的true或false），而不是比较时区分大小写字符串。
 * CREATE TABLE AS SELECT（CTAS）
-  * 表也可以通过一个CREATE-TABLE-AS-SELECT(CTAS)语句中的查询结果来创建和填充。CTAS创建的表是原子的，这意味着在填充所有查询结果之前，其他用户不会看到该表。因此，其他用户要么会看到具有完整查询结果的表，要么根本不会看到该表。
-  * CTAS有以下限制：
-    * 目标表不能是分区表。
-    * 目标表不能是外部表。
-    * 目标表不能是列表桶表。
+    * 表也可以通过一个CREATE-TABLE-AS-SELECT(CTAS)语句中的查询结果来创建和填充。CTAS创建的表是原子的，这意味着在填充所有查询结果之前，其他用户不会看到该表。因此，其他用户要么会看到具有完整查询结果的表，要么根本不会看到该表。
+    * CTAS有以下限制：
+        * 目标表不能是分区表。
+        * 目标表不能是外部表。
+        * 目标表不能是列表桶表。
 * `create table like` 复制表元数据
 
 ```sql
@@ -365,8 +365,8 @@ into table [partition()];
 * `local` 表示操作系统文件路径
 * `overwrite` 是否覆盖重写
 * 支持相对路径：
-  * `local` 模式下相对于启动cli的用户家目录
-  * 非 `local` 模式下hadoop用户的路径
+    * `local` 模式下相对于启动cli的用户家目录
+    * 非 `local` 模式下hadoop用户的路径
 
 ```sql
 -- 通过查询插入数据
@@ -444,9 +444,9 @@ from table_reference
 * 支持数学函数
 * 支持聚合函数
 * 支持表生成函数（一个函数生成多个列，例如`parse_url_tuple(url, 'HOST', 'PATH', 'QUERY') as (host, path, query)`），常见的如下（也支持使用`lateral view`）
-  * explode
-  * json_tuple
-  * stack
+    * explode
+    * json_tuple
+    * stack
 * 其他常用内置函数
 * 可以通过 `as` 指定列别名
 * 支持`case when then`子句
@@ -464,22 +464,22 @@ from table_reference
 
 * 支持 `and` `or`
 * 支持常见谓词，特殊的如下
-  * `<=>` 类似于 `=`，如果左右都为null，也返回true
-  * `<>`、`!=`
-  * `[not] between and`
-  * `is null`
-  * `is not null`
-  * `[not] like`
-  * `rlike`、`regexp`正则匹配
+    * `<=>` 类似于 `=`，如果左右都为null，也返回true
+    * `<>`、`!=`
+    * `[not] between and`
+    * `is null`
+    * `is not null`
+    * `[not] like`
+    * `rlike`、`regexp`正则匹配
 
 #### （6）group by子句
 
 * 支持 `group by 字段列表`
 * 和 `having 条件`
 * 另外额外支持
-  * with cube
-  * with rollup
-  * grouping sets
+    * with cube
+    * with rollup
+    * grouping sets
 
 #### （7）join
 
@@ -492,9 +492,9 @@ from table_reference
 * 同时支持 `left join` 和 `right join`
 * 支持 `left semi join` 和 `left join` 不同，但是类似于`inner join`，只返回满足on条件的左边表的记录（引用右表将报错）
 * map-side JOIN 小表load进内存，不用产生一个reduce
-  * 可以通过 `set hive.auto.convert.join=true` 开启此优化
-  * 可以配置小表阈值 `hive.mapjoin.smalltable,filesize=250000000`
-  * 右外连接、全外连接不支持
+    * 可以通过 `set hive.auto.convert.join=true` 开启此优化
+    * 可以配置小表阈值 `hive.mapjoin.smalltable,filesize=250000000`
+    * 右外连接、全外连接不支持
 * `bucketJoin` 优化（支持分桶join）
 
 #### （8）order by 和 sort by
@@ -583,6 +583,7 @@ last_value(field, true) over (partition by col1 order by col2 rows between unbou
 
 参考：
 
+* https://blog.csdn.net/kaede1209/article/details/96327086
 * https://www.jianshu.com/p/acc8b158daef
 * http://shzhangji.com/cnblogs/2017/09/05/hive-window-and-analytical-functions/
 * https://saboloh.com/2016/11/09/hive-languagemanual-windowingandanalytics/
@@ -616,6 +617,8 @@ row between unbounded preceding and unbounded following
 ```
 
 对于last_value一般都会跟着order by所以一般不要使用默认值
+
+Hive 1.3 之前存在 between and 的 Bug： https://issues.apache.org/jira/browse/HIVE-10555
 
 #### `case-when-else-end` 多条件
 
@@ -675,8 +678,8 @@ select get_json_object('${hivevar:msg}','$.server');
 
 * unixtime 秒时间戳
 * format
-  * 默认为 `'yyyy-MM-dd HH:mm:ss'`
-  * 可选 `'yyyy-MM-dd'`
+    * 默认为 `'yyyy-MM-dd HH:mm:ss'`
+    * 可选 `'yyyy-MM-dd'`
 
 ```sql
 select from_unixtime(1556803199);
@@ -693,6 +696,27 @@ from db.table a lateral view json_tuple (a.value, 'key1', 'key2', 'key3') b as k
                  key2,
                  key3,
                  key4;
+```
+
+#### `explode`
+
+```sql
+select
+  s.col1 as metric,
+  s.col2 as value
+from (
+  select
+    array(
+      struct(
+        'dau',
+        '1'
+      ),
+        struct(
+        'var',
+        '1'
+      )
+    ) as arr
+) t LATERAL VIEW explode(arr) v as s
 ```
 
 ### 3、视图

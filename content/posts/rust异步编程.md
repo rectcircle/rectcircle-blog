@@ -11,10 +11,15 @@ tags:
 > 版本：1.41.0
 > 前序文章: [rust 语言](/posts/rust语言/)
 
+[流行异步库](https://lib.rs/asynchronous)
+
 参考：
 
 * [Rust 异步编程（中文版有点滞后）](https://learnku.com/docs/async-book/2018/streams/4797)
 * [Asynchronous Programming in Rust](https://rust-lang.github.io/async-book/)
+* [Rust异步入门](https://omarabid.com/async-rust)
+* [Designing futures for Rust](https://aturon.github.io/blog/2016/09/07/futures-design/)
+* [零成本异步I/O](https://zhuanlan.zhihu.com/p/97574385)
 
 类似于ES6（JavaScript）中的 `async` 和 `await`
 
@@ -597,6 +602,9 @@ async {
 ### 6、个人体会
 
 * Future 设计的尽量精简，保证与Executor耦合在标准库层尽量小，保证足够高的性能
+* Future 这种设计思路，是将异步操作转换为状态机（就是If-Else）（`pull`），而不是回调（`push`）
+    * 因此新的异步任务的提交需要运行时环境的支持
+    * 这种设计可以做到超级小的运行时，几乎是零成本的抽象
 * 标准库只提供 Future 和相关抽象，不提供 Executor，Executor由第三方库提供（如 `futures`）
 * Executor 执行的最小单位是 一个顶级Future（对应一个Task），一个顶级Future可以包含其他Future，非顶级Future不可以独立运行（比如A包含B，则 AB 在一个Task中，是Executor执行的最小单位（类似于一个线程））
 * 如果想实现类似NodeJS这种类型的操作，需要Executor提供环境支持

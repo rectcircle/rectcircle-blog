@@ -51,6 +51,8 @@ https://marketplace.visualstudio.com/items?itemName=rust-lang.rust
 
 调试器安装
 
+https://jason-williams.co.uk/debugging-rust-in-vscode
+
 https://marketplace.visualstudio.com/items?itemName=vadimcn.vscode-lldb
 
 https://github.com/vadimcn/vscode-lldb/blob/v1.2.3/MANUAL.md#cargo-support
@@ -74,6 +76,52 @@ https://github.com/vadimcn/vscode-lldb/blob/v1.2.3/MANUAL.md#cargo-support
 }
 ```
 
+新版扩展：
+
+* [扩展商店](https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer)
+* [官网](https://rust-analyzer.github.io/)
+* [用户文档](https://github.com/rust-analyzer/rust-analyzer/tree/master/docs/user)
+* [特性文档](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/features.md)
+
+使用指南
+
+* `cmd + shift + o` 转到文件中的符号
+* `cmd + t` 查找符号
+    * 后缀说明
+        * `#` 搜索类型
+        * `*` 搜索工作空间依赖
+    * `#Foo` 在当前工作空间搜索类型
+    * `#foo#` 在当前工作空间搜索函数 searches for foo function in the current workspace
+    * `#Foo*` 搜索所有依赖的类型
+    * `#foo#*` 搜索所有依赖的函数
+* 扩展选择：`cmd + ctl + shift + ←/→`
+* GOTO系列
+    * 跳转到定义
+    * 跳转到实现
+    * 跳转到类型定义
+* 内置命令 analyzer
+    * `rust analyzer: run` 和 `ctl+r` 运行命令
+    * `rust analyzer: Locate Parent Module` 查找父模块
+    * `rust analyzer: Find Matching Brace` 匹配括号
+    * `rust analyzer: Join Lines` 多行合并为1行
+    * `rust analyzer: Show Syntax Tree` 查看语法树
+    * `rust analyzer: Expand Macro Recursively` 展开宏
+    * `rust analyzer: Status` LS状态
+    * `rust analyzer: Run garbage collection` 运行LS垃圾回收器
+* Assists (Code Actions)
+    * https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/user/assists.md
+* 魔法完成
+    * `expr.if -> if expr {}`
+    * `expr.match -> match expr {}`
+    * `expr.while -> while expr {}`
+    * `expr.ref -> &expr`
+    * `expr.refm -> &mut expr`
+    * `expr.not -> !expr`
+    * `expr.dbg -> dbg!(expr)`
+    * `pd -> println!("{:?}")`
+    * `ppd -> println!("{:#?}")`
+    * `tfn -> #[test] fn f(){}`
+
 ### 4、实用开发工具
 
 参考：https://kaisery.github.io/trpl-zh-cn/appendix-04-useful-development-tools.html
@@ -88,6 +136,13 @@ https://github.com/vadimcn/vscode-lldb/blob/v1.2.3/MANUAL.md#cargo-support
     * 使用 `cargo clippy`
 * 使用 Rust Language Server 的 IDE 集成
     * 安装 `rustup component add rls`
+* [Cargo宏展开](https://github.com/dtolnay/cargo-expand)
+    * 安装 `cargo install cargo-expand`
+    * 展开当前项目顶层模块 `cargo expand`
+    * 展开当前项目指定子模块
+        * `cargo expand mod_a`
+        * `cargo expand mod_a::mod_b`
+    * 展开后输出到文件 `cargo expand mod_a::mod_b > file.rs`
 
 ### 5、crates国内镜像配置
 
@@ -5127,8 +5182,8 @@ newtype 模式用以在外部类型上实现外部 trait
 * 一种声明宏 `macro_rules!`
 * 三种过程宏
     * 自定义 `#[derive]` 宏在结构体和枚举上指定通过 derive 属性添加的代码
-    * 类属性（Attribute）宏定义可用于任意项的自定义属性
-    * 类函数宏看起来像函数不过作用于作为参数传递的 token。
+    * 类属性（Attribute）宏定义可用于任意项的自定义属性（应该理解为像属性一样的宏）
+    * 类函数宏看起来像函数不过作用于作为参数传递的 token（应该理解为像函数一样的宏）
 
 **宏核函数的区别**
 

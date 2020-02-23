@@ -236,6 +236,10 @@ set spark.sql.adaptive.shuffle.targetPostShuffleInputSize;
 * Kafka 同步到 hdfs
 * spark读取增量数据并做成虚表，进行merge  
 
+### 2、数据倾斜处理
+
+> http://www.jasongj.com/spark/skew/
+
 ## 六、疑问自答
 
 ### 1、什么是AE

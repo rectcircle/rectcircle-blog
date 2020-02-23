@@ -129,3 +129,5 @@ source venv/bin/activate
 # 退出环境
 deactivate
 ```
+
+Mac Python2 和 Python3 共存： https://www.jianshu.com/p/3b12ca94ef0c

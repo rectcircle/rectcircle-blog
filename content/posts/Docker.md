@@ -1236,3 +1236,9 @@ networks:
 		external:
 			name: my-pre-existing-network
 ```
+
+## 六、编程技巧
+
+### 1、处理容器退出指令
+
+捕获 `SIGTERM` 信号，进行状态变更处理

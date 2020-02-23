@@ -125,6 +125,16 @@ print "Opened database successfully"
 * `md5` md5密码验证方式（一般用于与第三方程序交互）
 * `peer` 从操作系统获得客户端的操作系统用户，校验用户名是否一致（一本用于本机登录）
 
+## psql 使用方式
+
+进入方式 `sudo -u postgres psql [-h host] [-p port] [数据库名称] [用户名称]`
+
+```sql
+\l  # 查看所有数据库
+\c[onnect] {[DBNAME|- USER|- HOST|- PORT|-] | conninfo} # 使用数据库
+\d[S+]          # 列出表,视图和序列
+```
+
 ## 主从同步
 
 ### 规划
