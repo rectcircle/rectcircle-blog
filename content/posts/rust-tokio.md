@@ -5,11 +5,11 @@ draft: false
 toc: true
 comments: true
 tags:
-  - 其他编程语言
+  - untagged
 ---
 
 > Rust 版本：1.41.0 (1.39.0 以上)
-> 前序文章: [rust 语言](/posts/Rust异步编程/)
+> 前序文章: [Rust异步编程](/posts/Rust异步编程/)
 > Tokio 版本：0.2
 
 参考：

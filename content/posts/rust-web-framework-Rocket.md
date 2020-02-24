@@ -6,7 +6,6 @@ toc: true
 comments: true
 tags:
   - 后端
-  - rust
 ---
 
 > version: 0.4
