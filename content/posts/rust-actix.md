@@ -756,3 +756,855 @@ async fn main() -> std::io::Result<()> {
     .await
 }
 ```
+
+### 2、URL 分发
+
+`actix-web` 匹配用户给定 `url 模式` 进行匹配 将请求分发到 请求处理器 即 `async fn(p: impl FromRequest) -> impl Responder`，以下简称Handler
+
+#### （1）路由配置
+
+* (1) `App::new().route("/path", Route)` 其中 `Route` 构建方式如下
+    * 常用的方法
+        * `web::get().to(Handler)`
+        * `web::post().to(Handler)`
+        * `web::put().to(Handler)`
+        * `web::patch().to(Handler)`
+        * `web::delete().to(Handler)`
+    * 更详细的配置 `web::route().guard(actix_web::guard::Get()).to(Handler)` 等价于 `web::get().to(Handler)`
+* (2) `App::new().service(HttpServiceFactory)` 其中 `HttpServiceFactory` 构建方式如下
+    * `web::resource("/path").guard(Guard).name("res_name").route(Route)` 其中 `Route` 构建方式  参见 (1)
+    * `web::scope("/scope").route("/path", Route)`  其中 `Route` 构建方式 参见 (1)
+    * `web::scope("/scope").service(HttpServiceFactory)`  参见 (2)
+
+#### （2）路由匹配
+
+* 根据路由配置生成类似如下的树形结构结构
+    * `scope -> scope`
+    * `scope -> path -> guard -> handler`
+* `actix-web` 从 根节点 进行匹配，
+    * 找到匹配的路径后将调用其 `handler`
+    * 没有找到匹配将返回失配的返回 （默认为404）
+
+#### （3）path语法
+
+* 如果 path 不以 `/` 开头，则自动添加一个 `/`，以下两种写法等价
+    * `path`
+    * `/path`
+* path 支持 通过 `{path_name}` 提取路径参数
+    * 提取的参数 可以通过 `HttpRequest.match_info()` 或者 `Path` 在 处理函数中使用
+    * 提取出的参数会进行URL解码
+    * 实现方式为将 `{path_name}` 转换为 `[^{}/]+` 这则表达式匹配
+        * 因此 `{path_name}` 对应的部分至少应该有一个字符
+    * 另外 `{path_name}` 支持 正则表达式 匹配，语法为 `{path_name:reg_exp}`
+
+#### （4）生成URL
+
+`HttpRequest.url_for("res_name", IntoIterator<Item = AsRef<str>>)`
+
+* 内部资源
+    * 如果这样配置 `web::resource("/test/{a}/{b}/{c}").name("foo")`
+    * 且 `HttpRequest.url_for("foo", &["1", "2", "3"])`
+    * 则 返回 `$protocol:://$host/test/1/2/3`
+* 外部资源
+    * 如果这样配置 `App::new().external_resource("youtube", "https://youtube.com/watch/{video_id}")`
+    * 且 `let url = req.url_for("youtube", &["oHg5SJYRHA0"]).unwrap();`
+    * 则 `assert_eq!(url.as_str(), "https://youtube.com/watch/oHg5SJYRHA0");`
+
+#### （5）路径正则化
+
+`App::new().wrap(actix_web::middleware::NormalizePath)` 用于合并多个 `/` 成一个（2.0不支持在最后添加`/`）
+
+#### （6）Guard
+
+支持通过请求头返回一个true或者false，来决定是否匹配，定义如下
+
+```rs
+pub trait Guard {
+    fn check(&self, request: &RequestHead) -> bool;
+}
+```
+
+Guard 还提供 `guard::Not` 等谓词来 连接多个 `guard`
+
+#### （7）修改默认的 Not Found 返回
+
+```rs
+App::new()
+    .service(web::resource("/").route(web::get().to(index)))
+    .default_service(
+        web::route()
+            .guard(guard::Not(guard::Get()))
+            .to(|| HttpResponse::MethodNotAllowed()),
+    )
+```
+
+### 2、请求
+
+Actix-web自动解压缩body。支持以下编解码器：
+
+* Brotli
+* Chunked
+* Compress
+* Gzip
+* Deflate
+* Identity
+* Trailers
+* EncodingExt
+
+会根据 `Content-Encoding` 头选择相应的解码器，但是 Actix-web 不支持 多编码 例如 `Content-Encoding: br, gzip`
+
+#### （1）JSON 请求
+
+针对 Json 请求，支持如下几种读取方式
+
+* 使用 `Json<T>` 提取器
+* 手动加载 `web::Payload` 到内存，手动反序列化成对象
+    * `web::Payload` 是反序列化后的字节流迭代器对象
+
+```rs
+use actix_web::{error, web, App, Error, HttpResponse};
+use bytes::BytesMut;
+use futures::StreamExt;
+use serde::{Deserialize, Serialize};
+use serde_json;
+
+#[derive(Serialize, Deserialize)]
+struct MyObj {
+    name: String,
+    number: i32,
+}
+
+const MAX_SIZE: usize = 262_144; // max payload size is 256k
+
+async fn index_manual(mut payload: web::Payload) -> Result<HttpResponse, Error> {
+    // payload is a stream of Bytes objects
+    let mut body = BytesMut::new();
+    while let Some(chunk) = payload.next().await {
+        let chunk = chunk?;
+        // limit max size of in-memory payload
+        if (body.len() + chunk.len()) > MAX_SIZE {
+            return Err(error::ErrorBadRequest("overflow"));
+        }
+        body.extend_from_slice(&chunk);
+    }
+
+    // body is loaded, now we can deserialize serde-json
+    let obj = serde_json::from_slice::<MyObj>(&body)?;
+    Ok(HttpResponse::Ok().json(obj)) // <- send response
+}
+```
+
+#### （2）Multipart body
+
+通过 [actix-multipart](https://crates.io/crates/actix-multipart) 提供多部分流支持 （例如 `multipart/form-data`）
+
+#### （3）Urlencoded body
+
+也就是 `application/x-www-form-urlencoded` 可以通过 `Form<T>` 解析
+
+#### （4）Streaming request
+
+通过 `web::Payload` 读取。例如打印请求体
+
+```rs
+use actix_web::{web, Error, HttpResponse};
+use futures::StreamExt;
+
+async fn index(mut body: web::Payload) -> Result<HttpResponse, Error> {
+    let mut bytes = web::BytesMut::new();
+    while let Some(item) = body.next().await {
+        bytes.extend_from_slice(&item?);
+    }
+
+    println!("Chunk: {:?}", bytes);
+    Ok(HttpResponse::Ok().finish())
+}
+```
+
+### 3、响应 Response
+
+#### （1）请求处理器返回响应的方式
+
+* 创建 `Response` 方式，使用 `actix_web::HttpResponse::Ok()` 等系列快捷方法，该方法将返回一个 `actix_http::ResponseBuilder` 类型，可以方便的指定
+    * `.content_type()`
+    * `.header()`
+    * `.body()`、`.finish()`、`json` 将返回 `HttpResponse`
+* 返回实现 `Responder` 的类型
+
+#### （2）编码
+
+使用 `Compress middleware` 中间件 `https://docs.rs/actix-web/2/actix_web/middleware/struct.Compress.html`，可以支持如下响应体编码：
+
+* `Brotli`
+* `Gzip`
+* `Deflate`
+* `Identity`
+
+使用方式
+
+* 基本配置 `App::new().wrap(middleware::Compress::default())`，相当于 `ContentEncoding::Auto`，即相依根据请求Header的 `Accept-Encoding` 头确定（自动协商）
+* 手动指定某个请求处理器的编码 `HttpResponse::Ok().encoding(ContentEncoding::Br)`
+* 全局使用某个编码 ` App::new().wrap(middleware::Compress::new(ContentEncoding::Br))`
+* 手动禁用某个请求处理器的压缩编码（比如返回内容本事就已经是压缩的，需要使用该配置，否则将压缩两次） `HttpResponse::Ok().encoding(ContentEncoding::Identity)` 例子：
+
+```rs
+use actix_web::{
+    http::ContentEncoding, middleware, dev::BodyEncoding, HttpResponse,
+};
+
+static HELLO_WORLD: &[u8] = &[
+    0x1f, 0x8b, 0x08, 0x00, 0xa2, 0x30, 0x10, 0x5c, 0x00, 0x03, 0xcb, 0x48, 0xcd, 0xc9,
+    0xc9, 0x57, 0x28, 0xcf, 0x2f, 0xca, 0x49, 0xe1, 0x02, 0x00, 0x2d, 0x3b, 0x08, 0xaf,
+    0x0c, 0x00, 0x00, 0x00,
+];
+
+async fn index() -> HttpResponse {
+    HttpResponse::Ok()
+        .encoding(ContentEncoding::Identity)
+        .header("content-encoding", "gzip")
+        .body(HELLO_WORLD)
+}
+```
+
+#### （3）JSON响应
+
+返回 `Json<T:Serialize>` 对象即可
+
+### 4、测试
+
+#### （1）单元测试
+
+`actix_web::test::TestRequest` 用于方便创建 `HttpRequest`
+
+* 常见的静态方法
+    * `::with_header("content-type", "text/plain")`
+    * `::with_hdr(h: Header)`
+    * `::with_uri(path)`
+    * `::get()`
+    * `::post()`
+    * `::put()` 等
+
+```rs
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::test;
+
+    // 单元测试
+    #[actix_rt::test]
+    async fn test_index_ok(){
+        // 构建测试的TestRequest
+        let req = test::TestRequest::get()
+            .header("content-type", "text/plain")
+            // .get()
+            .to_http_request();
+
+        println!("{:?}", req);
+
+        // 执行测试函数
+        let resp = index().await.respond_to(&req).await.ok().unwrap();
+
+        // 断言
+        assert_eq!(resp.status(), http::StatusCode::OK);
+    }
+}
+```
+
+#### （2）集成测试
+
+```rs
+use actix_web::{error, web, http, App, FromRequest, HttpResponse, HttpServer, Responder, Error, HttpRequest, Either, Result};
+
+use serde::{Serialize, Deserialize};
+use futures::future::{ready, Ready};
+
+// 自定义 Response
+#[derive(Serialize, Deserialize)]
+struct ResponseWrapper<T> {
+    code: i32,
+    msg: String,
+    data: Option<T>,
+}
+
+// Responder
+impl <T> Responder for ResponseWrapper<T> where T: Serialize {
+    type Error = Error;
+    type Future = Ready<Result<HttpResponse, Error>>;
+
+    fn respond_to(self, _req: &HttpRequest) -> Self::Future {
+        let body = serde_json::to_string(&self).unwrap();
+
+        // Create response and set content type
+        ready(Ok(HttpResponse::Ok()
+            .content_type("application/json")
+            .body(body)))
+    }
+}
+
+// curl http://localhost:8088/responder/custom_responder
+async fn responder_custom_responder() -> impl Responder {
+    ResponseWrapper {
+        code: 0,
+        msg: "success".to_string(),
+        data: Some("custom_responder".to_string()) }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::test;
+
+    // 集成测试
+    #[actix_rt::test]
+    async fn test_index_get() {
+        let mut app = test::init_service(App::new().route("/", web::get().to(index))).await;
+        let req = test::TestRequest::with_header("content-type", "text/plain").to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert!(resp.status().is_success());
+    }
+
+    #[actix_rt::test]
+    async fn test_index_post() {
+        let mut app = test::init_service(App::new().route("/", web::get().to(index))).await;
+        let req = test::TestRequest::post().uri("/").to_request();
+        let resp = test::call_service(&mut app, req).await;
+        assert!(resp.status().is_client_error());
+    }
+
+    #[actix_rt::test]
+    async fn test_json_response() {
+        let mut app = test::init_service(
+            App::new()
+                .data(AppState { app_name: "app_name".to_string() })
+                .route("/responder/custom_responder", web::get().to(responder_custom_responder)),
+        ).await;
+        let req = test::TestRequest::get().uri("/responder/custom_responder").to_request();
+        let resp: ResponseWrapper<String> = test::read_response_json(&mut app, req).await;
+
+        assert_eq!(resp.code, 0);
+    }
+}
+```
+
+#### （3）返回流测试
+
+参见：https://actix.rs/docs/testing/
+
+```rs
+use std::task::Poll;
+use bytes::Bytes;
+use futures::stream::poll_fn;
+
+use actix_web::http::{ContentEncoding, StatusCode};
+use actix_web::{web, http, App, Error, HttpRequest, HttpResponse};
+
+async fn sse(_req: HttpRequest) -> HttpResponse {
+    let mut counter: usize = 5;
+
+    // yields `data: N` where N in [5; 1]
+    let server_events = poll_fn(move |_cx| -> Poll<Option<Result<Bytes, Error>>> {
+        if counter == 0 {
+            return Poll::Ready(None);
+        }
+        let payload = format!("data: {}\n\n", counter);
+        counter -= 1;
+        Poll::Ready(Some(Ok(Bytes::from(payload))))
+    });
+
+    HttpResponse::build(StatusCode::OK)
+        .set_header(http::header::CONTENT_TYPE, "text/event-stream")
+        .set_header(
+            http::header::CONTENT_ENCODING,
+            ContentEncoding::Identity.as_str(),
+        )
+        .streaming(server_events)
+}
+
+pub fn main() {
+    App::new().route("/", web::get().to(sse));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_rt;
+
+    use futures_util::stream::StreamExt;
+    use futures_util::stream::TryStreamExt;
+
+    use actix_web::{test, web, App};
+
+    #[actix_rt::test]
+    async fn test_stream() {
+        let mut app = test::init_service(App::new().route("/", web::get().to(sse))).await;
+        let req = test::TestRequest::get().to_request();
+
+        let mut resp = test::call_service(&mut app, req).await;
+        assert!(resp.status().is_success());
+
+        // first chunk
+        let (bytes, mut resp) = resp.take_body().into_future().await;
+        assert_eq!(bytes.unwrap().unwrap(), Bytes::from_static(b"data: 5\n\n"));
+
+        // second chunk
+        let (bytes, mut resp) = resp.take_body().into_future().await;
+        assert_eq!(bytes.unwrap().unwrap(), Bytes::from_static(b"data: 4\n\n"));
+
+        // remaining part
+        let bytes = test::load_stream(resp.take_body().into_stream()).await;
+        assert_eq!(bytes.unwrap(), Bytes::from_static(b"data: 3\n\ndata: 2\n\ndata: 1\n\n"));
+    }
+}
+```
+
+### 5、中间件
+
+Actix-web 的中间件允许我们向请求/响应中添加其他行为。中间件可以挂接到传入的请求流程中，使我们能够修改请求以及暂停请求处理以尽早返回响应。
+
+通常，中间件涉及以下操作：
+
+* 请求之前附加逻辑
+* 响应之后附加逻辑
+* 修改Application State
+* 访问外部服务（如Redis、日志记录、会话等）
+
+中间件可以注册到 `App`、`Scope` 和 `Resource`。并以与注册相反的顺序执行。通常，一个中间件的实现需要实现 `Service` 特质 和 `Transform` 特质。这两个特质都有默认的方法实现（就是什么都不做）
+
+#### （1）自定义实现中间件
+
+工厂特质 `Transform` 用于创建一个 `Service` 类型，相当于如下函数
+
+* `async fn new_transform<NextReq, NextRes, NextErr, Req, Res, Err, InitErr>(next_service: Service<NextReq, NextRes, NextErr>) -> Result<Service<Req, Res, Err>, InitErr>`
+
+`Service` 类型（服务/中间件），相当于如下两个函数
+
+* 一个异步处理函数 `async fn<Req, Res, Err>(req: Req) -> Result<Res, Err>`
+* 一个异步就绪判断 `async fn poll_ready<Err>() -> Result<(), Err>`
+
+```rs
+use std::pin::Pin;
+use std::task::{Context, Poll};
+
+use actix_service::{Service, Transform};
+use actix_web::{dev::ServiceRequest, dev::ServiceResponse, Error};
+use futures::future::{ok, Ready};
+use std::future::Future;
+
+async fn index() -> impl Responder {
+    HttpResponse::Ok().body("Hello world!")
+}
+
+// 中间件处理分为两个步骤。
+// 1. 中间件初始化，使用链中的下一个服务作为参数调用中间件工厂。
+// 2. 中间件的call方法被普通请求调用。
+pub struct SayHi;
+
+// 中间件工厂需要实现 `Transform` 来自 `actix-service` crate
+// Transform 特质相当于如下函数声明（忽略错误）
+// type Service = async fn<Req, Res, Err>(req: Req) -> Result<Res, Err>
+// async fn new_transform<NextReq, NextRes, NextErr, Req, Res, Err, InitErr>(next_service: Service<NextReq, NextRes, NextErr>) -> Result<Service<Req, Res, Err>, InitErr>
+
+// `S` - 下一个 service 的 类型
+// `B` - response body 的类型
+impl<S, B> Transform<S> for SayHi
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S::Future: 'static,
+    B: 'static,
+{
+    // 当前 Service 的请求
+    type Request = ServiceRequest;
+    // 当前 Service 的响应
+    type Response = ServiceResponse<B>;
+    // 当前 Service 的错误类型
+    type Error = Error;
+    // 创建 当前 Service 时可能出现的错误
+    type InitError = ();
+    // 当前 Transform 的类型
+    type Transform = SayHiMiddleware<S>;
+    // 异步的包装
+    type Future = Ready<Result<Self::Transform, Self::InitError>>;
+
+    // 工厂方法
+    fn new_transform(&self, service: S) -> Self::Future {
+        ok(SayHiMiddleware { service })
+    }
+}
+
+pub struct SayHiMiddleware<S> {
+    service: S,
+}
+
+// Service 中间件/服务，基本等价于
+// 一个异步处理函数：async fn<Req, Res, Err>(req: Req) -> Result<Res, Err>
+// 一个异步就绪判断：async fn poll_ready<Err>() -> Result<(), Err>
+// 服务是 Actix-web 的核心抽象
+impl<S, B> Service for SayHiMiddleware<S>
+where
+    S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,
+    S::Future: 'static,
+    B: 'static,
+{
+    type Request = ServiceRequest;
+    type Response = ServiceResponse<B>;
+    type Error = Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>>>>;
+
+    // 一个异步函数
+    // 确定当前 Service 是否可以处理请求，不可以处理时，返回 Pending
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        self.service.poll_ready(cx)
+    }
+
+    // 处理函数，不应该调用 poll_ready。允许
+    // actix可能在不调用poll_ready的情况下调用call，因此实现上必须要考虑这一点
+    fn call(&mut self, req: ServiceRequest) -> Self::Future {
+        println!("Hi from start. You requested: {}", req.path());
+
+        let fut = self.service.call(req);
+
+        Box::pin(async move {
+            let res = fut.await?;
+
+            println!("Hi from response");
+            Ok(res)
+        })
+    }
+}
+
+
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(move || {
+        App::new()
+            .wrap(SayHi{})
+            .route("/", web::get().to(index))
+    }
+}
+```
+
+#### （2）使用 `wrap_fn` 注册简单的中间件
+
+```rs
+use actix_service::Service;
+use actix_web::{web, App};
+use futures::future::FutureExt;
+
+#[actix_rt::main]
+async fn main() {
+    let app = App::new()
+        .wrap_fn(|req, srv| {
+            println!("Hi from start. You requested: {}", req.path());
+            srv.call(req).map(|res| {
+                println!("Hi from response");
+                res
+            })
+        })
+        .wrap_fn(|req, srv| {
+            println!("Hi from start. You requested: {}", req.path());
+            let fut = srv.call(req);
+            async {
+                let res = fut.await;
+                println!("Hi from response");
+                res
+            }
+        })
+        .route(
+            "/index.html",
+            web::get().to(|| async {
+                "Hello, middleware!"
+            }),
+        );
+}
+```
+
+#### （3）内置中间件——Logging
+
+依赖
+
+```rs
+env_logger = "0.7"
+```
+
+基本使用
+
+```rs
+use actix_web::middleware::Logger;
+use env_logger;
+
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
+    use actix_web::{App, HttpServer};
+
+    std::env::set_var("RUST_LOG", "actix_web=info");
+    env_logger::init();
+
+    HttpServer::new(|| {
+        App::new()
+            .wrap(Logger::default())
+            .wrap(Logger::new("%a %{User-Agent}i"))
+    })
+    .bind("127.0.0.1:8088")?
+    .run()
+    .await
+}
+```
+
+默认格式为：
+
+```
+%a %t "%r" %s %b "%{Referer}i" "%{User-Agent}i" %T
+```
+
+格式标志的含义
+
+%% 百分号
+%a IP地址 (如果是反向代理则是代理的IP地址)
+%t 请求开始处理的时间
+%P 为请求提供服务的孩子的进程ID
+%r 请求的第一行，也就是 类是这种 "GET /app_state HTTP/1.1"
+%s 响应吗
+%b 响应大小（以字节为单位），包括HTTP标头
+%T 服务请求所用的时间，以秒为单位，浮动分数为.06f格式
+%D 服务请求所花费的时间（以毫秒为单位）
+%{FOO}i `request.headers[‘FOO’]`
+%{FOO}o `response.headers[‘FOO’]`
+%{FOO}e `os.environ[‘FOO’]`
+
+#### （4）内置中间件——Default headers
+
+配置默认响应头
+
+```rs
+use actix_web::{http, middleware, HttpResponse};
+
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
+    use actix_web::{web, App, HttpServer};
+
+    HttpServer::new(|| {
+        App::new()
+            .wrap(middleware::DefaultHeaders::new().header("X-Version", "0.2"))
+            .service(
+                web::resource("/test")
+                    .route(web::get().to(|| HttpResponse::Ok()))
+                    .route(
+                        web::method(http::Method::HEAD)
+                            .to(|| HttpResponse::MethodNotAllowed()),
+                    ),
+            )
+    })
+    .bind("127.0.0.1:8088")?
+    .run()
+    .await
+}
+```
+
+#### （5）User sessions 中间件
+
+Actix-web提供了会话管理的通用解决方案。actix-session中间件可以与不同的后端类型一起使用，以将会话数据存储在不同的后端中。
+
+默认情况下仅实现基于 cookie 后端 的 Session 方案（数据存储在指定 Cookie 中），其他后端类型可以自定义实现
+
+[基于 Cookie 后端](https://docs.rs/actix-session/0.3.0/actix_session/struct.CookieSession.html) 的后端实现为 `CookieSessionBackend`。该方式可以存储小于4000字节的数据
+
+依赖库 `actix-session = "0.3"`
+
+```rs
+use actix_session::{CookieSession, Session};
+use actix_web::{web, App, Error, HttpResponse, HttpServer};
+
+async fn index(session: Session) -> Result<HttpResponse, Error> {
+    // access session data
+    if let Some(count) = session.get::<i32>("counter")? {
+        session.set("counter", count + 1)?;
+    } else {
+        session.set("counter", 1)?;
+    }
+
+    Ok(HttpResponse::Ok().body(format!(
+        "Count is {:?}!",
+        session.get::<i32>("counter")?.unwrap()
+    )))
+}
+
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .wrap(
+                CookieSession::signed(&[0; 32]) // <- create cookie based session middleware
+                    .secure(false),
+            )
+            .service(web::resource("/").to(index))
+    })
+    .bind("127.0.0.1:8088")?
+    .run()
+    .await
+}
+```
+
+#### （6）内置中间件——错误处理
+
+`ErrorHandlers` 允许你为特定错误码添加处理程序
+
+```rs
+use actix_web::middleware::errhandlers::{ErrorHandlerResponse, ErrorHandlers};
+use actix_web::{dev, http, HttpResponse, Result};
+
+fn render_500<B>(mut res: dev::ServiceResponse<B>) -> Result<ErrorHandlerResponse<B>> {
+    res.response_mut().headers_mut().insert(
+        http::header::CONTENT_TYPE,
+        http::HeaderValue::from_static("Error"),
+    );
+    Ok(ErrorHandlerResponse::Response(res))
+}
+
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
+    use actix_web::{web, App, HttpServer};
+
+    HttpServer::new(|| {
+        App::new()
+            .wrap(
+                ErrorHandlers::new()
+                    .handler(http::StatusCode::INTERNAL_SERVER_ERROR, render_500),
+            )
+            .service(
+                web::resource("/test")
+                    .route(web::get().to(|| HttpResponse::Ok()))
+                    .route(web::head().to(|| HttpResponse::MethodNotAllowed())),
+            )
+    })
+    .bind("127.0.0.1:8088")?
+    .run()
+    .await
+}
+```
+
+### 5、静态文件
+
+#### （1）单个文件
+
+使用路由创建一个处理函数，返回一个 `NamedFile::open` 类型即可
+
+```rs
+use actix_files::NamedFile;
+use actix_web::{HttpRequest, Result};
+use std::path::PathBuf;
+
+async fn index(req: HttpRequest) -> Result<NamedFile> {
+    let path: PathBuf = req.match_info().query("filename").parse().unwrap();
+    Ok(NamedFile::open(path)?)
+}
+
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
+    use actix_web::{web, App, HttpServer};
+
+    HttpServer::new(|| App::new().route("/{filename:.*}", web::get().to(index)))
+        .bind("127.0.0.1:8088")?
+        .run()
+        .await
+}
+```
+
+#### （2）目录
+
+```rs
+use actix_files as fs;
+use actix_web::{App, HttpServer};
+
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new().service(fs::Files::new("/static", ".").show_files_listing())
+    })
+    .bind("127.0.0.1:8088")?
+    .run()
+    .await
+}
+```
+
+其他内容 参见 [API文档](https://docs.rs/actix-files/0.2.1/actix_files/)
+
+## 四、协议
+
+### 1、WebSocket
+
+> 解析入门：https://www.cnblogs.com/chyingp/p/websocket-deep-in.html
+
+Actix-web 通过 `actix-web-actors` crate 支持 WebSocket。可以使用 `web::Payload` 将请求的有效负载转换为 `ws::Message` 流，然后使用流组合器来处理实际消息，但是处理与http actor的websocket通信更简单。
+
+```rs
+use actix::{Actor, StreamHandler};
+use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
+use actix_web_actors::ws;
+
+/// 定义Http Actor
+struct MyWs;
+
+impl Actor for MyWs {
+    type Context = ws::WebsocketContext<Self>;
+}
+
+/// 一个 ws::Message 消息的 处理器
+impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for MyWs {
+    fn handle(
+        &mut self,
+        msg: Result<ws::Message, ws::ProtocolError>,
+        ctx: &mut Self::Context,
+    ) {
+        match msg {
+            Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
+            Ok(ws::Message::Text(text)) => ctx.text(text),
+            Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
+            _ => (),
+        }
+    }
+}
+
+// ws://localhost:8088/ws/echo
+/*
+curl --include \
+     --no-buffer \
+     --header "Connection: Upgrade" \
+     --header "Upgrade: websocket" \
+     --header "Host: echo.websocket.org" \
+     --header "Origin: https://echo.websocket.org" \
+     --header "Sec-WebSocket-Key: NVwjmQUcWCenfWu98asDmg==" \
+     --header "Sec-WebSocket-Version: 13" \
+     http://localhost:8088/ws/echo
+*/
+async fn ws_echo(req: HttpRequest, stream: web::Payload) -> Result<HttpResponse, Error> {
+    let resp = ws::start(MyWs {}, &req, stream);
+    println!("{:?}", resp);
+    resp
+}
+
+
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
+
+    HttpServer::new(move || {
+
+        App::new()
+            .service(
+                web::scope("/ws")
+                    .route("/echo", web::get().to(ws_echo))
+            )
+    })
+    .bind("127.0.0.1:8088")?
+    .run()
+    .await
+}
+```
+
+例子
+
+* [echo](https://github.com/actix/examples/tree/master/websocket/)
+* [websocket-chat](https://github.com/actix/examples/tree/master/websocket-chat/)
+
+### 2、HTTP2.0
