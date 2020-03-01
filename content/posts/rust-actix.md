@@ -1608,3 +1608,55 @@ async fn main() -> std::io::Result<()> {
 * [websocket-chat](https://github.com/actix/examples/tree/master/websocket-chat/)
 
 ### 2、HTTP2.0
+
+HTTP 2.0 参见 [HTTP 协议连接技术演进](/posts/http-connection-evolution/)
+
+https://actix.rs/docs/http2/
+
+## 五、自动加载服务器
+
+安装相关二进制工具
+
+```bash
+cargo install systemfd cargo-watch
+```
+
+添加依赖
+
+```rs
+[dependencies]
+listenfd = "0.3
+```
+
+修改代码
+
+```rs
+use actix_web::{web, App, HttpRequest, HttpServer, Responder};
+use listenfd::ListenFd;
+
+async fn index(_req: HttpRequest) -> impl Responder {
+    "Hello World!"
+}
+
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
+    let mut listenfd = ListenFd::from_env();
+    let mut server = HttpServer::new(|| App::new().route("/", web::get().to(index)));
+
+    server = if let Some(l) = listenfd.take_tcp_listener(0).unwrap() {
+        server.listen(l)?
+    } else {
+        server.bind("127.0.0.1:3000")?
+    };
+
+    server.run().await
+}
+```
+
+启动
+
+```bash
+systemfd --no-pid -s http::8088 -- cargo watch -x run
+```
+
+## 六、数据库
