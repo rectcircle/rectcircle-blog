@@ -26,6 +26,7 @@ tags:
 > * [Rust 官方论坛](https://users.rust-lang.org/)
 > * [Rust 技术论坛](https://learnku.com/rust)
 > * [Rust 语言中文社区](https://rust.cc/)
+> * [Rust 库热度](https://lib.rs/)
 
 ## 一、安装和配置
 

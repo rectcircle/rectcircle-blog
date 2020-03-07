@@ -1,5 +1,5 @@
 ---
-title: "Rust Actix"
+title: "Rust 异步Web 框架 Actix-web（包括 Actor 框架 Actix）"
 date: 2020-02-23T18:02:41+08:00
 draft: false
 toc: true

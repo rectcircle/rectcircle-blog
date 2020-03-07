@@ -1,5 +1,5 @@
 ---
-title: "Rust Crate Favorite"
+title: "Rust Crate 收藏"
 date: 2020-02-17T13:33:17+08:00
 draft: false
 toc: true

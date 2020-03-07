@@ -1,5 +1,5 @@
 ---
-title: "Rust Web Framework Rocket"
+title: "Rust Web 框架 Rocket"
 date: 2020-02-04T17:14:48+08:00
 draft: false
 toc: true
