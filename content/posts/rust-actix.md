@@ -1660,3 +1660,130 @@ systemfd --no-pid -s http::8088 -- cargo watch -x run
 ```
 
 ## 六、数据库
+
+> 本部分前序文章： [rust-diesel](/posts/rust-diesel/)
+
+核心API：
+
+* `actix_web::block` 用于包装阻塞函数
+
+以 `diesel` 为例
+
+添加依赖 `Cargo.toml`
+
+```toml
+# 数据库
+diesel = { version = "1.4", features = ["mysql", "r2d2", "chrono"] }
+dotenv = "0.15.0"
+# 时间日期
+chrono = "0.4"
+```
+
+配置数据库连接 `.env`
+
+```env
+DATABASE_URL=mysql://root:123456@localhost/actix_learn
+```
+
+初始化测试表
+
+```bash
+diesel setup
+diesel migration generate init
+```
+
+编辑数据表初始化文件 `migrations/2020-03-04-090155_init/up.sql`
+
+```sql
+-- Your SQL goes here
+CREATE TABLE posts (
+  id BIGINT PRIMARY KEY auto_increment comment 'ID',
+  user_id BIGINT not null,
+  title VARCHAR(256) NOT NULL comment '标题',
+  body TEXT NOT NULL comment '内容',
+  published BOOLEAN NOT NULL DEFAULT 0 comment '是否发布'
+);
+
+CREATE TABLE users (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  name TEXT NOT NULL,
+  hair_color TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+`migrations/2020-03-04-090155_init/down.sql`
+
+```sql
+-- This file should undo anything in `up.sql`
+DROP TABLE posts
+DROP TABLE users;
+```
+
+执行数据库变更
+
+```bash
+diesel migration run
+```
+
+编写代码
+
+`src/lib.rs`
+
+```rs
+#[macro_use]
+extern crate diesel;
+extern crate dotenv;
+
+use diesel::prelude::*;
+use dotenv::dotenv;
+use diesel::r2d2;
+use std::env;
+
+pub mod schema;
+pub mod model;
+
+pub type PoolConnection = r2d2::Pool<r2d2::ConnectionManager<MysqlConnection>>;
+
+pub fn new_connection_pool() ->  PoolConnection {
+    dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+    let manager = r2d2::ConnectionManager::<MysqlConnection>::new(database_url);
+    let pool = r2d2::Pool::builder()
+        .max_size(15)
+        .build(manager)
+        .expect("Failed to create pool.");
+    pool
+}
+```
+
+`src/main.rs`
+
+```rs
+use actix_learn::*;
+use diesel::prelude::*;
+
+// curl http://localhost:8088/block/user/create
+async fn create_user(pool: web::Data<PoolConnection>) -> String {
+    let conn = pool.get().expect("couldn't get db connection from pool");
+
+    let r = web::block(move ||  {
+        use schema::users;
+        let user = model::UserForInsert {
+            name: "name".to_string(),
+            hair_color: Some("blank".to_string()),
+        };
+        diesel::insert_into(users::table)
+            .values(&user)
+            .execute(&conn)
+    }).await;
+    if let Err(e) = r {
+        String::from(format!("{:?}", e))
+    } else {
+        String::from("create_success")
+    }
+}
+```

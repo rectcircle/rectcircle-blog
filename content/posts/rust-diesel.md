@@ -949,7 +949,7 @@ let generated_id = diesel::sql_query("select LAST_INSERT_ID() as id")
 * 默认情况下 不会更新主键
 * 如果主键不是 id，必须使用过 `#[primary_key(your_key)]` 指明
 * 默认情况下 `None` 对象表示忽略更新的字段
-    * 通过 `[changeset_options(treat_none_as_null="true")]` 配置 None 字段以 null 更新
+    * 通过 `#[changeset_options(treat_none_as_null="true")]` 配置 None 字段以 null 更新
     * 另外一种方案可以通过 `Option<Option<T>>` 可以完全处理这个问题
         * `None` 表示忽略
         * `Some(None)` 表示更新为 `NULL`
@@ -1470,6 +1470,7 @@ extern crate dotenv;
 use diesel::prelude::*;
 use diesel::mysql::MysqlConnection;
 use dotenv::dotenv;
+use diesel::r2d2;
 use std::env;
 
 // 建立连接
@@ -1482,6 +1483,19 @@ pub fn establish_connection() -> MysqlConnection {
     // 建连MySQL连接
     MysqlConnection::establish(&database_url)
         .expect(&format!("Error connecting to {}", database_url))
+}
+
+pub fn new_connection_pool() -> r2d2::Pool<r2d2::ConnectionManager<MysqlConnection>> {
+    dotenv().ok();
+
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+    let manager = r2d2::ConnectionManager::<MysqlConnection>::new(database_url);
+    let pool = r2d2::Pool::builder()
+        .max_size(15)
+        .build(manager)
+        .expect("Failed to create pool.");
+    pool
 }
 ```
 
