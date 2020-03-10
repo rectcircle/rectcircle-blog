@@ -1787,3 +1787,476 @@ async fn create_user(pool: web::Data<PoolConnection>) -> String {
     }
 }
 ```
+
+## 七、设计图
+
+### 1、HTTP Server初始化
+
+```rs
+#[actix_rt::main]
+async fn main() -> std::io::Result<()> {
+    HttpServer::new(|| {
+        App::new()
+            .route("/", web::to(|| HttpResponse::Ok()))
+    })
+    .bind("127.0.0.1:8088")?
+    .run()
+    .await
+}
+```
+
+如上代码的 时序图 如下
+
+![actix_web server 初始化](https://actix.rs/img/diagrams/http_server.svg)
+
+### 2、连接生命周期
+
+Server 开始侦听所有套接字后，Accept和Worker是两个主要循环，负责处理传入的客户端连接。
+
+总体 时序图 如下
+
+![总体时序图](https://actix.rs/img/diagrams/connection_overview.svg)
+
+Accept 循环细节 如下
+
+![connection_accept](https://actix.rs/img/diagrams/connection_accept.svg)
+
+Worker 循环细节 如下
+
+![connection_worker](https://actix.rs/img/diagrams/connection_worker.svg)
+
+Request 循环
+
+![connection_request](https://actix.rs/img/diagrams/connection_request.svg)
+
+## 八、Actor 系统（Actix）
+
+> 参考：
+>
+> * [Actix 文档](https://actix.rs/book/actix/)
+> * [例子](https://github.com/actix/actix/tree/master/examples/)
+
+### 1、Getting Started
+
+添加依赖 `Cargo.toml`
+
+```toml
+[dependencies]
+actix = "0.9"
+futures = "0.3"
+```
+
+`src/bin/actor_ping.rs`
+
+```rs
+extern crate actix;
+use actix::prelude::*;
+
+// 测试 Actor 对象
+struct MyActor {
+    count: usize,
+}
+
+// 所有的 Actor 必须实现 Actor 特质
+impl Actor for MyActor {
+    // 每个 Actor 都有一个执行上下文
+    type Context = Context<Self>;
+}
+
+// Actor 接收的参数
+struct Ping(usize);
+
+// Actor 接收的参数必须实现 Message 对象
+impl Message for Ping {
+    // 定义 该参数的 返回值类型
+    type Result = usize;
+}
+
+// Actor 的具体处理函数
+impl Handler<Ping> for MyActor {
+    // 返回值
+    type Result = usize;
+
+    fn handle(&mut self, msg: Ping, _ctx: &mut Context<Self>) -> Self::Result {
+        self.count += msg.0;
+
+        self.count
+    }
+}
+
+#[actix_rt::main]
+async fn main() {
+    // 启动一个Actor，返回一个 Addr<MyActor>
+    let addr = MyActor { count: 10 }.start();
+
+    // 发送消息并获取 Future 结果
+    let res = addr.send(Ping(10)).await;
+
+    // handle() returns tokio handle
+    // 返回一个结果
+    println!("RESULT: {}", res.unwrap() == 20);
+
+    // stop system and exit
+    System::current().stop();
+}
+```
+
+运行：`cargo run --bin actor_ping`
+
+### 2、Actor
+
+Actix 是一个 基于 [Actor 模型](https://en.wikipedia.org/wiki/Actor_model) 的 Rust 库
+
+该模型允许将应用程序编写为一组通过消息进行通信的独立执行但相互协作的 Actor 。Actor 是封装状态和行为并在actix库提供的Actor系统中运行的对象。
+
+Actor在特定的执行上下文 `Context<A>` 中运行。上下文对象仅在执行期间可用。每个参与者都有一个单独的执行上下文。执行上下文还控制 Actor 的生命周期。
+
+Actor 仅通过交换消息进行通信。发送方可以选择等待响应。Actor 不是直接引用的，而是通过地址引用的。
+
+任何类型的都可以是一个 Actor，它只需要实现 Actor 特质即可。
+
+为了能够处理特定的消息，Actor 必须为此消息提供 `Handler<M>` 实现。所有消息都是静态类型的。消息可以异步方式处理。Actor可以产生其他actor或将Future或stream添加到执行上下文。Actor特征提供了几种方法，可以控制Actor的生命周期。
+
+#### （1）Actor 生命周期
+
+**Started**
+
+Actor 以 Started 状态开始。在此状态下，将调用 Actor 的 `started()` 方法。Actor 特质提供了此方法的默认实现。actor上下文在此状态下可用，并且 actor 可以启动更多 actor 或注册异步流或进行任何其他所需的配置。
+
+**Running**
+
+Actor 在 `started()` 方法被调用后处于的状态，Actor可以一致保持运行状态。
+
+**Stopping**
+
+在以下情况下，Actor的执行状态变为停止状态：
+
+* `Context::stop` 被自己调用
+* Actor 的所有地址都会被丢弃。即没有其他演员引用它
+* 在上下文中没有注册任何事件对象。
+
+通过创建新地址或添加事件对象，并返回 `Running::Continue` actor可以从停止状态恢复到运行状态。
+
+如果一个 Actor 由于调用 `Context::stop()` 而将状态更改为停止，则上下文会立即停止处理传入消息并调用 `Actor::stopping()` 。如果参与者没有恢复到运行状态，则会丢弃所有未处理的消息。默认情况下，此方法返回 `Running::Stop` ，以确认停止操作。
+
+**Stopped**
+
+如果参与者在 `Stopping` 状态期间未修改执行上下文，则参与者状态将变为 `Stopped`。该状态被认为是最终状态，此时 Actor 将被 Drop
+
+#### （2）Message
+
+Actor 通过发送消息与其他 Actor 进行通信。在 actix 中的所有消息都是有类型的。消息需要实现 `Message` 特质。`Message::Result` 定义返回类型。让我们定义一个简单的Ping消息-接受此消息的actor需要返回 `io::Result<bool>`。
+
+```rs
+use std::io;
+use actix::prelude::*;
+
+struct Ping;
+
+impl Message for Ping {
+    type Result = Result<bool, io::Error>;
+}
+```
+
+#### （3）产生一个Actor
+
+如何启动 Actor 取决于其上下文。通过 Actor 特性的启动和创建方法可以生成新的异步actor。它提供了多种创建参与者的方法。有关详细信息，参见下文。
+
+#### （4）用MessageResponse作为Actor的返回值
+
+```rs
+pub trait MessageResponse<A: Actor, M: Message> {
+    fn handle<R: ResponseChannel<M>>(self, ctx: &mut A::Context, tx: Option<R>);
+}
+```
+
+`src/bin/actor_ping2.rs`
+
+```rs
+extern crate actix;
+use actix::prelude::*;
+use actix::dev::{MessageResponse, ResponseChannel};
+
+// 测试 Actor 对象
+struct MyActor {
+    count: usize,
+}
+
+// 所有的 Actor 必须实现 Actor 特质
+impl Actor for MyActor {
+    // 每个 Actor 都有一个执行上下文
+    type Context = Context<Self>;
+}
+
+// Actor 接收的参数
+struct Ping(usize);
+
+// Actor 接收的参数必须实现 Message 对象
+impl Message for Ping {
+    // 定义 该参数的 返回值类型
+    type Result = Pong;
+}
+
+// 这是返回值
+#[derive(Debug)]
+struct Pong(bool);
+
+// 返回值必须实现 MessageResponse 特质
+impl<A, M> MessageResponse<A, M> for Pong
+where
+    A: Actor,
+    M: Message<Result = Pong>,
+{
+    // 将 返回值 发送出去的逻辑
+    fn handle<R: ResponseChannel<M>>(self, _: &mut A::Context, tx: Option<R>) {
+        if let Some(tx) = tx {
+            tx.send(self);
+        }
+    }
+}
+
+// Actor 的具体处理函数
+impl Handler<Ping> for MyActor {
+    // 返回值
+    type Result = Pong;
+
+    fn handle(&mut self, msg: Ping, _ctx: &mut Context<Self>) -> Self::Result {
+        self.count += msg.0;
+
+        // self.count
+        Pong(true)
+    }
+}
+
+#[actix_rt::main]
+async fn main() {
+    // 启动一个Actor，返回一个 Addr<MyActor>
+    let addr = MyActor { count: 10 }.start();
+
+    // 发送消息并获取 Future 结果
+    let res = addr.send(Ping(10)).await;
+
+    // handle() returns tokio handle
+    // 返回一个结果
+    println!("RESULT: {:?}", res);
+
+    // stop system and exit
+    System::current().stop();
+}
+```
+
+运行：`cargo run --bin actor_ping2`
+
+### 3、地址
+
+Actor 仅通过交换消息进行通信。发送方可以选择等待响应。无法仅通过其地址直接引用Actor。
+
+有几种获取 Actor 地址的方法。Actor 特征提供了两种启动 Actor 的辅助方法。两者都返回 `started` 角色的地址。
+
+* `MyActor.start();`
+* `let addr = ctx.address();`
+
+#### （1）消息
+
+要将消息发送给参与者，需要使用Addr对象。Addr提供了几种发送消息的方法。
+
+* `Addr::do_send(M) -> ()` 此方法将忽略邮件发送中的任何错误。如果邮箱已满，则邮件仍在排队，绕过限制。如果参与者的邮箱已关闭，则该消息将被静默丢弃。此方法不会返回结果，因此，如果邮箱已关闭并且发生故障，则不会有任何指示。
+* `Addr::try_send(M) -> Result<(), SendError> ` 此方法尝试立即发送消息。如果邮箱已满或关闭（角色已死），则此方法返回 `SendError`。
+* `Addr::send(M) -> Future<Result<M::Result, MailboxError>>` 该消息返回一个将来的对象，该对象解析为消息处理过程的结果。如果丢弃返回的Future对象，则该消息将被取消
+
+#### （2）收件人（Recipient）
+
+一种特殊的 `Addr`，是 `Addr` 的一种 `Clone`。一般作为 Actor 结构体的成员，用于 Actor 的组合
+
+参见：https://github.com/actix/actix/blob/master/examples/ring.rs
+
+### 4、Content
+
+Actor 维护一个内部执行上下文或状态。这样，参与者可以确定自己的地址，更改邮箱限制或停止执行。
+
+* 设置邮箱容量 `ctx.set_mailbox_capacity(1);`
+* 获取自身地址 `ctx.address()`
+* 停止 Actor `ctx.stop()`
+
+#### （1）Mailbox
+
+所有消息都首先发送到 Actor 的邮箱，然后 Actor 的执行上下文调用特定的消息处理程序。邮箱通常是有界的。该能力特定于上下文实现。对于Context类型，默认情况下，容量设置为16条消息，可以使用 `Context::set_mailbox_capacity()` 增加容量。
+
+```rs
+struct MyActor;
+impl Actor for MyActor {
+    type Context = Context<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        ctx.set_mailbox_capacity(1);
+    }
+}
+
+let addr = MyActor.start();
+```
+
+对 `Addr::do_send(M)` 或完全绕过邮箱的 `AsyncContext::notify(M)` 和 `AsyncContext::notify_later(M, Duration)` 无效。
+
+#### （2）获取Actor地址
+
+Actor 可以从上下文中查看自己的地址。
+
+```rs
+
+struct MyActor;
+
+struct WhoAmI;
+
+impl Message for WhoAmI {
+    type Result = Result<actix::Addr<MyActor>, ()>;
+}
+
+impl Actor for MyActor {
+    type Context = Context<Self>;
+}
+
+impl Handler<WhoAmI> for MyActor {
+    type Result = Result<actix::Addr<MyActor>, ()>;
+
+    fn handle(&mut self, msg: WhoAmI, ctx: &mut Context<Self>) -> Self::Result {
+        Ok(ctx.address())
+    }
+}
+
+let who_addr = addr.do_send(WhoAmI {} );
+```
+
+#### （3）停止Actor
+
+在参与者执行上下文中，您可以选择阻止参与者处理任何将来的邮箱消息。这可能是对错误情况的响应，或者是程序关闭的一部分。为此，请调用 `Context::stop()`。
+
+```rs
+impl Handler<Ping> for MyActor {
+    type Result = usize;
+
+    fn handle(&mut self, msg: Ping, ctx: &mut Context<Self>) -> Self::Result {
+        self.count += msg.0;
+
+        if self.count > 5 {
+            println!("Shutting down ping receiver.");
+            ctx.stop()
+        }
+
+        self.count
+    }
+}
+```
+
+### 5、Arbiter
+
+即 Actor 异步执行器，运行在 tokio （`rt-core`单线程）之上。
+
+`src/bin/actor_arbiter.rs`
+
+```rs
+extern crate actix;
+extern crate futures;
+use actix::prelude::*;
+use futures::FutureExt;
+use futures::TryFutureExt;
+
+struct SumActor {}
+
+impl Actor for SumActor {
+    type Context = Context<Self>;
+}
+
+struct Value(usize, usize);
+
+impl Message for Value {
+    type Result = usize;
+}
+
+impl Handler<Value> for SumActor {
+    type Result = usize;
+
+    fn handle(&mut self, msg: Value, _ctx: &mut Context<Self>) -> Self::Result {
+        msg.0 + msg.1
+    }
+}
+
+struct DisplayActor {}
+
+impl Actor for DisplayActor {
+    type Context = Context<Self>;
+}
+
+struct Display(usize);
+
+impl Message for Display {
+    type Result = ();
+}
+
+impl Handler<Display> for DisplayActor {
+    type Result = ();
+
+    fn handle(&mut self, msg: Display, _ctx: &mut Context<Self>) -> Self::Result {
+        println!("Got {:?}", msg.0);
+    }
+}
+
+fn main() {
+    let system = System::new("single-arbiter-example");
+
+    // 创建 Addr
+    let sum_addr = SumActor {}.start();
+    let dis_addr = DisplayActor {}.start();
+
+    // 定义一个执行流的Future
+    // 起初发送 `Value(6, 7)` 给 `SumActor`
+    // `Addr::send` 返回 `Request` 类型，该类型实现了 `Future`
+    // Future::Output = Result<usize, MailboxError>
+    let execution = sum_addr
+        .send(Value(6, 7))
+        // `.map_err` 转换 `Future<usize, MailboxError>` 为 `Future<usize, ()>`
+        //   如果有错误将打印错误信息
+        // 实现来自于 use futures::TryFutureExt;
+        .map_err(|e| {
+            eprintln!("Encountered mailbox error: {:?}", e);
+        })
+        // 假设发送成功，并成功返回，and_then将得到执行，其中参数为上一个Future的Result<T, E> 的 T
+        // 实现来自于 use futures::TryFutureExt;
+        .and_then(move |res| {
+            // `res` 是 `SumActor` 参数为 `Value(6, 7)` 的返回值，类型为 `usize`
+
+            // res 发送给 DisplayActor 展示
+            dis_addr.send(Display(res)).map_err(|_| ())
+        })
+        .map(move |_| {
+            // 当 DisplayActor 返回后停止，将关闭所有 Actor
+            System::current().stop();
+        });
+
+    // 提交 Future 到 Arbiter/event 循环中
+    Arbiter::spawn(execution);
+
+    system.run().unwrap();
+}
+```
+
+### 6、SyncArbiter
+
+```rs
+use actix::prelude::*;
+
+struct MySyncActor;
+
+impl Actor for MySyncActor {
+    type Context = SyncContext<Self>;
+}
+
+
+fn main() {
+
+    // 同步执行器
+    // 创建运行在指定线程中的Actor
+    let addr = SyncArbiter::start(2, || MySyncActor);
+}
+```
+
+Sync Actor没有邮箱限制，但您仍应正常使用do_send，try_send并发送以解决其他可能的错误或同步与异步行为。
