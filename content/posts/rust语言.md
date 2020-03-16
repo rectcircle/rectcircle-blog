@@ -808,7 +808,7 @@ fn read_username_from_file2() -> Result<String, io::Error> {
 
 创建字面量 `cargo new literal` 项目
 
-#### （1） 多行字符串
+#### （1） 多行字符串 (Row String)
 
 ```rs
     // raw-string-literals
