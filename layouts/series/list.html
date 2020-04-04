@@ -6,8 +6,10 @@
         <h1>{{ .Title }}</h1>
 
         {{- if .Content }}
-            <div class="content">{{ .Content }}</div>
+            <div class="post-content">{{ .Content }}</div>
         {{- end }}
+        <br />
+        <hr />
         <div class="posts-group">
             <ul class="posts-list">
                 {{- range .Pages }}

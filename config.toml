@@ -14,6 +14,8 @@ googleAnalytics = 'UA-139468050-1'
 disqusShortname = "rectcircle-blog"
 canonifyURLs = true # 启用将相对URL转换为绝对URL
 enableGitInfo = true # 使能git信息
+summaryLength = 70
+hasCJKLanguage = true
 
 [author]
   name   = "Rectcircle"
