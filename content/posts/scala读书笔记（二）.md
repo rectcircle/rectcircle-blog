@@ -1350,7 +1350,7 @@ pong stopped
 */
 ```
 
-### 3、Actor声明周期
+### 3、Actor生命周期
 
 ```scala
 import akka.actor._

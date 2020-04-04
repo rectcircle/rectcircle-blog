@@ -1902,7 +1902,7 @@ impl MyRange {
         MyRange { start, end, step }
     }
 
-    pub fn iter(&self) -> MyRangeIteratorRef<'_> { // '_ 表示匿名声明周期
+    pub fn iter(&self) -> MyRangeIteratorRef<'_> { // '_ 表示匿名生命周期
     // pub fn iter<'a>(&'a self) -> MyRangeIteratorRef<'a> {
         MyRangeIteratorRef {
             range: self,
@@ -3392,11 +3392,11 @@ fn main() {
 
 ## 十、生命周期
 
-rust 特有，声明周期也是一种泛型，用来防止引用悬空，辅助借用检查器进行检查。
+rust 特有，生命周期也是一种泛型，用来防止引用悬空，辅助借用检查器进行检查。
 
 ### 1、显示使用
 
-每个引用都有声明周期，声明方式如下：
+每个引用都有生命周期，声明方式如下：
 
 ```rs
 &i32        // 引用
@@ -3415,7 +3415,7 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
     //     let r; // 不可便变量只允许赋值一次
     //     {
     //         let x = 5;
-    //         r = &x; // Error `x` does not live long enough，声明周期不同借用检查器不允许
+    //         r = &x; // Error `x` does not live long enough，生命周期不同借用检查器不允许
     //     }
     //     println!("r: {}", r);
     // }
@@ -3440,7 +3440,7 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
             y
         }
     }
-    // 正确调用，'a = string2 的声明周期
+    // 正确调用，'a = string2 的生命周期
     {
         let string1 = String::from("long string is long");
         {
@@ -3449,7 +3449,7 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
             println!("The longest string is {}", result);
         }
     }
-    // // 错误调用，'a = string2 的声明周期，result是 'a 的父声明周期
+    // // 错误调用，'a = string2 的生命周期，result是 'a 的父生命周期
     // {
     //     let string1 = String::from("long string is long");
     //     let result;

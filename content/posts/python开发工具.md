@@ -128,6 +128,8 @@ virtualenv --system-site-packages venv
 source venv/bin/activate
 # 退出环境
 deactivate
+# 指定 python 版本
+virtualenv -p /usr/bin/python2.7
 ```
 
 Mac Python2 和 Python3 共存： https://www.jianshu.com/p/3b12ca94ef0c

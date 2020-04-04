@@ -8,6 +8,8 @@ tags:
   - scala
 ---
 
+> 更新时间 2020-03-21
+
 ## 一、安装、配置及开发环境
 
 ### 1、安装scala（可选）
@@ -22,22 +24,22 @@ scala 大版本之间不兼容（比如2.12和2.11的jar包不兼容，太坑了
 
 ### 2、安装SBT
 
-> 实验版本 1.2.8
+> 实验版本 1.3.8
 
 [mac](https://www.scala-sbt.org/download.html)
 
 ```bash
-brew install sbt@1
+brew install sbt
 ```
 
 sbt 每次运行都需要执行如下阶段：
 
 * 检查当前路径下的project目录下配置的sbt版本
-  * 如果不存在将使用环境变量中的sbt运行包
+    * 如果不存在将使用环境变量中的sbt运行包
 * 检查 `~/.sbt` 下是否有该版本的sbt依赖
-  * 如果没有则会进入sbt预加载阶段，标准输出为： `[info] [launcher] getting org.scala-sbt sbt x.x.x (this may take some time)`，还有一个日志文件可以用来追查问题： `~/.sbt/boot/update.log`
+    * 如果没有则会进入sbt预加载阶段，标准输出为： `[info] [launcher] getting org.scala-sbt sbt x.x.x (this may take some time)`，还有一个日志文件可以用来追查问题： `~/.sbt/boot/update.log`
 * 检查全局插件是否有安装或更新
-  * 如果需要下载，标准输出为： `[info] Loading global plugins from /home/xxx/.sbt/1.0/plugins`，可能还存在日志文件在 `ls /tmp/sbt*`
+    * 如果需要下载，标准输出为： `[info] Loading global plugins from /home/xxx/.sbt/1.0/plugins`，可能还存在日志文件在 `ls /tmp/sbt*`
 * 然后执行你的命令，此刻才会下载项目的依赖
 
 SBT国内是非常缓慢的，原因如下：
@@ -58,7 +60,9 @@ sbt自身依赖的jar包和sbt项目依赖的jar包都存放在 `~/.ivy2` 目录
 
 如果你没法做到全局fq，请按照如下步骤操作，这样能相对更快的完成sbt初始化（但是依旧很慢）。
 
-#### （1）配置 coursier 插件
+#### （1）~~配置 coursier 插件~~
+
+> 本步骤不需要（sbt 1.3+内置）
 
 coursier 插件的作用： 解决sbt依赖串行下载的问题。该插件将使用并行冗余下载的方式提高速度，当你配置多个仓库是，会同时进行下载尝试，如果某一个下载成功，再杀掉其他的。但是需要注意的是：
 
@@ -76,13 +80,13 @@ addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.1.0-M14")
 
 #### （2）自定义代理仓库
 
+> 仅当网络存在问题时配置
+
 ```
 [repositories]
   local
   maven-local: file:///$HOME/.m2/repository
   huawei-central: https://mirrors.huaweicloud.com/repository/maven/
-  repox-maven: http://repox.gtan.com:8078/
-  repox-ivy: http://repox.gtan.com:8078/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext]
   maven-central
   bintray-ivy: http://dl.bintray.com/typesafe/ivy-releases/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly
   typesafe: http://repo.typesafe.com/typesafe/ivy-releases/, [organization]/[module]/(scala_[scalaVersion]/)(sbt_[sbtVersion]/)[revision]/[type]s/[artifact](-[classifier]).[ext], bootOnly
@@ -94,8 +98,8 @@ addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.1.0-M14")
 * `local` 表示先查找本地 `ivy2` 路径，一般为 `$HOME/.ivy2/cache`，不需要明确配置
 * maven-local 尝试查找本地的maven仓库，注意`$HOME`为你的家目录
 * huawei-central 使用华为的maven仓库代理
-  * 参见 https://mirrors.huaweicloud.com/
-  * 为什么不使用 阿里云？原因是阿里云会302跳转到 http 的对象存储里面，参见： https://github.com/sbt/sbt/issues/5059
+    * 参见 https://mirrors.huaweicloud.com/
+    * 为什么不使用 阿里云？原因是阿里云会302跳转到 http 的对象存储里面，参见： https://github.com/sbt/sbt/issues/5059
 * repox-maven 和 repox-ivy 参见：http://centaur.github.io/repox/
 * 剩下的为兜底
 
@@ -149,6 +153,8 @@ run
 
 * [Scala Syntax (official)](https://marketplace.visualstudio.com/items?itemName=scala-lang.scala)
 * [Scala (Metals)](https://marketplace.visualstudio.com/items?itemName=scalameta.metals)
+    * [metals](https://scalameta.org/metals/)
+    * [编译服务器 Bloop](https://scalacenter.github.io/bloop/)
 
 #### （2）配置使用本地sbt
 
@@ -170,5 +176,4 @@ code ./
 
 特性：
 
-* 支持提示跳转
-* 不支持debug
+* 已支持debug（比较有限，JVM通用的调试器/不支持Hover等功能）

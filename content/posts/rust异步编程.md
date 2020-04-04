@@ -1127,6 +1127,8 @@ fn recursive() -> BoxFuture<'static, ()> {
 }
 ```
 
+可以考虑使用 [async-recursion](https://github.com/dcchut/async-recursion) 库
+
 ### 5、异步方法和异步特质
 
 rust 支持异步方法

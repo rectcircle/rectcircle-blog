@@ -112,7 +112,7 @@ public @interface NoDBColumn {
 
 #### （2）`java.lang.annotation.Retention`
 
-在定义注解类型时，指出该注解的声明周期（被保留的时间长短），可选值为 `java.lang.annotation.RetentionPolicy`
+在定义注解类型时，指出该注解的生命周期（被保留的时间长短），可选值为 `java.lang.annotation.RetentionPolicy`
 
 * `RetentionPolicy.SOURCE` 编译器要丢弃的注释。
 * `RetentionPolicy.CLASS` 编译器将把注释记录在类文件中，但在运行时 VM 不需要保留注释。

@@ -58,8 +58,9 @@ cloudflare -> DNS 标签，添加一个记录，先禁用代理（灰色小云�
 
 ```bash
 curl  https://get.acme.sh | sh # 安装申请脚本
+your_addr=xxx.xx # 域名
 ~/.acme.sh/acme.sh --issue -d ${your_addr} --standalone -k ec-256 # 申请证书（保证80端口可用）
-~/.acme.sh/acme.sh --installcert -d mydomain.me --fullchainpath /etc/v2ray/v2ray.crt --keypath /etc/v2ray/v2ray.key --ecc # 安装证书
+~/.acme.sh/acme.sh --installcert -d ${your_addr} --fullchainpath /etc/v2ray/v2ray.crt --keypath /etc/v2ray/v2ray.key --ecc # 安装证书
 ```
 
 #### 第四步：配置v2ray服务端

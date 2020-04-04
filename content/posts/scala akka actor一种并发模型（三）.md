@@ -113,7 +113,7 @@ val actorRef = system.actorOf(
   "helloBean")
 ```
 
-注意当时用依赖注入时，不要将bean的声明周期设为单例模式。
+注意当时用依赖注入时，不要将bean的生命周期设为单例模式。
 
 依赖注入技术和与依赖注入框架的集成在使用依赖注入指南和Akka Java Spring教程中有更深入的描述。
 
@@ -181,7 +181,7 @@ def postRestart(reason: Throwable): Unit = {
 
 上面显示的实现是Actor特征提供的默认值。
 
-**Actor声明周期**
+**Actor生命周期**
 
 ![图6](/res/96hvpAjKFyqhnMQZEIWzhtsU.png)
 
