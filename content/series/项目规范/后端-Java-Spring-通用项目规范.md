@@ -124,7 +124,7 @@ template-web        template-batch
 ./cli/verify.sh
 ```
 
-配置方式参见：[Java 代码样式检查落地](/posts/java-code-style-check/)
+配置方式参见：[Java 代码样式检查落地](/posts/java-code-style-check-implement/)
 
 ## 文档设计
 
