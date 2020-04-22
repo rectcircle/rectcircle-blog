@@ -8,6 +8,8 @@ tags:
   - java
 ---
 
+[落地：代码模板](https://github.com/rectcircle/rectcircle-project-template/tree/master/backend/java/spring/common-project)
+
 ## 背景
 
 作为一个合格 Java 开发者，我们的要做的应该是 Programming 而不仅仅是 Coding，而一个项目的 Programming，必然需要严格的代码规范和统一的代码风格。
@@ -47,20 +49,6 @@ tags:
 通过 Maven 插件 [maven-checkstyle-plugin](https://checkstyle.org/) 通过配置即可实现
 
 下载 [google_checks.xml](https://github.com/checkstyle/checkstyle/blob/master/src/main/resources/google_checks.xml) 文件保存为 `checkstyle.xml`，根据自身情况进行修改，如何修改可以参考 https://checkstyle.org/google_style.html
-
-建议修改部分配置
-
-```xml
-        <!-- https://checkstyle.sourceforge.io/apidocs/com/puppycrawl/tools/checkstyle/checks/imports/CustomImportOrderCheck.html -->
-        <module name="CustomImportOrder">
-            <property name="sortImportsInGroupAlphabetically" value="false" />
-            <property name="separateLineBetweenGroups" value="true" />
-            <property name="customImportOrderRules" value="STATIC###STANDARD_JAVA_PACKAGE###SPECIAL_IMPORTS###THIRD_PARTY_PACKAGE" />
-            <property name="specialImportsRegExp" value="^(com)\." />
-            <property name="thirdPartyPackageRegExp" value="^(org)\." />
-            <property name="tokens" value="IMPORT, STATIC_IMPORT, PACKAGE_DEF" />
-        </module>
-```
 
 如果需要忽略路径，需要添加 `checkstyle-suppressions.xml` 文件
 
