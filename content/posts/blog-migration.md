@@ -924,7 +924,7 @@ utterances 是一个基于 Github issues 的评论系统，开源可控。
 		if (theme == "light") {
 			msg.theme = "github-light"
 		}
-		document.querySelector('.utterances-frame').contentWindow.postMessage(msg, location.origin)
+		document.querySelector('.utterances-frame').contentWindow.postMessage(msg, 'https://utteranc.es')
 	}
 
 	document.querySelector('.theme-toggle').addEventListener("click", () => {

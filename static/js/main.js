@@ -8,7 +8,7 @@
 		if (theme == "light") {
 			msg.theme = "github-light"
 		}
-		document.querySelector('.utterances-frame').contentWindow.postMessage(msg, location.origin)
+		document.querySelector('.utterances-frame').contentWindow.postMessage(msg, 'https://utteranc.es')
 	}
 
 	document.querySelector('.theme-toggle').addEventListener("click", () => {
