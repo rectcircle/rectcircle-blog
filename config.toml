@@ -63,7 +63,7 @@ home = ["HTML", "REDIR", "JSON", "RSS"]
 
   # 自定义JS
   # customJS = ['/js/anchorforid.js', '/js/fuse.min.js', '/js/search.js']
-  customJS = ['/js/anchorforid.js']
+  customJS = ['/js/anchorforid.js', '/js/main.js']
 
   gitUrl = 'https://github.com/rectcircle/rectcircle-blog/commit/'
 

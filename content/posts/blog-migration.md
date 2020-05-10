@@ -25,9 +25,9 @@ tags:
 存在的问题：
 
 * 后台管理功能较弱
-  * 标签一旦设置则无法修改
-  * 主题功能难以使用，一直没有利用起来
-  * 在线编辑，一旦刷新或关机，新编辑内容将完全消失
+    * 标签一旦设置则无法修改
+    * 主题功能难以使用，一直没有利用起来
+    * 在线编辑，一旦刷新或关机，新编辑内容将完全消失
 * 只支持一级目录
 * 不支持超长文章（500错误）
 * 文章搜索仅仅是简单MySql匹配
@@ -85,7 +85,7 @@ Hugo 构建构成大概如下所示：
 ```
 
 * Hugo构建器会将 `content/` 中的文件（在Hugo中叫做内容），构建一个对象
-  * 这个对象包含很多Hugo附加的属性和配置（Hugo中称为变量），并内置了一些函数，以提高灵活性
+    * 这个对象包含很多Hugo附加的属性和配置（Hugo中称为变量），并内置了一些函数，以提高灵活性
 * Hugo将会按照一定规则选择一个或多个模板，将上一步生成的对象传递进模板，最终生成输出文件。
 * 按照编程的角度理解，Hugo就是一个流处理器，content就是数据源。模板就是一个个处理函数。而数据源格式是markdown，编程语言是Go Template
 * 对于一些资源Hugo提供了一些内置的处理器，比如SCSS/SASS预处理器（在Hugo叫做Pipes）
@@ -873,3 +873,69 @@ command = "hugo --gc --minify"
 [^1]: https://www.techiediaries.com/jekyll-hugo-hexo/
 [^2]: https://stackshare.io/stackups/hexo-vs-hugo_2-vs-jekyll
 [^3]: https://www.npmtrends.com/elasticlunr-vs-fuse.js-vs-fuzzy-vs-fuzzysearch-vs-lunr-vs-reds-vs-search-index
+
+## 2020-05-10 使用 utterances 代替 Disqus
+
+Disqus 有一个比较严重的问题，国内用户无法访问，因此考虑使用 utterances 进行替代
+
+utterances 是一个基于 Github issues 的评论系统，开源可控。
+
+### Github接入
+
+打开 [utteranc#configuration](https://utteranc.es/#configuration)，按照步骤进行配置
+
+* 选择公开的 [github仓库](https://github.com/rectcircle/rectcircle-blog/labels)，配置一个 Label，这列配置成 `comment`
+* 在 https://github.com/apps/utterances 页面为 仓库安装 App
+* 填写 配置信息，复制下方的 script 代码
+
+### 编写 Hugo 模板
+
+`layouts/partials/utterances.html` 填写刚才复制的内容
+
+```html
+<script src="https://utteranc.es/client.js"
+        repo="rectcircle/rectcircle-blog"
+        issue-term="pathname"
+        label="comment"
+        theme="github-dark"
+        crossorigin="anonymous"
+        async>
+</script>
+```
+
+编写各处的 `single.html` 文件
+
+```html
+        {{ if .Params.comments }}
+            {{ partial "utterances.html" . }}
+        {{ end }}
+```
+
+添加 主题切换 跟随脚本 `static/js/main.js`
+
+```js
+(function () {
+	function setUtterancesTheme() {
+		let theme = window.localStorage.getItem("theme") || "light";
+		let msg = {
+			type: "set-theme",
+			theme: "github-dark"
+		};
+		if (theme == "light") {
+			msg.theme = "github-light"
+		}
+		document.querySelector('.utterances-frame').contentWindow.postMessage(msg, location.origin)
+	}
+
+	document.querySelector('.theme-toggle').addEventListener("click", () => {
+		setTimeout(setUtterancesTheme, 500);
+	})
+	setTimeout(setUtterancesTheme, 2000);
+})();
+```
+
+配置文件添加js脚本
+
+```toml
+customJS = ['/js/anchorforid.js', '/js/main.js']
+```
