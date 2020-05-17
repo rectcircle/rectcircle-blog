@@ -1,7 +1,7 @@
 ---
 title: "Nginx 部署单页应用（React）"
 date: 2020-04-29T14:57:25+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:

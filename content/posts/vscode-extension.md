@@ -1,7 +1,7 @@
 ---
 title: "VSCode 扩展开发指南"
 date: 2019-05-14T11:32:11+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:

@@ -1,7 +1,7 @@
 ---
 title: "快速开始"
 date: 2020-04-11T14:40:51+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 weight: 100

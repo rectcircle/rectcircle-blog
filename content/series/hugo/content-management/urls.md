@@ -1,7 +1,7 @@
 ---
 title: "URL 管理"
 date: 2019-05-01T16:46:35+08:00
-draft: true
+draft: false
 toc: true
 weight: 150
 summary: Hugo支持永久链接，别名，链接规范化以及处理相对URL和绝对URL等多个选择。
