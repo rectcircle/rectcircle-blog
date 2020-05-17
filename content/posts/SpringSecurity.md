@@ -1,5 +1,5 @@
 ---
-title: SpringSecurity
+title: Spring Security
 date: 2018-05-07T16:26:12+08:00
 draft: false
 toc: true
@@ -12,7 +12,7 @@ tags:
 ---
 
 > 参考
-> 官方文档：[中文](https://springcloud.cc/spring-security-zhcn.html) | [英文](https://docs.spring.io/spring-security/site/docs/5.0.4.RELEASE/reference/htmlsingle/)
+> 官方文档：[中文](https://springcloud.cc/spring-security-zhcn.html) | [英文](https://docs.spring.io/spring-security/site/docs/current/reference/htmlsingle/)
 > [博客](http://elim.iteye.com/category/182468)
 > [开源书](https://waylau.gitbooks.io/spring-security-tutorial/content/docs/overview.html)
 
@@ -271,10 +271,10 @@ public class WebMvcConfg implements WebMvcConfigurer {
 #### （1）相关概念
 
 * 认证（登录过程）
-	* 通过用户名/密码或者其他形式识别该用户是谁
+    * 通过用户名/密码或者其他形式识别该用户是谁
 * 授权（权限检查）
-	* 必须先通过认证过程
-	* 检查该用户是否具有访问该资源/该操作的权限
+    * 必须先通过认证过程
+    * 检查该用户是否具有访问该资源/该操作的权限
 
 #### （2）本例中的认证和流程
 
@@ -285,14 +285,14 @@ public class WebMvcConfg implements WebMvcConfigurer {
 
 * 用户访问 `/ GET` 想要获取自己借阅的书籍
 * 后台发现该用户未登录
-	* 根据 `SecurityConfig` 配置跳转到配置的登录页面
-	* 用户输入用户名密码
-		* 错误跳转到 `SecurityConfig` 配置的错误页面
-		* 正确重定向到 `/ GET`
+    * 根据 `SecurityConfig` 配置跳转到配置的登录页面
+    * 用户输入用户名密码
+        * 错误跳转到 `SecurityConfig` 配置的错误页面
+        * 正确重定向到 `/ GET`
 * 后台发现该用户已登录
-	* 验证用户是否具有访问该资源的权限（在本例中：是否具有`READER`角色）
-		* 有则放行
-		* 无则返回403
+    * 验证用户是否具有访问该资源的权限（在本例中：是否具有`READER`角色）
+        * 有则放行
+        * 无则返回403
 
 ### 9、其他相关坑
 
@@ -699,7 +699,7 @@ boolean supports(Class<?> authentication);
 
 * 执行具体的认证逻辑，由AuthenticationManager的authenticate调用
 * 内部实现类为 DaoAuthenticationProvider 具体逻辑为
-	* 校验认证请求最常用的方法是根据请求的用户名加载对应的UserDetails，然后比对UserDetails的密码与认证请求的密码是否一致，一致则表示认证通过
+    * 校验认证请求最常用的方法是根据请求的用户名加载对应的UserDetails，然后比对UserDetails的密码与认证请求的密码是否一致，一致则表示认证通过
 
 #### （4）UserDetailsService
 
@@ -710,8 +710,8 @@ UserDetails loadUserByUsername(String username) throws UsernameNotFoundException
 ```
 
 * 内部实现类为：
-	* `JdbcDaoImpl` 通过Jdbc获取
-	* `InMemoryDaoImpl` 简单从内存配置中获取
+    * `JdbcDaoImpl` 通过Jdbc获取
+    * `InMemoryDaoImpl` 简单从内存配置中获取
 
 #### （5）UserDetails
 
@@ -909,4 +909,101 @@ public class WithMockUserTests {
 @Retention(RetentionPolicy.RUNTIME)
 @WithMockUser(value="rob",roles="ADMIN")
 public @interface WithMockAdmin { }
+```
+
+## 五、源码阅读
+
+> 2020-05-17 更新
+
+一般情况，通过以上的简单配置即可满足大部分需求，但是面对某些特殊场景，需要更加熟悉 SpringSecurity 的原理才能更好的定制化的进行认证和鉴权
+
+### 1、底层协议
+
+Spring Security 是一个通用的安全框架，落实到 Web 开发方面
+
+回归到最底层的协议和标准，是标准的 Servlet 标准（所谓的Java EE）（与之类似 Python 有 WSGI）
+
+自然而然，Spring Security Web 底层实现是依托于 `javax.servlet.Filter`
+
+Spring Security Web对认证和鉴权预定义了一条 `Filter` 链，这个链条 有一系列 内置的 Filter 实现，具体可以参见 https://docs.spring.io/spring-security/site/docs/current/reference/html5/#ns-custom-filters
+
+这里有个图（转载自 https://blog.csdn.net/u012702547/article/details/89629415）
+
+![Spring-Security-Filter](/image/spring-security-filter.png)
+
+### 2、推荐阅读的源码
+
+通过阅读源码可以理解整个流程，
+
+* 登录相关（有特殊登录需求，通过模仿如下实现即可实现自己的功能）
+    * Filter `org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter`
+    * Authentication `org.springframework.security.authentication.UsernamePasswordAuthenticationToken`
+    * AuthenticationManager （一般不用重写） `org.springframework.security.authentication.ProviderManager`
+    * AuthenticationProvider `org.springframework.security.authentication.DaoAuthenticationProvider`
+    * AuthenticationSuccessHandler `org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler` 登录成功后做的事情
+    * 继承 `AbstractAuthenticationProcessingFilter` 创建对象时注意事项
+        * 需要实现 Remember Me 功能，需要 手动配置 `RememberMeServices` 对象
+        * 登录成功处理，需要 手动配置 `AuthenticationSuccessHandler`
+        * 需要手动配置 `AuthenticationManager`
+    * 自定义例子可以参考 https://www.jianshu.com/p/779d3071e98d
+* Remember Me 相关
+    * Filter `org.springframework.security.web.authentication.rememberme.RememberMeAuthenticationFilter` 不建议覆写
+    * Authentication `org.springframework.security.authentication.RememberMeAuthenticationProvider` 不建议覆写
+    * AuthenticationProvider `org.springframework.security.authentication.RememberMeAuthenticationProvider` 不建议覆写
+    * RememberMeServices `org.springframework.security.web.authentication.rememberme.TokenBasedRememberMeServices`，特殊需求建议覆写，覆写方式为
+        * 实现 `RememberMeServices`
+        * 代理 `TokenBasedRememberMeServices` 添加自己想要的功能
+        * `loginSuccess` 为 登录 成功后调用设置 cookie 用的
+    * 自定义 `RememberMeServices` 注意事项
+        * 配置时，一定要指定 `key` 否则会用 uuid 导致不一致，创建自定义的Service 和 `.rememberMe().rememberMeServices(rememberMeServices).key("test")` 都需要
+    * Remember Me 原理可以参考 https://blog.csdn.net/qq_37142346/article/details/801146参考
+* 其他接口
+    * UserDetails 一般继承 `org.springframework.security.core.userdetail.User` 实现自己的 User，一般通过 `Authentication#getPrincipal` 获取
+    * UserDetailsService 与用户数据源交互，核心方法为通过 `username` 获取 `UserDetails`
+    * AuthenticationEntryPoint 一般用于跳转到登录页面
+    * 常用的 AuthenticationException，查看 `AuthenticationException` 抽象类利用 IDE 的查看实现功能查看
+
+## 六、错误处理
+
+* `.exceptionHandling().accessDeniedHandler()` 自定义处理器似乎无效 参考 https://stackoverflow.com/questions/48306302/spring-security-creating-403-access-denied-custom-response
+* `.exceptionHandling().authenticationEntryPoint()` 似乎可以实现 https://howtodoinjava.com/spring-restful/access-denied-json-response/
+
+建议通过 `.authorizeRequests().antMatchers("/error").permitAll()` 然后在 Spring MVC 中实现
+
+```java
+import xxx.xxx.xx.xxx.controller;
+
+import javax.servlet.RequestDispatcher;
+import javax.servlet.http.HttpServletRequest;
+
+import org.springframework.boot.web.servlet.error.ErrorController;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import xxx.xxx.xx.xxx.dto.ResponseDTO;
+
+@RestController
+public class BasicStatusCodeErrorController implements ErrorController {
+
+    @RequestMapping("/error")
+    public ResponseDTO<?> handleError(HttpServletRequest request) {
+        Object status = request.getAttribute(RequestDispatcher.ERROR_STATUS_CODE);
+        Object message = request.getAttribute(RequestDispatcher.ERROR_MESSAGE);
+        if (message == null){
+            message = "Unknown Basic Error";
+        }
+
+        if (status != null) {
+            Integer statusCode = Integer.valueOf(status.toString());
+
+            return ResponseDTO.failure(statusCode, message.toString());
+        }
+        return ResponseDTO.failure(500, "Internal Server Error");
+    }
+
+    @Override
+    public String getErrorPath() {
+        return "/error";
+    }
+}
 ```

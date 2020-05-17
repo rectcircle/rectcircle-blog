@@ -427,15 +427,15 @@ jar -cvf target/javacmd4.jar -C target/classes .
 **相关说明**
 
 * 清单(manifest)文件
-	* 标准的Jar文件会包含一个清单文件`META-INF/MANIFEST.MF`，表述Jar的相关信息，主要包含如下内容
-		* `Manifest-Version: 1.0` 版本
-		* `Created-By: 1.8.0_171 (Oracle Corporation)` 构建工具
-		* `Main-Class: cn.rectcircle.javacmd.Main` 选填，主类，当`java -jar`运行起点
-		* `Class-Path: lib/guava-18.0.jar lib/commons-lang3-3.3.2.jar` classpath
-		* `\r\n` 最后一行一定为此
-	* jar 默认会创建清单文件
-	* `-M`将不创建清单文件
-	* `-m`表示使用指定的件作为清单文件
+    * 标准的Jar文件会包含一个清单文件`META-INF/MANIFEST.MF`，表述Jar的相关信息，主要包含如下内容
+        * `Manifest-Version: 1.0` 版本
+        * `Created-By: 1.8.0_171 (Oracle Corporation)` 构建工具
+        * `Main-Class: cn.rectcircle.javacmd.Main` 选填，主类，当`java -jar`运行起点
+        * `Class-Path: lib/guava-18.0.jar lib/commons-lang3-3.3.2.jar` classpath
+        * `\r\n` 最后一行一定为此
+    * jar 默认会创建清单文件
+    * `-M`将不创建清单文件
+    * `-m`表示使用指定的件作为清单文件
 * jar包内包含jar包，内部的jar将不会解析
 * `java -jar`再指定`-cp`将失效，系统的环境变量也会失效
 * 当指定`-cp`或`-classpath`，系统的环境变量将失效

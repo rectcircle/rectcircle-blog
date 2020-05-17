@@ -336,3 +336,8 @@ fi
 <setting id="org.eclipse.jdt.core.formatter.continuation_indentation" value="2" />
 <setting id="org.eclipse.jdt.core.formatter.continuation_indentation_for_array_initializer" value="2" />
 ```
+
+## 关于特定代码段禁用某些检查规则
+
+* P3C 通过 `@SuppressWarnings({ "PMD.UndefineMagicConstantRule", "PMD.LowerCamelCaseVariableNamingRule" })` 注解
+* Checkstyle 通过 `@SuppressWarnings("checkstyle:magicnumber")` 注解

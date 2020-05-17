@@ -597,7 +597,7 @@ async {
         * 在执行器启动之前，手动提交
         * workFuture中调用执行器提供的异步方法
 
-参考: https://github.com/tokio-rs/tokio
+Rust 生态中有两个 异步执行器 分别为 [tokio](https://github.com/tokio-rs/tokio) 和 [async-std](https://async.rs/)
 
 ### 6、个人体会
 

@@ -18,6 +18,7 @@ tags:
 > [docker官方中文文档](http://docs.docker-cn.com/)
 > [github:docker](https://github.com/docker)
 > [docker从入门到实践](https://github.com/yeasy/docker_practice)
+> [docker、docker-compose、docker swarm和k8s的区别](https://www.jianshu.com/p/2a9ae69c337d)
 
 ***
 
@@ -78,12 +79,12 @@ Docker 是世界领先的软件容器平台。开发人员利用 Docker 可以�
 #### （3）docker特点
 
 * 轻量级：
-	* 在一台机器上运行的多个 Docker 容器可以共享这台机器的操作系统内核；它们能够迅速启动，只需占用很少的计算和内存资源。
-	* 镜像是通过文件系统层进行构造的，并共享一些公共文件。这样就能尽量降低磁盘用量，并能更快地下载镜像。
+    * 在一台机器上运行的多个 Docker 容器可以共享这台机器的操作系统内核；它们能够迅速启动，只需占用很少的计算和内存资源。
+    * 镜像是通过文件系统层进行构造的，并共享一些公共文件。这样就能尽量降低磁盘用量，并能更快地下载镜像。
 * 标准
-	* Docker 容器基于开放式标准，能够在所有主流 Linux 版本、Microsoft Windows 以及包括 VM、裸机服务器和云在内的任何基础设施上运行。
+    * Docker 容器基于开放式标准，能够在所有主流 Linux 版本、Microsoft Windows 以及包括 VM、裸机服务器和云在内的任何基础设施上运行。
 * 安全
-	* Docker 赋予应用的隔离性不仅限于彼此隔离，还独立于底层的基础设施。Docker 默认提供最强的隔离，因此应用出现问题，也只是单个容器的问题，而不会波及到整台机器。
+    * Docker 赋予应用的隔离性不仅限于彼此隔离，还独立于底层的基础设施。Docker 默认提供最强的隔离，因此应用出现问题，也只是单个容器的问题，而不会波及到整台机器。
 
 ### 2、docker架构
 
@@ -132,13 +133,13 @@ Docker Registry 公开服务是开放给用户使用、允许用户管理镜像�
 * CoreOS 的 Quay.io
 * Google 的 Google Container Registry，Kubernetes
 * 国内镜像
-	* 阿里云加速
-	* DaoCloud 加速器
+    * 阿里云加速
+    * DaoCloud 加速器
 * 国内服务
-	* 时速云镜像仓库、
-	* 网易云 镜像服务、
-	* DaoCloud 镜像市场、
-	* 阿里云镜像库
+    * 时速云镜像仓库、
+    * 网易云 镜像服务、
+    * DaoCloud 镜像市场、
+    * 阿里云镜像库
 
 **私有 Docker Registry**
 
@@ -149,8 +150,8 @@ Docker Registry 公开服务是开放给用户使用、允许用户管理镜像�
 与Java Maven对比
 
 * `Maven仓库`相当于Docker的`Registry`
-	* `Maven中的groupId+artifactId`相当于Docker中的`仓库Repository`
-	* `Maven中的version`相当于Docker中的`Tag`
+    * `Maven中的groupId+artifactId`相当于Docker中的`仓库Repository`
+    * `Maven中的version`相当于Docker中的`Tag`
 * `Java虚拟机`相当于Docker的`容器`
 * `Maven中的pom文件+生成的二进制文件`相当于Docker中的`镜像`
 
@@ -161,9 +162,9 @@ Docker Registry 公开服务是开放给用户使用、允许用户管理镜像�
 （5）理解
 
 * Docker 容器有自己的kernel吗？
-	* 没有，docker和宿主机共享kernel
+    * 没有，docker和宿主机共享kernel
 * Docker的kernel version由镜像确定还是由宿主机确定
-	* 由宿主机决定，但是Docker的镜像运行的环境一般是Linux x64，所以windows的Docker应该包含一个Linux子系统
+    * 由宿主机决定，但是Docker的镜像运行的环境一般是Linux x64，所以windows的Docker应该包含一个Linux子系统
 
 ## 二、docker安装配置使用
 
@@ -215,6 +216,16 @@ sudo apt-get install docker-ce
 
 ```
 
+#### （2）Mac安装
+
+brew 安装
+
+```bash
+brew cask install docker
+```
+
+或 [手动下载安装](https://www.docker.com/products/docker-desktop)
+
 ### 2、配置
 
 **验证安装**
@@ -231,7 +242,7 @@ docker version
 
 **配置国内Docker镜像**
 
-配置`/etc/docker/daemon.json`
+配置`/etc/docker/daemon.json` (Linux) 或 `~/.docker/daemon.json` (Mac)
 
 ```json
 {
@@ -465,7 +476,7 @@ docker swarm leave --force
 
 #### （7）swarm 集群
 
-swarm 是一组运行 Docker 并且已加入集群中的机器。执行此操作后，您可以继续运行已使用的 Docker 命令，但现在它们在集群上由 swarm 管理节点执行。 swarm 中的机器可以为物理或虚拟机。加入 swarm 后，可以将它们称为节点。
+swarm 是一组运行 Docker 并且已加入集群中的机器。执行此操作后，您可以继续运行已使用的 Docker 命令，但现在它们在集群上由 swarm 管理节点执行。 swarm 中的机器可以为物理或虚拟机。加入 swarm 后，可以将它们称为节点。（已基本被 Kubernetes 取代）
 
 * `docker swarm init` 启用 swarm mode 并使当前机器成为 swarm 管理节点
 * `docker swarm join` 以工作节点形式加入 swarm
@@ -578,20 +589,20 @@ docker system df
 * -d 后台运行
 * -P 随机端口映射
 * -p 指定端口映射
-	* `ip:hostPort:containPort`
-	* `ip::containPort`
-	* `hostPort:containPort`
-	* `containPort`
+    * `ip:hostPort:containPort`
+    * `ip::containPort`
+    * `hostPort:containPort`
+    * `containPort`
 * --network 网络模式
-	* `--network=bridge` 默认：网桥
-	* `--network=host`
-	* `--network=containter:NAME_or_ID`
-	* `--network=none`
+    * `--network=bridge` 默认：网桥
+    * `--network=host`
+    * `--network=containter:NAME_or_ID`
+    * `--network=none`
 * -i 交互式操作
 * -t 终端
 * --mount 或 -v
-	* `-v /src/webapp:/opt/webapp` 格式：`本机目录:容器内目录`
-	* `--mount type=bind,source=/src/webapp,target=/opt/webapp`
+    * `-v /src/webapp:/opt/webapp` 格式：`本机目录:容器内目录`
+    * `--mount type=bind,source=/src/webapp,target=/opt/webapp`
 * --rm 这个参数是说容器退出后随之将其删除。默认情况下，为了排障需求，退出的容器并不会立即删除，除非手动 docker rm
 
 **实例**
@@ -664,31 +675,31 @@ Dockerfile是一种用于构建镜像的脚本
 ### 1、Dockerfile常用命令
 
 * `ADD <src> ... <dest>` 尽可能的使用`COPY`，仅在需要自动解压压缩文件时使用
-	* src只能是Dockerfile所在目录及子目录的内容
-	* src是url，不以`/`结尾，则视为文件
-	* scr是url，以`/`结尾，视为目录
-	* scr是目录，将整个目录复制，包括文件系统元数据
-	* 如果文件是可识别压缩格式，docker会自动解压
+    * src只能是Dockerfile所在目录及子目录的内容
+    * src是url，不以`/`结尾，则视为文件
+    * scr是url，以`/`结尾，视为目录
+    * scr是目录，将整个目录复制，包括文件系统元数据
+    * 如果文件是可识别压缩格式，docker会自动解压
 * `ARG k=v` 构建环境变量：构建时有效，运行时无效
 * `CMD` 容器启动命令
-	* `CMD ["可执行命令", "参数"]`
-	* `CMD command p1 p2`  默认解析成 `sh -c`
-	* 参数列表格式： CMD ["参数1", "参数2"...] 。在指定了 ENTRYPOINT 指令后，用 CMD 指 定具体的参数。
+    * `CMD ["可执行命令", "参数"]`
+    * `CMD command p1 p2`  默认解析成 `sh -c`
+    * 参数列表格式： CMD ["参数1", "参数2"...] 。在指定了 ENTRYPOINT 指令后，用 CMD 指 定具体的参数。
 * `COPY` 类似`ADD` 不支持URL和压缩包
-	* `COPY <源路径>... <目标路径>`
-	* `COPY ["<源路径1>",... "<目标路径>"]`
-	* 支持通配符go的`filepath.Match`规则
-	* `<目标路径>` 可以是容器内的绝对路径，也可以是相对于工作目录的相对路径（工作目录可以用 WORKDIR 指令来指定）。目标路径不需要事先创建，如果目录不存在会在复制文件前先行 创建缺失目录。
-	* 使用 COPY 指令，源文件的各种元数据都会保留。比如读、写、执 行权限、文件变更时间等。
+    * `COPY <源路径>... <目标路径>`
+    * `COPY ["<源路径1>",... "<目标路径>"]`
+    * 支持通配符go的`filepath.Match`规则
+    * `<目标路径>` 可以是容器内的绝对路径，也可以是相对于工作目录的相对路径（工作目录可以用 WORKDIR 指令来指定）。目标路径不需要事先创建，如果目录不存在会在复制文件前先行 创建缺失目录。
+    * 使用 COPY 指令，源文件的各种元数据都会保留。比如读、写、执 行权限、文件变更时间等。
 * `ENTRYPOINT` 类似于`CMD` 入口点
-	* 当设置了入口点`CMD`的参数将和`ENTRYPOINT`拼接成`<ENTRYPOINT> "<CMD>"`
-	* 最佳实践
-		* 让镜像变成像命令一样使用
-		* `ENTRYPOINT`运行脚本，接受参数，做一些前置操作
+    * 当设置了入口点`CMD`的参数将和`ENTRYPOINT`拼接成`<ENTRYPOINT> "<CMD>"`
+    * 最佳实践
+        * 让镜像变成像命令一样使用
+        * `ENTRYPOINT`运行脚本，接受参数，做一些前置操作
 * `ENV` 设置环境变量：构建时、运行时都可用
-	* `ENV <key> <value>`
-	* `ENV <key1>=<value1> <key2>=<value2>...`
-	* 这个指令很简单，就是设置环境变量而已，无论是后面的其它指令，如 RUN ，还是运行时的 应用，都可以直接使用这里定义的环境变量。
+    * `ENV <key> <value>`
+    * `ENV <key1>=<value1> <key2>=<value2>...`
+    * 这个指令很简单，就是设置环境变量而已，无论是后面的其它指令，如 RUN ，还是运行时的 应用，都可以直接使用这里定义的环境变量。
 * `EXPOSE port ...` 暴露端口
 * `FROM` 指定基础镜像，写在第一行
 * `LABEL` 添加元数据
@@ -1054,78 +1065,78 @@ volumes：
 #### （3）命令使用说明
 
 * `build` 构建
-	* 格式 `docker-compose build [options] [SERVICE...]`
-	* --force-rm 删除构建过程中的临时容器。
-	* --no-cache 构建镜像过程中不使用 cache（这将加长构建过程）。
-	* --pull 始终尝试通过 pull 来获取更新版本的镜像。
+    * 格式 `docker-compose build [options] [SERVICE...]`
+    * --force-rm 删除构建过程中的临时容器。
+    * --no-cache 构建镜像过程中不使用 cache（这将加长构建过程）。
+    * --pull 始终尝试通过 pull 来获取更新版本的镜像。
 * `config` 验证 Compose 文件格式是否正确，若正确则显示配置，若格式错误显示错误原因。
 * `down` 此命令将会停止 up 命令所启动的容器，并移除网络
 * `exec` 进入指定的容器。
 * `help` 帮助
 * `images` 列出 Compose 文件中包含的镜像。
 * `kill` 结束服务
-	* 格式 `docker-compose kill [options] [SERVICE...]`
-	* 支持通过 -s 参数来指定发送的信号，例如通过如下指令发送 SIGINT 信号。`docker-compose kill -s SIGINT`
+    * 格式 `docker-compose kill [options] [SERVICE...]`
+    * 支持通过 -s 参数来指定发送的信号，例如通过如下指令发送 SIGINT 信号。`docker-compose kill -s SIGINT`
 * `logs` 查看输出
-	* 格式 `docker-compose logs [options] [SERVICE...]`
-	* 可以通过 --no-color 来关闭颜色
+    * 格式 `docker-compose logs [options] [SERVICE...]`
+    * 可以通过 --no-color 来关闭颜色
 * `pause` 暂停一个服务容器
-	* 格式 `docker-compose pause [SERVICE...]`
+    * 格式 `docker-compose pause [SERVICE...]`
 * `port` 打印某个容器端口所映射的公共端口
-	* 格式 `docker-compose port [options] SERVICE PRIVATE_PORT`
-	* --protocol=proto 指定端口协议，tcp（默认值）或者 udp。 --index=index 如果同一服务存在多个容器，指定命令对象容器的序号（默认为 1）。
+    * 格式 `docker-compose port [options] SERVICE PRIVATE_PORT`
+    * --protocol=proto 指定端口协议，tcp（默认值）或者 udp。 --index=index 如果同一服务存在多个容器，指定命令对象容器的序号（默认为 1）。
 * `ps` 查看所有容器及状态
-	* 格式为 `docker-compose ps [options] [SERVICE...]`
-	* -q 只打印容器的 ID 信息
+    * 格式为 `docker-compose ps [options] [SERVICE...]`
+    * -q 只打印容器的 ID 信息
 * `pull` 拉取服务依赖的镜像
-	* --ignore-pull-failures 忽略拉取镜像过程中的错误
+    * --ignore-pull-failures 忽略拉取镜像过程中的错误
 * `push` 推送服务依赖的镜像到 Docker 镜像仓库
 * `restart` 重启项目中的服务。
-	* 格式 `docker-compose restart [options] [SERVICE...]`
-	* -t, --timeout TIMEOUT 指定重启前停止容器的超时（默认为 10 秒）。
+    * 格式 `docker-compose restart [options] [SERVICE...]`
+    * -t, --timeout TIMEOUT 指定重启前停止容器的超时（默认为 10 秒）。
 * `rm` 删除所有（停止状态的）服务容器。推荐先执行 docker-compose stop 命令来停止容器。
-	* 格式为 `docker-compose rm [options] [SERVICE...]`
-	* -f, --force 强制直接删除，包括非停止状态的容器。一般尽量不要使用该选项。
-	* -v 删除容器所挂载的数据卷。
+    * 格式为 `docker-compose rm [options] [SERVICE...]`
+    * -f, --force 强制直接删除，包括非停止状态的容器。一般尽量不要使用该选项。
+    * -v 删除容器所挂载的数据卷。
 * `run` 在指定服务上执行一个命令 `docker-compose run web bash`
-	* 格式 `docker-compose run [options] [-p PORT...] [-e KEY=VAL...] SERVICE [COMMAND]`
-	* 默认情况下，如果存在关联，则所有关联的服务将会自动被启动，除非这些服务已经在运行中。 该命令类似启动容器后运行指定的命令，相关卷、链接等等都将会按照配置自动创建。 两个不同点：
-		* 给定命令将会覆盖原有的自动运行命令；
-		* 不会自动创建端口，以避免冲突。
-	* 如果不希望自动启动关联的容器，可以使用 --no-deps
-	* 选项：
-		* -d 后台运行容器。
-		* --name NAME 为容器指定一个名字。
-		* --entrypoint CMD 覆盖默认的容器启动指令。
-		* -e KEY=VAL 设置环境变量值，可多次使用选项来设置多个环境变量。
-		* -u, --user="" 指定运行容器的用户名或者 uid。
-		* --no-deps 不自动启动关联的服务容器。
-		* --rm 运行命令后自动删除容器， d 模式下将忽略。
-		* -p, --publish=[] 映射容器端口到本地主机。
-		* --service-ports 配置服务端口并映射到本地主机。
-		* -T 不分配伪 tty，意味着依赖 tty 的指令将无法运行。
+    * 格式 `docker-compose run [options] [-p PORT...] [-e KEY=VAL...] SERVICE [COMMAND]`
+    * 默认情况下，如果存在关联，则所有关联的服务将会自动被启动，除非这些服务已经在运行中。 该命令类似启动容器后运行指定的命令，相关卷、链接等等都将会按照配置自动创建。 两个不同点：
+        * 给定命令将会覆盖原有的自动运行命令；
+        * 不会自动创建端口，以避免冲突。
+    * 如果不希望自动启动关联的容器，可以使用 --no-deps
+    * 选项：
+        * -d 后台运行容器。
+        * --name NAME 为容器指定一个名字。
+        * --entrypoint CMD 覆盖默认的容器启动指令。
+        * -e KEY=VAL 设置环境变量值，可多次使用选项来设置多个环境变量。
+        * -u, --user="" 指定运行容器的用户名或者 uid。
+        * --no-deps 不自动启动关联的服务容器。
+        * --rm 运行命令后自动删除容器， d 模式下将忽略。
+        * -p, --publish=[] 映射容器端口到本地主机。
+        * --service-ports 配置服务端口并映射到本地主机。
+        * -T 不分配伪 tty，意味着依赖 tty 的指令将无法运行。
 * `scale` 指定服务运行数量
-	* 格式 `docker-compose scale [options] [SERVICE=NUM...]`
-	* 例子 `docker-compose scale web=3 db=2`
-	* 将启动 3 个容器运行 web 服务，2 个容器运行 db 服务。 一般的，当指定数目多于该服务当前实际运行容器，将新创建并启动容器；反之，将停止容器。
-	* -t, --timeout TIMEOUT 停止容器时候的超时（默认为 10 秒）。
+    * 格式 `docker-compose scale [options] [SERVICE=NUM...]`
+    * 例子 `docker-compose scale web=3 db=2`
+    * 将启动 3 个容器运行 web 服务，2 个容器运行 db 服务。 一般的，当指定数目多于该服务当前实际运行容器，将新创建并启动容器；反之，将停止容器。
+    * -t, --timeout TIMEOUT 停止容器时候的超时（默认为 10 秒）。
 * `start` 启动指定服务已存在的容器
-	* 格式 `docker-compose start [SERVICE...]`
+    * 格式 `docker-compose start [SERVICE...]`
 * `stop` 停止已运行的容器
-	* 格式 `docker-compose start [SERVICE...]`
-	* -t, --timeout TIMEOUT 停止容器时候的超时（默认为 10 秒）。
+    * 格式 `docker-compose start [SERVICE...]`
+    * -t, --timeout TIMEOUT 停止容器时候的超时（默认为 10 秒）。
 * `top` 查看各个服务容器内运行的进程。
 * `unpause` 恢复处于暂停状态中的服务。
-	* 格式 `docker-compose unpause [SERVICE...]`
+    * 格式 `docker-compose unpause [SERVICE...]`
 * `up` 启动整个服务集合
-	* 格式 `docker-compose up [options] [SERVICE...]`
-	* -d 在后台运行服务容器。
-	* --no-color 不使用颜色来区分不同的服务的控制台输出。
-	* --no-deps 不启动服务所链接的容器。
-	* --force-recreate 强制重新创建容器，不能与 --no-recreate 同时使用。
-	* --no-recreate 如果容器已经存在了，则不重新创建，不能与 --force-recreate 同时使用。
-	* --no-build 不自动构建缺失的服务镜像。
-	* -t, --timeout TIMEOUT 停止容器时候的超时（默认为 10 秒）。
+    * 格式 `docker-compose up [options] [SERVICE...]`
+    * -d 在后台运行服务容器。
+    * --no-color 不使用颜色来区分不同的服务的控制台输出。
+    * --no-deps 不启动服务所链接的容器。
+    * --force-recreate 强制重新创建容器，不能与 --no-recreate 同时使用。
+    * --no-recreate 如果容器已经存在了，则不重新创建，不能与 --force-recreate 同时使用。
+    * --no-build 不自动构建缺失的服务镜像。
+    * -t, --timeout TIMEOUT 停止容器时候的超时（默认为 10 秒）。
 * `version` 打印版本信息
 
 ### 6、Docker Compose网络设置

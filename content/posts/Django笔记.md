@@ -162,7 +162,7 @@ Django内置了一个ORM框架，通过继承实现，可以通过链式调用�
 
 ```python
 sudo apt install python-mysql.connector
-pip install mysql-connector-python`
+pip install mysql-connector-python mysql-connector
 ```
 
 创建数据库：略
@@ -178,8 +178,8 @@ DATABASES = {
         'NAME': 'test',
         'USER': 'test',
         'PASSWORD': 'test123',
-        'HOST':'localhost',
-        'PORT':'3306',
+        'HOST': 'localhost',
+        'PORT': '3306',
     }
 }
 ```

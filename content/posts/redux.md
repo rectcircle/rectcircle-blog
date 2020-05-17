@@ -1,7 +1,7 @@
 ---
 title: "Redux"
 date: 2020-03-27T17:22:23+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:

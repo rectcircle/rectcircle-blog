@@ -19,10 +19,23 @@ tags:
 
 ***
 
-### 1、安装（centos 6.5）
+### 1、安装
+
+#### centos 6.5
 
 ```shell
 yum -y install mysql  mysql-server  mysql-devel
+```
+
+#### Debain9
+
+```bash
+wget https://dev.mysql.com/get/mysql-apt-config_0.8.15-1_all.deb
+sudo dpkg -i mysql-apt-config_0.8.15-1_all.deb
+sudo apt-get update
+sudo apt-get install mysql-server
+vim /etc/mysql/conf.d/mysql.cnf
+systemctl restart mysql.service
 ```
 
 ### 2、配置
@@ -43,7 +56,7 @@ skip-character-set-client-handshake
 max_allowed_packet=20M
 # MySQL 5.7 之后MySQL不能DISTINCT和ORDER BY同时使用
 sql_mode=NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES
-
+bind-address=0.0.0.0
 
 [client]
 default-character-set=utf8
@@ -96,6 +109,14 @@ use mysql;
 SELECT DISTINCT CONCAT('User: ''',user,'''@''',host,''';') AS query FROM mysql.user; #查看权限
 GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '123456' WITH GRANT OPTION; #配置root以123456密码在任何ip远程登录，不要配置弱密码！！！
 flush privileges; #应用配置
+```
+
+#### 用户
+
+```sql
+create user 'xxx'@'%' identified by '123';
+show grants for 'yu'@'%';
+DROP USER 'yu'@'localhost';
 ```
 
 #### 配置查询语句大小限制

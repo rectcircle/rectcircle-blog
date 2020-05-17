@@ -135,15 +135,15 @@ sbin/stop-all.sh
 
 * Application 指用户编写的程序，包含Driver和Executor
 * Dirver 一般指Application上的Main函数创建的SparkContext， SparkContext是：
-  * Spark应用程序的运行环境
-  * 负责与ClusterManager通讯，申请资源、任务的分配和监控
+    * Spark应用程序的运行环境
+    * 负责与ClusterManager通讯，申请资源、任务的分配和监控
 * Executor 指运行在Worker节点上的一个进程，负责运行Task，并负责将数据存储在内存或磁盘上，每个Executor并行Task的数目默认取决于CPU数
 
 集群管理相关
 
 * Cluster Manager 集群管理者
-  * standalone
-  * yarn
+    * standalone
+    * yarn
 * Worker 工作机器守护进行，负责启动管理Executor
 
 运行时相关
@@ -202,10 +202,12 @@ set spark.sql.adaptive.shuffle.targetPostShuffleInputSize;
 
 * 上游stage的每个task进行Shuffle Write，分区数为 `spark.sql.adaptive.maxNumPostShufflePartitions`
 * dirver 会汇总每个上游stage中每个task的Shuffle Write的每个分区的编号和文件大小，计算出下游任务数和每个任务读取每个上游任务的那几个partition
-  * 规则是，针对每个上游task从0号分区其获取连续的、总大小小于`spark.sql.adaptive.shuffle.targetPostShuffleInputSize`的连续分区作为下游一个任务的输入
-  * 按照上述规则划分分区，最后得到的分区组的数目就是下游task的数目，每个分区需要读取的分区编号就是这个连续的范围
-  * 创建这些task
+    * 规则是，针对每个上游task从0号分区其获取连续的、总大小小于`spark.sql.adaptive.shuffle.targetPostShuffleInputSize`的连续分区作为下游一个任务的输入
+    * 按照上述规则划分分区，最后得到的分区组的数目就是下游task的数目，每个分区需要读取的分区编号就是这个连续的范围
+    * 创建这些task
 * 下游task并行获取分区数据
+
+### 2、Cache Table
 
 ## 四、Spark原理与实现
 
@@ -222,8 +224,8 @@ set spark.sql.adaptive.shuffle.targetPostShuffleInputSize;
 * 上图的 Worker Node 存在 Worker Domain Process （Worker守护进程），每个集群多个，一般一台机器一个，生命周期和**集群**一致
 * 上图的 Driver 可以运行在 Master Node 或者 Worker Node，和Application一一对应，生命周期和**Application**一致
 * 上图的 Executor 存在于 每个Worker中，由 Worker Domain Process 创建，每个Worker可能存在多个
-  * 每个 Executor 存在一个线程池，线程池的数目受 `spark.executor.cores` 参数影响
-  * 每个 Executor 的每个线程会运行一个 task，同一个 Executor 执行同一个任务
+    * 每个 Executor 存在一个线程池，线程池的数目受 `spark.executor.cores` 参数影响
+    * 每个 Executor 的每个线程会运行一个 task，同一个 Executor 执行同一个任务
 
 其他参考文档
 
@@ -248,7 +250,7 @@ set spark.sql.adaptive.shuffle.targetPostShuffleInputSize;
 
 * 根据配置的ShufflePartition文件大小，自动配置每个Stage的Partition数
 * 每个Stage执行完成之后，根据统计信息动态改变物理执行计划，重新生成RDD代码
-  * 决定是否使用boardcast
+    * 决定是否使用boardcast
 * 打开AE，Spark History UI的Stage DAG图会出现很多跳过Stage
 * 打开AE后，Spark History UI 的 SQL DAG图会随运行过程中不断变化
 
@@ -262,18 +264,18 @@ Spark Application:
 Driver:
 
 * 运行用户提交主代码的进程，负责
-  * 解析用户输入
-  * 构建执行图
-  * 调度协调Task
+    * 解析用户输入
+    * 构建执行图
+    * 调度协调Task
 
 Job:
 
 * 一个Application可以划分为1个或多个Job
 * 划分Job的依据是：调用了action算子（ResultTask），action算子：
-  * 收集信息到Driver程序
+    * 收集信息到Driver程序
 * 一般情况下
-  * AE：一个SparkSQL的每个Stage就是一个Job（因为AE会动态调整执行计划，需要收集信息到Driver）
-  * 非AE：一个SparkSQL（insert into）一般对应一个一个Stage（因为物理执行图一旦确定就不会变，直到action操作insert into）
+    * AE：一个SparkSQL的每个Stage就是一个Job（因为AE会动态调整执行计划，需要收集信息到Driver）
+    * 非AE：一个SparkSQL（insert into）一般对应一个一个Stage（因为物理执行图一旦确定就不会变，直到action操作insert into）
 
 Stage:
 
@@ -320,13 +322,13 @@ group by t1.a, t1.b
 以上SQL如果没有优化的话会产生3个Shuffle，分别是
 
 * Shuffle1：
-  * t1 join t2
-  * shaffle key 为 t1.a
+    * t1 join t2
+    * shaffle key 为 t1.a
 * Shuffle2：
-  * group by t1.a, t1.b, t1.c
-  * shaffle key 为 t1.a, t1.b, t1.c
+    * group by t1.a, t1.b, t1.c
+    * shaffle key 为 t1.a, t1.b, t1.c
 * Shuffle3：
-  * group by t1.a, t1.b
-  * shaffle key 为 t1.a, t1.b
+    * group by t1.a, t1.b
+    * shaffle key 为 t1.a, t1.b
 
 可以观察到，shuffle1 的 key 是 shuffle2 key 的前缀。所以 shuffle2 可以优化为窄依赖

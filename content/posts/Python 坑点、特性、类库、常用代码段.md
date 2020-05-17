@@ -30,9 +30,9 @@ sys.modules['django']
 #### （2）Python非PIP管理的包加入PythonPath
 
 * ~~方法1：使用`PYTHONPATH`环境变量~~
-	* 不推荐：原因是优先级过高，可能覆盖系统包
+    * 不推荐：原因是优先级过高，可能覆盖系统包
 * **方法2：在site-packages目录价添加一个.pth目录（推荐）**
-	* Unix系：`/usr/local/lib/python2.7/site-packages/my.pth`
+    * Unix系：`/usr/local/lib/python2.7/site-packages/my.pth`
 
 ### 1、使用装饰器增强一个类
 
@@ -174,8 +174,8 @@ L（object） = [ object ]
 
 * 创建一个结构，将其源信息指向class对象（叫做self）
 * 遍历class对象内部每一个
-	* 函数（类型为函数），对每个函数将self传进去，创建一个偏函数，并绑定到self内
-	* 非函数，直接付给self
+    * 函数（类型为函数），对每个函数将self传进去，创建一个偏函数，并绑定到self内
+    * 非函数，直接付给self
 * 执行构造函数，返回self
 * 完成
 
@@ -202,17 +202,17 @@ from django.utils import timezone
 ```
 
 * `datetime` 的常用子模块
-	* `date` 仅表示日期，主要有三个字段年月日
-	* `datetime` 表示带时间的日期，主要8个字段（年月日、时分秒毫秒、时区），不带参数的大都是不带时区的，分为两类
-		* 不带时区：共使用了7个字段
-		* 带时区：使用了8个字段
-		* 以上两类不能做比较运算
-	* `timedelta` 表示时间差
+    * `date` 仅表示日期，主要有三个字段年月日
+    * `datetime` 表示带时间的日期，主要8个字段（年月日、时分秒毫秒、时区），不带参数的大都是不带时区的，分为两类
+        * 不带时区：共使用了7个字段
+        * 带时区：使用了8个字段
+        * 以上两类不能做比较运算
+    * `timedelta` 表示时间差
 * `time` 对 Unix时间的封装
 * `pytz` 时区相关，配合`datetime`使用，常用的有
-	* `pytz.utc`
-	* `pytz.timezone('UTC')`
-	* `tz = pytz.timezone('Asia/Shanghai')`
+    * `pytz.utc`
+    * `pytz.timezone('UTC')`
+    * `tz = pytz.timezone('Asia/Shanghai')`
 * `timezone` django 提供的一些常用的方法
 
 #### （2）转化为Unix时间戳
@@ -290,13 +290,13 @@ USE_TZ = True # 使用带时区的DateTime: django.utils.timezone
 
 * MySQL数据库存储的数据为UTC时区的时间日期
 * 写入数据库时：
-  * 如果是无时区的datetime，将该`dt`当做`django.conf.setttings.TIME_ZONE`时区，并转换为UTC时区的datetime，并存储到数据库
-  * 如果是有时区的datetime，将该`dtz`转换为UTC时间并存储到数据库
+    * 如果是无时区的datetime，将该`dt`当做`django.conf.setttings.TIME_ZONE`时区，并转换为UTC时区的datetime，并存储到数据库
+    * 如果是有时区的datetime，将该`dtz`转换为UTC时间并存储到数据库
 * 读取数据库时：
-  * 查询出来会封装成带时区的datetime（时区为UTC）
+    * 查询出来会封装成带时区的datetime（时区为UTC）
 * 条件查询时（比如`filter(create_time__gt=dt)`）
-  * 无时区的datetime，直接将该`dt`当做UTC时区进行查询
-  * 无时区的datetime，转换为UTC时区的datetime进行查询
+    * 无时区的datetime，直接将该`dt`当做UTC时区进行查询
+    * 无时区的datetime，转换为UTC时区的datetime进行查询
 
 #### 一个时间日期转换器
 
@@ -448,4 +448,14 @@ setup(
         url='https://www.konghy.com',      # 包的主页
         packages=['demo'],                 # 包
 )
+```
+
+### 6、Python2 文件名与模块名冲突
+
+比如 `redis.py` 文件中需要引入 `import redis` 模块，在 Python2 中将导入 `redis.py`
+
+解决方案为：
+
+```python
+from __future__ import absolute_import
 ```
