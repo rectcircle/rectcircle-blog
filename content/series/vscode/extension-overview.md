@@ -104,14 +104,21 @@ VSCode 的国际化支持是通过语言包扩展实现的，同时商店中有�
 | Better Comments          | 必备     | 注释美化 |
 | Bracket Pair Colorizer 2 | 必备     | 括号美化 |
 
-## Git/CI&CD/Devops
+## Git和工作流
 
-* Git Extension Pack
-* Git Graph
-* Travis CI Status
-* GitHub Pull Requests
-* GitHub Issues
-* Salesforce CLI Integration
+详细参见： [优质扩展/Git和工作流](/series/vscode/good-extensions/git-and-workflow/)
+
+| 扩展名 | 推荐级别 | 描述 |
+| --- | --- | --- |
+| [Git Graph](https://marketplace.visualstudio.com/items?itemName=mhutchie.git-graph) | 必备 | 清晰的查看分支合并图 |
+| [GitHub Pull Requests and Issues](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-pull-request-github) | 知悉 | 适合开源项目管理者使用 |
+| [GitLab Workflow](https://marketplace.visualstudio.com/items?itemName=fatihacet.gitlab-workflow) | 知悉 | 适合公司内项目管理 |
+| [Git Extension Pack](https://marketplace.visualstudio.com/items?itemName=donjayamanne.git-extension-pack) | 推荐 | git扩展包，包含如下 5 个 扩展 |
+| [Git History](https://marketplace.visualstudio.com/items?itemName=donjayamanne.githistory) | 推荐 | 通过 `> git view` 命令唤醒 History 操作视图 |
+| [Project Manager](https://marketplace.visualstudio.com/items?itemName=alefragnani.project-manager) | 推荐 | 项目（目录）收藏，通过状态栏快速打开 |
+| [GitLens — Git supercharged](https://marketplace.visualstudio.com/items?itemName=eamodio.gitlens) | 必备 | 提供大量好用Git相关功能 |
+| [gitignore](https://marketplace.visualstudio.com/items?itemName=codezombiech.gitignore) | 必备 | 快速为项目添加gitignore文件 |
+| [Open in GitHub, Bitbucket, Gitlab, VisualStudio.com !](https://marketplace.visualstudio.com/items?itemName=ziyasal.vscode-open-in-github) | 知悉 | 快速在代码仓库打开当前文件 |
 
 ## 通用
 
@@ -150,15 +157,20 @@ VSCode 的国际化支持是通过语言包扩展实现的，同时商店中有�
 * Live Share
 * Live Share Audio
 
-## 容器/云厂商
+## Docker&K8S
 
+* Docker Extension Pack
+* Kubernetes
+* Docker Explorer
+
+## 服务提供商
+
+* Travis CI Status
+* Salesforce CLI Integration
 * Azure Account
 * Cloudfoundry Manifest YML Support
 * Concourse CI Pipeline Editor
-* Kubernetes
-* Docker Extension Pack
 * Spark & Hive Tools
-* Docker Explorer
 * Azure Virtual Machines
 * Azure CLI Tools
 

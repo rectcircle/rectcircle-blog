@@ -28,6 +28,8 @@ mac homebrew-v2ray `vim /usr/local/etc/v2ray/config.json`
 ```bash
 # 手动运行查看问题
 cat /usr/local/opt/v2ray-core/homebrew.mxcl.v2ray-core.plist
+# 重启
+brew services restart v2ray-core
 ```
 
 ### cloudflare(CDN)+ws+tls
@@ -190,7 +192,7 @@ your_addr=xxx.xx # 域名
           "address": "i18n.rcfree.gq", // tls 需要域名，所以这里应该填自己的域名
           "port": 443,
           "users": [{
-            "id": "3a03b71d-3e71-4d85-8a7e-6b370be5a699",
+            "id": "xxx",
             "alterId": 64
           }]
         }]

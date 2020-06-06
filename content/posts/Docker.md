@@ -1253,3 +1253,45 @@ networks:
 ### 1、处理容器退出指令
 
 捕获 `SIGTERM` 信号，进行状态变更处理
+
+## 七、常见问题
+
+### 1、基础镜像
+
+Apline Linux，其大小仅有 5m
+
+https://www.jianshu.com/p/2c1118694936
+
+需要注意的是该镜像存在一个致命问题，其 libc 不是主流的 glibc。
+
+因此可以考虑使用 `gcr.io/distroless/cc-debian10`
+
+### 2、快速实现镜像构建
+
+```bash
+# 确定基础镜像
+docker pull $base-image
+# 进入内部自由测试
+docker run -it $base-image /bin/bash
+```
+
+### 3、构建干净的镜像
+
+https://andyyoung01.github.io/2016/08/26/构建小容量Docker镜像的技巧/
+
+构建安全的小的镜像：https://dev.to/sergeyzenchenko/actix-web-in-docker-how-to-build-small-and-secure-images-2mjd
+
+### 4、K8S 常用命令
+
+```bas
+# 启动一个服务
+kubectl apply -f yaml文件名 -n 命令空间
+# 查看实例
+kubectl get pods -n 命名空间
+# 查看日志
+kubectl logs -f 实例名称 -n 命名空间
+# 进入容器
+kubectl exec -it 实例名称 -n 命名空间 bash
+# 销毁服务
+kubectl delete -f yaml文件名
+```

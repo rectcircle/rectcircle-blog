@@ -17,6 +17,7 @@ tags:
 * [repo](https://github.com/diesel-rs/diesel)
 * [官网](https://diesel.rs/)
 * [API Doc](http://docs.diesel.rs/diesel/index.html)
+* [Custom types in Diesel](https://kitsu.me/posts/2020_05_24_custom_types_in_diesel)
 
 ## 一、Getting Started
 
