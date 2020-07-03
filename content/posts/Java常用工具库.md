@@ -204,33 +204,42 @@ public class RPCClient {
 
 * 确定需要池化的类
 * 创建给对象的工厂
-  * 实现 `PooledObjectFactory` 方法
+    * 实现 `PooledObjectFactory` 方法
 * 配置并创建对象池
 * 使用对象池
-  * 调用 `pool.borrowObject`，借用对象
-    * 检查是否有空闲状态（idle）的对象，如果有，将该对象标记为已借出状态（allocated），并移出idle池
-    * 如果对象池已满且没有空闲状态（idle）的对象
-      * 如果配置阻塞，将阻塞等待一段时间，超时后抛异常
-      * 如果配置非阻塞，则直接抛出异常
-    * 如果对象池没满且没有空闲状态的对象
-      * 调用工厂方法 `factory.makeObject` 构造一个新对象，标记为已借出状态（allocated）
-    * 调用工厂方法的 `factory.activateObject` 方法执行一些初始化操作
-    * 最后返回一个对象
-    * 如果设置了对象借出有效性检测 `config.setTestOnBorrow(true)` 将会调用工厂的 `factory.validateObject`
-  * 调用 `pool.borrowObject`，归还对象
-    * 将对象状态标记为空闲状态（idle）
-    * 如果配置了 `config.setTestOnReturn(true)` 将会对该对象进行有效性检查，将会调用工厂的 `factory.validateObject`
-    * 调用工厂方法的 `factory.passivateObject` 的执行一些清理工作
-    * 如果idle池达到最大值，则清理该对象，否则添加到idle池
+    * 调用 `pool.borrowObject`，借用对象
+        * 检查是否有空闲状态（idle）的对象，如果有，将该对象标记为已借出状态（allocated），并移出idle池
+        * 如果对象池已满且没有空闲状态（idle）的对象
+            * 如果配置阻塞，将阻塞等待一段时间，超时后抛异常
+            * 如果配置非阻塞，则直接抛出异常
+        * 如果对象池没满且没有空闲状态的对象
+            * 调用工厂方法 `factory.makeObject` 构造一个新对象，标记为已借出状态（allocated）
+        * 调用工厂方法的 `factory.activateObject` 方法执行一些初始化操作
+        * 最后返回一个对象
+        * 如果设置了对象借出有效性检测 `config.setTestOnBorrow(true)` 将会调用工厂的 `factory.validateObject`
+    * 调用 `pool.borrowObject`，归还对象
+        * 将对象状态标记为空闲状态（idle）
+        * 如果配置了 `config.setTestOnReturn(true)` 将会对该对象进行有效性检查，将会调用工厂的 `factory.validateObject`
+        * 调用工厂方法的 `factory.passivateObject` 的执行一些清理工作
+        * 如果idle池达到最大值，则清理该对象，否则添加到idle池
 * EvictionTimer 驱逐辅助线程
-  * 目的：定时清理 Idle 池以节约内存使用
-  * 默认的策略（DefaultEvictionPolicy）是：
-    * 每次最多清理 `config.setNumTestsPerEvictionRun(3)` 个对象
-    * 针对每个对象进行如下测试，满足如下之一的进行驱逐：
-      * 对象在上一个空闲状态的时间 大于 `config.setSoftMinEvictableIdleTimeMillis(1800000)` 且 空闲状态对象的数目 大于 `config.setMinIdle(1)`
-      * 对象在上一个空闲状态的时间 大于 `config.setMinEvictableIdleTimeMillis(1800000)` 且 不用考虑idle池的数目
-    * 上一个空闲状态的时间 指 当前时间减去上次归还时间
+    * 目的：定时清理 Idle 池以节约内存使用
+    * 默认的策略（DefaultEvictionPolicy）是：
+        * 每次最多清理 `config.setNumTestsPerEvictionRun(3)` 个对象
+        * 针对每个对象进行如下测试，满足如下之一的进行驱逐：
+            * 对象在上一个空闲状态的时间 大于 `config.setSoftMinEvictableIdleTimeMillis(1800000)` 且 空闲状态对象的数目 大于 `config.setMinIdle(1)`
+            * 对象在上一个空闲状态的时间 大于 `config.setMinEvictableIdleTimeMillis(1800000)` 且 不用考虑idle池的数目
+        * 上一个空闲状态的时间 指 当前时间减去上次归还时间
 * 放逐
-  * 目的：方式对象借出时间过长或者超时
-  * 配置对象为 `AbandonedConfig`
-  * 实现上在借出和归还函数上添加判断
+    * 目的：方式对象借出时间过长或者超时
+    * 配置对象为 `AbandonedConfig`
+    * 实现上在借出和归还函数上添加判断
+
+## 二、Java 绘图库 jfreechart
+
+* https://github.com/jfree/jfreechart
+* https://wizardforcel.gitbooks.io/jfreechart-dev-guide/20.html
+
+## 三、定时调度库 Quartz
+
+[参见](/posts/java-quartz/)
