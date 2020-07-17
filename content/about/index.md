@@ -8,3 +8,9 @@ type: "about"
 **E-mail**: [rectcircle96@gmail.com](mailto:rectcircle96@gmail.com)
 
 **Github**: https://github.com/rectcircle
+
+---
+
+友情链接：
+
+* [卡拉搜索](https://kalasearch.cn/)
