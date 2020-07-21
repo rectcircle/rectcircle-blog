@@ -173,11 +173,19 @@ public interface Dispatcher {
     <T extends Enum<T>, E extends Event<T>> void dispatchEvent(E event);
 
     /**
-     * 注册一个消息
+     * 针对一种事件类型，注册一个消息处理器
      * @param eventType 事件类型
      * @param handler 事件处理器
      */
     <T extends Enum<T>, E extends Event<T>> void register(T eventType, EventHandler<T, E> handler);
+
+    /**
+     * 针对一种事件类型的类型，注册一个消息处理器，即所有该 class 的类型都会触发该处理器
+     *
+     * @param eventTypeClazz 事件类型的类型
+     * @param handler        事件处理器
+     */
+    <T extends Enum<T>, E extends Event<T>> void register(Class<T> eventTypeClazz, EventHandler<T, E> handler);
 }
 ```
 
@@ -252,7 +260,7 @@ public class AsyncDispatcher implements Dispatcher {
 
     private Thread eventHandlingThread;
     private final ExecutorService eventHandlingPool;
-    protected final Map<Enum<?>, EventHandler<?, ?>> eventDispatchers;
+    protected final Map<Object, EventHandler<?, ?>> eventDispatchers;
 
     public AsyncDispatcher(ExecutorService eventHandlingPool) {
         this(eventHandlingPool, new LinkedBlockingQueue<>());
@@ -325,25 +333,27 @@ public class AsyncDispatcher implements Dispatcher {
         T type = event.getType();
         try {
             @SuppressWarnings("unchecked")
-            EventHandler<T, E> handler = (EventHandler<T, E>) eventDispatchers.get(type);
-            if (handler == null) {
+            EventHandler<T, E> handler1 = (EventHandler<T, E>) eventDispatchers.get(type.getClass());
+            @SuppressWarnings("unchecked")
+            EventHandler<T, E> handler2 = (EventHandler<T, E>) eventDispatchers.get(type);
+            if (handler1 == null && handler2 == null) {
                 throw new Exception("No handler for registered for " + type);
             }
             // 提交事件处理到 worker 线程池
             eventHandlingPool.execute(() -> {
-                handler.handle(event);
+                if (handler1 != null) {
+                    handler1.handle(event);
+                }
+                if (handler2 != null) {
+                    handler2.handle(event);
+                }
             });
         } catch (Throwable t) {
             LOG.error("something happen in handle", t);
         }
     }
 
-    /**
-     * 注册函数，某事件类型注册第一个处理器时直接注册，注册第二个时创建使用 {@link MultiListenerHandler} 进行包裹
-     */
-    @Override
-    public <T extends Enum<T>, E extends Event<T>> void register(T eventType,
-                         EventHandler<T, E> handler) {
+    private <T extends Enum<T>, E extends Event<T>> void internalRegister(Object eventType, EventHandler<T, E> handler){
         // check to see if we have a listener registered
         // 检查是否已注册侦听器
         @SuppressWarnings("unchecked")
@@ -359,10 +369,24 @@ public class AsyncDispatcher implements Dispatcher {
         } else {
             // already a multilistener, just add to it
             // 已经是 multilistener，只需添加即可
-            MultiListenerHandler<T, E> multiHandler
-                    = (MultiListenerHandler<T, E>) registeredHandler;
+            MultiListenerHandler<T, E> multiHandler = (MultiListenerHandler<T, E>) registeredHandler;
             multiHandler.addHandler(handler);
         }
+    }
+
+    /**
+     * 注册函数，某事件类型注册第一个处理器时直接注册，注册第二个时创建使用 {@link MultiListenerHandler} 进行包裹
+     */
+    @Override
+    public <T extends Enum<T>, E extends Event<T>> void register(T eventType,
+            EventHandler<T, E> handler) {
+        this.internalRegister(eventType, handler);
+    }
+
+
+    @Override
+    public <T extends Enum<T>, E extends Event<T>> void register(Class<T> eventTypeClazz, EventHandler<T, E> handler) {
+        this.internalRegister(eventTypeClazz, handler);
     }
 
     @Override
@@ -548,6 +572,9 @@ public class BaseUsage {
         });
         dispatcher.register(BaseEventType.HI, (BaseEvent e) -> {
             LOG.info("Hi " + e.getWord());
+        });
+        dispatcher.register(BaseEventType.class, (BaseEvent e) -> {
+            LOG.info("通过 class 注册 " + e.getWord());
         });
 
         // 启动事件循环
