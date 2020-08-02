@@ -787,11 +787,20 @@ fn read_username_from_file2() -> Result<String, io::Error> {
 
 ### 7、内存管理
 
-* 手动内存管理
-* 所有权系统
-* 安全内存管理
+赋值、函数参数传递、函数返回均按值传递（也就是说是拷贝），和 C 语一致
 
-细节参见下文
+```rust
+    let s = String::from("str");
+    println!("0x{:x}", &s as *const String as usize);
+    // 所有权转移的同时进行栈内存拷贝
+    let s2 = s;
+    println!("0x{:x}", &s2 as *const String as usize);
+
+    let slen = mem::size_of::<String>();
+    println!("{}", slen);
+```
+
+内存申请和回收相关的关于所有权相关细节参见下文
 
 ### 8、抽象方式
 
@@ -5023,7 +5032,7 @@ Trait 继承语法： `trait SubTrait : ParentTrait {}`
 
 newtype 模式用以在外部类型上实现外部 trait
 
-* 孤儿规则：只要 trait 或类型对于当前 crate 是本地的话就可以在此类型上实现该 trait （也就是说trait和struct都不在当前crate将不允许impl）
+* 孤儿规则：只要 trait 或类型对于当前 crate 是本地��话就可以在此类型上实现该 trait （也就是说trait和struct都不在当前crate将不允许impl）
 * 解决方案：创建一个新的包裹类型
     * 必须直接在 Wrapper 上实现所有方法，这样就可以代理到 `self.0` 上 —— 这就允许我们完全像 被包裹类型一样 那样对待 Wrapper。
     * 或者为封装类型实现 Deref trait 方法，返回 `self.0`
