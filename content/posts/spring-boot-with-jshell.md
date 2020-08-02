@@ -33,7 +33,7 @@ Java 版本：11
 
 * 将 Spring Boot 项目编译为 fat jar
 * 解压下来
-* 启动 `Jshell` 时，将 CLASSPATH 环境变量指定为 `target/"BOOT-INF/classes:BOOT-INF/lib/*`
+* 启动 `Jshell` 时，将 CLASSPATH 环境变量指定为 `target/"BOOT-INF/classes:BOOT-INF/lib/*"`
 * 引入 常用 组件包 和 Application 类
 * 调用 main 方法启动
 * 通过 我们实现的 `SpringBeanUtils` 类拿到 `ApplicationContext`，这样就可以调试 Spring 管理 的 bean 了

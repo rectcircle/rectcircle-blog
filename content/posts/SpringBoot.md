@@ -14,6 +14,8 @@ tags:
 > 参考：
 > 《SpringBoot实战》
 
+官方文档：https://docs.spring.io/spring-boot/docs/current/reference/html/index.html
+
 ## 一、入门
 
 ***
@@ -28,7 +30,7 @@ tags:
 ### 2、使用SpringBoot
 
 * 安装Spring Boot CLI，使用命令行创建SpringBoot项目
-	* Unix类系统使用SDK包管理工具
+    * Unix类系统使用SDK包管理工具
 * 使用IDEA
 * 使用web页面创建
 
@@ -41,9 +43,9 @@ tags:
 使用上述方式创建项目骨架：
 
 * 创建一个启动配置类，包含main方法包含`@SpringBootApplication`注解：该注解由三个注解组成
-	* @Configuration :标明该类使用Spring基于Java的配置
-	* @ComponentScan :启用组件扫描
-	* @EnableAutoConfiguration：启用SpringBoot自动配置
+    * @Configuration :标明该类使用Spring基于Java的配置
+    * @ComponentScan :启用组件扫描
+    * @EnableAutoConfiguration：启用SpringBoot自动配置
 * 创建一个依赖管理配置文件，引入相关SpringBoot的起步依赖
 * 创建了JavaWeb的目录结构和基本的测试文件
 * 创建了application.properties配置文件
@@ -195,12 +197,12 @@ public class AmazonProperties {
 * 使用`@Profile("production")`注解，然后使用`spring.profiles.active=production`激活
 * 使用特定配置文件`application-development.properties`或`application-production.properties`
 * 激活方式：
-	* `application.yml`等配置文件激活`spring.profiles.active=production`
-	* 启动参数激活`java -jar XXX.jar --spring.profiles.active=production`
-	* 环境变量激活`export SPRING_PROFILES_ACTIVE=production`
-	* spring-boot 插件
-		* spring-boot 1.x 使用 `mvn spring-boot:run -Dspring.profiles.active=test`
-		* spring-boot 2.x 使用 `mvn spring-boot:run -Dspring-boot.run.profiles=test`
+    * `application.yml`等配置文件激活`spring.profiles.active=production`
+    * 启动参数激活`java -jar XXX.jar --spring.profiles.active=production`
+    * 环境变量激活`export SPRING_PROFILES_ACTIVE=production`
+    * spring-boot 插件
+        * spring-boot 1.x 使用 `mvn spring-boot:run -Dspring.profiles.active=test`
+        * spring-boot 2.x 使用 `mvn spring-boot:run -Dspring-boot.run.profiles=test`
 
 ### 3、定制应用程序错误页面
 
@@ -624,11 +626,11 @@ public class AmazonHealth implements HealthIndicator {
 #### （2）打包方式
 
 * 可执行JAR
-	* Maven、Gradle或Spring Boot CLI产生
-	* 云环境,包括Cloud Foundry和Heroku,还有容器部署,比如Docker
+    * Maven、Gradle或Spring Boot CLI产生
+    * 云环境,包括Cloud Foundry和Heroku,还有容器部署,比如Docker
 * WAR
-	* Maven或Gradle 产生
-	* Java应用服务器或云环境,比如Cloud Foundry
+    * Maven或Gradle 产生
+    * Java应用服务器或云环境,比如Cloud Foundry
 
 ### 2、部署到应用服务器
 
@@ -819,3 +821,11 @@ java -Xdebug -Xrunjdwp:server=y,transport=dt_socket,address=8000,suspend=n -jar 
 ### 3、配置属性
 
 [官网文档](https://docs.spring.io/spring-boot/docs/current/reference/html/common-application-properties.html)
+
+## 十、SpringBoot 特性
+
+> https://docs.spring.io/spring-boot/docs/current/reference/html/spring-boot-features.html
+
+## 十一、SpringBoot 生产环境监控
+
+> https://docs.spring.io/spring-boot/docs/current/reference/html/production-ready-features.html#production-ready-enabling
