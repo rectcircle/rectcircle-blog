@@ -5,7 +5,7 @@ draft: false
 toc: true
 comments: true
 tags:
-  - untagged
+  - Rust
 ---
 
 > serder version: 1.0

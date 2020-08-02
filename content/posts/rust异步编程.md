@@ -5,7 +5,7 @@ draft: false
 toc: true
 comments: true
 tags:
-  - 其他编程语言
+  - Rust
 ---
 
 > 版本：1.41.0

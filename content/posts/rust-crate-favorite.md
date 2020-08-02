@@ -6,6 +6,7 @@ toc: true
 comments: true
 tags:
   - 收藏夹
+  - Rust
 ---
 
 ### argh 命令行参数解析库

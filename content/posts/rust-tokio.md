@@ -5,7 +5,7 @@ draft: false
 toc: true
 comments: true
 tags:
-  - untagged
+  - Rust
 ---
 
 > Rust 版本：1.41.0 (1.39.0 以上)
