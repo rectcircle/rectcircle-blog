@@ -40,7 +40,7 @@ tags:
 
 定义一个 异步函数 `async fn fn_name () {}`
 
-```rs
+```rust
 // `block_on`会阻塞当前线程，直到提供的future完成为止。
 // 其他执行器提供更复杂的行为，例如将多个期货调度到同一线程上。
 use futures::executor::block_on;
@@ -63,7 +63,7 @@ futures = "0.3.1"
 
 使用 `.await` 等待其他Future执行完成，以控制执行顺序
 
-```rs
+```rust
 use futures::executor::block_on;
 use async_std::task;
 
@@ -131,7 +131,7 @@ tokio = { version = "0.2", features = ["full"] }
 
 编写代码
 
-```rs
+```rust
 use std::{convert::Infallible, net::SocketAddr};
 use hyper::{Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
@@ -170,7 +170,7 @@ async fn main() {
 
 Rust 实现异步函数的核心特质为 `std::future::Future`，定义如下
 
-```rs
+```rust
 use crate::marker::Unpin;
 use crate::ops;
 use crate::pin::Pin;
@@ -209,7 +209,7 @@ where
     * `Pending` 任务没有就绪时返回该对象，此Future将让出CPU，直到在其他线程或者任务执行调用`Waker`为止
 * 实现者需要保证 poll 是非阻塞，如果是阻塞的话会导致循环进行不下去
 
-```rs
+```rust
 pub trait Future {
     type Output;
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
@@ -237,7 +237,7 @@ pub struct Context<'a> {
 
 tip1. 关于 `mut self`
 
-```rs
+```rust
 trait Foo {
     fn m(self);
 }
@@ -283,7 +283,7 @@ fn main() {
     * 如果就绪，返回`Poll::Ready`
     * 如果未就绪，返回`Poll::Pending`
 
-```rs
+```rust
 use std::future::Future;
 use std::{time, thread};
 use std::pin::Pin;
@@ -392,7 +392,7 @@ use futures::executor::block_on;
 * 实现一个开始运行 提交的顶级 Future 函数或者结构，该函数逻辑如下
     * 轮训 `sync_channel` 接收端，获取 Future，并调用其 `poll` 方法
 
-```rs
+```rust
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Waker, Poll, Context};
@@ -521,7 +521,7 @@ fn new_executor_and_spawner() -> (Executor, Spawner) {
 
 本小结探索如何通过 自定义 Future 实现类似 `async {}` 的效果，探索编译方式，模拟上一节的代码
 
-```rs
+```rust
 async {
     println!("howdy!");
     TimerFuture::new(time::Duration::from_secs(2)).await;
@@ -531,7 +531,7 @@ async {
 
 模拟代码如下
 
-```rs
+```rust
     {
         // 以上代码段基本等价于如下内容
         // 不同在于子Future可能在poll过程中构造出来（因为需要上下文参数作为构造参数）
@@ -611,7 +611,7 @@ Rust 生态中有两个 异步执行器 分别为 [tokio](https://github.com/tok
 
 和 JavaScript 不太一样，测试代码如下：
 
-```rs
+```rust
 use futures::executor::block_on;
     block_on(async {
         dance(); // 和JavaScript不一样，这不会执行，如果想让他执行必须使用Executor上下文环境提供的提交Future功能
@@ -623,7 +623,7 @@ use futures::executor::block_on;
 
 `async` 块生命周期
 
-```rs
+```rust
 // 这个函数
 async fn foo2(x: &u8) -> u8 { *x }
 
@@ -635,7 +635,7 @@ fn foo2_expanded<'a>(x: &'a u8) -> impl Future<Output = u8> + 'a {
 
 async 使用外部引用变量生命周期问题
 
-```rs
+```rust
 async fn borrow_x(x: &u8) -> u8 { *x }
 
 // fn bad() -> impl Future<Output = u8> {
@@ -664,7 +664,7 @@ async 块访问周围变量
     * 因为不可能发送竞争，同一个Future内部的所有代码在同一时刻只可能在同一个线程中执行，不可能出现
     * 也就是说rust保证 future_one 和 future_two 不会再多个线程中并行执行
 
-```rs
+```rust
 async fn a(s: &str) -> i32 {
     println!("{}", s);
     1
@@ -698,7 +698,7 @@ async fn blocks() {
 
 `async move` 块 所有权转移
 
-```rs
+```rust
 /// `async move`块：
 ///
 /// 捕获变量所有权（move）
@@ -719,7 +719,7 @@ fn move_block() -> impl Future<Output = ()> {
 > https://rust.cc/article?id=4479f801-d28d-40cb-906c-85d8a04e8679
 > https://rustforce.net/article?id=82a7e562-8bf1-45a2-9d86-fa3e6977039f
 
-```rs
+```rust
 use crate::marker::Unpin;
 use crate::ops;
 use crate::pin::Pin;
@@ -735,7 +735,7 @@ pub trait Future {
 
 而 async 编译后的结构可能就会出现一种自引用的结构（我们自己写是不行的，编译器生成不受限制），如下所示：
 
-```rs
+```rust
 async {
     let mut x = [0; 128];
     let read_into_buf_fut = read_into_buf(&mut x);
@@ -788,7 +788,7 @@ Unpin是一个标记 trait。所有的类型都实现了 Unpin 标记（因为�
 
 Pin 与 Future 结合可以保证我们不使用 unsafe 的情况下，无法写出有内存问题的代码。场景如下：
 
-```rs
+```rust
 async {
     let mut x = [0; 128];
     let read_into_buf_fut = ReadIntoBuf::new(&mut x);
@@ -807,7 +807,7 @@ async {
 
 全部测试代码如下
 
-```rs
+```rust
 use std::future::Future;
 use std::task::{Waker, Poll, Context};
 use futures::executor::block_on; // 引入 futures 依赖
@@ -852,7 +852,7 @@ Stream 类似于 Future ，但是在完成之前可以产生多个值，类似�
 
 该特质目前定义在 `features-core` 库下 （`futures::stream::Stream`）
 
-```rs
+```rust
 pub trait Stream {
     type Item;
 
@@ -874,7 +874,7 @@ pub trait Stream {
 * `Receiver` 实现了 Stream
 * `StreamExt` 提供了将 `Stream` 的一个数据转换为 一个 `Future` 的能力（通过 `next`）
 
-```rs
+```rust
 async fn send_recv() {
     use futures::channel::{mpsc};
     use futures::stream::{StreamExt};
@@ -897,7 +897,7 @@ async fn send_recv() {
 
 ### 2、Stream与并发迭代
 
-```rs
+```rust
 /// 对流求和
 async fn sum_with_next(mut stream: Pin<&mut dyn Stream<Item = i32>>) -> i32 {
     let mut sum = 0;
@@ -946,7 +946,7 @@ async fn jump_around(
 
 使用 `futures::join` 宏，语义是发执行join的 Future ，当 Future 执行完成后，返回
 
-```rs
+```rust
 use futures::join;
 
 async fn get_book_and_music() -> (Book, Music) {
@@ -958,7 +958,7 @@ async fn get_book_and_music() -> (Book, Music) {
 
 当 `Future<Output=Result>` 时，建议使用 `try_join` 宏（因为其可以快速中断，只要有一个返回Err，则立即返回）
 
-```rs
+```rust
 use futures::try_join;
 
 async fn get_book() -> Result<Book, String> { /* ... */ Ok(Book) }
@@ -973,7 +973,7 @@ async fn get_book_and_music() -> Result<(Book, Music), String> {
 
 快速返回的例子
 
-```rs
+```rust
 use futures::{
     future::TryFutureExt,
     try_join,
@@ -1003,7 +1003,7 @@ async fn get_book_and_music() -> Result<(Book, Music), String> {
     * 或者 `Box::pin()` 函数
 * `expression` 是函数调用，则不需要固定，`select` 帮忙固定
 
-```rs
+```rust
         use futures::{
             future::FutureExt, // for `.fuse()`
             pin_mut,
@@ -1038,7 +1038,7 @@ select 还支持 `default` 和 `complete`
     * 当所有的 future 都 Ready 后，再会执行 complete 语句
     * 在 loop 中 `<expression>` 不能使用 函数调用，使用的话会造成死循环（需要实现准备好）
 
-```rs
+```rust
         use futures::{future};
 
         async fn count() {
@@ -1071,7 +1071,7 @@ select 还支持 `default` 和 `complete`
 
 ### 2、async 块中的`?`
 
-```rs
+```rust
     async fn foo() -> Result<(), String> { Ok(())}
     async fn bar() -> Result<(), String> { Ok(())}
 
@@ -1090,7 +1090,7 @@ select 还支持 `default` 和 `complete`
 
 ### 3、 async 块 的 Send 推断
 
-```rs
+```rust
     {
         use std::rc::Rc;
 
@@ -1116,7 +1116,7 @@ select 还支持 `default` 和 `complete`
 
 ### 4、async 递归
 
-```rs
+```rust
 use futures::future::{BoxFuture, FutureExt};
 
 fn recursive() -> BoxFuture<'static, ()> {
@@ -1133,7 +1133,7 @@ fn recursive() -> BoxFuture<'static, ()> {
 
 rust 支持异步方法
 
-```rs
+```rust
     {
         struct A {}
         impl A {

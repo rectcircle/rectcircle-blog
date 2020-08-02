@@ -57,7 +57,7 @@ dotenv = "0.15.0"
 
 `src/lib.rs`
 
-```rs
+```rust
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;
@@ -94,7 +94,7 @@ DATABASE_URL=mysql://root:123456@localhost/diesel_learn
 
 `src/lib.rs`
 
-```rs
+```rust
 // ...
 
 pub mod schema;
@@ -108,7 +108,7 @@ pub mod models;
 
 编写Model，`src/models.rs`
 
-```rs
+```rust
 use super::schema::posts;
 
 // 用于查询
@@ -197,7 +197,7 @@ diesel migration run
 
 此时 `src/schema.rs` 文件如下
 
-```rs
+```rust
 table! {
     posts (id) {
         id -> Bigint,
@@ -219,7 +219,7 @@ table! {
 
 `src/bin/show_posts.rs`
 
-```rs
+```rust
 extern crate diesel_learn;
 extern crate diesel;
 
@@ -252,7 +252,7 @@ fn main() {
 
 `src/lib.rs`
 
-```rs
+```rust
 // ...
 
 use self::models::{Sequence, NewPost};
@@ -282,7 +282,7 @@ pub fn create_post<'a>(conn: &MysqlConnection, title: &'a str, body: &'a str) ->
 
 `src/bin/write_post.rs`
 
-```rs
+```rust
 extern crate diesel_learn;
 extern crate diesel;
 
@@ -319,7 +319,7 @@ const EOF: &'static str = "CTRL+Z";
 
 `src/bin/publish_post.rs`
 
-```rs
+```rust
 extern crate diesel_learn;
 extern crate diesel;
 
@@ -352,7 +352,7 @@ fn main() {
 
 #### （7）删除
 
-```rs
+```rust
 extern crate diesel_learn;
 extern crate diesel;
 
@@ -478,7 +478,7 @@ with_docs = true  # 是否创建Docs注释
 
 `diesel::update(target)` 声明如下：
 
-```rs
+```rust
 pub fn update<T: IntoUpdateTarget>(source: T) -> UpdateStatement<T::Table, T::WhereClause>
 ```
 
@@ -491,7 +491,7 @@ pub fn update<T: IntoUpdateTarget>(source: T) -> UpdateStatement<T::Table, T::Wh
 
 `src/models.rs`
 
-```rs
+```rust
 
 // 用于更新
 #[derive(Identifiable, AsChangeset)]
@@ -508,7 +508,7 @@ pub struct PostForUpdate {
 
 `src/lib.rs`
 
-```rs
+```rust
 // cargo test
 #[cfg(test)]
 mod test {
@@ -598,7 +598,7 @@ DROP TABLE users;
 
 `src/schema.rs` 文件如下
 
-```rs
+```rust
 // ...
 table! {
     users (id) {
@@ -618,7 +618,7 @@ allow_tables_to_appear_in_same_query!(
 
 模型 `src/models.rs`
 
-```rs
+```rust
 #[derive(Insertable)]
 #[table_name = "users"]
 pub struct UserForm<'a> {
@@ -629,7 +629,7 @@ pub struct UserForm<'a> {
 
 `src/lib.rs`
 
-```rs
+```rust
 
 // cargo test
 #[cfg(test)]
@@ -731,7 +731,7 @@ Postgres 参见：https://docs.diesel.rs/diesel/pg/upsert/fn.on_constraint.html
 
 ## 四、Schema 原理探究
 
-```rs
+```rust
 table! {
     users (id) {
         id -> Integer,
@@ -745,7 +745,7 @@ table! {
 
 宏展开后，基本结构如下
 
-```rs
+```rust
 pub mod schema {
     pub mod users {  // 将创建同名的模块
         pub mod dsl {
@@ -841,7 +841,7 @@ pub mod schema {
 * 结构体字段类型必须 与 Schema 中保持一致，否则编译错误
 * 结构体 与 Schema 的绑定映射发生在调用阶段
 
-```rs
+```rust
 // File: src/models.rs
 
 use schema::users; // Brings the users table into scope
@@ -890,7 +890,7 @@ fn main() {
     * 方式1：通过 引入 Schema 并通过表名配置 `#[table_name="sequences"]`
     * 方式2：为每个字段添加类型注解 `#[sql_type = "Bigint"]`
 
-```rs
+```rust
 // 方式1
 use diesel::sql_types::Bigint;
 
@@ -917,7 +917,7 @@ pub struct Sequence {
 
 使用
 
-```rs
+```rust
 use self::models::Sequence;
 
 // 获取到id
@@ -971,7 +971,7 @@ let generated_id = diesel::sql_query("select LAST_INSERT_ID() as id")
 
 假设 Schema 格式如下
 
-```rs
+```rust
 // Output of "diesel print-schema"
 
 table! {
@@ -995,7 +995,7 @@ table! {
 
 使用上
 
-```rs
+```rust
     // Get the first user
     let issac = users.first::<User>(&db_connection)
         .expect("Couldn't find first user");
@@ -1044,7 +1044,7 @@ table! {
 
 声明 `src/lib.rs`
 
-```rs
+```rust
 /// 声明函数
 pub mod functions {
     use diesel::sql_types::{Text, BigInt, Foldable};
@@ -1086,7 +1086,7 @@ pub mod dsl {
 
 使用 `src/lib.rs`
 
-```rs
+```rust
 // cargo test
 #[cfg(test)]
 mod test {
@@ -1134,7 +1134,7 @@ mod test {
 
 `src/pagination.rs`
 
-```rs
+```rust
 //! 实现分页
 //!
 //! 仅仅为了演示，应该不需要，因为分页可以通过组合SQL实现
@@ -1272,7 +1272,7 @@ where T: QuerySource {
 
 使用 `src/lib.rs`
 
-```rs
+```rust
 pub mod pagination;
 
 // cargo test
@@ -1310,7 +1310,7 @@ mod test {
 
 ### 3、自定义操作符
 
-```rs
+```rust
 // use diesel::mysql::Mysql;
 use diesel::sql_types::{BigInt, Integer};
 use diesel::expression::{Expression, AsExpression};
@@ -1358,7 +1358,7 @@ impl<T: Expression<SqlType=Integer>> IntegerBitOperatorExtensions for T {
 
 使用 `src/lib.rs`
 
-```rs
+```rust
 pub mod predicates;
 
 // cargo test
@@ -1407,7 +1407,7 @@ diesel = { version = "1.4", features = ["mysql", "r2d2"] }
 
 添加函数
 
-```rs
+```rust
 use diesel::r2d2;
 
 pub fn new_connection_pool() -> r2d2::Pool<r2d2::ConnectionManager<MysqlConnection>> {
@@ -1426,7 +1426,7 @@ pub fn new_connection_pool() -> r2d2::Pool<r2d2::ConnectionManager<MysqlConnecti
 
 测试
 
-```rs
+```rust
 
 // cargo test
 #[cfg(test)]
@@ -1464,7 +1464,7 @@ dotenv = "0.15.0"
 
 引入宏、包和函数及预定义函数
 
-```rs
+```rust
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;

@@ -65,7 +65,7 @@ Serde 对常见 Rust 标准库数据结构 提供了开箱即用的实现。例�
 
 `src/ch01_overview.rs`
 
-```rs
+```rust
 use serde::{Serialize, Deserialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -158,7 +158,7 @@ Serde数据模型是 与 Rust 数据结构和数据格式进行交互的API。�
 
 `std::ffi::OsString` 类型，在 Windows 和 Unix 下表现不一致。直觉上应该映射为 `string`，但是跨平台无法使用。因此更好的方案是：
 
-```rs
+```rust
 enum OsString {
     Unix(Vec<u8>),
     Windows(Vec<u16>),
@@ -182,7 +182,7 @@ enum OsString {
 * Variant属性 Variant attributes — 应用在 枚举的 Variant 上
 * 字段属性 Field attributes — 应用在 结构体 和 枚举 variant 的 字段上
 
-```rs
+```rust
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]  // <-- this is a container attribute
 struct S {
@@ -240,7 +240,7 @@ enum E {
     * 只允许应用在只有一个字段枚举或者结构体上
     * 表示只序列化内部对象，不要外部支撑，比如
 
-```rs
+```rust
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(transparent)]
 struct Axis {
@@ -363,7 +363,7 @@ Serde的通过 `#[derive(Serialize, Deserialize)]` 派生宏为结构体和枚�
 
 但是对于特殊需求，Serde可以通过为您的类型手动实现 `Serialize` 和 `Deserialize` 特质来完全自定义序列化行为。这两个特质都有只有一个方法，声明如下
 
-```rs
+```rust
 pub trait Serialize {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -387,7 +387,7 @@ pub trait Deserialize<'de>: Sized {
 
 特质声明如下
 
-```rs
+```rust
 pub trait Serialize {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -401,7 +401,7 @@ pub trait Serialize {
 
 #### （1）序列化基础数据类型
 
-```rs
+```rust
 impl Serialize for i32 {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -418,7 +418,7 @@ impl Serialize for i32 {
 
 复杂类型序列化一般需要三步：初始化，放置元素，结束。
 
-```rs
+```rust
 use serde::ser::{Serialize, Serializer, SerializeSeq, SerializeMap};
 
 impl<T> Serialize for Vec<T>
@@ -465,7 +465,7 @@ where
 
 #### （4）序列化结构体
 
-```rs
+```rust
 use serde::{Serialize, Serializer};
 use serde::ser::{SerializeStruct, SerializeTupleStruct, SerializeStructVariant, SerializeTupleVariant};
 
@@ -554,7 +554,7 @@ mod tests {
 
 #### （5）序列化枚举
 
-```rs
+```rust
 use serde::{Serialize, Serializer};
 use serde::ser::{SerializeStruct, SerializeTupleStruct, SerializeStructVariant, SerializeTupleVariant};
 
@@ -640,7 +640,7 @@ serde_bytes = "0.11"
 
 `src/ch04_custom_serde.rs`
 
-```rs
+```rust
 
 #[derive(Serialize)]
 struct Efficient<'a> {
@@ -704,7 +704,7 @@ impl <'a> Serialize for Efficient2<'a> {
 
 特质声明如下
 
-```rs
+```rust
 pub trait Deserialize<'de>: Sized {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -718,7 +718,7 @@ pub trait Deserialize<'de>: Sized {
 
 #### （1）反序列化基础数据类型
 
-```rs
+```rust
 use std::fmt;
 
 use serde::de::{self, Visitor};
@@ -786,7 +786,7 @@ impl<'de> Deserialize<'de> for i32 {
 
 #### （2）反序列化Map
 
-```rs
+```rust
 
 struct MyMap<K, V>(PhantomData<K>, PhantomData<V>);
 
@@ -883,7 +883,7 @@ mod tests {
 
 #### （3）反序列化结构
 
-```rs
+```rust
 use std::fmt;
 
 use serde::de::{self, Deserialize, Deserializer, Visitor, SeqAccess, MapAccess};

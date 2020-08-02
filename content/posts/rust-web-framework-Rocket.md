@@ -71,7 +71,7 @@ rocket = "0.4.2"
 
 编写代码
 
-```rs
+```rust
 #![feature(proc_macro_hygiene, decl_macro)]
 
 #[macro_use] extern crate rocket;
@@ -102,7 +102,7 @@ ROCKET_CLI_COLORS=off cargo run
 
 基本语法如下：
 
-```rs
+```rust
 #[get("/world")]
 fn handler() { .. }
 ```
@@ -146,7 +146,7 @@ Rocket 的 `route` 相关宏 的代码生成器负责生成相关的代码
 
 例子如下
 
-```rs
+```rust
 #![feature(proc_macro_hygiene, decl_macro)]
 
 #[macro_use] extern crate rocket;
@@ -172,7 +172,7 @@ fn main() {
 
 rocket 支持通过 `<field_name>` 方式捕获映射路径参数
 
-```rs
+```rust
 use rocket::http::RawStr;
 
 // curl http://localhost:8000/requests/dynamic-paths/this.is.name
@@ -196,7 +196,7 @@ fn main() {
 * Rocket 为标准库中的许多类型实现了 `FromParam`
 * 关于 `FromParam` 更多参见 [FromParam API docs](https://api.rocket.rs/v0.4/rocket/request/trait.FromParam.html)
 
-```rs
+```rust
 // curl http://localhost:8000/requests/dynamic-paths/std-from-param/%e4%b8%ad%e6%96%87/1/true
 #[get("/dynamic-paths/std-from-param/<name>/<age>/<cool>")]
 fn std_from_param(name: String, age: u8, cool: bool) -> String {
@@ -223,7 +223,7 @@ RawStr 和 String 等 区别
 
 使用 `<param..>` 与创建多片段，显然此语法后不允许出现任何字符，其对应的参数必须实现 `FromSegments` 特质
 
-```rs
+```rust
 use std::path::PathBuf;
 
 // curl http://localhost:8000/requests/dynamic-paths/multiple-segments/%e4%b8%ad%e6%96%87/1/true
@@ -247,7 +247,7 @@ fn main() {
 * 可以看出Rocket 为 `PathBuf` 实现的 `FromSegments` 考虑到了 `../` 攻击
 * 以下四行即可实现一个简单的静态文件服务器（推荐使用 [rocket_contrib](https://api.rocket.rs/v0.4/rocket_contrib/) 的 [StaticFiles](https://api.rocket.rs/v0.4/rocket_contrib/serve/struct.StaticFiles.html) ，`rocket.mount("/public", StaticFiles::from("/static"))`）
 
-```rs
+```rust
 #[get("/<file..>")]
 fn files(file: PathBuf) -> Option<NamedFile> {
     NamedFile::open(Path::new("static/").join(file)).ok()
@@ -265,7 +265,7 @@ fn files(file: PathBuf) -> Option<NamedFile> {
     * `id: Option<i32>` 如果 id 不是 i32 类型，`id == None`
     * `id: Result<i32, &RawStr>` 如果 id 不是 i32 类型，`id == Err(RawStr(id的值))`
 
-```rs
+```rust
 // curl http://localhost:8000/requests/forwarding/rank/1
 #[get("/forwarding/rank/<id>")]
 fn rank_default(id: usize) -> String {
@@ -335,7 +335,7 @@ fn main() {
 
 查询字符串对应的类型必须实现 `FromFormValue` 特质
 
-```rs
+```rust
 // curl http://localhost:8000/requests/query-string/hello?wave # 404
 // curl "http://localhost:8000/requests/query-string/hello?wave&name=xiaoming"
 // curl "http://localhost:8000/requests/query-string/hello?wave=1&name=xiaoming" # 404
@@ -358,7 +358,7 @@ fn main() {
 
 使用函数声明使用 `Option<String>` （如果像`?wave`的将构造 `Some("")` 而不是 `None`）
 
-```rs
+```rust
 // curl "http://localhost:8000/requests/query-string/option?name=xiaoming"
 // curl "http://localhost:8000/requests/query-string/option?wave&name=xiaoming"
 // curl "http://localhost:8000/requests/query-string/option?wave=1&name=xiaoming"
@@ -384,7 +384,7 @@ fn main() {
 
 除此之外，大多数情况，还可以使用 `Form` 对象或者 `LenientForm` 对象。
 
-```rs
+```rust
 // curl "http://localhost:8000/requests/query-string/multiple-segments?name=xiaoming&account=10&id=1"
 #[get("/query-string/multiple-segments?<id>&<user..>")]
 fn query_string_multiple_segments(id: usize, user: Form<User>) -> String{
@@ -406,7 +406,7 @@ fn main() {
 
 以上的路径参数就可以理解为一种内置的请求守卫。
 
-```rs
+```rust
 use rocket::request::Outcome;
 use rocket::Request;
 use rocket::request::FromRequest;
@@ -458,7 +458,7 @@ fn main() {
 
 #### （6）Cookie
 
-```rs
+```rust
 use rocket::http::{RawStr, Cookies, Cookie};
 
 // curl -i -H "Cookie: message=messageCookieValue" "http://localhost:8000/requests/cookies"
@@ -487,7 +487,7 @@ fn main() {
 
 当Cookie和请求守卫共同使用时，Cookie应该在最后一个参数
 
-```rs
+```rust
 // 报错
 #[get("/")]
 fn bad(cookies: Cookies, custom: Custom) { .. }
@@ -501,7 +501,7 @@ fn good(custom: Custom, cookies: Cookies) { .. }
 
 **Format**
 
-```rs
+```rust
 #[post("/user", format = "application/json", data = "<user>")]
 fn new_user(user: Json<User>) -> T { ... }
 ```
@@ -516,7 +516,7 @@ fn new_user(user: Json<User>) -> T { ... }
 
 基本语法
 
-```rs
+```rust
 #[post("/", data = "<input>")]
 fn new(input: T) -> String { ... }
 ```
@@ -525,7 +525,7 @@ fn new(input: T) -> String { ... }
 
 **Forms 类型**
 
-```rs
+```rust
 use rocket::request::LenientForm;
 
 
@@ -578,7 +578,7 @@ serde_json = "1.0"
 serde_derive = "1.0"
 ```
 
-```rs
+```rust
 #![feature(proc_macro_hygiene, decl_macro)]
 
 #[macro_use] extern crate rocket;
@@ -615,7 +615,7 @@ fn main() {
 
 一般用于上传文件
 
-```rs
+```rust
 use rocket::Data;
 
 #[post("/upload", format = "plain", data = "<data>")]
@@ -636,7 +636,7 @@ fn main() {
 
 #### （9）错误捕捉
 
-```rs
+```rust
 #[catch(404)]
 fn not_found(req: &Request) -> String {
     format!("Sorry, '{}' is not a valid path.", req.uri())
@@ -694,7 +694,7 @@ fn main() {
 
 `Responder` 特质定义了一个函数，`fn respond_to(self, request: &Request) -> response::Result<'r>;`。原理显而易见。
 
-```rs
+```rust
 use rocket::response::{content, status};
 
 // curl -i http://localhost:8000/responses/status/accepted
@@ -720,7 +720,7 @@ fn main() {
 
 Rocket 提供了派生宏用于快速创建自定义 Responder
 
-```rs
+```rust
 #[derive(Responder)]
 #[response(status = 500, content_type = "json")]
 struct MyResponder {
@@ -744,7 +744,7 @@ struct MyResponder {
 
 参见 标准库 对 基础数据类型的实现
 
-```rs
+```rust
 impl Responder<'static> for String {
     fn respond_to(self, _: &Request) -> Result<Response<'static>, Status> {
         Response::build()
@@ -759,7 +759,7 @@ impl Responder<'static> for String {
 
 为了防止内存占用过大，建议使用 Stream
 
-```rs
+```rust
 #[get("/stream")]
 fn stream() -> io::Result<Stream<UnixStream>> { // io::Result 本质上也是Result
     UnixStream::connect("/path/to/my/socket").map(|s| Stream::from(s))
@@ -781,7 +781,7 @@ serde_derive = "1.0"
 
 主代码
 
-```rs
+```rust
 use rocket_contrib::json::Json;
 
 // curl http://localhost:8000/responses/content/rocket-contrib-json
@@ -816,7 +816,7 @@ fn main() {
 
 * [文档](https://rocket.rs/v0.4/guide/responses/#typed-uris)
 
-```rs
+```rust
 #[get("/dynamic-paths/<name>")]
 fn dynamic_paths(name: &RawStr) -> String {
     format!("Hello, {}!", name.as_str())

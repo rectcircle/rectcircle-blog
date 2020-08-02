@@ -165,7 +165,7 @@ Rust 结构体内存布局按照一定规则进行对齐，默认规则如下：
 | `f64`             | 8                  |
 | `char`            | 4                  |
 
-```rs
+```rust
 // A  size_of = 8, align_of = 4
 struct A {
     b: u32,
@@ -272,7 +272,7 @@ enum G<T> {
 
 #### （4）本节代码
 
-```rs
+```rust
 use std::mem::{size_of, align_of};
 
 
@@ -332,7 +332,7 @@ mod tests {
 
 遵循了上述的别名规则，编译器可以大胆的进行编译优化
 
-```rs
+```rust
 // 如果不允许出现别名，可以进行优化
 fn compute(input: &u32, output: &mut u32) {
     if *input > 10 {
@@ -369,7 +369,7 @@ Rust 在整个生命周期里强制执行生命周期的规则。
 
 已加有几个例子的生命周期分析
 
-```rs
+```rust
 
 fn life(){
     // 例子1
@@ -472,7 +472,7 @@ fn life_mut() {
 
 例子如下
 
-```rs
+```rust
 fn print(s: &str);                                      // 省略的
 fn print<'a>(s: &'a str);                               // 完整的
 
@@ -509,13 +509,13 @@ fn f<'a>(a: &'a i32, b: &i32, c: &i32, ) -> &'a i32 {
 * 带有声明周期泛型且参数中没有使用，且返回值中使用的情况
 * 返回的引用的生命周期无限大（比 'static 还大）
 
-```rs
+```rust
 fn foo2<'a>() -> &'a u32
 ```
 
 该函数声明在 static 变量情况下可以表现正常
 
-```rs
+```rust
     static global_int: u32 = 0;
     fn foo2<'a>() -> &'a u32 {
         return &global_int;         // ok, globals live longer than everything
@@ -526,7 +526,7 @@ fn foo2<'a>() -> &'a u32
 
 但是当使用 Unsafe 时将可能破坏 Rust 生命周期 (常见的场景就是解裸指针)
 
-```rs
+```rust
     fn foo<'a>(input: *const u32) -> &'a u32 {
         unsafe {
             return &*input
@@ -551,7 +551,7 @@ fn foo2<'a>() -> &'a u32
 
 当一个 结构体 包含一个泛型参数，且要该泛型参数实现为`Fn`时，可能需要使用 高阶 trait 边界（HRTB, Higher-Rank Trait Bounds），基本语法为：`where for<'a> F: Fn(&'a (u8, u16)) -> &'a u8,`
 
-```rs
+```rust
 // 高阶函数的生命周期
 struct Closure<F> {
     data: (u8, u16),
@@ -664,7 +664,7 @@ Rust 中的情况
 
 PhantomData的最常见用例可能是具有未使用的生存期参数的结构，通常作为某些不安全代码的一部分。例如，这是一个结构切片，它具有两个*const T类型的指针，大概指向数组的某个地方：
 
-```rs
+```rust
 struct Slice<'a, T> {
     start: *const T,
     end: *const T,
@@ -673,7 +673,7 @@ struct Slice<'a, T> {
 
 `'a` 的作用是，该结构体的生命周期必须小于 `'a` 的生命周期，因为没有使用生命周期 `'a`，因此尚不清楚它适用于什么数据。我们可以通过告诉编译器将其作为`Slice`结构包含引用`＆'a T`来进行纠正：
 
-```rs
+```rust
 use std::marker::PhantomData;
 
 struct Slice<'a, T: 'a> {
@@ -685,7 +685,7 @@ struct Slice<'a, T: 'a> {
 
 使用上
 
-```rs
+```rust
 fn borrow_vec<T>(vec: &Vec<T>) -> Slice<'_, T> {
     let ptr = vec.as_ptr();
     Slice {
@@ -700,7 +700,7 @@ fn borrow_vec<T>(vec: &Vec<T>) -> Slice<'_, T> {
 
 有时，您会遇到未使用的类型参数，这些参数指示结构“绑定”到的数据类型，即使实际上并没有在结构本身中找到该数据。这是FFI出现的示例。外部接口使用 `*mut()` 类型的句柄来引用不同类型的Rust值。我们使用包裹外部句柄的struct ExternalResource结构上的幻像类型参数来跟踪Rust类型。
 
-```rs
+```rust
 use std::marker::PhantomData;
 use std::mem;
 

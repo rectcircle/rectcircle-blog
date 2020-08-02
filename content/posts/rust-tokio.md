@@ -65,7 +65,7 @@ tokio = { version = "0.2", features = ["full"] }
 
 `src/main.rs`
 
-```rs
+```rust
 use tokio::net::TcpStream;
 use tokio::prelude::*;
 
@@ -146,7 +146,7 @@ futures = "0.3"
 
 `src/main.rs`
 
-```rs
+```rust
 use tokio::net::TcpStream;
 use tokio::prelude::*;  // 引入预定义的实现
 

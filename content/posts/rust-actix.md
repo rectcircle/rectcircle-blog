@@ -61,7 +61,7 @@ actix-rt = "1.0"
 
 `src/main.rs`
 
-```rs
+```rust
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 
 // curl http://localhost:8088/
@@ -112,7 +112,7 @@ async fn main() -> std::io::Result<()> {
 
 一个 App 可以通过 [`scope`](https://docs.rs/actix-web/2/actix_web/struct.Scope.html)，为路由添加统一的前缀。
 
-```rs
+```rust
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 
 // curl http://localhost:8088/
@@ -154,7 +154,7 @@ async fn main() -> std::io::Result<()> {
 * 线程级别共享，共享的类型不用实现 线程交换安全，只能用于**只读**，如全局配置。通过 `.data(T)` 初始化
 * 进程级别共享，共享的类型需要实现 线程交换安全，可用于读写场景，如计数器。通过 `.app_data(T)` 初始化
 
-```rs
+```rust
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 
 struct AppState {
@@ -221,7 +221,7 @@ actix_web 提供了 `configure` 用来传递一个配置函数，这样就可以
 
 * 该配置函数 传递一个参数 [`ServiceConfig`](https://docs.rs/actix-web/2/actix_web/web/struct.ServiceConfig.html)，该参数可以配置自己的 `data`, `routes`, 和 `services`。
 
-```rs
+```rust
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
 
 // this function could be located in different module
@@ -271,7 +271,7 @@ async fn main() -> std::io::Result<()> {
 
 默认情况下，HttpServer 以多线程方式 启动 Server，线程为等于当先系统的核心数。可以通过如下方式，指定线程数。
 
-```rs
+```rust
 use actix_web::{web, App, HttpResponse, HttpServer};
 
 #[actix_rt::main]
@@ -312,7 +312,7 @@ futures = "0.3"
 
 `src/main.rs`
 
-```rs
+```rust
 use actix_web::{web, App, HttpResponse, HttpServer, Responder, Error, HttpRequest, Either};
 
 // curl http://localhost:8088/responder/str
@@ -430,7 +430,7 @@ async fn main() -> std::io::Result<()> {
 
 因此，本质上，在 `actix_web` 内部，就是通过 元组 和 宏实现的，如何实现通过元组调用一个多参数的函数，参见如下例子
 
-```rs
+```rust
 
 trait CallFnWithTuple<T, R> {
     fn call_with_tuple(&self, param: T) -> R;
@@ -470,7 +470,7 @@ fn main() {
 
 `FromRequest` 定义如下
 
-```rs
+```rust
 /// Request 提取器
 ///
 /// 实现了该特质的类型可以作为 请求处理器 的参数使用
@@ -506,7 +506,7 @@ pub trait FromRequest: Sized {
 
 下面就是actix_web内置的提取器的示例
 
-```rs
+```rust
 use actix_web::{error, web, App, FromRequest, HttpResponse, HttpServer, Responder, Error, HttpRequest, Either};
 
 use serde::Deserialize;
@@ -609,7 +609,7 @@ Actix-web 使用过 `actix_web::error::Error` 类型和 `actix_web::error::Respo
 
 在请求处理函数 `async fn(p: impl FromRequest) -> impl Responder` 中，你只需要返回 `Result<impl Responder, impl Into<Error>>` 的 `Err` 即可 进入 内置的错误处理程序。因为，`actix-web` 为 `Result<impl Responder, impl Into<Error>>` 提供了实现
 
-```rs
+```rust
 impl<T, E> Responder for Result<T, E>
 where
     T: Responder,
@@ -619,7 +619,7 @@ where
 
 又因为 `Error` 类型 通过泛型实现了 `From<T: actix_web::error::ResponseError>` 特质（编译器隐式为  `T: actix_web::error::ResponseError` 类型 实现`Into<Error>` 特质），所以 只需要实现 `actix_web::error::ResponseError` 特质的类型（即自动实现了 `Into<Error>`），就可以可作为 `Err` 在请求处理函数中返回。
 
-```rs
+```rust
 impl<T: ResponseError + 'static> From<T> for Error {
     fn from(err: T) -> Error {
         Error {
@@ -642,7 +642,7 @@ impl<T: ResponseError + 'static> From<T> for Error {
 * 默认返回 500 状态码
 * 将 `fmt::Display` 写回到相应体中
 
-```rs
+```rust
 pub trait ResponseError: fmt::Debug + fmt::Display {
     /// 状态码：500
     fn status_code(&self) -> StatusCode {
@@ -683,7 +683,7 @@ pub trait ResponseError: fmt::Debug + fmt::Display {
 
 实验代码
 
-```rs
+```rust
 use actix_web::{error, web, http, App, FromRequest, HttpResponse, HttpServer, Responder, Error, HttpRequest, Either, Result};
 
 use failure::Fail;
@@ -819,7 +819,7 @@ async fn main() -> std::io::Result<()> {
 
 支持通过请求头返回一个true或者false，来决定是否匹配，定义如下
 
-```rs
+```rust
 pub trait Guard {
     fn check(&self, request: &RequestHead) -> bool;
 }
@@ -829,7 +829,7 @@ Guard 还提供 `guard::Not` 等谓词来 连接多个 `guard`
 
 #### （7）修改默认的 Not Found 返回
 
-```rs
+```rust
 App::new()
     .service(web::resource("/").route(web::get().to(index)))
     .default_service(
@@ -862,7 +862,7 @@ Actix-web自动解压缩body。支持以下编解码器：
 * 手动加载 `web::Payload` 到内存，手动反序列化成对象
     * `web::Payload` 是反序列化后的字节流迭代器对象
 
-```rs
+```rust
 use actix_web::{error, web, App, Error, HttpResponse};
 use bytes::BytesMut;
 use futures::StreamExt;
@@ -907,7 +907,7 @@ async fn index_manual(mut payload: web::Payload) -> Result<HttpResponse, Error> 
 
 通过 `web::Payload` 读取。例如打印请求体
 
-```rs
+```rust
 use actix_web::{web, Error, HttpResponse};
 use futures::StreamExt;
 
@@ -948,7 +948,7 @@ async fn index(mut body: web::Payload) -> Result<HttpResponse, Error> {
 * 全局使用某个编码 ` App::new().wrap(middleware::Compress::new(ContentEncoding::Br))`
 * 手动禁用某个请求处理器的压缩编码（比如返回内容本事就已经是压缩的，需要使用该配置，否则将压缩两次） `HttpResponse::Ok().encoding(ContentEncoding::Identity)` 例子：
 
-```rs
+```rust
 use actix_web::{
     http::ContentEncoding, middleware, dev::BodyEncoding, HttpResponse,
 };
@@ -985,7 +985,7 @@ async fn index() -> HttpResponse {
     * `::post()`
     * `::put()` 等
 
-```rs
+```rust
 
 #[cfg(test)]
 mod tests {
@@ -1014,7 +1014,7 @@ mod tests {
 
 #### （2）集成测试
 
-```rs
+```rust
 use actix_web::{error, web, http, App, FromRequest, HttpResponse, HttpServer, Responder, Error, HttpRequest, Either, Result};
 
 use serde::{Serialize, Deserialize};
@@ -1093,7 +1093,7 @@ mod tests {
 
 参见：https://actix.rs/docs/testing/
 
-```rs
+```rust
 use std::task::Poll;
 use bytes::Bytes;
 use futures::stream::poll_fn;
@@ -1184,7 +1184,7 @@ Actix-web 的中间件允许我们向请求/响应中添加其他行为。中间
 * 一个异步处理函数 `async fn<Req, Res, Err>(req: Req) -> Result<Res, Err>`
 * 一个异步就绪判断 `async fn poll_ready<Err>() -> Result<(), Err>`
 
-```rs
+```rust
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
@@ -1288,7 +1288,7 @@ async fn main() -> std::io::Result<()> {
 
 #### （2）使用 `wrap_fn` 注册简单的中间件
 
-```rs
+```rust
 use actix_service::Service;
 use actix_web::{web, App};
 use futures::future::FutureExt;
@@ -1325,13 +1325,13 @@ async fn main() {
 
 依赖
 
-```rs
+```rust
 env_logger = "0.7"
 ```
 
 基本使用
 
-```rs
+```rust
 use actix_web::middleware::Logger;
 use env_logger;
 
@@ -1378,7 +1378,7 @@ async fn main() -> std::io::Result<()> {
 
 配置默认响应头
 
-```rs
+```rust
 use actix_web::{http, middleware, HttpResponse};
 
 #[actix_rt::main]
@@ -1413,7 +1413,7 @@ Actix-web提供了会话管理的通用解决方案。actix-session中间件可�
 
 依赖库 `actix-session = "0.3"`
 
-```rs
+```rust
 use actix_session::{CookieSession, Session};
 use actix_web::{web, App, Error, HttpResponse, HttpServer};
 
@@ -1451,7 +1451,7 @@ async fn main() -> std::io::Result<()> {
 
 `ErrorHandlers` 允许你为特定错误码添加处理程序
 
-```rs
+```rust
 use actix_web::middleware::errhandlers::{ErrorHandlerResponse, ErrorHandlers};
 use actix_web::{dev, http, HttpResponse, Result};
 
@@ -1491,7 +1491,7 @@ async fn main() -> std::io::Result<()> {
 
 使用路由创建一个处理函数，返回一个 `NamedFile::open` 类型即可
 
-```rs
+```rust
 use actix_files::NamedFile;
 use actix_web::{HttpRequest, Result};
 use std::path::PathBuf;
@@ -1514,7 +1514,7 @@ async fn main() -> std::io::Result<()> {
 
 #### （2）目录
 
-```rs
+```rust
 use actix_files as fs;
 use actix_web::{App, HttpServer};
 
@@ -1539,7 +1539,7 @@ async fn main() -> std::io::Result<()> {
 
 Actix-web 通过 `actix-web-actors` crate 支持 WebSocket。可以使用 `web::Payload` 将请求的有效负载转换为 `ws::Message` 流，然后使用流组合器来处理实际消息，但是处理与http actor的websocket通信更简单。
 
-```rs
+```rust
 use actix::{Actor, StreamHandler};
 use actix_web::{web, App, Error, HttpRequest, HttpResponse, HttpServer};
 use actix_web_actors::ws;
@@ -1624,14 +1624,14 @@ cargo install systemfd cargo-watch
 
 添加依赖
 
-```rs
+```rust
 [dependencies]
 listenfd = "0.3
 ```
 
 修改代码
 
-```rs
+```rust
 use actix_web::{web, App, HttpRequest, HttpServer, Responder};
 use listenfd::ListenFd;
 
@@ -1732,7 +1732,7 @@ diesel migration run
 
 `src/lib.rs`
 
-```rs
+```rust
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;
@@ -1763,7 +1763,7 @@ pub fn new_connection_pool() ->  PoolConnection {
 
 `src/main.rs`
 
-```rs
+```rust
 use actix_learn::*;
 use diesel::prelude::*;
 
@@ -1793,7 +1793,7 @@ async fn create_user(pool: web::Data<PoolConnection>) -> String {
 
 ### 1、HTTP Server初始化
 
-```rs
+```rust
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     HttpServer::new(|| {
@@ -1849,7 +1849,7 @@ futures = "0.3"
 
 `src/bin/actor_ping.rs`
 
-```rs
+```rust
 extern crate actix;
 use actix::prelude::*;
 
@@ -1948,7 +1948,7 @@ Actor 在 `started()` 方法被调用后处于的状态，Actor可以一致保�
 
 Actor 通过发送消息与其他 Actor 进行通信。在 actix 中的所有消息都是有类型的。消息需要实现 `Message` 特质。`Message::Result` 定义返回类型。让我们定义一个简单的Ping消息-接受此消息的actor需要返回 `io::Result<bool>`。
 
-```rs
+```rust
 use std::io;
 use actix::prelude::*;
 
@@ -1965,7 +1965,7 @@ impl Message for Ping {
 
 #### （4）用MessageResponse作为Actor的返回值
 
-```rs
+```rust
 pub trait MessageResponse<A: Actor, M: Message> {
     fn handle<R: ResponseChannel<M>>(self, ctx: &mut A::Context, tx: Option<R>);
 }
@@ -1973,7 +1973,7 @@ pub trait MessageResponse<A: Actor, M: Message> {
 
 `src/bin/actor_ping2.rs`
 
-```rs
+```rust
 extern crate actix;
 use actix::prelude::*;
 use actix::dev::{MessageResponse, ResponseChannel};
@@ -2083,7 +2083,7 @@ Actor 维护一个内部执行上下文或状态。这样，参与者可以确�
 
 所有消息都首先发送到 Actor 的邮箱，然后 Actor 的执行上下文调用特定的消息处理程序。邮箱通常是有界的。该能力特定于上下文实现。对于Context类型，默认情况下，容量设置为16条消息，可以使用 `Context::set_mailbox_capacity()` 增加容量。
 
-```rs
+```rust
 struct MyActor;
 impl Actor for MyActor {
     type Context = Context<Self>;
@@ -2102,7 +2102,7 @@ let addr = MyActor.start();
 
 Actor 可以从上下文中查看自己的地址。
 
-```rs
+```rust
 
 struct MyActor;
 
@@ -2131,7 +2131,7 @@ let who_addr = addr.do_send(WhoAmI {} );
 
 在参与者执行上下文中，您可以选择阻止参与者处理任何将来的邮箱消息。这可能是对错误情况的响应，或者是程序关闭的一部分。为此，请调用 `Context::stop()`。
 
-```rs
+```rust
 impl Handler<Ping> for MyActor {
     type Result = usize;
 
@@ -2154,7 +2154,7 @@ impl Handler<Ping> for MyActor {
 
 `src/bin/actor_arbiter.rs`
 
-```rs
+```rust
 extern crate actix;
 extern crate futures;
 use actix::prelude::*;
@@ -2242,7 +2242,7 @@ fn main() {
 
 ### 6、SyncArbiter
 
-```rs
+```rust
 use actix::prelude::*;
 
 struct MySyncActor;

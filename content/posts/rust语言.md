@@ -169,7 +169,7 @@ cd hello_world
 
 创建文件 `main.rs`
 
-```rs
+```rust
 fn main() {
     println!("Hello, world!");
 }
@@ -261,7 +261,7 @@ rand = "0.3.14"
 
 修改 `src/main.rs`
 
-```rs
+```rust
 use std::io;
 use std::cmp::Ordering;
 use rand::Rng;
@@ -321,7 +321,7 @@ cargo new variables
 
 变量默认不可变，不可以重新赋值（包括传递引用后修改也不允许），否者编译报错
 
-```rs
+```rust
 fn main() {
     let x = 5;
     println!("The value of x is: {}", x);
@@ -333,7 +333,7 @@ fn main() {
 
 允许变量可变使用 mut 声明
 
-```rs
+```rust
     let mut x = 5;
     println!("The value of x is: {}", x);
     x = 6;
@@ -347,7 +347,7 @@ fn main() {
 * 常量可以在任何范围内声明，包括全局范围，这使得它们对许多代码部分需要了解的值很有用。
 * 最后一个区别是常量可能只设置为常量表达式，不是能是函数调用的结果或只能在运行时计算的任何其他值。
 
-```rs
+```rust
     const MAX_POINTS: u32 = 100_000;
 ```
 
@@ -356,7 +356,7 @@ fn main() {
 
 #### （2）变量覆盖
 
-```rs
+```rust
     let x = 5;
 
     let x = x + 1;
@@ -394,7 +394,7 @@ fn main() {
 
 #### （2）标量数据——浮点类型
 
-```rs
+```rust
 fn main() {
     let x = 2.0; // f64
 
@@ -404,7 +404,7 @@ fn main() {
 
 #### （3）数字计算
 
-```rs
+```rust
 fn main() {
     // addition
     let sum = 5 + 10;
@@ -426,7 +426,7 @@ fn main() {
 
 #### （4）标量数据——bool类型
 
-```rs
+```rust
 fn main() {
     let t = true;
 
@@ -436,7 +436,7 @@ fn main() {
 
 #### （4）标量数据——字符类型
 
-```rs
+```rust
 fn main() {
     let c = 'z';
     let z = 'ℤ';
@@ -448,7 +448,7 @@ fn main() {
 
 #### （5）复合类型——元组
 
-```rs
+```rust
 fn main() {
     let x: (i32, f64, u8) = (500, 6.4, 1);
 
@@ -462,7 +462,7 @@ fn main() {
 
 #### （6）复合类型——数组
 
-```rs
+```rust
 fn main() {
     let a: [i32; 5] = [1, 2, 3, 4, 5];
     let b = [3; 5]; // 长度为5，元素全部都是3的数组
@@ -479,7 +479,7 @@ fn main() {
 
 #### （1）基本特性
 
-```rs
+```rust
 fn main() {
     another_function(5);
 }
@@ -497,7 +497,7 @@ fn another_function(x: i32) {
     * 最后一个语句如果没有分号，则最后一个表达式的结果是该语句块的结果
     * 最后一个语句有分号，则语句块无返回值
 
-```rs
+```rust
 fn add(a: i32, b: i32) -> i32 {
     let c = {
         a+b // 不需要加分号
@@ -511,7 +511,7 @@ fn add(a: i32, b: i32) -> i32 {
 * 函数的返回值是其最后一个表达式的值
 * `return` 在设计上用于提前返回
 
-```rs
+```rust
 
 fn five() -> i32 {
     5
@@ -524,7 +524,7 @@ fn five() -> i32 {
 
 ### 5、注释
 
-```rs
+```rust
 // hello, world
 ```
 
@@ -535,7 +535,7 @@ fn five() -> i32 {
 
 #### （1）条件语句
 
-```rs
+```rust
 fn main() {
     let number = 3;
 
@@ -554,7 +554,7 @@ fn main() {
 
 使用loop，死循环，使用break终止
 
-```rs
+```rust
     let mut counter = 0;
 
     let result = loop {
@@ -576,7 +576,7 @@ fn main() {
 
 使用while
 
-```rs
+```rust
     let mut number = 3;
 
     while number != 0 {
@@ -601,7 +601,7 @@ fn main() {
 
 使用for
 
-```rs
+```rust
 fn main() {
     let a = [10, 20, 30, 40, 50];
 
@@ -638,7 +638,7 @@ panic = 'abort'
 
 自己的程序触发的panic
 
-```rs
+```rust
 fn main() {
     panic!("crash and burn");
 }
@@ -656,7 +656,7 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace.
 
 第三方库触发的panic，比如数组越界
 
-```rs
+```rust
     let v = vec![1, 2, 3];
     v[99];
 ```
@@ -698,7 +698,7 @@ note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose bac
 * 使用模式匹配进行处理
 * 调用快捷方法，当出现错误时触发panic方式退出
 
-```rs
+```rust
 use std::fs::File;
 use std::io::ErrorKind;
 use std::io;
@@ -810,7 +810,7 @@ fn read_username_from_file2() -> Result<String, io::Error> {
 
 #### （1） 多行字符串 (Row String)
 
-```rs
+```rust
     // raw-string-literals
     // https://doc.rust-lang.org/reference/tokens.html#raw-string-literals
     // https://rahul-thakoor.github.io/rust-raw-string-literals/
@@ -883,7 +883,7 @@ Rust不同于以上两种：
 
 * 一旦变量超出作用域，将自动回收
 
-```rs
+```rust
     {
         let s = String::from("hello"); // s 从改点可以访问
 
@@ -898,7 +898,7 @@ Rust不同于以上两种：
 
 栈上的情况
 
-```rs
+```rust
     {
         let x = 5;
         let y = x; // x 分配在栈上，x将copy到y上，所以x, y都可以访问
@@ -908,7 +908,7 @@ Rust不同于以上两种：
 
 堆上的情况
 
-```rs
+```rust
     let s1 = String::from("hello");
     let s2 = s1; // 可以称之为所有权转移，浅拷贝，同时让s1失效
 
@@ -917,7 +917,7 @@ Rust不同于以上两种：
 
 堆上拷贝的方法
 
-```rs
+```rust
     {
         let s1 = String::from("hello");
         let s2 = s1.clone();
@@ -928,7 +928,7 @@ Rust不同于以上两种：
 
 ### 3、变量覆盖和所有权
 
-```rs
+```rust
     {
         let s1 = String::from("hello");
         let s1 = String::from("hello"); // 变量覆盖不会带来内存回收，在花括号结束后自动回收
@@ -940,7 +940,7 @@ Rust不同于以上两种：
 
 函数的传参和变量赋值类似
 
-```rs
+```rust
     let s = String::from("hello");  // s 进入作用域
 
     takes_ownership(s);             // s 被移动到函数内部
@@ -965,7 +965,7 @@ fn makes_copy(some_integer: i32) { // some_integer 进入作用域
 
 函数返回值同样包含所有权转移
 
-```rs
+```rust
     let s1 = gives_ownership();         // 函数返回值的所有权转移到s1
                                         // value into s1
 
@@ -1004,7 +1004,7 @@ fn takes_and_gives_back(a_string: String) -> String { // a_string 进入
 
 在不使用引用的情况下，如果需要同时想使用函数参数和返回值，则需要使用元组在返回回来：
 
-```rs
+```rust
 fn main() {
     let s1 = String::from("hello");
 
@@ -1025,7 +1025,7 @@ fn calculate_length(s: String) -> (String, usize) {
 
 为了解决上文的问题，引入引用。
 
-```rs
+```rust
     {
         let s1 = String::from("hello");
 
@@ -1041,7 +1041,7 @@ fn calculate_length2(s: &String) -> usize {
 
 以上引用声明的方式不允许修改，因此可以使用`&mut`声明可变引用
 
-```rs
+```rust
 fn main() {
     let mut s = String::from("hello");
 
@@ -1061,7 +1061,7 @@ fn change(some_string: &mut String) {
     * 至少有一个指针被用来写入数据。
     * 没有同步数据访问的机制。
 
-```rs
+```rust
     {
         let mut s = String::from("hello");
 
@@ -1074,7 +1074,7 @@ fn change(some_string: &mut String) {
 
 可以通过创建作用域解决
 
-```rs
+```rust
     {
         let mut s = String::from("hello");
 
@@ -1089,7 +1089,7 @@ fn change(some_string: &mut String) {
 
 同样可变与不可变混用也会导致报错
 
-```rs
+```rust
     {
         let mut s = String::from("hello");
 
@@ -1103,7 +1103,7 @@ fn change(some_string: &mut String) {
 
 判断的依据是是否同时使用：
 
-```rs
+```rust
 let mut s = String::from("hello");
 
 let r1 = &s; // no problem
@@ -1124,7 +1124,7 @@ println!("{}", r3);
 
 编辑器保证不会出现引用悬空：通过检测引用作用域必须在变量的作用域及子孙作用域内。
 
-```rs
+```rust
 fn main() {
     let reference_to_nothing = dangle();
 }
@@ -1146,7 +1146,7 @@ fn dangle() -> &String { // 报错引用超出变量作用域
 
 字符串切片
 
-```rs
+```rust
 let s = String::from("hello world");
 
 let hello = &s[0..5];
@@ -1155,7 +1155,7 @@ let world = &s[6..11];
 
 一个例子：查找字符串的第一个单词
 
-```rs
+```rust
     {
         let mut s = String::from("hello world");
         s.push_str(" 123");
@@ -1221,7 +1221,7 @@ fn first_word(s: &String) -> &str {
 
 #### （1）基本示例
 
-```rs
+```rust
 // 结构体
 struct User {
     username: String,
@@ -1270,7 +1270,7 @@ fn main() {
 
 可以使结构体存储被其他对象拥有的数据的引用，不过这么做的话需要用上 生命周期（lifetimes），这是一个第十章会讨论的 Rust 功能。生命周期确保结构体引用的数据有效性跟结构体本身保持一致。如果你尝试在结构体中存储一个引用而不指定生命周期将是无效的，比如这样：
 
-```rs
+```rust
 struct User {
     username: &str, // 报错
     email: &str, //  报错
@@ -1290,7 +1290,7 @@ fn main() {
 
 ### 2、方法
 
-```rs
+```rust
 #[derive(Debug)] // 注解
 struct Rectangle {
     width: u32,
@@ -1347,7 +1347,7 @@ fn main() {
 
 基本语法
 
-```rs
+```rust
 // 定义枚举
 enum IpAddrKind {
     V4,
@@ -1363,7 +1363,7 @@ enum IpAddrKind {
 
 枚举作为函数参数
 
-```rs
+```rust
 // 枚举值作为函数参数
 fn route(ip_type: IpAddrKind) {
 
@@ -1375,7 +1375,7 @@ fn route(ip_type: IpAddrKind) {
 
 枚举值作为结构体成员
 
-```rs
+```rust
 // 枚举值作为结构体成员
 struct IpAddr {
     kind: IpAddrKind,
@@ -1395,7 +1395,7 @@ struct IpAddr {
 
 枚举与值绑定
 
-```rs
+```rust
 // 将数值与枚举属性绑定
 enum IpAddr2 {
     V4(String),
@@ -1408,7 +1408,7 @@ enum IpAddr2 {
 
 标准库中的IPAddr的例子
 
-```rs
+```rust
 
 // 标准库中ip的封装
 struct Ipv4Addr {
@@ -1425,7 +1425,7 @@ enum IpAddr3 {
 
 更复杂的关联数据与关联方法
 
-```rs
+```rust
 //更复杂的关联数据的例子
 enum Message {
     Quit, //没有关联任何数据
@@ -1448,7 +1448,7 @@ impl Message {
 
 option实现与无null设计
 
-```rs
+```rust
 // 标准库中的enum实现例子
 /*
 enum Option<T> {
@@ -1473,7 +1473,7 @@ enum Option<T> {
 
 例子1：枚举类型模式匹配
 
-```rs
+```rust
 enum Coin {
     Penny,
     Nickel,
@@ -1496,7 +1496,7 @@ fn value_in_cents(coin: Coin) -> u32 {
 
 例子2：带有绑定值的模式匹配
 
-```rs
+```rust
 enum Coin2 {
     Penny,
     Nickel,
@@ -1519,7 +1519,7 @@ fn value_in_cents2(coin: Coin2) -> u32 {
 
 匹配Option的一个例子
 
-```rs
+```rust
 fn plus_one(x: Option<i32>) -> Option<i32> {
     match x {
         None => None,
@@ -1534,7 +1534,7 @@ let none = plus_one(None);
 
 通配符
 
-```rs
+```rust
     let some_u8_value = 0u8;
     match some_u8_value {
         1 => println!("one"),
@@ -1549,7 +1549,7 @@ let none = plus_one(None);
 
 #### if let 单条件模式匹配符
 
-```rs
+```rust
 let some_u8_value = Some(0u8);
 match some_u8_value {
     Some(3) => println!("three"),
@@ -1559,13 +1559,13 @@ match some_u8_value {
 
 等价于
 
-```rs
+```rust
 if let Some(3) = some_u8_value {
     println!("three");
 }
 ```
 
-```rs
+```rust
     let mut count = 0;
     let coin = Coin2::Dime;
     match coin {
@@ -1576,7 +1576,7 @@ if let Some(3) = some_u8_value {
 
 等价于
 
-```rs
+```rust
     let mut count = 0;
     let coin1 = Coin2::Dime;
     if let Coin2::Quarter(state) = coin1 {
@@ -1592,7 +1592,7 @@ if let Some(3) = some_u8_value {
 
 闭包的基本语法
 
-```rs
+```rust
 use std::thread;
 use std::time::Duration;
 
@@ -1634,7 +1634,7 @@ fn generate_workout(intensity: u32, random_number: u32) {
 
 闭包与函数
 
-```rs
+```rust
 fn add_one(a: u32, version: u32) -> u32 {
     fn  add_one_v1   (x: u32) -> u32 { x + 1 }; // 这是定义了一个函数
     let add_one_v2 = |x: u32| -> u32 { x + 1 }; // 定义闭包方式1
@@ -1660,7 +1660,7 @@ fn add_one(a: u32, version: u32) -> u32 {
 
 闭包作为结构体成员
 
-```rs
+```rust
 
 struct Cacher<T>
     where T: Fn(u32) -> u32 // 闭包有三种triat类型参见下文
@@ -1708,7 +1708,7 @@ impl<T> Cacher<T>
     * Fn(&self)
 * 更多参考 https://tonydeng.github.io/2019/11/09/rust-closure-type/
 
-```rs
+```rust
 
 fn main() {
 
@@ -1730,7 +1730,7 @@ fn main() {
 
 * 本质上是一个系列 系统定义 的特质
 
-```rs
+```rust
         // 迭代器原理与直接使用
         // Iterator 特质定义的方法如下
         // pub trait Iterator {
@@ -1753,7 +1753,7 @@ fn main() {
 
 可变迭代器在遍历的过程中修改值
 
-```rs
+```rust
         println!("使用可变迭代器，所有值+1");
         let mut values = vec![1, 2, 3];
 
@@ -1775,7 +1775,7 @@ fn main() {
 
 迭代器的常见用法
 
-```rs
+```rust
         // 迭代器常见用法
         // https://rustforce.net/article?id=3874fb6c-30d8-4409-b78f-6d39763074c6
         let v = vec![1, 2, 3];
@@ -1810,7 +1810,7 @@ fn main() {
 
 for in 语法糖的原理探究
 
-```rs
+```rust
 fn for_in_debug(){
     // https://doc.rust-lang.org/std/iter/index.html
     // let values = vec![1, 2, 3];
@@ -1888,7 +1888,7 @@ fn main() {
 
 为结构体实现迭代器
 
-```rs
+```rust
 // 自定义结构体
 
 pub struct MyRange {
@@ -1996,7 +1996,7 @@ impl IntoIterator for MyRange { // 这个方法是对 MyRange 本身类型的实
 
 match 语法
 
-```rs
+```rust
 match VALUE {
     PATTERN => EXPRESSION,
     PATTERN => EXPRESSION,
@@ -2144,7 +2144,7 @@ let ((feet, inches), Point {x, y}) = ((3, 10), Point { x: 3, y: -10 });
 
 if let 语法
 
-```rs
+```rust
     let favorite_color: Option<&str> = None;
     let is_tuesday = false;
     let age: Result<u8, _> = "34".parse();
@@ -2166,7 +2166,7 @@ if let 语法
 
 where let 语法
 
-```rs
+```rust
     let mut stack = Vec::new();
 
     stack.push(1);
@@ -2180,7 +2180,7 @@ where let 语法
 
 for 循环 语法
 
-```rs
+```rust
     let v = vec!['a', 'b', 'c'];
 
     for (index, value) in v.iter().enumerate() {
@@ -2190,7 +2190,7 @@ for 循环 语法
 
 let 语法
 
-```rs
+```rust
     let PATTERN = EXPRESSION;
     let x = 5;
     let (x, y, z) = (1, 2, 3);
@@ -2215,7 +2215,7 @@ struct Point {
 
 函数参数的模式提取
 
-```rs
+```rust
 fn print_coordinates(&(x, y): &(i32, i32)) {
     println!("Current location: ({}, {})", x, y);
 }
@@ -2237,7 +2237,7 @@ Refutability（可反驳性）: 模式是否会匹配失效
 
 使用 `_` 忽略整个值
 
-```rs
+```rust
 fn foo(_: i32, y: i32) {
     println!("This code only uses the y parameter: {}", y);
 }
@@ -2270,7 +2270,7 @@ fn foo(_: i32, y: i32) {
 
 下划线开头的变量不会进行未使用检测
 
-```rs
+```rust
     let _x = 5;
     let y = 10;
 
@@ -2297,7 +2297,7 @@ println!("{:?}", s);
 
 用 `..` 忽略剩余值
 
-```rs
+```rust
 struct Point {
     x: i32,
     y: i32,
@@ -2330,7 +2330,7 @@ match origin {
 
 匹配守卫提供的额外条件
 
-```rs
+```rust
 let num = Some(4);
 
 match num {
@@ -2352,7 +2352,7 @@ match x {
 
 `@` 绑定 创建变量同时提供匹配条件
 
-```rs
+```rust
 enum Message {
     Hello { id: i32 },
 }
@@ -2402,7 +2402,7 @@ cargo new --lib restaurant
 
 删除 `src/lib.rc` 原本的内容，填写如下内容
 
-```rs
+```rust
 // mod 定义了一个模块
 mod front_of_house {
     // 定义了一个子模块
@@ -2446,7 +2446,7 @@ crate
 
 修改 `src/lib.rs` 如下：
 
-```rs
+```rust
 // Version1： 模拟餐馆前台的模块
 // mod 定义了一个模块
 mod front_of_house {
@@ -2493,7 +2493,7 @@ pub fn eat_at_restaurant() {
 
 在 `src/lib.rc` 中添加
 
-```rs
+```rust
 fn serve_order() {}
 
 mod back_of_house {
@@ -2510,7 +2510,7 @@ mod back_of_house {
 
 在 `src/lib.rs` 模块 `back_of_house` 中添加
 
-```rs
+```rust
     // 定义了一个公有的结构体
     pub struct Breakfast {
         pub toast: String, // 公有字段
@@ -2536,7 +2536,7 @@ mod back_of_house {
 
 在 `src/lib.rs` 函数 `eat_at_restaurant` 中添加
 
-```rs
+```rust
     // 夏天订购黑麦面包早餐 Order a breakfast in the summer with Rye toast
     let mut meal = back_of_house::Breakfast::summer("Rye");
     // 改变主意，想吃什么面包 Change our mind about what bread we'd like
@@ -2560,7 +2560,7 @@ mod back_of_house {
 
 `src/lib.rc`
 
-```rs
+```rust
 use crate::front_of_house::hosting;
 
 pub fn eat_at_restaurant1() {
@@ -2613,7 +2613,7 @@ use std::collections::*;
 
 `src/lib.rs` 添加模块声明
 
-```rs
+```rust
 mod front_of_house2;
 
 pub use crate::front_of_house2::hosting as hosting2 ;
@@ -2629,25 +2629,25 @@ mod front_of_house3;
 
 `src/front_of_house2.rs`
 
-```rs
+```rust
 pub mod hosting;
 ```
 
 `src/front_of_house2/hosting.rs`
 
-```rs
+```rust
 pub fn add_to_waitlist() {}
 ```
 
 `src/front_of_house3/mod.rs`
 
-```rs
+```rust
 pub mod hosting;
 ```
 
 `src/front_of_house3/hosting.rs`
 
-```rs
+```rust
 pub fn add_to_waitlist() {}
 ```
 
@@ -2684,7 +2684,7 @@ opt-level = 3
 * `cargo doc --open` 可以进行文档预览
 * `cargo test` 文档注释中的代码可以作为测试样例
 
-```rs
+```rust
 /// 将给定的数字加一
 ///
 /// # Examples
@@ -2704,7 +2704,7 @@ pub fn add_one(x: i32) -> i32 {
 
 文件名: `src/lib.rs`
 
-```rs
+```rust
 
 //! # My Crate
 //!
@@ -2723,7 +2723,7 @@ pub fn add_one(x: i32) -> i32 {
 
 文件名: `src/lib.rs`
 
-```rs
+```rust
 //! # Art
 //!
 //! 一个描述美术信息的库。
@@ -2743,7 +2743,7 @@ pub mod utils {
 
 文件名: `src/main.rs`
 
-```rs
+```rust
 use art::PrimaryColor;
 use art::mix;
 
@@ -2830,7 +2830,7 @@ rand = "0.5.5"
 
 编写库 `add-one` 库文件 `add-one/src/lib.rs`
 
-```rs
+```rust
 pub fn add_one(x: i32) -> i32 {
     x + 1
 }
@@ -2856,7 +2856,7 @@ add-one = { path = "../add-one" }
 
 编写 `adder` 程序入口 `adder/src/main.rs`
 
-```rs
+```rust
 use add_one;
 
 fn main() {
@@ -2894,7 +2894,7 @@ cargo build
 
 ### 1、Vector
 
-```rs
+```rust
     // 1. Vector 可变数组
 
     // 通过构造函数创建
@@ -2970,7 +2970,7 @@ cargo build
 
 ### 2、字符串
 
-```rs
+```rust
     // 2. String 可变字符串
     // Rust 中的字符串常用的有两种：
     //   str rust核心字符串，字面量字符串类型，utf8编码
@@ -3041,7 +3041,7 @@ cargo build
 
 ### 3、HashMap
 
-```rs
+```rust
     // 3. HashMap
     // key需要实现 Hash 和 Eq 特质，才能全功能使用
     // 创建
@@ -3115,7 +3115,7 @@ rust 的 泛型类型实现方式C++中的模板，在编译时会被具象化�
     * 运行时有额外的性能损失
     * 编译产物体积相对较小
 
-```rs
+```rust
     // 结构体使用泛型声明
     struct Point<T> {
         x: T,
@@ -3173,7 +3173,7 @@ rust 的 泛型类型实现方式C++中的模板，在编译时会被具象化�
 
 类似go语言的接口
 
-```rs
+```rust
 use std::fmt::Display;
 
 fn main() {
@@ -3398,7 +3398,7 @@ rust 特有，生命周期也是一种泛型，用来防止引用悬空，辅助
 
 每个引用都有生命周期，声明方式如下：
 
-```rs
+```rust
 &i32        // 引用
 &'a i32     // 带有显式生命周期的引用
 &'a mut i32 // 带有显式生命周期的可变引用
@@ -3409,7 +3409,7 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
 
 样例
 
-```rs
+```rust
     // 1. 生命周期避免了悬垂引用
     // {
     //     let r; // 不可便变量只允许赋值一次
@@ -3493,13 +3493,13 @@ fn longest<'a>(x: &'a str, y: &'a str) -> &'a str {
 
 'static，其生命周期能够存活于整个程序期间。所有的字符串字面值都拥有 'static 生命周期，我们也可以选择像下面这样标注出来：
 
-```rs
+```rust
 let s: &'static str = "I have a static lifetime.";
 ```
 
 ### 4、结合泛型类型参数、trait bounds 和生命周期
 
-```rs
+```rust
     fn longest_with_an_announcement<'a, T>(x: &'a str, y: &'a str, ann: T) -> &'a str
         where T: Display
     {
@@ -3524,7 +3524,7 @@ let s: &'static str = "I have a static lifetime.";
 
 编写 `src/lib.rc` 文件
 
-```rs
+```rust
 pub fn add_two(base: i32) -> i32{
     base + 2
 }
@@ -3598,7 +3598,7 @@ cargo test -- --ignored  # 运行`#[ignore]`的测试函数
 
 编写测试文件 `tests/mytest.rs`
 
-```rs
+```rust
 // test 目录只能测试src/lib.rs中声明的包，不能测试src/main.rs
 // use rusttest; // 此种方式也可以
 // 声明被测试的外部 crate，就像其他使用该 crate 的程序要声明的那样。
@@ -3617,7 +3617,7 @@ fn it_adds_two() {
 
 测试使用的模块建议使用目录方式创建，创建文件 `tests/common/mod.rs`
 
-```rs
+```rust
 pub fn setup() {
     // 编写特定库测试所需的代码
 }
@@ -3662,7 +3662,7 @@ main 函数负责多个任务的组织问题在许多二进制项目中很常见
 
 编写主逻辑 `src/lib.rs`
 
-```rs
+```rust
 use std::fs;
 use std::error::Error;
 use std::env;
@@ -3797,7 +3797,7 @@ Trust me.";
 
 编写入口函数 `src/main.rs`
 
-```rs
+```rust
 use std::env;
 use minigrep::Config;
 use std::process;
@@ -3837,7 +3837,7 @@ fn main() {
 * 类似与C语言Rust结构体必须大小确定，不允许直接递归定义类型
 * 枚举类型存在4字节的类型标签
 
-```rs
+```rust
 // 以下结构体/枚举占用的空间为 32 字节（类型标签4字节，最长成员Write(String) 24，内存对齐4字节）
 enum Message {
     Quit,
@@ -3856,7 +3856,7 @@ enum Message {
 * `Box` 分配包裹的变量将分配到堆内
 * `Box` 实现了 `Deref` 特质将其当做引用使用
 
-```rs
+```rust
 // rust 结构体必须能计算出结构体的确定占用内存打下（类似于C的结构体）
 // 所以递归类型需要使用Box或者引用
 
@@ -3889,7 +3889,7 @@ use crate::List::{Cons, Nil};
 
 ### 3、通过 Deref trait 将智能指针当作常规引用处理
 
-```rs
+```rust
     // Box 类型实现了Deref特质，所以允许使用 *y 解引用符
     let x = 5;
     let y = Box::new(x)
@@ -3900,7 +3900,7 @@ use crate::List::{Cons, Nil};
 
 自定义MyBox并实现Box类似解引用运算符的支持
 
-```rs
+```rust
 
 struct MyBox<T>(T);
 
@@ -3930,7 +3930,7 @@ impl<T> Deref for MyBox<T> {
 
 函数和方法的隐式解引用强制多态
 
-```rs
+```rust
 fn hello(name: &str) {
     println!("Hello, {}!", name);
 }
@@ -3957,7 +3957,7 @@ Rust 在发现类型和 trait 实现满足三种情况时会进行解引用强�
 
 ### 4、使用 Drop Trait 运行清理代码
 
-```rs
+```rust
 // Drop 特质，在超出作用域后执行清理操作
 struct CustomSmartPointer {
     data: String,
@@ -3988,7 +3988,7 @@ impl Drop for CustomSmartPointer {
 
 ### 5、`Rc<T>` 引用计数智能指针
 
-```rs
+```rust
 
 // 使用引用计数实现
 enum List2 {
@@ -4026,7 +4026,7 @@ use crate::List2::{Cons2, Nil2};
 
 使用 `RefCell<T>` 实现运行时借用规则检查以实现内不可变性的例子
 
-```rs
+```rust
 
 // 例子： 测试mock
 
@@ -4114,7 +4114,7 @@ mod tests {
 * 运行时违反规则将触发 panic
 * 有额外的运行时开销
 
-```rs
+```rust
     // RefCell<T> 在运行时检查借用规则，必须满足借用规则
     {
         let sent_messages:RefCell<Vec<String>> = RefCell::new(vec![]);
@@ -4137,7 +4137,7 @@ mod tests {
 
 实现拥有可变List（结合 `Rc<T>` 和 `RefCell<T>` 来拥有多个可变数据所有者）
 
-```rs
+```rust
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -4171,7 +4171,7 @@ use crate::List3::{Cons3, Nil3};
 
 制造一个循环引用导致的内存泄漏
 
-```rs
+```rust
 #[derive(Debug)]
 enum List4 {
     Cons4(i32, RefCell<Rc<List4>>),
@@ -4220,7 +4220,7 @@ impl List4 {
 
 使用 `Weak<T>` 弱引用防止循环引用
 
-```rs
+```rust
 
 // 双向链表类似的结构的实现使用弱引用防止循环引用
 // 例子：树结构，节点持有所有孩子的引用和指向父亲的引用
@@ -4305,7 +4305,7 @@ struct Node {
 
 ### 1、线程
 
-```rs
+```rust
 use std::thread;
 use std::time::Duration;
 
@@ -4342,7 +4342,7 @@ fn main() {
 
 ### 2、消息传递
 
-```rs
+```rust
 use std::thread;
 use std::time::Duration;
 use std::sync::mpsc;
@@ -4407,7 +4407,7 @@ fn main() {
 
 ### 3、共享状态
 
-```rs
+```rust
 use std::thread;
 use std::time::Duration;
 use std::sync::mpsc;
@@ -4475,7 +4475,7 @@ Sync 特质
 
 Rust中的封装：通过结构体和impl语句块实现
 
-```rs
+```rust
 pub struct AveragedCollection {
     list: Vec<i32>,
     average: f64,
@@ -4513,7 +4513,7 @@ impl AveragedCollection {
 
 Rust 不支持传统意义上的继承，可以通过默认方法实现继承的效果
 
-```rs
+```rust
 
 trait MyTrait {
     fn defaultMethod(&self){
@@ -4532,7 +4532,7 @@ impl MyTrait for MyStruct {}
 
 ### 3、多态
 
-```rs
+```rust
 通过 trait 和 dyn 关键字实现
 
 // 通用方法抽象为Trait
@@ -4667,7 +4667,7 @@ Rust 推荐将 状态转换转化为不同类型之间的转换
 
 创建裸指针
 
-```rs
+```rust
     {
         let mut num = 5;
         // 创建裸指针不需要使用unsafe包裹
@@ -4680,7 +4680,7 @@ Rust 推荐将 状态转换转化为不同类型之间的转换
 
 创建一个不可用的裸指针
 
-```rs
+```rust
     {
         let address = 0x012345usize;
         let r = address as *const i32;
@@ -4690,7 +4690,7 @@ Rust 推荐将 状态转换转化为不同类型之间的转换
 
 使用裸指针
 
-```rs
+```rust
     {
         let mut num = 5;
 
@@ -4706,7 +4706,7 @@ Rust 推荐将 状态转换转化为不同类型之间的转换
 
 **调用不安全函数或方法**
 
-```rs
+```rust
     {
         unsafe fn dangerous() {
             println!("unsafe function")
@@ -4720,7 +4720,7 @@ Rust 推荐将 状态转换转化为不同类型之间的转换
 
 例子：模拟实现 `split_at_mut`
 
-```rs
+```rust
     // 例子：模拟实现 split_at_mut
     {
         // 将一个Vec的切片一分为两个
@@ -4754,7 +4754,7 @@ Rust 推荐将 状态转换转化为不同类型之间的转换
 
 调用外部其他语言库
 
-```rs
+```rust
     // 使用 extern 函数调用外部代码（c语言函数）
     {
         extern "C" {
@@ -4768,7 +4768,7 @@ Rust 推荐将 状态转换转化为不同类型之间的转换
 
 从其它语言调用 Rust 函数
 
-```rs
+```rust
 #[no_mangle] //还需增加 #[no_mangle] 注解来告诉 Rust 编译器不要 mangle 此函数的名称
 pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
     println!("Just called a Rust function from C!");
@@ -4782,7 +4782,7 @@ pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
     * `static mut HELLO_WORLD: T`
 * 修改或者访问可变的全局变量需要 `unsafe` 代码块
 
-```rs
+```rust
     // 访问或修改静态变量
     {
         static mut COUNTER: u32 = 0;
@@ -4809,7 +4809,7 @@ pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
 * 一些例子 `Searcher`、`Send`、`Sync`
 * [stackoverflow参考](https://stackoverflow.com/questions/31628572/when-is-it-appropriate-to-mark-a-trait-as-unsafe-as-opposed-to-marking-all-the)
 
-```rs
+```rust
     {
         // 实例参考 Searcher
         unsafe trait Foo {
@@ -4833,7 +4833,7 @@ pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
 
 关联类型在 trait 定义中指定占位符类型
 
-```rs
+```rust
     {
         // 带有关联类型的特质
         pub trait MyTrait {
@@ -4889,7 +4889,7 @@ pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
 
 默认参数语法 `trait Add<RHS=Self> {}`
 
-```rs
+```rust
     {
         // Rust的运算符重载通过实现std::ops下定义的trait来实现
         // 下面一个例子为 二元操作符 + 例子
@@ -4938,7 +4938,7 @@ pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
 
 语法为：`<Type as Trait>::function(receiver_if_method, next_arg, ...);`
 
-```rs
+```rust
     {
         // 一个结构体实现多个trait，如何消除歧义
         // 方法通过 TraitName::method(self) 调用
@@ -4990,7 +4990,7 @@ pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
 
 Trait 继承语法： `trait SubTrait : ParentTrait {}`
 
-```rs
+```rust
     {
         // 父 trait 用于在另一个 trait 中使用某 trait 的功能
         // 语法如下： trait SubTrait : ParentTrait {}
@@ -5028,7 +5028,7 @@ newtype 模式用以在外部类型上实现外部 trait
     * 必须直接在 Wrapper 上实现所有方法，这样就可以代理到 `self.0` 上 —— 这就允许我们完全像 被包裹类型一样 那样对待 Wrapper。
     * 或者为封装类型实现 Deref trait 方法，返回 `self.0`
 
-```rs
+```rust
     {
         use std::fmt;
         // impl fmt::Display for Vec<T> {} // 报错 only traits defined in the current crate can be implemented for arbitrary types
@@ -5051,7 +5051,7 @@ newtype 模式用以在外部类型上实现外部 trait
 
 **类型别名用来创建类型同义词**
 
-```rs
+```rust
     {
         // 类型别名
         type Kilometers = i32;
@@ -5083,7 +5083,7 @@ newtype 模式用以在外部类型上实现外部 trait
 
 **从不返回的 never type**
 
-```rs
+```rust
     {
         // never type 或者 empty type rust 中用 ! 表示
         fn bar() -> ! {
@@ -5102,7 +5102,7 @@ newtype 模式用以在外部类型上实现外部 trait
 
 **动态大小类型和 Sized trait**
 
-```rs
+```rust
     {
         // let s1: str = "Hello there!"; // 报错，因为不能直接引用str类型，因为str是动态大小类型，编译期不可知
         let s2: &'static str = "Hello there!"; // &str 则是 两个 值：str 的地址和其长度
@@ -5126,7 +5126,7 @@ newtype 模式用以在外部类型上实现外部 trait
 
 高阶函数
 
-```rs
+```rust
     {
         fn add_one(x: i32) -> i32 {
             x + 1
@@ -5164,7 +5164,7 @@ newtype 模式用以在外部类型上实现外部 trait
 
 返回闭包
 
-```rs
+```rust
     {
         // fn returns_closure() -> Fn(i32) -> i32 { // 报错：因为Trait为尺寸运行时不可知
         //     |x| x + 1
@@ -5201,7 +5201,7 @@ newtype 模式用以在外部类型上实现外部 trait
 
 更多参考 https://danielkeep.github.io/tlborm/book/index.html
 
-```rs
+```rust
     {
         // 使用 macro_rules! 声明宏
         // 本例中模拟了 vec! 实现
@@ -5274,7 +5274,7 @@ trait定义者提供两个库，分别声明trait的库和声明过程宏的库
 
 创建 声明trait的库 `cargo new hello_macro --lib` 并编写 `hello_macro/src/lib.rs`
 
-```rs
+```rust
 pub trait HelloMacro {
     fn hello_macro();
 }
@@ -5295,7 +5295,7 @@ quote = "0.6.3"
 
 编写 `hello_macro/hello_macro_derive/src/lib.rs`
 
-```rs
+```rust
 extern crate proc_macro; // 声明外部的crate （rust自带 编译器用来读取和操作我们 Rust 代码的 API）
 
 use crate::proc_macro::TokenStream;
@@ -5338,7 +5338,7 @@ hello_macro_derive = { path = "../hello_macro/hello_macro_derive" }
 
 使用 `advanced-features/src/main.rs`
 
-```rs
+```rust
     {
         use hello_macro::HelloMacro; // 导入特质
         use hello_macro_derive::HelloMacro; //导入过程宏
@@ -5357,14 +5357,14 @@ hello_macro_derive = { path = "../hello_macro/hello_macro_derive" }
 
 使用
 
-```rs
+```rust
 #[route(GET, "/")]
 fn index() {
 ```
 
 过程宏定义
 
-```rs
+```rust
 #[proc_macro_attribute]
 pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream {
 ```
@@ -5375,13 +5375,13 @@ pub fn route(attr: TokenStream, item: TokenStream) -> TokenStream {
 
 使用
 
-```rs
+```rust
 let sql = sql!(SELECT * FROM posts WHERE id=1);
 ```
 
 过程宏编写
 
-```rs
+```rust
 #[proc_macro]
 pub fn sql(input: TokenStream) -> TokenStream {
 ```
