@@ -1733,6 +1733,35 @@ fn main() {
 }
 ```
 
+* 闭包本质上是一个编译器魔法，实现方式大概如下
+    * 分析并捕获闭包变量，构建一个结构体
+    * 分析闭包使用情况，将逻辑代码，生成到 `FnOnce`、 `FnMut`、 `Fn` 的实现中
+    * 替换所有闭包调用和传递的地方
+
+```rust
+
+        trait FnOnce2<Args> {
+            type Output;
+            fn call_once(self, args: Args) -> Self::Output;
+        }
+
+        struct Adder {
+            c: i32,
+        }
+
+        impl FnOnce2<(i32, i32)> for Adder {
+            type Output = i32;
+            fn call_once(self, args: (i32, i32)) -> Self::Output {
+                return args.0 + args.1 + self.c
+            }
+        }
+        let c = 2;
+        let add = |a: i32, b: i32| a + b + c;
+        println!("add(1,2) = {}", add(1,2));
+        let add2 = Adder{c};
+        println!("add2(1,2) = {}", add2.call_once((1,2)));
+```
+
 ### 3、迭代器
 
 迭代器的原理与基本使用
@@ -2899,6 +2928,17 @@ cargo build
     └── debug
 ```
 
+### 11、Cargo 如何解决 版本冲突
+
+[译文](https://juejin.im/post/6844903833844318222)
+[原文](https://stephencoakley.com/2019/04/24/how-rust-solved-dependency-hell)
+
+Rust 通过编译符号重命名来解决这个问题（如果是 Java 实现的话应该就是用不同的 ClassLoader 加载两次），这样造成几个问题
+
+* 同一个包的变量不能相互传递（因为本质上不是相同的编译结果）
+* 编译产物尺寸会变大
+* 依赖静态全局变量的库可能会失效
+
 ## 八、常见的集合
 
 ### 1、Vector
@@ -3123,6 +3163,8 @@ rust 的 泛型类型实现方式C++中的模板，在编译时会被具象化�
 * 类型擦除
     * 运行时有额外的性能损失
     * 编译产物体积相对较小
+
+实验代码
 
 ```rust
     // 结构体使用泛型声明
@@ -3865,6 +3907,8 @@ enum Message {
 * `Box` 分配包裹的变量将分配到堆内
 * `Box` 实现了 `Deref` 特质将其当做引用使用
 
+例子
+
 ```rust
 // rust 结构体必须能计算出结构体的确定占用内存打下（类似于C的结构体）
 // 所以递归类型需要使用Box或者引用
@@ -3935,9 +3979,15 @@ impl<T> Deref for MyBox<T> {
 
     assert_eq!(5, x);
     assert_eq!(5, *y); // 编译成 *(y.deref())
+
+    fn p(t: &i32) {
+        println!("{}", t)
+    }
+    let ry:&MyBox<i32> = &y;
+    p(ry);
 ```
 
-函数和方法的隐式解引用强制多态
+函数和方法的隐式解引用强制多态（本质上类似于 Scala 隐式类型转换，参考上边的 `p` 函数）
 
 ```rust
 fn hello(name: &str) {
