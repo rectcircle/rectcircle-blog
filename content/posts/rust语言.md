@@ -1762,6 +1762,8 @@ fn main() {
         println!("add2(1,2) = {}", add2.call_once((1,2)));
 ```
 
+原理参见：https://zhuanlan.zhihu.com/p/64417628
+
 ### 3、迭代器
 
 迭代器的原理与基本使用
@@ -4279,9 +4281,42 @@ impl List4 {
 
 使用 `Weak<T>` 弱引用防止循环引用
 
+原理
+
+* `Rc<T>` 内部存在两个计数器 `strong_count` 和 `weak_count`
+* `Rc::downgrade(Rc<T> &self) -> Weak<T>` 调用将导致 `weak_count` + 1
+* `Rc::clone(Rc<T> &self) -> Rc<T>` 将导致 `strong_count` + 1
+* 当 `strong_count` 为 0 时，T 将被 `drop` 此时 通过 `Weak<T>.upgrade()` 则只能拿到 `None`
+
+实验例子
+
+```rust
+use std::rc::Rc;
+use std::rc::Weak;
+
+fn test_rc_weak() -> Weak<i32> {
+    let rc1 = Rc::new(3);
+    let rc2 = rc1.clone();
+    let weak1 = Rc::downgrade(&rc1);
+    println!(
+            "leaf strong = {}, weak = {}",
+            Rc::strong_count(&rc1),
+            Rc::weak_count(&rc1),  // 0
+    );
+    weak1
+}
+
+fn main() {
+    let weak1 = test_rc_weak();
+    println!("{:?}", weak1.upgrade());
+}
+```
+
+官方例子如下
+
 ```rust
 
-// 双向链表类似的结构的实现使用弱引用防止循环引用
+// 双向链表类似的结构的实现使用弱引用防止循环引
 // 例子：树结构，节点持有所有孩子的引用和指向父亲的引用
 
 #[derive(Debug)]
@@ -4393,6 +4428,8 @@ fn main() {
         let handle = thread::spawn(move || { // 不适用move将报错，因为编译器推断出是引用
             println!("闭包环境v = {:?}", v);
         });
+
+        // println!("{:?}", v); // 上边 move 作用 是 将 闭包 捕获到的变量 移动到 内部，原理应该是 构建匿名结构体时类型不为引用
 
         handle.join().unwrap();
     }
@@ -4527,6 +4564,10 @@ Sync 特质
 * 只有实现了 Sync 特质的类型的引用才能发送的其他线程
 * Sync 特质没有方法，仅仅作为编译器标记
 * `Rc<T>` 并未实现该特质
+
+Send 和 Sync 特质属于 自动实现的 特质（利用 Rust 的 泛型实现），不实现通过 类似于 `!Send` 进行标记
+
+更过参见 https://wiki.jikexueyuan.com/project/rust-primer/marker/sendsync.ht
 
 ## 十六、面向对象
 
@@ -5444,3 +5485,96 @@ let sql = sql!(SELECT * FROM posts WHERE id=1);
 #[proc_macro]
 pub fn sql(input: TokenStream) -> TokenStream {
 ```
+
+### 6、静态派发和动态派发
+
+关于 dyn trait 和 impl trait
+
+* 静态派发 `impl trait` 可以用在函数的参数和返回值上，即编译期根据类型生成多份代码
+    * 用在 函数返回值 上 `fn foo() -> impl Adder`，返回的类型为 `impl Adder`
+        * 在编译上 会编译为 `fn foo() -> 具体类型` 一份，
+        * 和直接写区别不大，不会减少代码量，设计这个语法的原因在于：封装，比如只想暴露接口的情况
+    * 用在 函数参数 上 `fn bar(a: impl Adder)`，基本等价于 `fn bar<T: Adder>(a: T)`
+        * 有了泛型为什么还要这个语法？为了语言语法的对称性
+* 动态派发 `Box<dyn trait>`
+    * rust 支持 `Box<Struct impl trait>` 到 `Box<dyn trait>` 的转换
+
+例子如下
+
+```rust
+trait Adder {
+    fn add(&self, a: i32, b:i32) -> i32;
+}
+
+struct A;
+impl Adder for A {
+    fn add(&self, a: i32, b:i32) -> i32 {
+        a+b
+    }
+}
+
+fn main() {
+
+    fn foo() -> impl Adder {
+        A{}
+    }
+
+    fn foo2() -> Box<dyn Adder> {
+        Box::new(A{})
+    }
+    fn foo3() -> Box<str> {
+        Box::from("123")
+    }
+
+    fn bar(a: impl Adder) {
+        a.add(1,2);
+    }
+
+    fn bar2<T: Adder>(a: T) {
+        a.add(1,2);
+    }
+
+    fn bar3(a: &dyn Adder) {
+        a.add(1,2);
+    }
+    let c = foo();
+    let d = foo();
+    let f = &foo();
+    let g: &dyn Adder = &foo();
+    let h: &dyn Adder = &A{};
+    let s = "xxx";
+    struct S {
+        s: str
+    }
+    let s2 = Box::new("");
+
+    bar(A{});
+    bar(c);
+    bar2(A{});
+    bar2(d);
+}
+```
+
+### 7、动态尺寸类型 与 静态尺寸类型
+
+https://zhuanlan.zhihu.com/p/21820917
+
+rust 共有两种类型：
+
+* 静态尺寸类型
+    * 在编译期，大小可知的类型，可以在栈中创建，因此可以作为函数参数和返回值
+    * 其引用对应的指针为瘦指针，大小为 8 字节（64位）
+    * 常见的 静态尺寸类型 类型包括
+        * 不包含 DST 的结构体
+        * 基本数据类型
+        * 所有引用、指针类型
+* 动态尺寸类型 DST
+    * 在编译期间，大小不可知的类型，只能在堆中创建，因此无法直接作为函数（因此不是一等公民）
+    * 仅有的几种 DST 类型
+        * trait 类型 `dyn trait`
+        * str 或者 切片类型 类型 `str`
+        * 数组类型 `[type]`
+        * 最后一个字段为 DST 的 结构体
+    * 目前无法创建 原子类型 的 DST 类型
+    * 其引用对应的指针为胖指针，大小大于 8 字节（64位）
+* 零尺寸类型 ZST
