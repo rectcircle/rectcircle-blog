@@ -140,12 +140,12 @@ cd tomcat目录/bin
 * 选择菜单 运行 -> 调试配置
 * 选择远程java应用程序点击新建图表
 * 填写选项
-	* 名称：随便填，便于区分
-	* 项目：浏览选择需要远程调试的项目
-	* 连接类型：标准（套接字连接）
-	* 主机：远程服务器ip
-	* 允许中止远程VM：随意
-	* 端口：8000
+    * 名称：随便填，便于区分
+    * 项目：浏览选择需要远程调试的项目
+    * 连接类型：标准（套接字连接）
+    * 主机：远程服务器ip
+    * 允许中止远程VM：随意
+    * 端口：8000
 * 单击应用、调试
 * 没有弹出错误、工具栏调试相关的按钮激活说明连接远程调试器成功
 
@@ -162,3 +162,21 @@ cd tomcat目录/bin
 * 启动tomcat服务器（步骤4）
 * 点击运行 -> 调试方式 -> 初次配置远程debug的名称
 * 开始调试（步骤6）
+
+## 三、Docker 远程调试 Spring Boot
+
+### 1、测试网络连通性
+
+```bash
+# docker 创建 一个 TCP Server
+nc -l -p 15005
+# 本地连接测试
+telnet docker_ip docker暴露端口
+nc -vz -w 2 docker_ip docker暴露端口
+```
+
+### 2、启动 Server
+
+```bash
+java -jar -agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=0.0.0.0:15005 xxx.jar
+```

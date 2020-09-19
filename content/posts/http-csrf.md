@@ -8,6 +8,8 @@ tags:
   - 安全
 ---
 
+> http://www.ruanyifeng.com/blog/2016/04/cors.html
+
 一般出现在传统的Form表单的网页交互方式中，因为Form表单的交互不受同源策略（`CORS`）控制。
 
 因此钓鱼网站可以利用此特性进行攻击

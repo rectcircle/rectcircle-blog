@@ -13,6 +13,7 @@ summary: 优质扩展推荐首篇——远程开发
 ### 简介
 
 > https://code.visualstudio.com/docs/remote/remote-overview
+> 发行日志 https://github.com/microsoft/vscode-docs/tree/master/remote-release-notes
 
 远程开发是，19年 VSCode 推出的一项重大特性。因此将 《远程开发》 章节作为 VSCode 优质扩展的第一篇。
 

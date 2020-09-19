@@ -140,6 +140,8 @@ VSCode 的命令面板以前缀来区分功能，具体可以通过如下方式�
 * 根据单词匹配添加光标
     * 向下搜索 `editor.action.addSelectionToNextFindMatch`
     * 向上搜索 `editor.action.addSelectionToPreviousFindMatch`
+* `option + shift + i` 在选中文文本的行尾部添加光标 `editor.action.insertCursorAtEndOfEachLineSelected`
+* `option + enter` 在搜索窗口，选中命中的搜索目标
 
 #### 行操作
 
