@@ -82,7 +82,7 @@ TCP连接
 4    (4) TCP建连    Request传输  请求处理  Response传输  (10)Request传输  请求处理  Response传输
 5    (5) TCP建连    Request传输  请求处理  Response传输
 6    (6) TCP建连    Request传输  请求处理  Response传输
-     20 +          1 * 6 +      10 +    2 * 6 +           1 * 6 +      10 +    2 * 4 = 72
+     20 +          1 * 6 +      10 +    2 * 6 +           1 * 4 +      10 +    2 * 4 = 70
 ```
 
 * `HTTP 1.1` 支持长链接 所以建立连接数 6
