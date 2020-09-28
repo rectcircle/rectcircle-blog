@@ -123,6 +123,34 @@ host host_alias # 别名
 
 配置完成后，直接使用 `ssh host_alias` 即可登录
 
+#### 客户端秘钥管理 ssh-agent
+
+当需要管理多台机器时，可能存在多个私钥，且如果私钥存在密码时，在进行登录时将十分麻烦，因此 ssh-agent 将用来管理这些 私钥。
+
+配置
+
+```bash
+# 停止
+ssh-agent -k
+# 启动
+eval "$(ssh-agent -s)"
+# 添加
+ssh-add -K path
+# 列出
+ssh-add -l path
+```
+
+mac 配置 `~/.ssh/config`
+
+```
+Host *
+    AddKeysToAgent yes
+    UseKeychain yes
+    IdentityFile ~/.ssh/is_rsa
+```
+
+开机自启： 配置到 `.bashrc`
+
 ### 2、SFTP
 
 略
