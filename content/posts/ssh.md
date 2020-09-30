@@ -110,9 +110,18 @@ PubkeyAuthentication yes
 systemctl restart ssh
 ```
 
+#### 服务端重用配置
+
+`/etc/ssh/sshd_config`
+
+```
+# 关闭 dns 反向查询
+UseDNS no
+```
+
 #### 客户端配置别名
 
-`~/.ssh/config` 常见的配置方式
+`~/.ssh/config` 或者 `/etc/ssh/ssh_config` 常见的配置方式
 
 ```
 host host_alias # 别名
@@ -122,6 +131,16 @@ host host_alias # 别名
 ```
 
 配置完成后，直接使用 `ssh host_alias` 即可登录
+
+#### 客户端其他常用配置
+
+```
+Host *
+# 防止断连
+ServerAliveInterval 5
+# 端口转发时使用
+ExitOnForwardFailure yes
+```
 
 #### 客户端秘钥管理 ssh-agent
 
