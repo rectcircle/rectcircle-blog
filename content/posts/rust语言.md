@@ -8,13 +8,14 @@ tags:
   - Rust
 ---
 
-> 版本 1.36.0
+> 版本 1.46.0
 > 参考：
 > * https://www.rust-lang.org/zh-CN/
 > * https://doc.rust-lang.org/stable/book/
 > * [标准库doc官方](https://doc.rust-lang.org/std/)
 > * [标准库doc中文](https://s0doc0rust-lang0org.icopy.site/std/index.html)
 > * [Rust 程序设计语言 简体中文版](https://kaisery.github.io/trpl-zh-cn/)
+> * [深入浅出 Rust](https://book.douban.com/subject/30312231/) （微信读书/京东读书可在线阅读）
 > * [通过例子学 Rust](https://rustwiki.org/zh-CN/rust-by-example/)
 > * [Rust 社区文档](https://learnku.com/rust/docs)
 > * [Rust 高级编程](https://learnku.com/docs/nomicon/2018/brief-introduction/4702)
@@ -340,19 +341,29 @@ fn main() {
     println!("The value of x is: {}", x);
 ```
 
-#### （1） 变量（let）和常量（const）的区别
+#### （1） 变量（let）、常量（const）和 静态变量（static）
 
-* 常量不能使用`mut`修饰
+* const语义上是常量，在运行期不可改改变
+* const不能使用`mut`修饰
 * const必须显示指定类型
-* 常量可以在任何范围内声明，包括全局范围，这使得它们对许多代码部分需要了解的值很有用。
-* 最后一个区别是常量可能只设置为常量表达式，不是能是函数调用的结果或只能在运行时计算的任何其他值。
+* const必须在声明时初始化
+* const可以在任何范围内声明，包括全局范围，这使得它们对许多代码部分需要了解的值很有用。
+* const只设置为常量表达式，不是能是函数调用的结果或只能在运行时计算的任何其他值（const fn）。
+* const可能被编译器内联优化掉，因此不能取引用、模式匹配等
 
 ```rust
     const MAX_POINTS: u32 = 100_000;
 ```
 
-* 常量在程序运行的整个时间内有效，在它们声明的范围内，使它们成为应用程序域中程序的多个部分可能需要知道的值的有用选择，例如最大点数、允许游戏的玩家获得光速或光速。
-* 将整个程序中使用的硬编码值命名为常量，有助于将该值的含义传达给代码的未来维护者。如果将来需要更新硬编码值，那么在代码中只需要更改一个位置也是有帮助的。
+* const在程序运行的整个时间内有效，在它们声明的范围内，使它们成为应用程序域中程序的多个部分可能需要知道的值的有用选择，例如最大点数、允许游戏的玩家获得光速或光速。
+* 将整个程序中使用的硬编码值命名为const，有助于将该值的含义传达给代码的未来维护者。如果将来需要更新硬编码值，那么在代码中只需要更改一个位置也是有帮助的。
+
+static
+
+* static是静态变量
+    * 静态体现生命周期与整个程序一致
+    * 变量表示可以更改（但是带有 mut 的所有操作都是是 unsafe 的）
+* static初始化只设置为常量表达式，不是能是函数调用的结果或只能在运行时计算的任何其他值（const fn）
 
 #### （2）变量覆盖
 
@@ -424,6 +435,10 @@ fn main() {
 
 ```
 
+* 在 debug 模式下 整数溢出 将抛出 panic，在 release 模式下不抛出 panic
+    * `rustc -C overflow-checks=`可以写`yes`或者`no`控制是否触发
+* 浮点数不具备全序性 `let nan = std::f32::NAN; println!("{} {} {}", nan < nan, nan == nan, nan > nan);` 输出 `false false false`
+
 #### （4）标量数据——bool类型
 
 ```rust
@@ -475,6 +490,48 @@ fn main() {
 
 数组越界将产生panic（异常）
 
+数组相关：[切片类型](#8-切片类型)
+
+#### （7）结构体
+
+参见 [第五章](#五-结构体)
+
+#### （8）枚举
+
+参见 [第六章 - 枚举和模式匹配](#1-枚举和模式匹配)
+
+#### （9）Range 类型
+
+* Rust 中 实现了多种 Range 类型，并为之实现了语法糖
+* 为之实现了迭代器可以用于 for 循环
+* 可以配合数组/切片，进行切片操作
+
+```rust
+        let r = 0..3;  // [0, 3)
+        let r2:std::ops::Range<i32> = 0..3;  // [0, 3)
+        let r3 = 0..=3;  // [0, 3]
+        let r4 = 0..; // [0, +∞)
+        let r5 = ..0; // (-∞, 0)
+        let r6 = ..=0; // (-∞, 0]
+        let r7 = ..=0; // (-∞, 0]
+        let r7 = ..; // (-∞, +∞)
+
+        let a:[i32;3] = [1,2,3];
+        let b = &a[..];
+        use std::ops::Index;
+        use std::ops::Deref;
+        let b: &[i32;3] = &a;
+        let b = b.index(..);
+        println!("{:?}", b);
+```
+
+#### （10）其他标准库常见类型
+
+参见 
+
+* [四、所有权系统 - 8、切片类型](#8-切片类型)
+* [八、常见的集合](#八-常见的集合)
+
 ### 4、函数
 
 #### （1）基本特性
@@ -522,6 +579,69 @@ fn five() -> i32 {
 // }
 ```
 
+#### （3）语句和表达式
+
+* 类似 Scala，Rust 是 全表达式语言（有返回值），准确的说：
+    * 有分号就是语句
+    * 无分号就是表达式
+* 赋值语句的表达式返回值为 `()`
+* `panic!`、`loop`（死循环）和 `std::process::exit` 等退出语句 的返回值是 `!` （发散类型），发散类型可以赋值给任意类型，设计这个类型的目的在于满足类型推断自洽，比如 `let x = if true { 1 } else { panic!("false") }`，此时 `if else` 表达式的返回值是 `i32` 类型
+
+```rust
+    {
+        println!("赋值表达式返回值为()");
+        let b;
+        let r = b = 1 + 1;
+        println!("{:?} {}", r, b);
+    }
+    {
+        fn p() -> ! {
+            panic!("test");
+        }
+        let x: i32 = p();
+        let y: f32 = p();
+    }
+```
+
+#### （4）函数类型
+
+* rust 中函数是一等公民，有对应的函数类型，函数可以赋值给变量，作为函数参数、返回值
+* 将函数赋值给变量，默认类型推断的函数类型与函数绑定，无法将其他签名一致的函数赋值给他。如果需要需要明确声明
+
+```rust
+    {
+        fn add1(t: (i32, i32)) -> i32 {
+            t.0 + t.1
+        }
+        fn add2((a, b): (i32, i32)) -> i32 {
+            a + b
+        }
+        let mut fn_var = add1;
+        // fn_var = add2; // 报错 mismatched types expected fn item `fn((_, _)) -> _ {part01::ch04::func::add1}` found fn item `fn((_, _)) -> _ {part01::ch04::func::add2}`
+        fn_var((1,2));
+
+        let mut fn_var2 = add1 as fn((i32, i32)) -> i32;
+        fn_var2 = add2;
+        fn_var2((1, 3));
+    }
+```
+
+#### （5）main 函数
+
+* 只有一种，签名为 `fn main() -> ()`
+
+#### （6）const fn
+
+可以在编译器运行的函数，RFC：[const_fn](https://rust-lang.github.io/rfcs/0911-const-fn.html)，目前存在诸多限制，主要用于声明 const 或 static 变量。
+
+```rust
+pub const fn cube(num: usize) -> usize {
+    num * num * num
+}
+
+pub static STATIC_VAR: usize = cube(3usize);
+```
+
 ### 5、注释
 
 ```rust
@@ -531,7 +651,7 @@ fn five() -> i32 {
 * 普通注释，使用双斜杠
 * 文档注释使用 `/**/`
 
-### 5、控制流
+### 6、控制流
 
 #### （1）条件语句
 
@@ -619,7 +739,7 @@ fn main() {
 * 都支持 break, continue 类似Java支持label, 使用break goto
 * while 支持模式匹配
 
-### 6、错误处理
+### 7、错误处理
 
 Rust 异常一般分为两类：可恢复错误（recoverable）和 不可恢复错误（unrecoverable）可恢复错误通常代表向用户报告错误和重试操作是合理的情况，比如未找到文件。不可恢复错误通常是 bug 的同义词，比如尝试访问超过数组结尾的位置。
 
@@ -785,7 +905,7 @@ fn read_username_from_file2() -> Result<String, io::Error> {
 * 示例、代码原型和测试都非常适合 panic
 * 在当有可能会导致有害状态的情况下建议使用 `panic!`，比如：用于规范调用者的输入
 
-### 7、内存管理
+### 8、内存管理
 
 赋值、函数参数传递、函数返回均按值传递（也就是说是拷贝），和 C 语一致
 
@@ -802,7 +922,7 @@ fn read_username_from_file2() -> Result<String, io::Error> {
 
 内存申请和回收相关的关于所有权相关细节参见下文
 
-### 8、抽象方式
+### 9、抽象方式
 
 * struct、方法、trait抽象（类似于Golang）
 * 函数式编程特性
@@ -813,7 +933,7 @@ fn read_username_from_file2() -> Result<String, io::Error> {
 
 细节参见下文
 
-### 9、特别说明字面量
+### 10、特别说明字面量
 
 创建字面量 `cargo new literal` 项目
 
@@ -1239,7 +1359,7 @@ fn first_word(s: &String) -> &str {
     * 基本数据类型
 * 传递 数据 的 引用
 
-## 五、结构体
+## 五、结构体、枚举和模式匹配（解构）
 
 ### 1、定义并实例化结构体
 
@@ -1361,13 +1481,14 @@ fn main() {
     * `self` 不常见（仅在将当前对象转换为另一个对象）
 * 类似于go，rust不使用`->`，只使用`.`，会进行自动解引用
 
-## 六、函数式语言特性
+关于 `self`、`Self`
 
-### 1、枚举和模式匹配
+* `self` 本质上是一个关键字，当第一个参数名为关键字`self` （形式可能为 `&self`、`&mut self`、`self: &Self` 甚至 `self: Box<Self>`） 时，该函数为 该结构体的 方法，可以通过 `.` 号调用（当然通过`结构体名::方法名`、第一个参数传递结构体变量也可以）；否则该函数为静态方法，只能通过`结构体名::方法名`。
+* `Self` 当前结构体类型的类型别名（可以理解为 `type Self = 结构体名`），Self 在 声明 `trait` 时，没有指向，一旦 `impl` 编译器将明确其类型。
+
+### 3、枚举
 
 创建测试项目 `cargo new enums`
-
-#### 定义枚举
 
 基本语法
 
@@ -1493,7 +1614,26 @@ enum Option<T> {
 
 ```
 
-#### 模式匹配
+### 4、模式匹配（解构）
+
+* 支持的模式匹配的语法（`$destructure` 为 匹配/解构）：
+    * `let $destructure = var`
+    * `match var { $destructure => {} }`
+    * `if let $destructure = var {}`
+    * `while let $destructure = var {}`
+    * 函数参数
+    * `for $destructure in var {}`
+* Rust 中 `_` 是一个关键字，表示忽略一个变量，`_` 代指的变量无法读取
+* 在所有支持模式匹配的语法中，存在一个概念——Refutability（可反驳性）: 模式是否会匹配失效
+    * 只可以接收不可反驳性的模式（表达式模式匹配不允许失效）
+        * let
+        * for
+        * 函数参数
+    * 只可以接收可反驳性模式（表达式模式匹配允许失败）
+        * if let
+        * while let
+
+#### （1）简单示例
 
 例子1：枚举类型模式匹配
 
@@ -1541,7 +1681,7 @@ fn value_in_cents2(coin: Coin2) -> u32 {
 }
 ```
 
-匹配Option的一个例子
+例子3：匹配Option
 
 ```rust
 fn plus_one(x: Option<i32>) -> Option<i32> {
@@ -1556,7 +1696,7 @@ let six = plus_one(five);
 let none = plus_one(None);
 ```
 
-通配符
+例子4：通配符
 
 ```rust
     let some_u8_value = 0u8;
@@ -1571,7 +1711,7 @@ let none = plus_one(None);
 
 * 支持类似scala的通配符
 
-#### if let 单条件模式匹配符
+例子5：if let 单条件模式匹配符
 
 ```rust
 let some_u8_value = Some(0u8);
@@ -1610,7 +1750,405 @@ if let Some(3) = some_u8_value {
     }
 ```
 
-### 2、闭包
+#### （2）全部语法
+
+解构的语法和构造基本一致，`$destructure` 支持的全部语法：
+
+* 字面量 （不可反驳模式）
+    * `let x = 1`
+    * `match var { 1 =>, _ => }`
+* 枚举结构体元组内的匿名值（结构体元组是不可反驳模式，结构体时可反驳模式）
+    * `struct S (i32); let S(v) = S(1);`
+* 枚举结构体元组内的有名值（结构体元组是不可反驳模式，结构体时可反驳模式）
+    * `struct NS {v: i32}; let NS{v: x} = NS{v: 1};`
+* 忽略单个/多个值
+    * 单个值 `let (a, _, c) = (1, 2, 3);`
+    * 多个值 `let (a, ..) = (1, 2, 3);`
+* 多个条件（支持 `if let`、`while let`、`match`）
+    * `enum E {A(i32), B(i32), C, D}`
+    * `use E::*;`
+    * `if let C | D = E::C { 1 } else { 2 };`
+    * `if let A(x) | B(x) = E::A(1) { x } else { 2 };`
+* 取引用和取可变（在 match 语法下，可以 `match &mut var`，这样将会自动解决推断是否使用 ref、mut）
+    * 取引用 `let ref x  = 1;` （此时 x 为 `&i32`）
+    * 取可变 `let mut x = 1; let ref mut y = x;` （此时 y 为 `&mut i32`）
+* match 目前特别支持的语法（未来在 `if let` 和 `while let` 可能稳定）
+    * 守卫语法 `match Option::Some(1) { Some(x) if x > 0 => -x, _ => 0, };`
+    * 范围匹配（稳定仅支持 `..=`）`match 1 { 0..=10 => true, _ => false };`
+    * 变量绑定 `match 1 { x @ 0..=10 | x @ 100..=200 => true, _ => false };` 
+
+
+
+```rust
+match VALUE {
+    PATTERN => EXPRESSION,
+    PATTERN => EXPRESSION,
+    PATTERN => EXPRESSION,
+    _ => EXPRESSION, // 可选项类似于Default，不加的话，编译器会检测是否已经穷举所有的值
+}
+
+// 模式匹配字面值
+let x = 1;
+
+match x {
+    1 => println!("one"),
+    2 => println!("two"),
+    3 => println!("three"),
+    _ => println!("anything"),
+}
+
+// 匹配命名变量
+
+    let x = Some(5);
+    let y = 10;
+
+    match x {
+        Some(50) => println!("Got 50"),
+        Some(y) => println!("Matched, y = {:?}", y),
+        _ => println!("Default case, x = {:?}", x),
+    }
+
+    println!("at the end: x = {:?}, y = {:?}", x, y);
+
+// 多模式匹配
+
+    let x = 1;
+
+    match x {
+        1 | 2 => println!("one or two"),
+        3 => println!("three"),
+        _ => println!("anything"),
+    }
+
+// 通过 ..= 匹配值的范围
+
+let x = 5;
+
+match x {
+    1..=5 => println!("one through five"),
+    _ => println!("something else"),
+}
+
+let x = 'c';
+
+match x {
+    'a'..='j' => println!("early ASCII letter"),
+    'k'..='z' => println!("late ASCII letter"),
+    _ => println!("something else"),
+}
+
+// 解构结构体
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+    let p = Point { x: 0, y: 7 };
+
+    match p {
+        Point { x, y: 0 } => println!("On the x axis at {}", x),
+        Point { x: 0, y } => println!("On the y axis at {}", y),
+        Point { x, y } => println!("On neither axis: ({}, {})", x, y),
+    }
+
+// 解构枚举
+
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(i32, i32, i32),
+}
+
+    let msg = Message::ChangeColor(0, 160, 255);
+
+    match msg {
+        Message::Quit => {
+            println!("The Quit variant has no data to destructure.")
+        }
+        Message::Move { x, y } => {
+            println!(
+                "Move in the x direction {} and in the y direction {}",
+                x,
+                y
+            );
+        }
+        Message::Write(text) => println!("Text message: {}", text),
+        Message::ChangeColor(r, g, b) => {
+            println!(
+                "Change the color to red {}, green {}, and blue {}",
+                r,
+                g,
+                b
+            )
+        }
+    }
+
+// 解构嵌套的结构体和枚举
+
+enum Color {
+   Rgb(i32, i32, i32),
+   Hsv(i32, i32, i32),
+}
+
+enum Message {
+    Quit,
+    Move { x: i32, y: i32 },
+    Write(String),
+    ChangeColor(Color),
+}
+
+    let msg = Message::ChangeColor(Color::Hsv(0, 160, 255));
+
+    match msg {
+        Message::ChangeColor(Color::Rgb(r, g, b)) => {
+            println!(
+                "Change the color to red {}, green {}, and blue {}",
+                r,
+                g,
+                b
+            )
+        }
+        Message::ChangeColor(Color::Hsv(h, s, v)) => {
+            println!(
+                "Change the color to hue {}, saturation {}, and value {}",
+                h,
+                s,
+                v
+            )
+        }
+        _ => ()
+    }
+
+// 结构元组和结构体
+let ((feet, inches), Point {x, y}) = ((3, 10), Point { x: 3, y: -10 });
+
+```
+
+if let 语法
+
+```rust
+    let favorite_color: Option<&str> = None;
+    let is_tuesday = false;
+    let age: Result<u8, _> = "34".parse();
+
+    if let Some(color) = favorite_color {
+        println!("Using your favorite color, {}, as the background", color);
+    } else if is_tuesday {
+        println!("Tuesday is green day!");
+    } else if let Ok(age) = age {
+        if age > 30 {
+            println!("Using purple as the background color");
+        } else {
+            println!("Using orange as the background color");
+        }
+    } else {
+        println!("Using blue as the background color");
+    }
+```
+
+where let 语法
+
+```rust
+    let mut stack = Vec::new();
+
+    stack.push(1);
+    stack.push(2);
+    stack.push(3);
+
+    while let Some(top) = stack.pop() {
+        println!("{}", top);
+    }
+```
+
+for 循环 语法
+
+```rust
+    let v = vec!['a', 'b', 'c'];
+
+    for (index, value) in v.iter().enumerate() {
+        println!("{} is at index {}", value, index);
+    }
+```
+
+let 语法
+
+```rust
+    let PATTERN = EXPRESSION;
+    let x = 5;
+    let (x, y, z) = (1, 2, 3);
+    let (x, _, _) = (1, 2, 3);
+
+// 解构结构体
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+    let p = Point { x: 0, y: 7 };
+
+    let Point { x: a, y: b } = p;
+    assert_eq!(0, a);
+    assert_eq!(7, b);
+
+    let Point { x, y } = p;
+    assert_eq!(0, x);
+    assert_eq!(7, y);
+```
+
+函数参数的模式提取
+
+```rust
+fn print_coordinates(&(x, y): &(i32, i32)) {
+    println!("Current location: ({}, {})", x, y);
+}
+
+fn main() {
+    let point = (3, 5);
+    print_coordinates(&point);
+}
+```
+
+使用 `_` 忽略整个值
+
+```rust
+fn foo(_: i32, y: i32) {
+    println!("This code only uses the y parameter: {}", y);
+}
+
+
+    foo(3, 4);
+
+    let mut setting_value = Some(5);
+    let new_setting_value = Some(10);
+
+    match (setting_value, new_setting_value) {
+        (Some(_), Some(_)) => {
+            println!("Can't overwrite an existing customized value");
+        }
+        _ => {
+            setting_value = new_setting_value;
+        }
+    }
+
+    println!("setting is {:?}", setting_value);
+
+    let numbers = (2, 4, 8, 16, 32);
+
+    match numbers {
+        (first, _, third, _, fifth) => {
+            println!("Some numbers: {}, {}, {}", first, third, fifth)
+        },
+    }
+```
+
+下划线开头的变量不会进行未使用检测
+
+```rust
+    let _x = 5;
+    let y = 10;
+
+// 下划线开头的变量解构任然会获取所有权
+let s = Some(String::from("Hello!"));
+
+if let Some(_s) = s {
+    println!("found a string");
+}
+
+// println!("{:?}", s); // 报错
+
+// _ 不会获取所有权
+
+let s = Some(String::from("Hello!"));
+
+if let Some(_) = s {
+    println!("found a string");
+}
+
+println!("{:?}", s);
+
+```
+
+用 `..` 忽略剩余值
+
+```rust
+struct Point {
+    x: i32,
+    y: i32,
+    z: i32,
+}
+
+let origin = Point { x: 0, y: 0, z: 0 };
+
+match origin {
+    Point { x, .. } => println!("x is {}", x),
+}
+
+    let numbers = (2, 4, 8, 16, 32);
+
+    match numbers {
+        (first, .., last) => {
+            println!("Some numbers: {}, {}", first, last);
+        },
+    }
+
+    let numbers = (2, 4, 8, 16, 32);
+
+    // match numbers { // 有歧义报错
+    //     (.., second, ..) => {
+    //         println!("Some numbers: {}", second)
+    //     },
+    // }
+}
+```
+
+匹配守卫提供的额外条件
+
+```rust
+let num = Some(4);
+
+match num {
+    Some(x) if x < 5 => println!("less than five: {}", x),
+    Some(x) => println!("{}", x),
+    None => (),
+}
+
+// 与 | 配合使用
+
+let x = 4;
+let y = false;
+
+match x {
+    4 | 5 | 6 if y => println!("yes"), // 优先级为 (4 | 5 | 6) if y => ...
+    _ => println!("no"),
+}
+```
+
+`@` 绑定 创建变量同时提供匹配条件
+
+```rust
+enum Message {
+    Hello { id: i32 },
+}
+
+let msg = Message::Hello { id: 5 };
+
+match msg {
+    Message::Hello { id: id_variable @ 3..=7 } => {
+        println!("Found an id in range: {}", id_variable)
+    },
+    Message::Hello { id: 10..=12 } => {
+        println!("Found an id in another range")
+    },
+    Message::Hello { id } => {
+        println!("Found some other id: {}", id)
+    },
+}
+```
+
+## 六、函数式语言特性
+
+### 1、闭包
 
 新建项目 `cargo new closures` 编辑 `src/main.rs`
 
@@ -1779,7 +2317,7 @@ fn main() {
 
 原理参见：https://zhuanlan.zhihu.com/p/64417628
 
-### 3、迭代器
+### 2、迭代器
 
 迭代器的原理与基本使用
 
@@ -2047,386 +2585,6 @@ impl IntoIterator for MyRange { // 这个方法是对 MyRange 本身类型的实
     println!("{}", r2.start); // 不报错
 ```
 
-### 4、用模式匹配来匹配值结构
-
-match 语法
-
-```rust
-match VALUE {
-    PATTERN => EXPRESSION,
-    PATTERN => EXPRESSION,
-    PATTERN => EXPRESSION,
-    _ => EXPRESSION, // 可选项类似于Default，不加的话，编译器会检测是否已经穷举所有的值
-}
-
-// 模式匹配字面值
-let x = 1;
-
-match x {
-    1 => println!("one"),
-    2 => println!("two"),
-    3 => println!("three"),
-    _ => println!("anything"),
-}
-
-// 匹配命名变量
-
-    let x = Some(5);
-    let y = 10;
-
-    match x {
-        Some(50) => println!("Got 50"),
-        Some(y) => println!("Matched, y = {:?}", y),
-        _ => println!("Default case, x = {:?}", x),
-    }
-
-    println!("at the end: x = {:?}, y = {:?}", x, y);
-
-// 多模式匹配
-
-    let x = 1;
-
-    match x {
-        1 | 2 => println!("one or two"),
-        3 => println!("three"),
-        _ => println!("anything"),
-    }
-
-// 通过 ..= 匹配值的范围
-
-let x = 5;
-
-match x {
-    1..=5 => println!("one through five"),
-    _ => println!("something else"),
-}
-
-let x = 'c';
-
-match x {
-    'a'..='j' => println!("early ASCII letter"),
-    'k'..='z' => println!("late ASCII letter"),
-    _ => println!("something else"),
-}
-
-// 解构结构体
-struct Point {
-    x: i32,
-    y: i32,
-}
-
-    let p = Point { x: 0, y: 7 };
-
-    match p {
-        Point { x, y: 0 } => println!("On the x axis at {}", x),
-        Point { x: 0, y } => println!("On the y axis at {}", y),
-        Point { x, y } => println!("On neither axis: ({}, {})", x, y),
-    }
-
-// 结构枚举
-
-enum Message {
-    Quit,
-    Move { x: i32, y: i32 },
-    Write(String),
-    ChangeColor(i32, i32, i32),
-}
-
-    let msg = Message::ChangeColor(0, 160, 255);
-
-    match msg {
-        Message::Quit => {
-            println!("The Quit variant has no data to destructure.")
-        }
-        Message::Move { x, y } => {
-            println!(
-                "Move in the x direction {} and in the y direction {}",
-                x,
-                y
-            );
-        }
-        Message::Write(text) => println!("Text message: {}", text),
-        Message::ChangeColor(r, g, b) => {
-            println!(
-                "Change the color to red {}, green {}, and blue {}",
-                r,
-                g,
-                b
-            )
-        }
-    }
-
-// 解构嵌套的结构体和枚举
-
-enum Color {
-   Rgb(i32, i32, i32),
-   Hsv(i32, i32, i32),
-}
-
-enum Message {
-    Quit,
-    Move { x: i32, y: i32 },
-    Write(String),
-    ChangeColor(Color),
-}
-
-    let msg = Message::ChangeColor(Color::Hsv(0, 160, 255));
-
-    match msg {
-        Message::ChangeColor(Color::Rgb(r, g, b)) => {
-            println!(
-                "Change the color to red {}, green {}, and blue {}",
-                r,
-                g,
-                b
-            )
-        }
-        Message::ChangeColor(Color::Hsv(h, s, v)) => {
-            println!(
-                "Change the color to hue {}, saturation {}, and value {}",
-                h,
-                s,
-                v
-            )
-        }
-        _ => ()
-    }
-
-// 结构元组和结构体
-let ((feet, inches), Point {x, y}) = ((3, 10), Point { x: 3, y: -10 });
-
-```
-
-if let 语法
-
-```rust
-    let favorite_color: Option<&str> = None;
-    let is_tuesday = false;
-    let age: Result<u8, _> = "34".parse();
-
-    if let Some(color) = favorite_color {
-        println!("Using your favorite color, {}, as the background", color);
-    } else if is_tuesday {
-        println!("Tuesday is green day!");
-    } else if let Ok(age) = age {
-        if age > 30 {
-            println!("Using purple as the background color");
-        } else {
-            println!("Using orange as the background color");
-        }
-    } else {
-        println!("Using blue as the background color");
-    }
-```
-
-where let 语法
-
-```rust
-    let mut stack = Vec::new();
-
-    stack.push(1);
-    stack.push(2);
-    stack.push(3);
-
-    while let Some(top) = stack.pop() {
-        println!("{}", top);
-    }
-```
-
-for 循环 语法
-
-```rust
-    let v = vec!['a', 'b', 'c'];
-
-    for (index, value) in v.iter().enumerate() {
-        println!("{} is at index {}", value, index);
-    }
-```
-
-let 语法
-
-```rust
-    let PATTERN = EXPRESSION;
-    let x = 5;
-    let (x, y, z) = (1, 2, 3);
-    let (x, _, _) = (1, 2, 3);
-
-// 解构结构体
-struct Point {
-    x: i32,
-    y: i32,
-}
-
-    let p = Point { x: 0, y: 7 };
-
-    let Point { x: a, y: b } = p;
-    assert_eq!(0, a);
-    assert_eq!(7, b);
-
-    let Point { x, y } = p;
-    assert_eq!(0, x);
-    assert_eq!(7, y);
-```
-
-函数参数的模式提取
-
-```rust
-fn print_coordinates(&(x, y): &(i32, i32)) {
-    println!("Current location: ({}, {})", x, y);
-}
-
-fn main() {
-    let point = (3, 5);
-    print_coordinates(&point);
-}
-```
-
-Refutability（可反驳性）: 模式是否会匹配失效
-
-* 只可以接收不可反驳性的模式（表达式模式匹配不允许失效）
-    * let
-    * for
-* 只可以接收可反驳性模式（表达式模式匹配允许失败）
-    * if let
-    * while let
-
-使用 `_` 忽略整个值
-
-```rust
-fn foo(_: i32, y: i32) {
-    println!("This code only uses the y parameter: {}", y);
-}
-
-
-    foo(3, 4);
-
-    let mut setting_value = Some(5);
-    let new_setting_value = Some(10);
-
-    match (setting_value, new_setting_value) {
-        (Some(_), Some(_)) => {
-            println!("Can't overwrite an existing customized value");
-        }
-        _ => {
-            setting_value = new_setting_value;
-        }
-    }
-
-    println!("setting is {:?}", setting_value);
-
-    let numbers = (2, 4, 8, 16, 32);
-
-    match numbers {
-        (first, _, third, _, fifth) => {
-            println!("Some numbers: {}, {}, {}", first, third, fifth)
-        },
-    }
-```
-
-下划线开头的变量不会进行未使用检测
-
-```rust
-    let _x = 5;
-    let y = 10;
-
-// 下划线开头的变量解构任然会获取所有权
-let s = Some(String::from("Hello!"));
-
-if let Some(_s) = s {
-    println!("found a string");
-}
-
-// println!("{:?}", s); // 报错
-
-// _ 不会获取所有权
-
-let s = Some(String::from("Hello!"));
-
-if let Some(_) = s {
-    println!("found a string");
-}
-
-println!("{:?}", s);
-
-```
-
-用 `..` 忽略剩余值
-
-```rust
-struct Point {
-    x: i32,
-    y: i32,
-    z: i32,
-}
-
-let origin = Point { x: 0, y: 0, z: 0 };
-
-match origin {
-    Point { x, .. } => println!("x is {}", x),
-}
-
-    let numbers = (2, 4, 8, 16, 32);
-
-    match numbers {
-        (first, .., last) => {
-            println!("Some numbers: {}, {}", first, last);
-        },
-    }
-
-    let numbers = (2, 4, 8, 16, 32);
-
-    // match numbers { // 有歧义报错
-    //     (.., second, ..) => {
-    //         println!("Some numbers: {}", second)
-    //     },
-    // }
-}
-```
-
-匹配守卫提供的额外条件
-
-```rust
-let num = Some(4);
-
-match num {
-    Some(x) if x < 5 => println!("less than five: {}", x),
-    Some(x) => println!("{}", x),
-    None => (),
-}
-
-// 与 | 配合使用
-
-let x = 4;
-let y = false;
-
-match x {
-    4 | 5 | 6 if y => println!("yes"), // 优先级为 (4 | 5 | 6) if y => ...
-    _ => println!("no"),
-}
-```
-
-`@` 绑定 创建变量同时提供匹配条件
-
-```rust
-enum Message {
-    Hello { id: i32 },
-}
-
-let msg = Message::Hello { id: 5 };
-
-match msg {
-    Message::Hello { id: id_variable @ 3..=7 } => {
-        println!("Found an id in range: {}", id_variable)
-    },
-    Message::Hello { id: 10..=12 } => {
-        println!("Found an id in another range")
-    },
-    Message::Hello { id } => {
-        println!("Found some other id: {}", id)
-    },
-}
-```
-
 ## 七、模块化系统
 
 ### 1、基本概念
@@ -2611,7 +2769,7 @@ mod back_of_house {
 
 ### 7、使用use引入到作用域
 
-和其他语言类似
+和其���语言类似
 
 `src/lib.rc`
 
@@ -3105,6 +3263,8 @@ Rust 通过编译符号重命名来解决这个问题（如果是 Java 实现的
     }
 ```
 
+* `String` 和 `&str` 均为 utf8为边长编码，索引的时间复杂度为`O(n)`，不抛出异常索引方式为 `.chars().nth(1)`
+
 ### 3、HashMap
 
 ```rust
@@ -3457,6 +3617,20 @@ fn main() {
 ```
 
 高级Trait 参见 第十七.2
+
+### 3、标准库常用的 trait
+
+* Display 和 Debug，主要用于 `println!`
+    * Display 一般由用户自己实现，使用 `{}` 可以打印出来，实现了 Display 将自动实现 `ToString`
+    * Debug 一般由 `derive` 宏生成，使用 `{:?}` 或者 `{:#?}`，用于调试，所有公开的 结构体建议都实现该特质
+* PartialOrd / Ord / PartialEq / Eq
+    * PartialOrd 为偏序比较，排序结果与初始状态有关，比如浮点数比较；比较结果可能是 None，未定义
+    * Ord 全序比较，比如整数
+* Default 类似于默认构造函数
+
+`std::marker` 模块内的特质，作为编译器标记，没有实现
+
+* `Sized`，所有编译期尺寸确定的类型，均自动实现该特质
 
 ## 十、生命周期
 
@@ -5103,7 +5277,9 @@ pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
     }
 ```
 
-Trait 继承语法： `trait SubTrait : ParentTrait {}`
+Trait 继承语法： `trait SubTrait : ParentTrait {}` 或者 `trait SubTrait where Self: ParentTrait`
+
+* 不要理解为继承，而要理解为约束，表示，某结构体要想实现 `SubTrait`，则必须实现 `ParentTrait`
 
 ```rust
     {
