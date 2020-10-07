@@ -1055,6 +1055,85 @@ Rust不同于以上两种：
     }
 ```
 
+本质上，不管是堆上还是栈上 用 拥有 所有权的变量 赋值给其他变量（`let new_owner = owner`），有两种可能： move 和 copy
+
+* move 的情况，当 owner 没有实现 `Copy` (`std::marker::Copy`) 时，owner 将 拷贝到（`memcpy`） new_owner中，同时，`owner` 不可用
+* copy 的情况，当 owner 实现了 `Copy` 时，调用 Copy 方法，赋值给 new_owner，同时，`owner` 仍可以使用。
+
+注意，`owner` 可以是结构体的成员
+
+```rust
+    {
+        #[derive(Debug)]
+        struct S {
+            a: String,
+            b: String,
+        }
+        let mut s = S {
+            a: String::from("a"),
+            b: String::from("b")
+        };
+        let mut c = s.a;
+        // println!("{:?}", s); // borrow of moved value: `s` move occurs because `s.a` has type `std::string::String`, which does not implement the `Copy` trait
+    }
+    {
+        // Copy
+        #[derive(Debug, Clone, Copy)]
+        struct S {
+            a: i32,
+            b: i32,
+        }
+        let owner = S {
+            a: 1,
+            b: 2
+        };
+        let new_owner = owner;
+        println!("{:?}", owner);
+    }
+```
+
+Copy 类型没有方法，只是告诉所有权系统的如上的内容，本质上还是`memcopy`，只能通过 `derive` 实现，且需要满足
+
+* 结构体成员不能是 `&mut` 指针类型
+* 元组结构体枚举的所有子类型必须都是 `Copy` 类型
+* 必须实现 `Clone` （但是 赋值操作不会使用）
+* 结构体本身没有实现 `Drop`
+
+```rust
+    {
+        // #[derive(Debug, Copy)] //the trait `Copy` may not be implemented for this typerustc(E0204)
+        struct S {
+            a: String,
+            b: String,
+        }
+    }
+    {
+        println!("Copy 调用的是 Clone 的实现？");
+        #[derive(Debug, Copy)]
+        struct S {
+            a: i32,
+            b: i32,
+        }
+        impl Clone for S {
+            fn clone(&self) -> Self {
+                println!("Clone called");
+                S {
+                    a: self.a.clone(),
+                    b: self.b.clone(),
+                }
+            }
+        }
+        let owner = S {
+            a: 1,
+            b: 2
+        };
+        let new_owner = owner;
+        println!("{:?}", owner);
+    }
+```
+
+`Clone` (`std::clone::Clone`) 只是一个普通的 特质，用来Clone一个实例。可以通过 `derive` 实现，也可以手动实现
+
 ### 3、变量覆盖和所有权
 
 ```rust
@@ -1356,6 +1435,7 @@ fn first_word(s: &String) -> &str {
     * 实现 了 `Copy` 特质的结构体 和 枚举 （Copy 本质上 是 `=` 的运算符重载）只有如下条件的结构体可以实现 `Copy`
         * 结构体本身没有实现 `Drop`
         * 结构体内的所有成员均实现了 `Copy`
+        * 结构体自身实现了 `Clone`
     * 基本数据类型
 * 传递 数据 的 引用
 
@@ -4206,6 +4286,8 @@ Rust 在发现类型和 trait 实现满足三种情况时会进行解引用强�
 第三个情况有些微妙：Rust 也会将可变引用强转为不可变引用。但是反之是 不可能
 
 ### 4、使用 Drop Trait 运行清理代码
+
+`std::ops::Drop` 在变量被回收时（前一刻）调用，编译器保证调用且只一次
 
 ```rust
 // Drop 特质，在超出作用域后执行清理操作
