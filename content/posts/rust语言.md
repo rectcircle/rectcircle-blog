@@ -3779,6 +3779,10 @@ fn main() {
 trait 、 self 、 impl 及 自定取解引用
 
 ```rust
+trait T {
+    fn t_self(self);
+    fn t_ref_self(&self);
+}
 struct S {
     a: i32,
 }
