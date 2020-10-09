@@ -1566,6 +1566,76 @@ fn main() {
 * `self` 本质上是一个关键字，当第一个参数名为关键字`self` （形式可能为 `&self`、`&mut self`、`self: &Self` 甚至 `self: Box<Self>`） 时，该函数为 该结构体的 方法，可以通过 `.` 号调用（当然通过`结构体名::方法名`、第一个参数传递结构体变量也可以）；否则该函数为静态方法，只能通过`结构体名::方法名`。
 * `Self` 当前结构体类型的类型别名（可以理解为 `type Self = 结构体名`），Self 在 声明 `trait` 时，没有指向，一旦 `impl` 编译器将明确其类型。
 
+方法 `self` 变量的几种写法
+
+* `self` 和 `mut self` 都会消费掉自己，只能通过变量调用（不允许通过引用），可变不可便都可以
+    * `self` 只允许在方法体内读
+    * `mut self` 允许在方法体内写
+* `&self` 和 `&mut self` 不会消费自己，只会传引用
+    * `&self` 所有类型均可调用（`Self`，`&Self`，`mut Self`，`&mut Self`）
+    * `&mut self` 只允许`&mut Self`，`mut Self`（注意可变引用唯一规则） 调用
+* 其他编译器特别支持的类型
+    * `self: Box<Self>`
+    * `self: Rc<Self>`
+    * `self: Arc<Self>`
+    * `self: Pin<P>` (`P` 可选 `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`)
+
+```rust
+    struct S {
+        a: i32
+    }
+    impl S {
+        fn a(self) {
+            println!("fn a(self) {}", self.a);
+        }
+        fn b(mut self) {
+            println!("fn b(mut self) {}", self.a);
+        }
+        fn c(&self) {
+            println!("fn c(&self) {}", self.a);
+        }
+        fn d(&mut self) {
+            println!("fn d(&mut self) {}", self.a);
+        }
+        fn e(self: std::pin::Pin<&Self>) {
+            println!("fn e(self: std::pin::Pin<&Self>) {}", self.a)
+        }
+    }
+    {
+        let s = S {a:1};
+        s.a();
+        // s.a();  // use of moved value: `s`
+        let s1 = S {a:1};
+        let sr = &s1;
+        // sr.a(); // cannot move out of `*sr` which is behind a shared reference
+    }
+    {
+        let s = S {a:1};
+        s.b();
+        // s.b();  // use of moved value: `s`
+        let mut s1 = S {a:1};
+        let sr = &mut s1;
+        // sr.b(); // cannot move out of `*sr` which is behind a mutable reference
+    }
+    {
+        let s = S {a:1};
+        s.c();
+        s.c();
+    }
+    {
+        let s = S {a:1};
+        // s.d();  // cannot borrow `s` as mutable, as it is not declared as mutable
+        let mut s = S {a:1};
+        s.d();
+        s.d();
+    }
+    {
+        let s = S {a:1};
+        let sp = std::pin::Pin::new(&s);
+        sp.e();
+    }
+```
+
 ### 3、枚举
 
 创建测试项目 `cargo new enums`
@@ -3696,6 +3766,71 @@ fn main() {
 }
 ```
 
+调用 trait 上的方法，必须手动引入 trait
+
+```rust
+        let a = "test".to_string();
+        let b = "2";
+        let c = a + b;
+        use std::ops::Add;
+        std::string::String::add(c, "3");
+```
+
+trait 、 self 、 impl 及 自定取解引用
+
+```rust
+struct S {
+    a: i32,
+}
+impl T for S {
+    fn t_self(self) {
+    // fn t_self(self: S) {
+        println!("impl T for S t_self {}", self.a);
+    }
+    fn t_ref_self(&self) {
+    // fn t_ref_self(self: &S) {
+        println!("impl T for S t_ref_self, {}", (*self).a);
+    }
+}
+impl T for &S {
+    fn t_self(self) {
+        println!("impl T for &S t_self {}", (*self).a);
+    }
+    fn t_ref_self(&self) {
+        println!("impl T for &S t_ref_self {}", (*(*self)).a);
+    }
+}
+impl T for &mut S {
+    fn t_self(self) {
+        (*self).a = 5;
+        println!("impl T for &mut S t_self {}", (*self).a);
+    }
+    fn t_ref_self(&self) {
+        let tmp: & &mut S = self;
+        let tmp1: &S = *tmp;
+        println!("impl T for &mut S t_ref_self {}", (*tmp1).a);
+    }
+}
+{
+    let s = S {a:1};
+    s.t_self();  // impl T for S t_self 1
+    let s = S {a:1};
+    s.t_ref_self();  // impl T for S t_ref_self, 1
+    &s.t_ref_self();  // impl T for S t_ref_self, 1
+}
+{
+    let s = S {a:1};
+    T::t_self(&s);  // impl T for &S t_self 1
+    T::t_ref_self(&&s);  // impl T for &S t_ref_self 1
+}
+{
+    let mut s = S {a:1};
+    T::t_self(&mut s);  // impl T for &mut S t_self 5
+    let mut s = S {a:1};
+    T::t_ref_self(& &mut s);  // impl T for &mut S t_ref_self 1s
+}
+```
+
 高级Trait 参见 第十七.2
 
 ### 3、标准库常用的 trait
@@ -5203,6 +5338,8 @@ pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
 ### 2、高级 Trait
 
 关联类型在 trait 定义中指定占位符类型
+
+关联类型和泛型最大的区别就是针对一个类型，关联类型的Trait只能被实现一次，不支持静多态
 
 ```rust
     {
