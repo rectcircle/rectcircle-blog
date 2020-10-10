@@ -864,7 +864,7 @@ command = "hugo --gc --minify"
   HUGO_VERSION = "0.55.5"
 ```
 
-然后在 [netlify](https://app.netlify.com) 上注册一个账号。然后在github中选择相应的代码库，即可完成。最后需要在 [domain设置页面](https://app.netlify.com/sites/rectcircle/settings/domain) 设置URL或者自定义域名即可完成部署。
+然后在 [netlify](https://app.netlify.com) 上注册一个账号。然后在github中选择相应的代码库，即可完成。最后需要在 [domain设置页面](https://app.netlify.com/sites/rectcircle/settings/domain) 设置URL或者自定义域名即可完成部署（[建议使用 CNAME 记录](https://docs.netlify.com/domains-https/custom-domains/configure-external-dns/#configure-an-apex-domain)，使用 A 记录没法利用CDN非常慢）。
 
 ## 注意事项
 
