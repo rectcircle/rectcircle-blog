@@ -1044,6 +1044,29 @@ Rust不同于以上两种：
     // println!("{}, world!", s1); // 报错：borrow of moved value: `s1` value borrowed here after moverustc(E0382)
 ```
 
+某结构体变量内部字段所有权转移后，该字段的所有权也转移了（析构的时候编译器会自动添加析构调用，不会导致重复析构，可能会生成一堆if-else来实现析构）
+
+```rust
+    {
+        #[derive(Debug)]
+        struct S {
+            a: String,
+            b: String,
+        }
+        let mut c: String;
+        let mut d: String;
+        let mut s = S {
+            a: String::from("a"),
+            b: String::from("b")
+        };
+        c = s.a;
+        d = s.b;
+        println!("{:?}", c);
+        println!("{:?}", d);
+        // println!("{:?}", s); // borrow of moved value: `s` move occurs because `s.a` has type `std::string::String`, which does not implement the `Copy` trait
+    }
+```
+
 堆上拷贝的方法
 
 ```rust
@@ -1323,6 +1346,27 @@ let r3 = &mut s; // no problem
 println!("{}", r3);
 ```
 
+`let mut` 和 `&mut`
+
+* `let mut` 是一个整体，修饰一个变量，表示该变量指向的内存是可以改变的，体现在：
+    * 该变量可以重新绑定一个变量
+    * 该变量的成员（比如结构体），可以被赋值
+    * 该变量的成员可以获取可变引用及 `&mut`
+* `&mut` 是取可变引用
+
+```rust
+    {
+        // mut 和 &mut
+        let a = &mut 1;
+        // a = &mut 2; // cannot assign twice to immutable variable `a`
+        *a = 2;
+        let mut b = &mut 1;
+        let mut c = 2;
+        b = &mut c;
+        *b = 3;
+    }
+```
+
 总结
 
 * 在任意给定时间，要么 只能有一个可变引用，要么 只能有多个不可变引用。
@@ -1414,7 +1458,8 @@ fn first_word(s: &String) -> &str {
 ### 10、引用总结
 
 * 在任意给定时间，**要么** 只能有一个可变引用，**要么** 只能有多个不可变引用。
-* 引用必须总是有效。
+* 引用必须总是有效
+* 在获取可变引用之后，原变量将不可修改（称为 Frozen）
 
 > http://llever.com/gentle-intro/pain-points.zh.html#a%E5%8F%AF%E5%8F%98%E5%BC%95%E7%94%A8
 
@@ -1559,7 +1604,7 @@ fn main() {
     * `&self`
     * `&mut self`
     * `self` 不常见（仅在将当前对象转换为另一个对象）
-* 类似于go，rust不使用`->`，只使用`.`，会进行自动解引用
+* 类似于go，rust不使用`->`，只使用`.`，会进行自动解引用，针对 `&self` 和 `&mut self` rust 会自动引用，而手动传递需要手动引用
 
 关于 `self`、`Self`
 
@@ -3972,6 +4017,30 @@ let s: &'static str = "I have a static lifetime.";
         }
     }
 ```
+
+### 5、生命周期关系
+
+* 生命周期 `'a` 比 `'b` 更长或相等，则记为 `'a :'b`
+* 始终满足 `'static: 'x`
+
+以下两种写法是基本相同的
+
+```rust
+        fn test1<'a>(arg: &'a i32) -> &'a i32 { arg }
+        fn test2<'a, 'b>(arg: &'a i32) -> &'b i32 where 'a: 'b { arg }
+```
+
+### 6、引用生命周期总结
+
+* 核心目的：避免出现引用悬空（引用指向 free 的变量）
+* 核心规则：**变量**的生命周期必须 大于等于 **引用**的生命周期
+* 非函数场景：通过 变量声明顺序 和 作用域（花括号）即可判断
+* 函数场景：传递或者返回引用时，编译器不知道引用的生命周期的关系，所以需要手动指定
+* 结构体方法场景：结构体存在引用时，在实现方法时编译器不知道 引用成员 和 函数方法的引用参数和引用返回值的关系
+* 函数/方法生命周期检查时机：函数声明时（函数体内检查）和 函数调用时（参数和返回值）
+* 函数/方法生命周期调用检查原理：本质上一种泛型约束，调用时，会利用传递参数的声明周期情况特化生命周期参数并进行约束检查
+* 一般情况下，函数返回值的生命周期小于等于参数的生命周期，`'static` 除外
+* 为了方便使用，rust 可以省略手动指定生命周期，编译器按照一定规则生成
 
 ## 十一、测试
 

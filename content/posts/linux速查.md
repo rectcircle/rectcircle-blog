@@ -22,10 +22,10 @@ tags:
 ### 2、分区
 
 * 必须分区
-	*	/（根分区）
-	*	swap分区（虚拟内存）
+    *	/（根分区）
+    *	swap分区（虚拟内存）
 *	推荐分区
-	*	/boot
+    *	/boot
 
 ## 常见命令和选项
 
@@ -675,7 +675,7 @@ sysctl -w net.ipv4.icmp_echo_ignore_all=1
 
 ### 1、基本命令
 
-#### （1）`netstat` 查看启用用端口
+#### （1）查看启用用端口
 
 ```bash
 netstat -an或者-tuln //查看本机启用端口
@@ -687,6 +687,13 @@ netstat -an或者-tuln //查看本机启用端口
 	-r 查看网关
 #小技巧
 netstat -an | grep ESTABLISHED | wc -l //查看所有ssh登录连接
+```
+
+方式2：
+
+```bash
+# https://tonydeng.github.io/2016/07/07/use-lsof-to-replace-netstat/
+lsof -nP -iTCP -sTCP:LISTEN
 ```
 
 #### （2）`ifconfig` 查看网卡信息、配置临时ip等
