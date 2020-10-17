@@ -9,25 +9,27 @@ tags:
 ---
 
 > 版本 1.46.0
-> 参考：
-> * https://www.rust-lang.org/zh-CN/
-> * https://doc.rust-lang.org/stable/book/
-> * [标准库doc官方](https://doc.rust-lang.org/std/)
-> * [标准库doc中文](https://s0doc0rust-lang0org.icopy.site/std/index.html)
-> * [Rust 程序设计语言 简体中文版](https://kaisery.github.io/trpl-zh-cn/)
-> * [深入浅出 Rust](https://book.douban.com/subject/30312231/) （微信读书/京东读书可在线阅读）
-> * [通过例子学 Rust](https://rustwiki.org/zh-CN/rust-by-example/)
-> * [Rust 社区文档](https://learnku.com/rust/docs)
-> * [Rust 高级编程](https://learnku.com/docs/nomicon/2018/brief-introduction/4702)
-> * [The Rust Reference 官方权威参考手册](https://doc.rust-lang.org/stable/reference/)
-> * [绅士地介绍 Rust](http://llever.com/gentle-intro/readme.zh.html)
-> * [The Little Book of Rust Macros 元编程](https://danielkeep.github.io/tlborm/book/index.html)
-> * [Rust 单页手册](https://cheats.rs/)
-> * [Rust 版本指南](https://erasin.wang/books/edition-guide-cn/)
-> * [Rust 官方论坛](https://users.rust-lang.org/)
-> * [Rust 技术论坛](https://learnku.com/rust)
-> * [Rust 语言中文社区](https://rust.cc/)
-> * [Rust 库热度](https://lib.rs/)
+
+参考：
+
+* https://www.rust-lang.org/zh-CN/
+* https://doc.rust-lang.org/stable/book/
+* [标准库doc官方](https://doc.rust-lang.org/std/)
+* [标准库doc中文](https://s0doc0rust-lang0org.icopy.site/std/index.html)
+* [Rust 程序设计语言 简体中文版](https://kaisery.github.io/trpl-zh-cn/)
+* [深入浅出 Rust](https://book.douban.com/subject/30312231/) （微信读书/京东读书可在线阅读）
+* [通过例子学 Rust](https://rustwiki.org/zh-CN/rust-by-example/)
+* [Rust 社区文档](https://learnku.com/rust/docs)
+* [Rust 高级编程](https://learnku.com/docs/nomicon/2018/brief-introduction/4702)
+* [The Rust Reference 官方权威参考手册](https://doc.rust-lang.org/stable/reference/)
+* [绅士地介绍 Rust](http://llever.com/gentle-intro/readme.zh.html)
+* [The Little Book of Rust Macros 元编程](https://danielkeep.github.io/tlborm/book/index.html)
+* [Rust 单页手册](https://cheats.rs/)
+* [Rust 版本指南](https://erasin.wang/books/edition-guide-cn/)
+* [Rust 官方论坛](https://users.rust-lang.org/)
+* [Rust 技术论坛](https://learnku.com/rust)
+* [Rust 语言中文社区](https://rust.cc/)
+* [Rust 库热度](https://lib.rs/)
 
 ## 一、安装和配置
 
@@ -555,12 +557,12 @@ fn another_function(x: i32) {
     * 最后一个语句有分号，则语句块无返回值
 
 ```rust
-fn add(a: i32, b: i32) -> i32 {
-    let c = {
-        a+b // 不需要加分号
-    };
-    c
-}
+        fn add(a: i32, b: i32) -> i32 {
+            let c = {
+                a+b // 不需要加分号
+            };
+            c
+        }
 ```
 
 #### （2）返回值
@@ -569,14 +571,13 @@ fn add(a: i32, b: i32) -> i32 {
 * `return` 在设计上用于提前返回
 
 ```rust
+    fn five() -> i32 {
+        5
+    }
 
-fn five() -> i32 {
-    5
-}
-
-// fn plus_one(x: i32) -> i32 {
-//     x + 1; // 报错
-// }
+    // fn plus_one(x: i32) -> i32 {
+    //     x + 1; // 报错
+    // }
 ```
 
 #### （3）语句和表达式
@@ -811,6 +812,8 @@ note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose bac
 
 注意以上追踪必须启用 debug 标识。当不使用 --release 参数运行 cargo build 或 cargo run 时 debug 标识会默认启用。
 
+注意：在 panic 发生时，Rust 的 RAII 仍会正常工作，会进行内存回收和 drop 函数的调用
+
 #### （2） Result 与可恢复的错误
 
 类似于go语言，可能出错的调用一般返回被封装到 `std::result::Result` 中，针对 `Result`，我们可选的处理方式：
@@ -904,6 +907,51 @@ fn read_username_from_file2() -> Result<String, io::Error> {
 * 一般情况最好使用 `Result`，因为其给调用者更多的选择（调用者可以选择是处理还是`panic`）
 * 示例、代码原型和测试都非常适合 panic
 * 在当有可能会导致有害状态的情况下建议使用 `panic!`，比如：用于规范调用者的输入
+
+#### （4）接受 `panic` 防止线程退出
+
+```rust
+fn happen_panic() {
+    // let x = None::<i32>;
+    // x.unwrap();
+    panic!("panic message");
+}
+
+fn catch_panic() {
+    panic::set_hook(Box::new(|panic_info| {
+        // do nothing
+        if let Some(s) = panic_info.payload().downcast_ref::<&str>() {
+            println!("panic occurred: {:?}", s);
+        } else {
+            println!("panic occurred");
+        }
+    }));
+    let result = panic::catch_unwind(happen_panic);
+    println!("======");
+    println!("{:?}", result.err().unwrap());
+    println!("======");
+}
+```
+
+注意事项
+
+* 该方式不建议作为业务异常的处理方式，仅建议在如下场景使用
+    * FFI ，C语言调用 Rust 时，防止出现未定义行为
+    * Web 框架/线程池等防止程序退出
+* 该方式在 通用 PC 上可用，在嵌入式设备中，可能无法生效，原因在于在不同的系统，panic 的实现方式不同
+    * stack unwind 堆栈展开 （占用较多资源）
+    * abort
+
+#### （5）`panic` 异常安全
+
+在实现类似标准库这种核心库时，在调用用户定义的函数时，需要考虑若其抛出 panic 时，需要保证不能破坏 Rust 的安全性，这种安全性称为 异常安全（panic safety）。异常安全分为几个级别
+
+* No-throw 所有异常都会在内部得到处理
+* Strong exception safety 强异常安全保证，保证异常发生时，所有状态可回滚到初始状态，不会导致不一致问题
+* Basic exception safety 基本异常保证，发成异常时，不会发生资源泄漏
+* No exception safety 没有任何异常保证
+
+例如 `Box<[T]>` 的 `Clone` 方法的实现，为了保证 Basic exception safety，为了保证 调用 T 的 clone 方法时可能发生的 Panic，rust 专门定义了一个 `BoxBuilder` 结构体
 
 ### 8、内存管理
 
@@ -1293,14 +1341,14 @@ fn change(some_string: &mut String) {
     * 没有同步数据访问的机制。
 
 ```rust
-    {
-        let mut s = String::from("hello");
+        {
+            let mut s = String::from("hello");
 
-        let r1 = &mut s;
-        // let r2 = &mut s; // 报错：cannot borrow `s` as mutable more than once at a time
+            let r1 = &mut s;
+            // let r2 = &mut s; // 报错：cannot borrow `s` as mutable more than once at a time
 
-        // println!("{}, {}", r1, r2);
-    }
+            // println!("{}, {}", r1, r2);
+        }
 ```
 
 可以通过创建作用域解决
@@ -1631,6 +1679,8 @@ fn main() {
     * `self: Rc<Self>`
     * `self: Arc<Self>`
     * `self: Pin<P>` (`P` 可选 `&self`, `&mut self`, `self: Box<Self>`, `self: Rc<Self>`, `self: Arc<Self>`)
+
+示例
 
 ```rust
     struct S {
@@ -1979,7 +2029,7 @@ if let Some(3) = some_u8_value {
     * 范围匹配（稳定仅支持 `..=`）`match 1 { 0..=10 => true, _ => false };`
     * 变量绑定 `match 1 { x @ 0..=10 | x @ 100..=200 => true, _ => false };` 
 
-
+示例
 
 ```rust
 match VALUE {
@@ -2472,6 +2522,8 @@ impl<T> Cacher<T>
     * Fn(&self)
 * 更多参考 https://tonydeng.github.io/2019/11/09/rust-closure-type/
 
+示例
+
 ```rust
 
 fn main() {
@@ -2492,6 +2544,8 @@ fn main() {
     * 分析并捕获闭包变量，构建一个结构体
     * 分析闭包使用情况，将逻辑代码，生成到 `FnOnce`、 `FnMut`、 `Fn` 的实现中
     * 替换所有闭包调用和传递的地方
+
+示例
 
 ```rust
 
@@ -2524,6 +2578,8 @@ fn main() {
 迭代器的原理与基本使用
 
 * 本质上是一个系列 系统定义 的特质
+
+示例
 
 ```rust
         // 迭代器原理与直接使用
@@ -2971,7 +3027,7 @@ mod back_of_house {
 
 ### 7、使用use引入到作用域
 
-和其���语言类似
+和其它语言类似
 
 `src/lib.rc`
 
@@ -3098,6 +3154,8 @@ opt-level = 3
 * 支持Markdown
 * `cargo doc --open` 可以进行文档预览
 * `cargo test` 文档注释中的代码可以作为测试样例
+
+例子
 
 ```rust
 /// 将给定的数字加一
@@ -4374,6 +4432,8 @@ fn main() {
 * 类似与C语言Rust结构体必须大小确定，不允许直接递归定义类型
 * 枚举类型存在4字节的类型标签
 
+示例
+
 ```rust
 // 以下结构体/枚举占用的空间为 32 字节（类型标签4字节，最长成员Write(String) 24，内存对齐4字节）
 enum Message {
@@ -4660,6 +4720,8 @@ mod tests {
 * 运行时借用规则检查
 * 运行时违反规则将触发 panic
 * 有额外的运行时开销
+
+示例
 
 ```rust
     // RefCell<T> 在运行时检查借用规则，必须满足借用规则
@@ -5395,6 +5457,8 @@ pub extern "C" fn call_from_c() { // extern 的使用无需 unsafe。
 * 一些例子 `Searcher`、`Send`、`Sync`
 * [stackoverflow参考](https://stackoverflow.com/questions/31628572/when-is-it-appropriate-to-mark-a-trait-as-unsafe-as-opposed-to-marking-all-the)
 
+示例
+
 ```rust
     {
         // 实例参考 Searcher
@@ -5580,6 +5644,8 @@ Trait 继承语法： `trait SubTrait : ParentTrait {}` 或者 `trait SubTrait w
 
 * 不要理解为继承，而要理解为约束，表示，某结构体要想实现 `SubTrait`，则必须实现 `ParentTrait`
 
+示例
+
 ```rust
     {
         // 父 trait 用于在另一个 trait 中使用某 trait 的功能
@@ -5617,6 +5683,8 @@ newtype 模式用以在外部类型上实现外部 trait
 * 解决方案：创建一个新的包裹类型
     * 必须直接在 Wrapper 上实现所有方法，这样就可以代理到 `self.0` 上 —— 这就允许我们完全像 被包裹类型一样 那样对待 Wrapper。
     * 或者为封装类型实现 Deref trait 方法，返回 `self.0`
+
+示例
 
 ```rust
     {
