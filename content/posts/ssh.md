@@ -188,5 +188,5 @@ scp username@host:远端路径 本地路径  # 远端路径相对路径为用户
 https://www.cnblogs.com/keerya/p/7612715.html
 
 ```bash
-ssh -L localport:remotehost:remoteport sshserver  # 将远程端口映射到本地
+ssh -L localport:remotehost:remoteport sshserver -N  # 将远程端口映射到本地
 ```
