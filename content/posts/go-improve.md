@@ -10,6 +10,12 @@ tags:
 
 > [实验代码](https://github.com/rectcircle/go-improve)
 
+参考和书籍：
+
+* [Golang 新手可能会踩的 50 个坑](https://segmentfault.com/a/1190000013739000)
+* [Go 程序设计语言](https://docs.hundan.org/gopl-zh/)
+* 《Go语言核心编程》
+
 ## 一、VSCode 开发环境
 
 ### 1、安装和配置
@@ -350,6 +356,7 @@ Go Module 引入了版本管理，但是 Golong 直接使用了 git 等托管代
 ### 4、Module、Package 和 File
 
 * Module 是 Golang 的最小发布单元，与代码仓库一一对应，一般包含多个Package，包含版本概念
+    * Module 的命名有一个强制的规则为 `{组织域名}/{group}/{project}` 例如 `github.com/rectcircle/go-improve`，go 会根据这个 module 名前往互联网下载代码
 * Package 是 Golang 的功能集合，与目录一一对应，一般包含多个 File，注意其中包含的其他目录（其他 Package）和当前 Package 没有任何关系，是 import 的主要实例
 * File 及代码文件，必须属于一个 Package，同一个目录下的 File 属于同一个 Package
 
@@ -361,10 +368,384 @@ Go Module 引入了版本管理，但是 Golong 直接使用了 git 等托管代
 * `go` 指定 `go` 版本
 * `require` 依赖的其他 Module
 * `exclude` 仅在当前module为main module时有效，明确声明不使用某个版本的Module
-* `replace` 依赖的模块重命名，如果 代码中 `be.replaced.com/golang/example` 使用的是，实际存放的位置是 `github.com/golang/example`，则：
+* `replace` 仅在当前module为main module时有效，依赖的模块重命名，如果 代码中 `be.replaced.com/golang/example` 使用的是，实际存放的位置是 `github.com/golang/example`，则：
     * `require be.replaced.com/golang/example v0.0.0-20170904185048-46695d81d1fa`
     * `replace be.replaced.com/golang/example v0.0.0-20170904185048-46695d81d1fa => github.com/golang/example v0.0.0-20170904185048-46695d81d1fa`
+
+其他说明
+
+* `go.mod` 和 `go.sum` 需要提交到 git 仓库
+* `// indirect` 间接依赖注释，必须写上，否则 每次执行 命令 会被删除（比如 `go tidy`）
 
 ### 6、相关命令
 
 [官方文档](http://golang.org/cmd/go)
+
+* `go build`
+* `go test`
+* `go run`
+* `go get` 更改依赖版本或者添加新的依赖
+* `go mod tidy` 扫描代码，清理不需要的运行依赖，拉取缺少的以阿里
+* `go mod graph` 打印依赖图，[插件](https://marketplace.visualstudio.com/items?itemName=xmtt.go-mod-grapher)（需 graphviz 和 dot 命令 `brew install graphviz`）
+* `go mod why`
+* `go list -m -json all` 依赖详情
+* `go list -m all` 依赖详情简单模式
+* `go list -m -version <pkg>` 查看包可用版本
+
+### 7、Go Module 与 GOPATH
+
+Go Module 和之前的 GOPATH 方式的依赖管理是兼容的。注意以下 `go env`
+
+* `GO111MODULE` 默认为 `""` 及 `"auto"`，一个项目存在 `go.mod` 且 不在 `GOPATH` 路径下，则这个项目开启 GO Module 模式
+* `GOPATH` 仍然需要，在 Go Module 模式下主要用来生成 `GOMODCACHE` 环境变量
+* `GOMODCACHE` Go Module 下包下载缓存路径，默认为 `$GOPATH/pkg/mod`，Module 路径为 `{organization}/{group}/{project}@{version}`
+
+因此建议配置 `GOPATH` 加入到系统环境变量
+
+```bash
+export GOPATH=xxx
+export PATH=$PATH:$GOPATH/bin
+```
+
+## 三、Go 类型系统
+
+> [博客1](https://blog.csdn.net/wohu1104/article/details/106202792)
+
+### 1、命名类型和未命名类型
+
+> [博客2](https://learnku.com/articles/38824)
+
+Go 语言的变量的类型分为两种：命名类型和未命名类型（Named Type and Unnamed Type）
+
+#### （1）命名类型
+
+指有明确标识符的类型，又称为，包括
+
+* 预声明类型（预声明类型、简单类型），共20个，包括布尔类型、整型（指针）、浮点型、复数、字符串、error接口
+* 自定义类型，通过 `type newType oldType` 定义的类型，其中 `oldType` 可以是 预声明类型、未命名类型、自定义类型之一
+
+例子
+
+```go
+func NamedType() {
+	var a int32
+	var b string
+	fmt.Println(reflect.TypeOf(a), reflect.TypeOf(a).Kind())
+	fmt.Println(reflect.TypeOf(b), reflect.TypeOf(b).Kind())
+}
+```
+
+#### （2）未命名类型
+
+又称为 符合类型、类型字面量、未命名类型，包括在
+
+* `array`
+* `slice`
+* `map`
+* `ptr`
+* `channel`
+* `struct`
+* `interface`
+* `function`
+
+```go
+func UnnamedType() {
+	var a [2]int
+	var b []int
+	var c map[string]string
+	var d *int32
+	var e chan int
+	var f struct { a int}
+	// var g interface { }
+	var h func() int
+	fmt.Println(reflect.TypeOf(a), reflect.TypeOf(a).Kind())
+	fmt.Println(reflect.TypeOf(b), reflect.TypeOf(b).Kind())
+	fmt.Println(reflect.TypeOf(c), reflect.TypeOf(c).Kind())
+	fmt.Println(reflect.TypeOf(d), reflect.TypeOf(d).Kind())
+	fmt.Println(reflect.TypeOf(e), reflect.TypeOf(e).Kind())
+	fmt.Println(reflect.TypeOf(f), reflect.TypeOf(f).Kind())
+	// fmt.Println(reflect.TypeOf(g), reflect.TypeOf(g).Kind())
+	fmt.Println(reflect.TypeOf(h), reflect.TypeOf(h).Kind())
+}
+```
+
+### 2、潜在类型（底层类型）
+
+underlying type，Go 中的所有类型存在一个潜在类型的属性，规则如下（目前[无法通过反射包查看](https://github.com/golang/go/issues/39574#issuecomment-655664772)，`type.Type.Kind()` 只能返回 潜在类型所属的大类，缺失了细节）：
+
+* 简单类型（预声明类型）和复合类型（未命名）的底层类型是它们自身
+* 自定义类型 `type newtype oldtype` 中 `newtype` 的底层类型是逐层递归向下查找的，直到查到的 `oldtype` 是简单类型或复合类型为止。
+
+例子
+
+```go
+func UnderlyingType() {
+	type T1 string  // string
+	type T2 T1  // string
+	type T3 []string  // []string
+	type T4 T3  // []string
+	type T5 []T1  // []string
+	type T6 T5  // []string
+
+	var a = struct { a int32 } { a: 12 }  // struct { a int32 }
+	var b S = a  // struct { a int32 }
+	var c S = S(a)  // struct { a int32 }
+	fmt.Println(reflect.TypeOf(a), reflect.TypeOf(a).Kind())
+	fmt.Println(reflect.TypeOf(b), reflect.TypeOf(b).Kind())
+	fmt.Println(reflect.TypeOf(c), reflect.TypeOf(c).Kind())
+}
+```
+
+### 3、赋值
+
+> [参考知乎](https://zhuanlan.zhihu.com/p/56453921)
+
+两个变量 `var a TypeA` 和 `var b TypeB`，Go语言支持直接 `a = b`，需要满足如下情况之一的
+
+* `TypeA` 和 `TypeB` 类型完全一致
+* `TypeA` 和 `TypeB` 潜在类型完全一致，且 `TypeA` 和 `TypeB` 存在一个为未命名类型
+* `TypeA` 为 接口类型，且 `TypeB` 实现了 `TypeA` 的所有方法（注意：如果接收者为指针方式的实现，则 TypeA必须是指针类型才行）
+* `TypeA` 为单向通道，`TypeB` 为双向通道
+* 赋空值
+* untyped constant 无类型常量
+
+```go
+type InterfaceType interface { f() }
+type MyStructType struct { a int32 }
+type MyStructType2 struct { a int32 }
+
+func Assignability() {
+	var a1 int32 = 1
+	var b1 int32 = a1
+	fmt.Println(b1)
+
+	var a2 = struct {a int32} {a: 1}
+	var b2 MyStructType = a2
+	var c2 struct {a int32} = b2
+	fmt.Println(c2)
+
+	var a3 InterfaceType
+	var b3 interface{ f() } = a3
+	var c3 InterfaceType = b3
+	fmt.Println(c3)
+}
+```
+
+### 4、类型转换和类型断言
+
+#### （1）类型转换
+
+Type Conversion
+
+两个变量 `var a TypeA` 和 `var b TypeB`，Go语言支持类型转换 `a = TypeA(b)`，需要满足如下情况之一的（就是说两者类型兼容）
+
+* `TypeA` 和 `TypeB` 底层类型相同
+* `TypeA` 和 `TypeB` 都是整型，或者都是浮点型
+* `TypeA` 是 `[]rune` ， `[]byte` ； `TypeB` 是 `string` （`string` 转换为数字需要使用标准库 `strconv`）
+* `TypeA` 是 `string` ； `TypeB` 是 整数值 或 `[]byte` 或 `[]rune`
+
+其他说明
+
+* 类型转换必须满足如上条件，否则将触发编译错误
+
+例子
+
+```go
+type MyStructType struct { a int32 }
+type MyStructType2 struct { a int32 }
+
+func TypeConvert() {
+
+	var a = "123"
+	var b = []rune(a)
+	var c = []byte(a)
+	// var d = int32(a)
+	var e = string(int32(65))
+	var f = string(b)
+	var g = string(c)
+	fmt.Println(b)
+	fmt.Println(c)
+	// fmt.Println(d)
+	fmt.Println(e)
+	fmt.Println(f)
+	fmt.Println(g)
+
+	var s1 = MyStructType { a: 1}
+	var s2 MyStructType2 = MyStructType2(s1)
+	fmt.Println(s2)
+}
+```
+
+#### （2）类型断言
+
+Type Assertion
+
+类型断言是，Go 语言对接口类型变量（包括命名接口和空接口）进行类型转换的语法。类型断言和类型转换完全没有关系，类型断言发生在运行时，断言失败可能发生 `painc`，支持三种语法
+
+* `newVar := interfaceVar.(NewType)` 断言失败会触发 `painc`
+* `newVar, ok := interfaceVar.(NewType)` 断言失败则
+    * `ok == false`
+    * `newVar` 为零值
+* `switch newVar := interfaceVar.(type) { case NewType: xxx }`
+
+其他说明
+
+* 类型断言会进行一定的类型检查，`NewType` 必须实现了 `interfaceVar` 的接口
+* 如果断言成功分配的变量，会形成一份拷贝，而不是引用
+
+```go
+package typesystem
+
+import "fmt"
+
+type InterfaceType interface { f() }
+type MyStructType struct { a int32 }
+type MyStructType2 struct { a int32 }
+func (self MyStructType) f() { fmt.Println(self.a) }
+func (self MyStructType2) f() { fmt.Println(self.a) }
+
+func TypeAssertion() {
+	var a = MyStructType { a: 1 }
+	var b InterfaceType = a
+
+	c := b.(MyStructType)
+	c.a = 3
+	c.f()
+	b.f() // 仍然打印 1 说明 上面 c 是 b 的一份拷贝
+
+	if c, ok := b.(MyStructType); ok {
+		fmt.Println("b.(MyStructType) success")
+		c.f()
+	} else {
+		fmt.Println("b.(MyStructType) fail")
+	}
+
+	b.f()
+
+	if c, ok := b.(MyStructType2); ok {
+		fmt.Println("b.(MyStructType2) success")
+		c.f()
+	} else {
+		fmt.Println(c)
+		fmt.Println("b.(MyStructType2) fail")
+	}
+
+	switch c := b.(type) {
+	case MyStructType: fmt.Println(c); fmt.Println("b is MyStructType")
+	case MyStructType2: fmt.Println(c); fmt.Println("b is MyStructType2")
+	default: fmt.Println(c); fmt.Println("b is Unknown")
+	}
+}
+```
+
+### 5、理解 type 语法
+
+> [文章](https://fenggolang.github.io/2018/09/golang%E4%B8%AD%E7%B1%BB%E5%9E%8B%E5%88%AB%E5%90%8D%E4%B8%8E%E7%B1%BB%E5%9E%8B%E5%86%8D%E5%AE%9A%E4%B9%89/)
+
+#### （1）类型定义
+
+`type newType oldType`
+
+在 Go 中，`type` 语法是声明自定义命名类型的唯一方法。`type` 的主要作用有两个：其一是为类型命名，其二和方法绑定
+
+* 方法是和 `newType` 这个名字绑定的
+* 因此不会继承 `oldType` 声明的方法
+* 可以为 `newType`  声明方法
+
+`oldType` 可以是如下几种情况：
+
+* 预声明类型 （int32等）
+* 未命名类型 （struct map 等）
+* 其他命名的自定义类型
+
+例子
+
+```go
+package typesystem
+
+import "fmt"
+
+type MyInt int32
+
+func (a MyInt) add(b MyInt) int32 {
+	return int32(a) + int32(b)
+}
+
+type MyInt2 MyInt
+
+func (a MyInt2) subtract(b MyInt2) int32 {
+	return int32(a) - int32(b)
+}
+
+func TypeSyntax() {
+	var a MyInt = 1
+	fmt.Println(a + a)
+	fmt.Println(a.add(a))
+
+	var b MyInt2 = 2
+	fmt.Println(b + b)
+	// fmt.Println(b.add(b))
+	fmt.Println(b.subtract(b))
+}
+```
+
+#### （2）类型别名
+
+> go1.9 特性
+> [参考](https://github.com/qcrao/Go-Questions/blob/master/interface/%E7%B1%BB%E5%9E%8B%E8%BD%AC%E6%8D%A2%E5%92%8C%E6%96%AD%E8%A8%80%E7%9A%84%E5%8C%BA%E5%88%AB.md)
+
+`type newType = oldType`
+
+此语法为定义类型别名，并不会创建一个新的类型
+
+* `newType` 和 `oldType` 是别名的关系
+* 对 `newType` 声明方法，相当于对 `oldType` 声明方法，`oldType` 也可以使用，也就是说两者方法完全一项
+* 若 `newType` 是导出的（首字母大写），则 `newType` 可以被导出使用
+
+例子
+
+```go
+package typesystem
+
+import "fmt"
+
+type MyInt int32
+
+func (a MyInt) add(b MyInt) int32 {
+	return int32(a) + int32(b)
+}
+
+type MyInt3 = MyInt
+
+func (a MyInt3) Multiply(b MyInt3) int32 {
+	return int32(a) * int32(b)
+}
+
+type MyInt4 = int32
+
+// 以下等价于：func (a int32) Divide(b int32) int32 {
+// 因此报错 invalid receiver int32 (basic or unnamed type)compiler
+// func (a MyInt4) Divide(b MyInt4) int32 {
+// 	return a / b
+// }
+
+func TypeSyntax() {
+	var a MyInt = 1
+	fmt.Println(a + a)
+	fmt.Println(a.add(a))
+
+	var c MyInt3 = a
+	fmt.Println(c.add(c))
+	fmt.Println(c.Multiply(c))
+	fmt.Println(a.Multiply(a))
+	fmt.Println(a.add(a))
+}
+```
+
+### 6、interface 注意点
+
+#### （1）接口判nil
+
+#### （2）接口与指针接收者
+
+## 四、Go 标准库
