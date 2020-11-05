@@ -12,6 +12,7 @@ tags:
 
 参考和书籍：
 
+* [Go 语言设计与实现](https://draveness.me/golang/)
 * [Golang 新手可能会踩的 50 个坑](https://segmentfault.com/a/1190000013739000)
 * [Go 程序设计语言](https://docs.hundan.org/gopl-zh/)
 * 《Go语言核心编程》
@@ -742,10 +743,237 @@ func TypeSyntax() {
 }
 ```
 
-### 6、interface 注意点
+### 6、interface
 
-#### （1）接口判nil
+* [深度解密Go语言之关于 interface 的10个问题](https://www.cnblogs.com/qcrao-2018/p/10766091.html)
 
-#### （2）接口与指针接收者
+#### （1）接口与指针接收者
+
+将 一个变量 `var a TypeA` 赋值给 接口类型变量 `var b InterfaceB` 时（`b = a`），需要满足如下规则：
+
+* `TypeA` 实现的 `InterfaceB` 方法 全部为 非指针接收者时，则 `a` 允许为 `TypeA` 或者 `*TypeA`
+* `TypeA` 实现的 `InterfaceB` 方法 存在 指针接收者时，则 `a` 只能为 `*TypeA`
+
+例子1
+
+```go
+package typesystem
+
+import "fmt"
+
+type I1 interface {
+	// PtrReceiver(a int32)
+	NonPtrReceiver()
+}
+
+type S1 struct {
+	a int32
+}
+
+// func (s *S1) PtrReceiver(a int32) {
+// 	s.a = a
+// }
+
+func (s S1) NonPtrReceiver() {
+	fmt.Println(s.a)
+}
+
+func NonPtrOrPtrReceiver() {
+	var a S1 = S1{1}
+	var b I1 = &a
+	var c I1 = a
+	// b.PtrReceiver(2)
+	b.NonPtrReceiver()
+	c.NonPtrReceiver()
+}
+
+```
+
+例子2
+
+```go
+package typesystem
+
+import "fmt"
+
+type I1 interface {
+	PtrReceiver(a int32)
+	NonPtrReceiver()
+}
+
+type S1 struct {
+	a int32
+}
+
+func (s *S1) PtrReceiver(a int32) {
+	s.a = a
+}
+
+func (s S1) NonPtrReceiver() {
+	fmt.Println(s.a)
+}
+
+func NonPtrOrPtrReceiver() {
+	var a S1 = S1{1}
+	var b I1 = &a
+	// var c I1 = a
+	b.PtrReceiver(2)
+	b.NonPtrReceiver()
+	// c.NonPtrReceiver()
+}
+```
+
+#### （2）实现接口
+
+任何类型都实现了 `interface{}`，只要某类型关联的方法实现了 某接口的所有方法，则认为该类型实现了该方法，则该类型变量可以赋值给该接口变量
+
+```go
+package typesystem
+
+import "fmt"
+
+type I0 interface {
+	NonPtrReceiver()
+}
+
+type I1 interface {
+	PtrReceiver(a int32)
+	NonPtrReceiver()
+}
+
+type S1 struct {
+	a int32
+}
+
+func (s *S1) PtrReceiver(a int32) {
+	s.a = a
+}
+
+func (s S1) NonPtrReceiver() {
+	fmt.Println(s.a)
+}
+
+func NonPtrOrPtrReceiver() {
+	var a S1 = S1{1}
+	var b I1 = &a
+    var c I0 = b  // 接口也可以赋值给接口
+	c.NonPtrReceiver()
+}
+```
+
+#### （3）接口判nil
+
+接口类型变量只有显示以 `nil` 赋值（包括函数返回值），`== nil` 才返回 `true` ； 如果使用一个 `nil` 指针变量赋值，则返回 `false`
+
+```go
+func InterfaceNil() {
+	var a interface{} = nil
+	fmt.Println(a)  // <nil>
+	fmt.Println(a == nil)  // true
+	var b *int32 = nil
+	a = b
+	fmt.Println(a)  // <nil>
+	fmt.Println(a == nil)  // false
+}
+```
+
+#### （4）避免接口被无意被实现
+
+> [参考](https://blog.csdn.net/rbin_2009/article/details/109132180)
+
+* 接口定义一个特殊命名的方法 （例如 `runtime.Error`）
+* 定义一个私有方法（例如 `testing.TB`）
+    * 接口只能包内部使用，包外部无法直接创建满足该接口的结构体
+    * 通过结构体嵌入匿名类型可以绕过
+
+### 7、struct
+
+待补充
+
+### 8、嵌入（嵌套）
+
+#### （1）结构体匿名嵌套
+
+一个结构体 A 允许匿名嵌入其他多个结构体 B、C，此时 结构体 A 变量 `a` 时
+
+* 直接通过 `a.xxx` 调用 B、C 的任意方法、任意成员
+* 当B、C存在命名冲突时，后声明的将覆盖前面声明的
+* 当A声明符号与B、C存在冲突，将覆盖B、C存在的变量
+* 当调用 B 中的方法 `b()`，且 `b()` 中调用了方法 `a()`，且这个 `a()` 在 A 和 B 中都定义了，此时会调用 `B.a()`
+    * 因此 结构体匿名嵌套：无法形成运行时多态，无法实现其他语言利用继承实现的多态效果（父类方法调用子类实现），因此不能理解为继承
+* A 中 的 方法是可以调用 B 中的方法的
+* B、C 除了支持任意类型，包括 `interface`
+
+例子
+
+```go
+type I2 interface {
+	NeedCallB()
+	B()
+}
+
+type S3 struct {}
+
+func (self *S3) NeedCallB() {
+	self.B()
+}
+
+func (self *S3) B() {
+	fmt.Println("S3.B()")
+}
+
+type S3Child1 struct {
+	S3
+}
+
+func (self *S3Child1) B() {
+	fmt.Println("S3Child1.B()")
+}
+
+func StructNested() {
+	var a I2 = &S3Child1{}
+	a.NeedCallB()
+	a.B()
+}
+```
+
+#### （2）接口嵌套
+
+一个接口允许嵌套多个其他接口，此时，相当于本接口声明了被嵌套的那些接口的全部方法（可以理解为其他语言的接口继承）
+
+```go
+
+type ParentI1 interface {
+	A()
+}
+
+type ParentI2 interface {
+	B()
+}
+
+type ChildI1 interface {
+	ParentI1
+	ParentI2
+}
+
+type S2 struct{
+	a int32
+}
+
+func (f S2) A(){
+	fmt.Println("a")
+}
+
+func (f S2) B(){
+	fmt.Println("b")
+}
+
+func InterfaceNested() {
+	var a S2 = S2{1}
+	var b ChildI1 = a
+	b.A()
+	b.B()
+}
+```
 
 ## 四、Go 标准库
