@@ -976,4 +976,201 @@ func InterfaceNested() {
 }
 ```
 
-## 四、Go 标准库
+## 四、内置类型
+
+### 1、数组
+
+在 Go 语言中，数组是长度固定的一段连续内存，包含如下属性
+
+* 长度
+* 元素的类型及类型长度
+
+数组初始化的两种方法
+
+```go
+arr1 := [3]int{1, 2, 3}
+arr2 := [...]int{1, 2, 3}
+```
+
+对于一个由字面量组成的数组，根据数组元素数量的不同，编译器会在负责初始化字面量的 cmd/compile/internal/gc.anylit 函数中做两种不同的优化：
+
+* 当元素数量小于或者等于 4 个时，会直接将数组中的元素放置在栈上；
+* 当元素数量大于 4 个时，会将数组中的元素放置到静态区并在运行时取出
+
+例子
+
+```go
+// 长度小于等于4的数组字面量等价于
+var arr [3]int
+arr[0] = 1
+arr[1] = 2
+arr[2] = 3
+// 长度小于或者等于4的数组字面量等价于
+var arr [5]int
+statictmp_0[0] = 1
+statictmp_0[1] = 2
+statictmp_0[2] = 3
+statictmp_0[3] = 4
+statictmp_0[4] = 5
+arr = statictmp_0
+```
+
+访问和赋值会做边界检查，分为运行时和编译时，同时编译器会做 [边界检查消除](https://gfw.go101.org/article/bounds-check-elimination.html)
+
+* 如果编译时可以确定边界，数组元素的访问相当于直接访问那一段内存，效率无损
+* 如果编译时无法确认索引是否越界，则 使用 `PanicBounds` 在运行时检查，此时会造成额外的运行时开销
+
+### 2、切片
+
+> [博客1](https://www.flysnow.org/2018/12/21/golang-sliceheader.html)
+> [Go 语言设计与实现 - 3.2 切片](https://draveness.me/golang/docs/part2-foundation/ch03-datastructure/golang-array-and-slice/)
+> [Go 切片的扩容机制](https://www.jianshu.com/p/54be5b08a21c)
+
+切片本质上是一个动态数组，包含三个属性：
+
+* 长度 `len()` 函数可查看
+* 容量 `cap()` 函数可查看
+* 数据指针
+
+在运行时，切片的在 `reflect.SliceHeader`
+
+```go
+import (
+	"fmt"
+	"reflect"
+	"unsafe"
+)
+func SliceExperiment() {
+
+	// slice 运行时底层类型
+	// type SliceHeader struct {
+	// 	Data uintptr
+	// 	Len  int
+	// 	Cap  int
+	// }
+
+    s3 := []int32{1, 2, 3}
+    fmt.Println(len(s3), cap(s3))
+	sh1 := (*reflect.SliceHeader)(unsafe.Pointer(&s3))
+	fmt.Println(sh1)
+}
+```
+
+扩容机制
+
+* 当 `cap` 满了后，go runtime 重新申请一段内存空间，并将数据指针执行新的内存域
+* 当需要的容量超过原切片容量的两倍时，会使用需要的容量作为新容量。
+* 否则
+    * 当原切片长度小于1024时，新切片的容量会直接翻倍。
+    * 当原切片的容量大于等于1024时，会反复地增加25%，直到新容量超过所需要的容量。
+
+初始化的几种方式
+
+* 从数组或者切片中进行切片（假设 `oldArr` 的长度为4）
+    * 完整写法 `s := oldArrOrSlice[startIndex:endIndex:capIndex]`
+        * startIndex 为切片起始位置，包含该位置
+        * endIndex 为切片结束位置，不包括该位置，因此切片长度 `len(s) = endIndex - startIndex`
+        * capIndex 为切片容量的结束位置，不包括该位置，因此切片的长度 `cap = capIndex - startIndex`
+        * 约束为 `0 <= startIndex <= endIndex <= capIndex <= len(oldArrOrSlice)`
+    * `s := oldArr[0:2]` 等价于 `s := oldArr[0:2:2]`
+    * `s := oldArr[:]` 等价于 `s := oldArr[0:4]`
+    * `s := oldArr[:2]` 等价于 `s := oldArr[0:2]`
+    * `s := oldArr[:2:4]` 等价于 `s := oldArr[0:2:4]`
+    * `s := oldArr[2:]` 等价于 `s := oldArr[2:4:4]`
+* 字面量初始化 `s := []int32{1, 2, 3}` 此时 `len = cap = 3`
+* `make` 创建
+    * `s4 := make([]int32, 10)` 此时 `len = cap = 10`
+    * `s4 := make([]int32, 10, 20)` 此时 `len = 10`，`cap = 20`
+
+访问、修改、添加、删除切片元素，拷贝切片
+
+* 访问元素 `s[index]` 要求 `index < len(s)` 不满足将抛出 panic
+* 修改元素 `s[index] = newValue` 要求 `index < len(s)` 不满足将抛出 panic
+* 添加元素 利用 `append` 函数 `newS = append(s, 1, 2, 3)`，流程如下
+    * 浅拷贝 `s` 创建新的 `reflect.SliceHeader` 结构 `newS`
+    * 如果 `s` 发生了扩容，则 `newS` 的数据指针指向新的内存，并执行拷贝
+    * 如果未扩容 `s` 和 `newS` 指向同一块内存（**此时添加的元素 `s` 也可见**）
+    * 数据赋值
+* 删除切片未提供直接方法
+    * 利用 `append` 进行删除中间的元素
+    * 利用切片语法删除头尾元素
+* 拷贝切片 `copy(dst, source)`
+
+注意，切片和数组、切片和切片之间可能共享数据指针指向的内存空间这样可能造成如下问题
+
+* 一个切片指向了一个大数组，造成大数组无法被垃圾回收，导致内存泄漏，严重导致OOM
+* 共享数据时，修改了一个导致数据也发生影响，不注意可能发生 Bug
+
+解决方法：利用 copy 手动深拷贝切片
+
+全部例子
+
+```go
+package innertype
+
+import (
+	"fmt"
+	"reflect"
+	"unsafe"
+)
+
+func SliceExperiment() {
+	// 基本使用
+	a := [...]int32 {1, 2, 3}
+	// 创建的三种方式
+	// 方式1：从数组创建
+	s1 := a[0:3]
+	s2 := s1[1:2:3]
+	// 方式2：字面量创建
+	s3 := []int32{1, 2, 3}
+	// 方式3：make 创建
+	s4 := make([]int32, 10)
+	fmt.Println(s1, s2, s3, s4)
+
+	// 访问、修改、删除切片元素，拷贝切片
+	s1[1] = -2
+	s1[100] = 1
+	// 可以发现从数组和切片创建的切片数据在没有append操作之前共享底层数据
+	fmt.Println(a, s1, s2)
+	// append 之后 且 超过容量后，会脱离共享
+	s1_2 := append(s1, int32(-3))
+	fmt.Println(a, s1, s1_2, s2)
+	// append 之后 但 不超过容量，不会脱离共享
+	fmt.Println(len(s2), cap(s2))
+	s2_2 := append(s2, int32(-3))
+	fmt.Println(a, s1, s1_2, s2, s2_2)
+	// 删除元素，利用append + slice 实现
+	s3_2 := append(s3[:1], s3[2:]...)
+	fmt.Println(s3, s3_2)
+	// 拷贝切片 dest 与 source 将脱离共享
+	var s5 []int32 = make([]int32, 3, 3)
+	copy(s5, a[:])
+	s5[1] = 12
+	fmt.Println(a, s5)
+
+	// slice 运行时底层类型
+	// type SliceHeader struct {
+	// 	Data uintptr
+	// 	Len  int
+	// 	Cap  int
+	// }
+
+	fmt.Println(len(s3), cap(s3))
+	sh1 := (*reflect.SliceHeader)(unsafe.Pointer(&s3))
+	fmt.Println(sh1)
+}
+```
+
+### 3、字符串
+
+### 4、map
+
+## 五、常用关键字
+
+## 六、并发相关
+
+## 七、内存管理
+
+## 八、元编程
+
+## 九、Go 标准库
