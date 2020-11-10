@@ -1167,10 +1167,402 @@ func SliceExperiment() {
 
 ## 五、常用关键字
 
-## 六、并发相关
+## 六、并发
+
+### 1、Go 协程
+
+Go 函数运行在 Go 协程中（称为 `goroutines`）。
+
+协程是轻量级线程，与操作系统中线程是 多对1 的关系，相对于操作系统线程有如下优势：
+
+* 切换成本低
+* 内存占用小
+
+Go 协程的特点
+
+* 协程是 Go 语言的核心，Go 语言的命名来自于此
+* 使用 `go` 关键词即可让任意一个函数在一个新的协程中运行
+* Go 的 main 协程退出后，不会等待其他协程，进程直接退出（无法设置为 domain，需通过 chain 实现）
+
+例子
+
+```go
+package concurrent
+
+import (
+	"fmt"
+	"time"
+)
+
+func fn1(p string) {
+	fmt.Printf("fn1 p = %s\n", p)
+}
+
+func GoroutineExperiment() {
+	go fn1("first")
+	fmt.Println("main")
+	go fn1("second")
+	time.Sleep(200 * time.Millisecond) // 如果不 sleep fn1 没有得到运行
+}
+```
+
+### 2、Go channel
+
+channel 是 Go 提供的语言级协程通讯方式，是 Go 推荐的多协程协调通讯方式。
+
+* 可以理解成阻塞消息队列
+* channel 是并发安全的，支持多生产多消费
+
+#### （1）通道初始化方式
+
+* `ch := make(chan 消息类型)` 无缓冲通道
+* `ch := make(chan 消息类型, 缓冲大小)` 有缓冲通道
+
+#### （2）通道的读写
+
+* 读
+    * `data := <-ch` 阻塞读出（等待直到通道有数据）
+    * `data, ok := <-ch` 阻塞读出 ok 表示通道是否关闭
+        * 通道未关闭时 `ok = true` `data != 零值`
+        * 通道关闭时 `ok = false` `data = 零值`
+    * 多路复用 `select`
+    * 利用 `select` + `time.Timer` 实现读超时
+    * 利用 `select` + `default` 实现非阻塞读
+    * 语法糖：循环读 `for data := range ch` 通道关闭退出循环
+    * 读取并丢弃 `<- ch`
+* 写
+    * `ch <- data` 阻塞写入（直到通道有空间）
+    * 多路复用 `select`
+    * 利用 `select` + `time.Timer` 实现写超时
+    * 利用 `select` + `default` 实现非阻塞写
+
+#### （3）单向通道与双向通道
+
+* `var readOnlyChannel <-chan 消息类型 = ch` 只读通道，向只写通道读将抛出编译错误
+* `var writeOnlyChannel chan<- 消息类型 = ch` 只写通道，向只读通道写将抛出编译错误
+
+#### （4）关闭通道
+
+* `close(ch)` 只能执行一次，再次关闭将触发 `panic`
+* 获取是否关闭 `data, ok := <-ch` 阻塞读出 ok 表示通道是否关闭
+    * 通道未关闭时 `ok = true` `data != 零值`
+    * 通道关闭时 `ok = false` `data = 零值`
+* 写入关闭的 `channel` 将触发 `panic`
+* 读取关闭的 `channel` 立即返回零值
+* `for range ch` 将推出循环
+
+#### （5）无缓冲通道和缓冲通道
+
+* 无缓冲通道
+    * 创建方式 `ch := make(chan 消息类型)` 或 `ch := make(chan 消息类型, 0)`
+    * 特点，对于一个未关闭的通道
+        * 某协程向该通道发送一个消息将阻塞到，另一个协程取出该消息
+        * 某协程从该通道读取一个消息将阻塞到，另一个协程发送一个消息
+    * `cap` 和 `len` 函数返回均为 0
+* 缓冲通道
+    * 创建方式 `ch := make(chan 消息类型, 缓冲大小)` 且 缓冲大小 > 0
+    * 特点，对于一个未关闭的通道
+        * 某协程向该通道发送一个消息
+            * 若该通道缓冲区已满，将阻塞到缓冲区有空间为止
+            * 否则，直接返回
+        * 某协程从该通道接收一个消息
+            * 若该通道缓冲区是空的，将阻塞到缓冲区有数据为止
+            * 否则，返回数据
+    * `cap` 和 `len` 函数可以获取 缓冲通道的容量和数据长度
+
+```go
+	a3 := make(chan string, 2)
+	a3 <- ""
+	fmt.Println(cap(a3), len(a3))
+```
+
+#### （5）实现超时和非阻塞
+
+* 通过 `select` 和 `time.Timer` 实现
+* 通过 `select` 和 `default` 实现
+
+#### （6）通道多路复用 select
+
+go channel 类似于阻塞 IO，也存在阻塞，操作系统提供了 IO 多路复用功能，类似的 Go 语言为 channel 提供了多路复用功能
+
+（多路复用：将多个 阻塞 聚合在一个阻塞点）
+
+基本语法
+
+```go
+select {
+case 读写channel:
+    操作
+case 读写channel:
+    操作
+default: // 可选
+    操作
+}
+```
+
+select 只会执行一次，如果需要多次，一般需要使用 for 循环包裹
+
+```go
+for {
+    select {
+    // ...
+    }
+}
+```
+
+如果 `select` 包含 `default` 分支，则实现非阻塞效果，即，当其他 `case` 分支没有数据时，执行 `default` 分支
+
+```go
+select {
+case ad := <- a:
+    fmt.Println(ad)
+default:
+    fmt.Println("default")
+}
+```
+
+如果 `select`中同时有多个 channel 就绪，则只会处理最上面就绪的那一个（可以理解成 每个 `case` 都加了 `break`）
+
+```go
+func selectMultiChannel(a <-chan string, b <-chan string){
+	for i := 0; i< 10; i++ {
+		select {
+		case ad := <- a:
+			fmt.Println(i, ad)
+		case bd := <- b:
+			fmt.Println(i, bd)
+		}
+	}
+}
+func Chanvar() {
+	a := make(chan string, 1)
+	b := make(chan string, 1)
+	b <- "b"
+	a <- "a"
+    go selectMultiChannel(a, b)
+	// 输出
+	// 0 a
+	// 1 b
+	time.Sleep(1000 * time.Microsecond)
+}
+```
+
+利用 `time.Timer` 可以实现等待超时效果
+
+```go
+func channelTimeout(a <-chan string) {
+	select {
+	case ad := <- a:
+		fmt.Println(ad)
+	case <- time.After(500 * time.Millisecond):
+		fmt.Println("Timeout")
+	}
+}
+func Chanvar() {
+	a2 := make(chan string, 1)
+	go channelTimeout(a2)
+	time.Sleep(600 * time.Millisecond)
+	// 输出 Timeout
+	a2 <- "message a"
+	time.Sleep(100 * time.Millisecond)
+}
+```
+
+select 还允许 多路复用 写入消息
+
+```go
+func selectWriteChannel(a chan<- string) {
+	select {
+	case a <- "从 select中写入 a":
+		fmt.Println("写入 a 成功")
+	default:
+		fmt.Println("Default 写入 a 失败")
+	}
+}
+
+	a3 := make(chan string, 2)
+	go selectWriteChannel(a3)
+	time.Sleep(100 *time.Millisecond)
+	fmt.Println(cap(a3), len(a3))
+	go selectWriteChannel(a3)
+	time.Sleep(100 *time.Millisecond)
+	fmt.Println(cap(a3), len(a3))
+	go selectWriteChannel(a3)
+	time.Sleep(100 *time.Millisecond)
+	fmt.Println(cap(a3), len(a3))
+	// 输出
+	// 写入 a 成功
+	// 2 1
+	// 写入 a 成功
+	// 2 2
+	// Default 写入 a 失败
+	// 2 2
+```
+
+### 3、标准库提供并发工具
+
+> 主要位于 `sync` 和 `atomic` 包
+
+Go 提供了静态条件检查器，通过 `-race` 开启检查，go build，go run，go test 支持
+
+#### （1）锁系列
+
+优先考虑使用 Channel ，Channel 无法实现时，才需要使用如下的锁。
+
+锁一般用于共享内存的保护，Go 会遵循 Happen Before 原则，但 Go 没有 `volatile`，因此必须为共享变量添加锁保护，这样 Go 才能生成正确的内存屏障代码
+
+`sync.Mutex`
+
+* 互斥锁，不可重入
+* 核心 API 为
+    * `Lock()`
+    * `Unlock()`
+* 开发模式，`Lock()` 后，紧接着 `defer Unlock()`，需要注意防止锁粒度过大（可以抽成一个函数）
+
+`sync.RMutex` 读写锁
+
+* 读写锁
+* 核心 API 为
+    * `RLock()` 加一个读锁，存在读锁时，阻塞，否则加锁成功
+    * `RUnlock()` 解锁一个读锁
+    * `Lock()` 加一个写锁，存在读锁或写锁时，阻塞，否则加锁成功
+    * `Unlock()` 解一个写锁
+    * `RLocker()` 返回满足 `Locker` 接口的读锁（用来分离一个读锁对象）
+
+#### （2）`sync.Once`
+
+保证 一个函数只被执行一次，可以用于延迟加载和单例（所有只允许执行一次的场景）。核心API为：
+
+* `Do(func)`
+
+```go
+package concurrent
+
+import (
+	"fmt"
+	"sync"
+)
+
+var i int32 = 0
+var iOnce sync.Once
+
+func InitI() {
+	i = 1
+	fmt.Println("init I = 1")
+}
+
+func SyncOnce() {
+    // InitI 被执行1次
+	iOnce.Do(InitI)
+	fmt.Println(i)
+	iOnce.Do(InitI)
+	iOnce.Do(InitI)
+	iOnce.Do(InitI)
+}
+```
+
+#### （3）`sync.WaitGroup`
+
+WaitGroup 用于等待一组 goroutine 结束，核心 API
+
+* `Add(int)` 等待 goroutine 的个数
+* `Done()` 一个 goroutine 完成了
+* `Wait()` 阻塞等待所有 goroutine 完成
+
+例子
+
+```go
+func SyncWaitGroup() {
+	var wg sync.WaitGroup
+	wg.Add(10)
+	for i := 0; i < 10; i++ {
+		go func(i int) {
+			fmt.Println(i)
+			time.Sleep(10 * time.Millisecond)
+			wg.Done()
+		}(i)
+	}
+	wg.Wait()
+	fmt.Println("wait finish")
+}
+```
+
+#### （4）`sync.Cond` 条件变量
+
+一个协程在 某个条件变量 处阻塞等待；另一个协程在满足某些条件下，可以唤醒等待在该条件变量处的协程
+
+条件变量会关联一个 `Locker`，当调用 `Wait` 时 必须加锁
+
+API 如下
+
+* `func NewCond(l Locker) *Cond`
+* `func (c *Cond) Broadcast()` 唤醒所有等待的协程，可以加锁，也可以不加锁。
+* `func (c *Cond) Signal()` 唤醒一个协程，可以加锁，也可以不加锁。Signal()通知的顺序是根据原来加入通知列表 `Wait()` 的先入先出
+* `func (c *Cond) Wait()` 阻塞等待通知，调用前必须加锁，调用后阻塞后锁会释放，被唤醒后，锁会重新获得
+
+为什么需要 `Broadcast` ？会唤醒全部，谁可以执行取决于对锁的竞争，而`Signal` 按照 FIFO 顺序唤醒
+
+#### （5）`sync.Pool` 临时对象池
+
+参考：
+
+* https://my.oschina.net/u/115763/blog/282376
+* https://www.cnblogs.com/qcrao-2018/p/12736031.html#gc
+
+一个sync.Pool对象就是一组临时对象的集合。Pool是协程安全的。
+
+* 用于池化无状态大对象（不适合连接池），比如大字节数组，可以比每次使用都申请一个提升效率
+* 持有的对象是弱引用，如果只有Pool中有该对象的引用，则可能在 GC 使被销毁
+
+API
+
+* 创建一个 Pool `var bufPool = sync.Pool{New: func() interface{} { return new(bytes.Buffer) },}` 这个 New 就是构造函数
+* `func (p *Pool) Get() interface{}` 获取一个对象，如果没有则调用 `New` 函数创建一个，该对象的引用将从 Pool 中移除
+* `func (p *Pool) Put(x interface{})` 将对象放回 `Pool` 中，以供下次使用
+
+例子
+
+```go
+func SyncPool() {
+	var bytePool = sync.Pool{
+		New: func() interface{} {
+			fmt.Println("New")
+			return make([]byte, 1024)
+		},
+	}
+
+	bytePool.Get()
+	ba := bytePool.Get()
+	bytePool.Put(ba)
+	bytePool.Get()
+	// 输出
+	// New
+	// New
+}
+```
+
+### 4、Context 控制协程
 
 ## 七、内存管理
+
+逃逸分析
+
+内存屏障和可见性
+
+垃圾回收
 
 ## 八、元编程
 
 ## 九、Go 标准库
+
+http
+
+注意事项
+
+```
+    resp, err := http.Get(url))
+    if err != nil {
+       return "", err
+    }
+    defer resp.Body.Close()
+```
