@@ -1165,9 +1165,17 @@ func SliceExperiment() {
 
 ### 4、map
 
-## 五、常用关键字
+## 五、语言基础
 
-## 六、并发
+### 1、函数调用
+
+### 2、接口
+
+### 3、反射
+
+## 六、常用关键字
+
+## 七、并发
 
 ### 1、Go 协程
 
@@ -1183,6 +1191,8 @@ Go 协程的特点
 * 协程是 Go 语言的核心，Go 语言的命名来自于此
 * 使用 `go` 关键词即可让任意一个函数在一个新的协程中运行
 * Go 的 main 协程退出后，不会等待其他协程，进程直接退出（无法设置为 domain，需通过 chain 实现）
+* [抢占式调度](https://zhuanlan.zhihu.com/p/30353139)
+* [有栈协程实现](https://zhuanlan.zhihu.com/p/94018082)
 
 例子
 
@@ -1276,12 +1286,12 @@ channel 是 Go 提供的语言级协程通讯方式，是 Go 推荐的多协程�
 	fmt.Println(cap(a3), len(a3))
 ```
 
-#### （5）实现超时和非阻塞
+#### （6）实现超时和非阻塞
 
 * 通过 `select` 和 `time.Timer` 实现
 * 通过 `select` 和 `default` 实现
 
-#### （6）通道多路复用 select
+#### （7）通道多路复用 select
 
 go channel 类似于阻塞 IO，也存在阻塞，操作系统提供了 IO 多路复用功能，类似的 Go 语言为 channel 提供了多路复用功能
 
@@ -1398,6 +1408,12 @@ func selectWriteChannel(a chan<- string) {
 	// Default 写入 a 失败
 	// 2 2
 ```
+
+#### （8）实现原理
+
+> [Go 语言设计与实现 - 6.4 Channel](https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-channel/)
+
+* 对于有缓冲的 Channel，数据队列是通过数组实现的循环队列，内存预分配 （`mallocgc` 分配内存）
 
 ### 3、标准库提供并发工具
 
@@ -1541,19 +1557,150 @@ func SyncPool() {
 }
 ```
 
+#### （6）atomic 包
+
+atomic是最轻量级的锁（位于标准库 ``），比如 CAS 指令提供对常用变量的原子操作，包括如下几类
+
+* 增或减
+* 比较并交换
+* 载入
+* 存储
+* 交换
+
+例子
+
+```go
+func Atomic(){
+	var a int32 = 1
+	atomic.AddInt32(&a, 1)
+	fmt.Println(a)
+}
+```
+
 ### 4、Context 控制协程
 
-## 七、内存管理
+> [博客1](https://www.flysnow.org/2017/05/12/go-in-action-go-context.html)
+> [Go 语言设计与实现 - 6.1 上下文 Context](https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-context/)
 
-逃逸分析
+`context.Context` 是 Go 中用来控制协程树的接口，具有如下功能
+
+* 使用 `withXxx(parent)` 系列函数可以构造一颗 `Context` 树
+* 在对某个 `Context` 调用 `cancel` 函数，则可以结束当前 `Context` 及子孙 `Context`
+* 可以在创建 `Context` 时，为该 `Context` 绑定一对 KV （少用），所有子孙 `Context` 可以通过 Key 查询自己及祖宗节点的 Value
+* 标准库提供，存在多种单一功能的 Context，通过 `withXxx(parent)` 创建
+    * 具有超时或者定时取消功能的 `Context`
+    * 绑定一对 KV
+
+`context.Context` 相关API
+
+* 根 Context
+    * `context.Background()` 是上下文的默认值，所有其他的上下文都应该从它衍生（Derived）出来
+    * `context.TODO()` 应该只在不确定应该使用哪种上下文时使用
+* 传递一个 父 Context 创建一个新的 `Context`
+    * `func WithCancel(parent Context) (ctx Context, cancel CancelFunc)` 创建一个可取消的 `Context` 调用 `cancel` 返回值即可取消子孙 Context
+    * `func WithDeadline(parent Context, deadline time.Time) (Context, CancelFunc)` 创建一个可取消的 `Context`，调用 `cancel` 返回值即可取消子孙 Context，同时在 deadline 时刻自动取消
+    * `func WithTimeout(parent Context, timeout time.Duration) (Context, CancelFunc)` 创建一个可取消的 `Context`，调用 `cancel` 返回值即可取消子孙 Context，同时在 timeout 后自动取消
+    * `func WithValue(parent Context, key, val interface{}) Context` 创建一个 `Context` 附加一个值
+* `context.Context` 接口函数语义
+    * `Deadline() (deadline time.Time, ok bool)` 获取设置的截止时间（如果当前 Context 和 祖宗 Context 设置了）。
+        * 如果设置了截止时间，第一个返回值是截止时间，到了这个时间点，Context会自动发起取消请求；第二个返回值 `ok == true`
+        * 如果没有设置截止时间，返回零值（`ok == false`）
+    * `Done() <-chan struct{}` 获取一个只读 Channel，调用多次返回一样的值，如果当前 Context 或 祖宗 Context 取消了，则该 Channel 将被关闭，直接返回（结合 select 即可实现协程树控制）
+    * `Err() error` 返回当前 Context 或 祖宗 Context 是否取消
+        * 未取消：返回 nil
+        * 到达Deadline而取消：返回 `context deadline exceeded`
+        * 手动调用 Cancel：返回 `context canceled`
+    * `Value(key interface{}) interface{}` 当前 Context 或 祖宗 Context 上绑定的值
+
+## 八、内存管理
+
+> [可视化Go内存管理](https://tonybai.com/2020/03/10/visualizing-memory-management-in-golang/)
+
+### 1、内存分配器
+
+> [Go 语言设计与实现 - 7.1 内存分配器](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-memory-allocator/)
+> 内存分配器，不需要考虑垃圾回收的内容，内存分配器即使在 C/C++ 这样的底层语言同样存在
+
+#### （1）虚拟内存和物理内存
+
+> 详见《操作系统》
+
+内存是计算机中最重要的资源之一。决定计算机内存大小的上限的是内存地址的位数。
+
+内存地址是定位内存中一个字节数据存储位置的唯一标识。
+
+如果把内存理解为一个字节数组，而内存地址就是这个字节数组的下标。可以计算得出，如果内存地址的位数为 32 则，该内存最大容量为 `2^32` 字节，即 `4G`。类似的目前主流的内存地址位数为 `64` 因此内存的最大容量为 `2^64` 字节，及 `4 * 2^32 G`。
+
+任何编程语言编写程序在最终都会以机器码的形式在 CPU 中运行。对内存的访问都需要给予明确的内存地址。
+
+但是一般设备的内存大小都不能达到理论最大内存。因此如果程序对内存的访问直接访问物理内存，则可能带来的结果是，当内存发生变化时，需要重新编译程序。
+
+为了方便程序的运行，操作系统配合硬件，为程序的内存访问提供了一个抽象层——虚拟内存空间。
+
+这个虚拟内存空间的内存范围为固定的 `0 ~ 2^位数`。这样所有的程序都可以以一个统一的标准生成机器代码，有了更好的兼容性，减少了复杂度，就好像每个程序的进程独占整个机器一样。
+
+而虚拟内存地址如何对应到物理内存之间，就是操作系统所关心的事情了。
+
+因此可以得到一个结论：在运行在现代操作系统中的程序中，对内存的访问实际上访问的都是虚拟内存空间
+
+#### （2）进程内存区域的布局
+
+根据上文提到的，进程[内存区域的布局](https://blog.csdn.net/qq_38600065/article/details/104864413)指的是虚拟内存的布局。
+
+* 代码段 通常存放程序中的代码和常量（低地址）
+* 数据段 通常存放程序中的初始化后的全局变量和静态变量。
+* BSS段 通常存放程序中的未初始化的全局变量和静态变量
+* 栈    通常用来存放程序运行时的栈帧，包含局部变量、函数形参、数组、函数返回值、返回地址等等（由低地址向高地址申请使用）
+* 文件映射
+* 未定义
+* 栈   通常用来存放程序中进行运行时被动态分配的内存段（由高地址向低地址申请使用）
+* 内核空间 （高地址）
+
+#### （3）用户程序向操作系统申请内存
+
+由于虚拟地址空间的存在，因此申请和释放内存是需要进行 系统调用 实现的。
+
+运行时，栈（线程栈）的最大大小在运行时一般是固定，在运行时管理也比较简单，因此内存分配主要是堆内存的管理
+
+堆内存的申请在操作系统层面的系统调用会落实到 `brk` 或 `mmap` 系统调用。该系统调用仅仅是移动下堆指针的值（`mm_struct.brk`，也就是说堆内存只能线性扩大缩小）
+
+更多参见： [Linux内存分配小结--malloc、brk、mmap](https://blog.csdn.net/gfgdsg/article/details/42709943)
+
+#### （4）编程语言的内存管理
+
+在 Linux 中系统调用一般是相对昂贵的操作，且 `brk` 系统调用无法满足复杂的堆内存管理功能。因此一个编程语言在其标准库（C 语言的 glibc 的 [ptmalloc](https://blog.csdn.net/z_ryan/article/details/79950737)）或者运行时（Go 运行时的[内存管理器](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-memory-allocator/)），必须提供堆内存管理的能力。
+
+更多参见
+
+* [Linux内存的工作（malloc，brk系统调用和mmap系统调用）](https://blog.csdn.net/qq_41754573/article/details/104439527)
+* [内存管理器](https://draveness.me/golang/docs/part3-runtime/ch07-memory/golang-memory-allocator/)
 
 内存屏障和可见性
 
-垃圾回收
+### 2、垃圾回收
 
-## 八、元编程
+TODO
 
-## 九、Go 标准库
+### 3、栈空间管理
+
+> [Go语言的栈空间管理](https://zhuanlan.zhihu.com/p/28484133)
+
+* 每个协程最小分配 2KB 空间
+* 当栈空间不够时，自动扩容（创建一个新的空间然后数据拷贝过去）
+* 因此 Go 的协程栈的栈低指针会发生变化，和 C 语言线程栈栈低指针不变完全不同
+* 协程栈和线程栈不同，协程栈是在堆中模拟实现的栈
+
+逃逸分析
+
+* 函数中的变量，Go 编译时会根据其在函数结束后是否继续被使用，而选择分配在栈上还是堆上
+    * 如果是，则说明发生了逃逸，分配到堆上
+    * 否则，说明没有逃逸，分配到栈上
+
+其他TODO
+
+## 九、元编程
+
+## 十、Go 标准库
 
 http
 
