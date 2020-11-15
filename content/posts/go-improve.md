@@ -1163,7 +1163,170 @@ func SliceExperiment() {
 
 ### 3、字符串
 
+* Go 字符串是不可变的
+* 本质上是一个字节数组和该字节数组的长度
+* 默认编码为 UTF8
+
+字符串字面量
+
+```go
+func StringExperiment() {
+	// 单行字符串
+	s1 := "123`中文❤😁\"\n\tabc"
+	fmt.Println(s1)
+	// 多行字符串，不支持转移字符 (Raw string)
+	s2 := `123中文❤😁"
+	abc`
+	fmt.Println(s2)
+}
+```
+
+字符串格式化与模板
+
+* C 风格的字符串格式化 `%`，位于 [`fmt` 包](https://golang.org/pkg/fmt/)
+    * `fmt.Sprintf(格式化样式, 参数列表...)`
+    * `fmt.Printf(格式化样式, 参数列表...)`
+* Go 提供了完善的模板引擎，位于 [`text/template` 包](https://golang.org/pkg/text/template/)
+
+字符串拼接
+
+* `+` 底层实现为 `runtime.concatstrings`，存在 Copy 性能问题
+* `Go 1.10+` 使用 [`string.Builder`](http://golang.org/pkg/io/#Writer)
+* `Go 1.10` 之前，使用 [`bytes.Buffer`](http://golang.org/pkg/bytes/#Buffer)
+
+底层结构
+
+```go
+// reflect.StringHeader
+type StringHeader struct {
+	Data uintptr
+	Len  int
+}
+```
+
+相关操作
+
+* 字节数组 和 字符串 相互转换，存在内存拷贝
+    * 字符串转字节数组 `b1 := []byte(s1);`
+    * 字节数组转字符串 `s3 := string(b1)`
+* 字符串 和 数字类型 的转换在 `strconv` 包
+* 字符串相关属性
+    * 字符串的字节长度 `len(s)`，时间复杂度 `O(1)`
+    * 字符串的字符长度 `utf8.RuneCountInString(s2)` 时间复杂度 `O(n)`
+* 字符串遍历
+    * 字节遍历 `s[i]`
+    * 字符遍历 `for idx, c := range s {}`
+
+例子
+
+```go
+package innertype
+
+import (
+	"fmt"
+	"reflect"
+	"unsafe"
+)
+
+func SliceExperiment() {
+	// 基本使用
+	a := [...]int32 {1, 2, 3}
+	// 创建的三种方式
+	// 方式1：从数组创建
+	s1 := a[0:3]
+	s2 := s1[1:2:3]
+	// 方式2：字面量创建
+	s3 := []int32{1, 2, 3}
+	// 方式3：make 创建
+	s4 := make([]int32, 10)
+	fmt.Println(s1, s2, s3, s4)
+
+	// 访问、修改、删除切片元素，拷贝切片
+	s1[1] = -2
+	s1[100] = 1
+	// 可以发现从数组和切片创建的切片数据在没有append操作之前共享底层数据
+	fmt.Println(a, s1, s2)
+	// append 之后 且 超过容量后，会脱离共享
+	s1_2 := append(s1, int32(-3))
+	fmt.Println(a, s1, s1_2, s2)
+	// append 之后 但 不超过容量，不会脱离共享
+	fmt.Println(len(s2), cap(s2))
+	s2_2 := append(s2, int32(-3))
+	fmt.Println(a, s1, s1_2, s2, s2_2)
+	// 删除元素，利用append + slice 实现
+	s3_2 := append(s3[:1], s3[2:]...)
+	fmt.Println(s3, s3_2)
+	// 拷贝切片 dest 与 source 将脱离共享
+	var s5 []int32 = make([]int32, 3, 3)
+	copy(s5, a[:])
+	s5[1] = 12
+	fmt.Println(a, s5)
+
+	// slice 运行时底层类型
+	// type SliceHeader struct {
+	// 	Data uintptr
+	// 	Len  int
+	// 	Cap  int
+	// }
+
+	fmt.Println(len(s3), cap(s3))
+	sh1 := (*reflect.SliceHeader)(unsafe.Pointer(&s3))
+	fmt.Println(sh1)
+}
+```
+
 ### 4、map
+
+原理参见：[Go 语言设计与实现 - 3.3 哈希表](https://draveness.me/golang/docs/part2-foundation/ch03-datastructure/golang-hashmap/)
+
+创建
+
+```go
+	h1 := map[string]int{
+		"1": 2,
+		"3": 4,
+		"5": 6,
+	}
+	fmt.Println(h1)
+
+	// 创建并指定容量
+	h2 := make(map[string]int, 3)
+	h2["1"] = 2
+	h2["3"] = 4
+	h2["5"] = 6
+```
+
+读、写、删除
+
+```go
+	// 访问
+	fmt.Println(h2["1"])  // 不存在将返回零值
+	fmt.Println(h2["2"])  // 不存在将返回零值
+	// 访问并判断是否存在
+	if e, ok := h2["1"]; ok {
+		fmt.Println(ok, e)
+	}
+	// 写入
+	h2["7"] = 8
+	fmt.Println(h2)
+	// 删除
+	delete(h2, "7")
+	fmt.Println(h2)
+```
+
+遍历
+
+```go
+	// 遍历 https://golang.org/ref/spec#For_statements
+	for k, v := range h2 {
+		fmt.Println(k, v)
+		// 迭代中删除、创建、修改都是是安全的
+		delete(h2, k)
+	}
+	fmt.Println(h2)
+```
+
+线层安全 map `sync.Map`
 
 ## 五、语言基础
 
@@ -1707,7 +1870,7 @@ http
 注意事项
 
 ```
-    resp, err := http.Get(url))
+    resp, err := http.Get(url)
     if err != nil {
        return "", err
     }
