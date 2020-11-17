@@ -254,6 +254,46 @@ Gin 提供了内建的参数校验功能，该功能需要与参数绑定结合�
 
 ### 返回消息
 
+#### 常用API
+
+假设 `var c *gin.Context`
+
+* 返回 JSON `c.JSON(状态码, 结构体)` （特殊 HTML 字符将会被转义为 Unicode 转义字符）
+* 返回 AsciiJSON 非 ASCII 码将使用 Unicode 转义字符串表示 `c.AsciiJSON(状态码, 结构体)`
+* 返回 PureJSON `c.PureJSON(状态码, 结构体)` （不做任何转义）
+* 返回 安全 JSON `c.SecureJSON(状态码, 结构体)` 用于防止 json 劫持，在JSON基础上添加 `while(1),` 前缀
+* 返回 格式化 JSON（仅用于开发） `c.IndentedJSON(状态码, 结构体)`
+* 返回 YAML `c.YAML(状态码, 结构体)`
+* 返回 XML `c.XML(状态码, 结构体)`
+* 返回 字符串 `c.String(code int, format string, values ...interface{})`
+* 返回 ProtoBuf `c.ProtoBuf(状态码, 结构体)`
+* 重定向 `c.Redirect(状态码, 重定向地址)`
+* 返回 字节数组 `c.Data(code int, contentType string, data []byte)`
+* 从 Reader 中返回数据 `c.DataFromReader(code int, contentLength int64, contentType string, reader io.Reader, extraHeaders map[string]string)`
+* 文件返回等参见 [Doc](https://pkg.go.dev/github.com/gin-gonic/gin@v1.6.3#Context)
+
+#### 例子
+
+```go
+	responseStruct := struct {
+		Name  string
+		Email string
+	}{
+		Name:  "xiaoming",
+		Email: "xiaoming@example.com",
+	}
+
+	r.GET("router/response/json", func(c *gin.Context) {
+		c.JSON(http.StatusOK, responseStruct)
+	})
+	r.GET("router/response/yaml", func(c *gin.Context) {
+		c.YAML(http.StatusOK, responseStruct)
+	})
+	r.GET("router/response/xml", func(c *gin.Context) {
+		c.XML(http.StatusOK, responseStruct)
+	})
+```
+
 ### 路由组
 
 ### 中间件
