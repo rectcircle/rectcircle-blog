@@ -262,6 +262,7 @@ Gin 提供了内建的参数校验功能，该功能需要与参数绑定结合�
 * 返回 AsciiJSON 非 ASCII 码将使用 Unicode 转义字符串表示 `c.AsciiJSON(状态码, 结构体)`
 * 返回 PureJSON `c.PureJSON(状态码, 结构体)` （不做任何转义）
 * 返回 安全 JSON `c.SecureJSON(状态码, 结构体)` 用于防止 json 劫持，在JSON基础上添加 `while(1),` 前缀
+* 返回 JSONP `c.JSONP(状态码, 结构体)` `?callback=x` 将返回：`x({\"foo\":\"bar\"})`
 * 返回 格式化 JSON（仅用于开发） `c.IndentedJSON(状态码, 结构体)`
 * 返回 YAML `c.YAML(状态码, 结构体)`
 * 返回 XML `c.XML(状态码, 结构体)`
@@ -296,8 +297,102 @@ Gin 提供了内建的参数校验功能，该功能需要与参数绑定结合�
 
 ### 路由组
 
+* `func (*gin.RouterGroup).Group(relativePath string, handlers ...gin.HandlerFunc) *gin.RouterGroup`
+* 支持多级路由组
+
+```go
+func routerGroup(r *gin.Engine) {
+	handler := func(c *gin.Context) {
+		c.String(http.StatusOK, "Hello")
+	}
+	// 简单的路由组: v1
+	v1 := r.Group("/router/group/v1")
+	{
+		v1.GET("/hello", handler)
+	}
+
+	// 简单的路由组: v2
+	v2 := r.Group("/router/group/v2")
+	{
+		v2.GET("/hello", handler)
+	}
+	// curl http://127.0.0.1:8080/router/group/v1/hello
+	// curl http://127.0.0.1:8080/router/group/v2/hello
+}
+```
+
 ### 中间件
+
+`gin.Default()` 将默认注册两个中间件
+
+* `gin.Logger()`
+* `gin.Recovery()`
+
+不使用以上默认中间件：使用 `gin.New()` 创建
+
+在 Gin 中，中间件本质上是一个函数，该函数和业务函数声明是一致的。均为 `type gin.HandlerFunc func(*gin.Context)`
+
+一般一个中间件的逻辑以  `gin.Context.Next()` 为分割点，在该函数调用前为请求前的处理，调用后为请求后的处理。
+
+注意：当在中间件或 handler 中启动新的 Goroutine 时，不能使用原始的上下文，必须使用只读副本（`*gin.Context.Copy()`）。
+
+注册方式
+
+* 全局使用 `*gin.Engine.Use(middleware ...gin.HandlerFunc)`
+* 路由组使用 `*gin.RouterGroup.Use(middleware ...gin.HandlerFunc)`
+* 单个路由使用 `*gin.RouterGroup.GET等(relativePath string, handlers ...HandlerFunc)` handlers 可以是中间件
+
+例子
+
+```go
+func MyLogger() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		t := time.Now()
+
+		// 设置 example 变量
+		c.Set("example", "12345")
+
+		// 请求前
+
+		c.Next()
+
+		// 请求后
+		latency := time.Since(t)
+
+		// 获取发送的 status
+		status := c.Writer.Status()
+
+		log.Printf("latency=%s, status=%d", latency, status)
+	}
+}
+
+func routerWithMiddleware(r *gin.Engine) {
+	group := r.Group("router/group/middleware")
+	group.Use(MyLogger())
+	group.GET("/hello", func(c *gin.Context) {
+		example := c.MustGet("example").(string)
+		c.String(http.StatusOK, "example = %s", example)
+	})
+	// curl http://127.0.0.1:8080/router/group/middleware/hello
+}
+```
+
+### 模板
+
+* `*gin.Context.HTML(code int, name string, obj interface{})` 支持 `template/html` 模板，[参见](https://gin-gonic.com/zh-cn/docs/examples/html-rendering/)，name 为相对路径，查找基于 `pwd`
+* [多模板参见](https://gin-gonic.com/zh-cn/docs/examples/multiple-template/)
+
+### 静态资源与静态资源嵌入
+
+* [官方文档参见](https://gin-gonic.com/zh-cn/docs/examples/serving-static-files/)
+* [静态资源嵌入参见](https://gin-gonic.com/zh-cn/docs/examples/bind-single-binary-with-template/)
+
+### 运行多个服务
+
+[参见](https://gin-gonic.com/zh-cn/docs/examples/run-multiple-service/)
 
 ## 最佳实践
 
 ### 项目结构
+
+TODO
