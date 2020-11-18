@@ -13,6 +13,7 @@ tags:
 ### 参考
 
 * [官网](https://gin-gonic.com/zh-cn/)
+* [本文例子](https://github.com/rectcircle/gin-learn)
 
 ### 官方表述
 
@@ -390,6 +391,10 @@ func routerWithMiddleware(r *gin.Engine) {
 ### 运行多个服务
 
 [参见](https://gin-gonic.com/zh-cn/docs/examples/run-multiple-service/)
+
+## 官方例子
+
+[例子代码库](https://github.com/gin-gonic/examples)
 
 ## 最佳实践
 
