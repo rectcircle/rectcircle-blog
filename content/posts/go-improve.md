@@ -886,6 +886,10 @@ func InterfaceNil() {
     * 接口只能包内部使用，包外部无法直接创建满足该接口的结构体
     * 通过结构体嵌入匿名类型可以绕过
 
+#### （5）接口原理
+
+参见 [五、语言基础-3、接口](2-接口)
+
 ### 7、struct
 
 待补充
@@ -1330,11 +1334,152 @@ func SliceExperiment() {
 
 ## 五、语言基础
 
-### 1、函数调用
+### 1、函数
+
+特点
+
+* 支持多返回值，所有返回值必须接收，不需要需使用占位符 `_`
+* 支持可变参数，`func func1(params ...int)`
+* 某些内建函数包含编译器魔法，也就是说某些内建的特性，自定义函数无法实现
+
+语法
+
+* 调用，基本语法 `functionName(param1, param2, ...)`
+* 调用，将数组传递到可变参数里 `functionName(param1, arr...)`
+
+调用惯例
+
+* C 语言同时使用寄存器和栈传递参数，使用 eax 寄存器传递返回值；
+* 而 Go 语言使用栈传递参数和返回值
+
+传值方式
+
+* 均为拷贝传值的方式
+    * 针对指针，拷贝指针值
+    * 针对类型，拷贝其内存
 
 ### 2、接口
 
+Go 语言中接口是一种类型，在底层表示为两种结构
+
+* `iface` 有声明方法的接口
+* `efact` 空接口
+
+声明详情
+
+```go
+// $GOROOT/src/runtime/runtime2.go
+
+type eface struct {
+    _type *_type
+    data  unsafe.Pointer
+}
+
+type iface struct {
+    tab  *itab
+    data unsafe.Pointer
+}
+
+// $GOROOT/src/runtime/type.go
+
+type _type struct {
+    size       uintptr
+    ptrdata    uintptr // size of memory prefix holding all pointers
+    hash       uint32
+    tflag      tflag
+    align      uint8
+    fieldalign uint8
+    kind       uint8
+    alg        *typeAlg
+    // gcdata stores the GC type data for the garbage collector.
+    // If the KindGCProg bit is set in kind, gcdata is a GC program.
+    // Otherwise it is a ptrmask bitmap. See mbitmap.go for details.
+    gcdata    *byte
+    str       nameOff
+    ptrToThis typeOff
+}
+
+// $GOROOT/src/runtime/runtime2.go
+
+type itab struct {
+    inter *interfacetype
+    _type *_type
+    hash  uint32 // copy of _type.hash. Used for type switches.
+    _     [4]byte
+    fun   [1]uintptr // variable sized. fun[0]==0 means _type does not implement inter.
+}
+```
+
+接口的引入主要作用是实现动态派发，使Go语言有一定的动态性，在某些基准测试
+
+* 针对指针
+    * 在关闭编译器优化的情况下，从上面的数据来看，动态派发生成的指令会带来 ~18% 左右的额外性能开销
+    * 开启编译器优化后，动态派发的额外开销会降低至 ~5%
+* 针对非指针
+    * 动态派发调用方法相比直接调用额外消耗了 ~125% 的时间
+
+更多细节参见 [1](https://zhuanlan.zhihu.com/p/86420182)，[2](https://draveness.me/golang/docs/part2-foundation/ch04-basic/golang-interface/)
+
 ### 3、反射
+
+三大法则（功能）
+
+* 从 `interface{}` 变量可以反射出反射对象；
+* 从反射对象可以获取 `interface{}` 变量；
+* 要修改反射对象，其值必须可设置；
+
+法则1：从 `interface{}` 变量可以反射出反射对象
+
+* 反射入口的两个函数声明如下，接收的参数为 `interface{}` 返回反射对象，也就是说，使用反射入口函数时发生了函数参数类型转换——转换为了 `interface{}`
+    * `reflect.TypeOf(interface{}) Type`
+    * `reflect.ValueOf(interface{}) Value`
+* 本质上是： 变量 -> `interface {}` -> 反射对象
+
+```go
+	var a int32 = 1
+	var ai interface{} = a
+	at := reflect.TypeOf(a)
+	apt := reflect.TypeOf(&a)
+	ait := reflect.TypeOf(ai)
+	fmt.Println("TypeOf(a) = ", at, "TypeOf(&a) = ", apt, "TypeOf(&ait) = ", ait)
+	av := reflect.ValueOf(a)
+	apv := reflect.ValueOf(&a)
+	fmt.Println("ValueOf(a) = ", av, "ValueOf(&a) = ", apv)
+```
+
+法则2：从反射对象可以获取 `interface{}` 变量
+
+* `Value` 可以获取 `Type`
+* `Value` 可以获取 `interface{}` 对象
+
+法则1和法则2可以总结为下图
+
+```
+    ---显示或隐式转换---     ---reflect.Value()----------
+    |                |    |                           |
+    |                v    |                           v
+variable           interface{} <--- .Interface() --- Reflect.Value
+    ^                |    |                          |
+    |                |    | reflect.Type()           | .Type()
+    ---- .(type) -----    |                          v
+                          -------------------------> Reflect.Type
+```
+
+法则3：要修改反射对象，其值必须可设置
+
+想要修改原对象，必须通过指针获取 Value，具体步骤如下：
+
+* 调用 `reflect.ValueOf` 函数获取变量指针；
+* 调用 `reflect.Value.Elem` 方法获取指针指向的变量；
+* 调用 `reflect.Value.SetInt` 方法更新变量的值：
+* 且不能修改自由变量
+
+常用 API
+
+* `reflect.Type` 参见：https://pkg.go.dev/reflect#Type
+* `reflect.Value` 参见：https://pkg.go.dev/reflect#Value
+
+更多参见 [博客](https://draveness.me/golang/docs/part2-foundation/ch04-basic/golang-reflect/)
 
 ## 六、常用关键字
 
