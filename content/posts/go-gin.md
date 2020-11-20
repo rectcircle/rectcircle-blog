@@ -396,6 +396,56 @@ func routerWithMiddleware(r *gin.Engine) {
 
 [例子代码库](https://github.com/gin-gonic/examples)
 
+## 测试
+
+[官方文档](https://gin-gonic.com/zh-cn/docs/testing/)
+
+```go
+package main
+
+func setupRouter() *gin.Engine {
+	r := gin.Default()
+	r.GET("/ping", func(c *gin.Context) {
+		c.String(200, "pong")
+	})
+	return r
+}
+
+func main() {
+	r := setupRouter()
+	r.Run(":8080")
+}
+```
+
+测试代码
+
+```go
+package main
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestPingRoute(t *testing.T) {
+	router := setupRouter()
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/ping", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, 200, w.Code)
+	assert.Equal(t, "pong", w.Body.String())
+}
+```
+
+## 常见中间件
+
+https://github.com/gin-contrib
+
 ## 最佳实践
 
 ### 项目结构

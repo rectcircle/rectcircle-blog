@@ -1483,6 +1483,143 @@ variable           interface{} <--- .Interface() --- Reflect.Value
 
 ## 六、常用关键字
 
+### 1、for 和 range
+
+Go 的 `for range` 和 其他编程语言的实现不太一样，不是基于迭代器，而是一种编译器魔法，会转换为经典循环（`for Ninit; Left; Right { NBody}`），最终编译成汇编的 带 jump 的语句。
+
+for range 的几种特殊行为
+
+* 循环永动机不存在，即边循环数组和切片，边append不会死循环，因为编译成经典循环后，len 会在进入循环前被计算固定了
+* 遍历元素为非指针的切片时 v 是一份拷贝
+* 遍历数组同时赋零值时会优化成 批量内存操作的汇编指令
+* map 遍历具有随机性，为了提醒开发者不要依赖 map 的顺序，特意在 map 遍历时添加了随机性
+* map 遍历过程中，删除未遍历的元素，将不会被遍历到
+* map 遍历过程中，添加元素是否会被遍历到：不确定，取决于元素是否会添加到未被遍历过的桶之中，[参见](https://segmentfault.com/q/1010000012242735)
+* string 遍历过程中，将string当成 utf8 编码，返回每个字符的 Unicode 码点。如果是 ASCII 则本次迭代只会吞掉1个字节，具体需要了解 utf8 编码规则，如果字符串不符合编码规则将吞掉该字节，返回编码错误字符码点 `0xFFFD`（显示为 `�`），然后继续遍历
+
+例子
+
+```go
+func ForExperiment() {
+	{
+		// 只会迭代 3 次
+		arr := []int{1, 2, 3}
+		for _, v := range arr {
+			arr = append(arr, v)
+		}
+		// 返回 [1 2 3 1 2 3]
+		fmt.Println(arr)
+	}
+	{
+		// 永远输出3
+		arr := []int{1, 2, 3}
+		newArr := []*int{}
+		for _, v := range arr {
+			newArr = append(newArr, &v)
+		}
+		for _, v := range newArr {
+			fmt.Println(*v)
+		}
+	}
+	{
+		// 优化为 runtime.memclrNoHeapPointers 调用
+		arr := []int{1, 2, 3}
+		for i := range arr {
+			arr[i] = 0
+		}
+	}
+	{
+		// map 遍历具有随机性
+		hash := map[string]int{
+			"1": 1,
+			"2": 2,
+			"3": 3,
+		}
+		for k, v := range hash {
+			println(k, v)
+		}
+		for k, v := range hash {
+			println(k, v)
+		}
+	}
+	{
+		// 删除未遍历的元素，不会被遍历到
+		fmt.Println("map 删除未遍历的元素")
+		hash := map[string]int{
+			"1": 1,
+			"2": 2,
+		}
+		for k := range hash {
+			fmt.Println(k)
+			if k == "1" {
+				delete(hash, "2")
+			} else {
+				delete(hash, "1")
+			}
+		}
+	}
+	{
+		// 边遍历变添加元素是否会被遍历到：不确定，取决于元素是否会添加到未被遍历过的桶之中
+		// https://segmentfault.com/q/1010000012242735
+		fmt.Println("map 边遍历变添加元素是否会被遍历到")
+		hash := map[string]int{
+			"1": 1,
+			"2": 2,
+			"3": 3,
+			"4": 4,
+		}
+		for k := range hash {
+			fmt.Println(k)
+			for i := 4; i < 1000; i++ {
+				hash[strconv.Itoa(i)] = i
+			}
+		}
+		fmt.Println("len(hash) = ", len(hash))
+	}
+}
+```
+
+map 遍历编译后生成类似于如下代码
+
+```go
+ha := a
+hit := hiter(n.Type)
+th := hit.Type
+mapiterinit(typename(t), ha, &hit)
+for ; hit.key != nil; mapiternext(&hit) {
+    key := *hit.key
+    val := *hit.val
+}
+```
+
+string 遍历编译后生成类似于如下代码
+
+```go
+ha := s
+for hv1 := 0; hv1 < len(ha); {
+    hv1t := hv1
+    hv2 := rune(ha[hv1])
+    if hv2 < utf8.RuneSelf {
+        hv1++
+    } else {
+        hv2, hv1 = decoderune(ha, hv1)
+    }
+    v1, v2 = hv1t, hv2
+}
+```
+
+channel 遍历编译后生成类似于如下代码
+
+```go
+ha := a
+hv1, hb := <-ha
+for ; hb != false; hv1, hb = <-ha {
+    v1 := hv1
+    hv1 = nil
+    ...
+}
+```
+
 ## 七、并发
 
 ### 1、Go 协程
