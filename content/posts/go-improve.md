@@ -1620,6 +1620,285 @@ for ; hb != false; hv1, hb = <-ha {
 }
 ```
 
+### 2、select
+
+建议先阅读 [七、并发章节](#七-并发)
+
+select 功能
+
+* select 能在 Channel 上进行非阻塞的收发操作（利用 `default` 子句）
+    * 非阻塞在 go 的实现上经历了一系列演变，参考[非阻塞收发](https://draveness.me/golang/docs/part2-foundation/ch05-keyword/golang-select/#%E9%9D%9E%E9%98%BB%E5%A1%9E%E7%9A%84%E6%94%B6%E5%8F%91)，（搜索：`以下是与非阻塞收发的相关提交`）
+* select 在遇到多个 Channel 同时响应时会随机挑选 case 执行
+
+数据结构
+
+select 在 Go 语言的源代码中不存在对应的结构体，case 的结构体为 [runtime.scase](https://draveness.me/golang/tree/runtime.scase)
+
+```go
+type scase struct {
+	c           *hchan  // 用来存储channel
+	elem        unsafe.Pointer  // 接收或者发送数据的变量地址
+    kind        uint16  //  case 类型，可选值如下
+    // const (
+    //     caseNil = iota
+    //     caseRecv
+    //     caseSend
+    //     caseDefault
+    // )
+	pc          uintptr
+	releasetime int64
+}
+```
+
+针对不同select语句块编译器有不同的处理
+
+* select 不存在任何的 case 及 `select {}` 直接转换为 `runtime.block` 阻塞语句，导致 Goroutine 进入无法被唤醒的永久休眠状态。
+* select 只存在一个 case，将转换为类似于 `v, ok := <-ch` 形式
+* select 存在两个 case，其中一个 case 是 default；则认为试一次非阻塞操作，将调用 [`cmd/compile/internal/gc.walkselectcases`](https://draveness.me/golang/tree/cmd/compile/internal/gc.walkselectcases) 进行处理
+* select 存在多个 case；将进入默认流程
+    * 将所有的 case 转换成包含 Channel 以及类型等信息的 runtime.scase 结构体；
+    * 调用运行时函数 `runtime.selectgo` 从多个准备就绪的 Channel 中选择一个可执行的 runtime.scase 结构体；该函数是核心，参见 [博客](https://draveness.me/golang/docs/part2-foundation/ch05-keyword/golang-select/#%E5%B8%B8%E8%A7%81%E6%B5%81%E7%A8%8B)
+    * 通过 for 循环生成一组 if 语句，在语句中判断自己是不是被选中的 case
+
+### 3、defer
+
+defer 的最常见场景就是在函数调用结束后完成一些收尾工作，比如：回滚数据库事务、关闭文件描述符、关闭数据库连接以及解锁资源
+
+defer 现象
+
+* defer 的执行顺序是先入后出的栈的顺序，在函数退出之前执行
+* defer 会对函数中引用的外部参数进行拷贝，解决方式是使用闭包（匿名函数包装一层）
+
+例子
+
+```go
+func deferInFor() {
+	// defer 执行顺序为栈的顺序
+	// 不建议在 for 中使用，因为性能较弱
+	for i := 0; i < 5; i++ {
+		defer fmt.Println(i)
+	}
+	// 输出 43210
+}
+
+func deferSeq() {
+	{
+		defer fmt.Println("defer runs")
+		fmt.Println("block ends")
+	}
+
+	fmt.Println("main ends")
+	// 输出
+	// block ends
+	// main ends
+	// defer runs
+}
+
+func deferParamPrecompute() {
+	startedAt := time.Now()
+	defer fmt.Println(time.Since(startedAt))
+	// 输出远远小于1秒，说明defer 函数的参数已经被拷贝了
+	time.Sleep(time.Second)
+}
+
+func deferParamPrecompute2() {
+	startedAt := time.Now()
+	defer func() { fmt.Println(time.Since(startedAt)) }()
+	// 输出1秒左右
+	time.Sleep(time.Second)
+}
+```
+
+[defer 原理](https://draveness.me/golang/docs/part2-foundation/ch05-keyword/golang-defer/)
+
+defer 的使用 会创建一个结构体，该结构体的分配如下
+
+* 堆上分配 1.1 ~ 1.12
+    * 编译期将 defer 关键字被转换 runtime.deferproc 并在调用 defer 关键字的函数返回之前插入 runtime.deferreturn；
+    * 运行时调用 runtime.deferproc 会将一个新的 runtime._defer 结构体追加到当前 Goroutine 的链表头；
+    * 运行时调用 runtime.deferreturn 会从 Goroutine 的链表中取出 runtime._defer 结构并依次执行；
+* 栈上分配 1.13
+    * 当该关键字在函数体中最多执行一次时，编译期间的 cmd/compile/internal/gc.state.call 会将结构体分配到栈上并调用 runtime.deferprocStack；
+* 开放编码 1.14 ~ 现在
+    * 编译期间判断 defer 关键字、return 语句的个数确定是否开启开放编码优化；
+    * 通过 deferBits 和 cmd/compile/internal/gc.openDeferInfo 存储 defer 关键字的相关信息；
+    * 如果 defer 关键字的执行可以在编译期间确定，会在函数返回前直接插入相应的代码，否则会由运行时的 runtime.deferreturn 处理；
+
+性能
+
+* 堆上分配，性能最差，在新版go运行时中基本不会使用
+* 栈上分配，性能相较堆上分配，性能提升 30% 左右
+* 开发编码，性能极大提升，成本几乎可以忽略不计
+
+开发编码触发条件
+
+* 函数的 defer 数量少于或者等于 8 个；
+* 函数的 defer 关键字不能在循环中执行；
+* 函数的 return 语句与 defer 语句的乘积小于或者等于 15 个。
+
+### 4、panic 和 recover
+
+现象
+
+* panic 只会触发当前 Goroutine 的延迟函数调用；
+    * panic 会触发 defer 函数调用
+    * 如果某个协程 panic，在主协程是无法捕捉到这个 panic 的，会导致整个协程退出
+    * 要求每个协程都要有自己的捕捉 panic 的代码
+* recover 只有在 defer 函数中调用才会生效；
+* panic 允许在 defer 中嵌套多次调用；
+
+现象例子
+
+```go
+package keyword
+
+import (
+	"fmt"
+	"time"
+)
+
+func GoroutineWithPanic() {
+	defer println("main goroutine")
+	go func() {
+		defer println("in sub goroutine")
+		panic("")
+	}()
+	time.Sleep(1 * time.Second)
+
+	// 只会输出 in sub goroutine
+	// main 协程直接退出
+}
+
+func RecoverNotInDefer() {
+	defer fmt.Println("main goroutine")
+	if err := recover(); err != nil {
+		fmt.Println(err)
+	}
+	panic("unknown err")
+	// 只会输出 main goroutine
+}
+
+func PanicNested() {
+	defer fmt.Println("in main")
+	defer func() {
+		defer func() {
+			panic("panic again and again")
+		}()
+		panic("panic again")
+	}()
+
+	panic("panic once")
+// in main
+// --- FAIL: TestPanicNested (0.00s)
+// panic: panic once
+// 	panic: panic again
+// 	panic: panic again and again [recovered]
+// 	panic: panic again and again
+}
+```
+
+panic 数据结构 [runtime._panic](https://draveness.me/golang/tree/runtime._panic)
+
+```go
+type _panic struct {
+	argp      unsafe.Pointer  // 是指向 defer 调用时参数的指针；
+	arg       interface{}  // 是调用 panic 时传入的参数；
+	link      *_panic  // 指向了更早调用的 runtime._panic 结构；
+	recovered bool  // 表示当前 runtime._panic 是否被 recover 恢复；
+	aborted   bool  // 表示当前的 panic 是否被强行终止；
+
+	pc        uintptr
+	sp        unsafe.Pointer
+	goexit    bool
+}
+```
+
+panic 函数是如何终止程序的。编译器会将关键字 panic 转换成 `runtime.gopanic`，该函数的执行过程包含以下几个步骤：
+
+* 创建新的 `runtime._panic` 结构并添加到所在 Goroutine _panic 链表的最前面；
+* 在循环中不断从当前 Goroutine 的 _defer 中链表获取 `runtime._defer` 并调用 `runtime.reflectcall` 运行延迟调用函数；
+* 调用 `runtime.fatalpanic` 中止整个程序；
+
+需要注意的是，我们在上述函数中省略了三部分比较重要的代码：
+
+* 恢复程序的 recover 分支中的代码；
+* 通过内联优化 defer 调用性能的代码4；[runtime: make defers low-cost through inline code and extra funcdata](https://github.com/golang/go/commit/be64a19d99918c843f8555aad580221207ea35bc)
+* 修复 [`runtime.Goexit`](https://draveness.me/golang/tree/runtime.Goexit) 异常情况的代码；[runtime: ensure that Goexit cannot be aborted by a recursive panic/recover](https://github.com/golang/go/commit/7dcd343ed641d3b70c09153d3b041ca3fe83b25e)
+
+崩溃恢复现象
+
+* 返回参数
+    * 如果使用命名返回，则返回设定值
+    * 否则返回零值
+* recover 只能在 defer 一层函数中调用，否则不生效
+
+```go
+func PanicRecoverWithNameReturn() (a int32) {
+	a = 1
+	defer func() {
+		recover()
+	}()
+	panic("")
+}
+
+func PanicRecoverWithReturn() (int32, string, *string) {
+	defer func() {
+		recover()
+	}()
+	s := "123"
+	if true {
+		panic("")
+	}
+	return 1, "123", &s
+}
+
+func RecoverExperiment() {
+	a := PanicRecoverWithNameReturn()
+	// 返回 1
+	fmt.Println("return PanicRecoverWithNameReturn() = ", a)
+	b1, b2, b3 := PanicRecoverWithReturn()
+	// 返回 0, "", nil
+	fmt.Println("return PanicRecoverWithReturn() = ", b1, b2, b3)
+}
+```
+
+defer 原理
+
+* 编译器会将关键字 recover 转换成 [`runtime.gorecover`](https://draveness.me/golang/tree/runtime.gorecover)
+* 如果当前 Goroutine 没有调用 panic，那么该函数会直接返回 nil
+* 如果存在 panic，它会修改 `runtime._panic` 结构体的 `recovered` 字段，[`runtime.gorecover`](https://draveness.me/golang/tree/runtime.gorecover) 函数本身不包含恢复程序的逻辑，程序的恢复也是由 [`runtime.gopanic`](https://draveness.me/golang/tree/runtime.gopanic)
+
+总结程序崩溃和恢复的过程：
+
+* 编译器会负责做转换关键字的工作；
+    * 将 panic 和 recover 分别转换成 runtime.gopanic 和 runtime.gorecover；
+    * 将 defer 转换成 deferproc 函数；
+    * 在调用 defer 的函数末尾调用 deferreturn 函数；
+* 在运行过程中遇到 gopanic 方法时，会从 Goroutine 的链表依次取出 _defer 结构体并执行；
+* 如果调用延迟执行函数时遇到了 gorecover 就会将 _panic.recovered 标记成 true 并返回 panic 的参数；
+    * 在这次调用结束之后，gopanic 会从 _defer 结构体中取出程序计数器 pc 和栈指针 sp 并调用 recovery 函数进行恢复程序；
+    * recovery 会根据传入的 pc 和 sp 跳转回 deferproc；
+    * 编译器自动生成的代码会发现 deferproc 的返回值不为 0，这时会跳回 deferreturn 并恢复到正常的执行流程；
+* 如果没有遇到 gorecover 就会依次遍历所有的 _defer 结构，并在最后调用 fatalpanic 中止程序、打印 panic 的参数并返回错误码 2；
+
+### 5、make 和 new
+
+当我们想要在 Go 语言中初始化一个结构时，可能会用到两个不同的关键字 — make 和 new。
+
+* make 的作用是初始化内置的数据结构，也就是切片、哈希表和 Channel；
+* new 的作用是根据传入的类型分配一片内存空间并返回指向这片内存空间的**指针**；
+
+以下两者等价
+
+```go
+i := new(int)
+
+var v int
+i := &v
+```
+
+其他参见：[博客](https://draveness.me/golang/docs/part2-foundation/ch05-keyword/golang-make-and-new/)
+
 ## 七、并发
 
 ### 1、Go 协程
@@ -1690,6 +1969,8 @@ channel 是 Go 提供的语言级协程通讯方式，是 Go 推荐的多协程�
     * 多路复用 `select`
     * 利用 `select` + `time.Timer` 实现写超时
     * 利用 `select` + `default` 实现非阻塞写
+
+注意：读写 `nil channel` 将永远阻塞
 
 #### （3）单向通道与双向通道
 
@@ -2147,6 +2428,12 @@ TODO
 
 ## 十、Go 标准库
 
+### 1、Socket和IO
+
+https://tiancaiamao.gitbooks.io/go-internals/content/zh/08.1.html
+
+### 2、HTTP
+
 http
 
 注意事项
@@ -2158,3 +2445,13 @@ http
     }
     defer resp.Body.Close()
 ```
+
+### 3、JSON
+
+### 4、SQL
+
+## 十一、项目结构
+
+### 1、开源项目项目结构
+
+### 2、企业级后端项目结构
