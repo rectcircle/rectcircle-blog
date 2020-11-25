@@ -2338,6 +2338,31 @@ func Atomic(){
         * 手动调用 Cancel：返回 `context canceled`
     * `Value(key interface{}) interface{}` 当前 Context 或 祖宗 Context 上绑定的值
 
+### 5、协程调度器
+
+Go 协程与线程是一对多的关系，目前
+
+* Go 会启动和 CPU 数目一致的线程
+* 每个协程固定属于一个线程，每个线程有多个协程，每个线程有一个处理器，持有线程和协程（即 G-M-P 模型）
+    * G 协程
+    * M 线程
+    * P 处理器 调度器的内部实现
+* 目前 Go 协程支持一定程度的[抢占调度](https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-goroutine/#%E6%8A%A2%E5%8D%A0%E5%BC%8F%E8%B0%83%E5%BA%A6%E5%99%A8)
+    * `v1.2 ~ v1.13`，原理是通过在函数调用前插入检查和切换代码（基于协作的抢占式调度），如果没有函数调用可能发生无法进行抢占切换。
+    * `v1.14` 及之后，通过在 G 结构体中添加一系列变量并注册了信号量，在触发垃圾回收时，触发信号量进行检查和调度（基于信号的抢占式调度）
+    * 未来，[参考](https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-goroutine/#%E9%9D%9E%E5%9D%87%E5%8C%80%E5%86%85%E5%AD%98%E8%AE%BF%E9%97%AE%E8%B0%83%E5%BA%A6%E5%99%A8)
+* 调度时间点
+    * 主动挂起 — runtime.gopark -> runtime.park_m
+    * 系统调用 — runtime.exitsyscall -> runtime.exitsyscall0
+    * 协作式调度 — runtime.Gosched -> runtime.gosched_m -> runtime.goschedImpl
+    * 系统监控 — runtime.sysmon -> runtime.retake -> runtime.preemptone
+
+更多[参见](https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-goroutine/)
+
+### 6、异步IO
+
+### 7、系统监控
+
 ## 八、内存管理
 
 > [可视化Go内存管理](https://tonybai.com/2020/03/10/visualizing-memory-management-in-golang/)
