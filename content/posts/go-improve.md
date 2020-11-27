@@ -2343,7 +2343,7 @@ func Atomic(){
 Go 协程与线程是一对多的关系，目前
 
 * Go 会启动和 CPU 数目一致的线程
-* 每个协程固定属于一个线程，每个线程有多个协程，每个线程有一个处理器，持有线程和协程（即 G-M-P 模型）
+* 每个协程固定属于一个线程，每个线程有多个协程，每个线程有一个处理器，持有线程和协程（即 G-M-P 模型 GMP）
     * G 协程
     * M 线程
     * P 处理器 调度器的内部实现
@@ -2359,9 +2359,22 @@ Go 协程与线程是一对多的关系，目前
 
 更多[参见](https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-goroutine/)
 
-### 6、异步IO
+### 6、IO
+
+* go 封装了非阻塞 IO + 多路复用器（epoll）实现IO操作实现，被封装到 `runtime.netpoll` 下（包括文件 I/O、网络 I/O 和计时器）
 
 ### 7、系统监控
+
+* Go 存在一个 sysmon 系统监控 死循环运行在后台，独占一个系统线程（也就是说 一个 Golang 程序最少启动两个操作系统线程，一个 sysmon 线程 ，一个用户代码线程）
+* sysmon 可能会启动更多的线程，用户配置的 `GOMAXPROCS` 只是 GMP 的数目，sysmon 有可能会启动更多的线程
+* sysmon 的功能
+    * checkdead ?
+    * 运行计时器 — 获取下一个需要被触发的计时器；（可能启动新的线程）
+    * 轮询网络 — 获取需要处理的到期文件描述符；
+    * 抢占处理器 — 抢占运行时间较长的或者处于系统调用的 Goroutine；
+    * 垃圾回收 — 在满足条件时触发垃圾收集回收内存；
+
+参见 [博客](https://draveness.me/golang/docs/part3-runtime/ch06-concurrency/golang-sysmon/)
 
 ## 八、内存管理
 
