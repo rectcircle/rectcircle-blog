@@ -2462,9 +2462,296 @@ TODO
 
 其他TODO
 
-## 九、元编程
+## 九、Docs、编译、devops和常见命令
+
+### 0、路径搜索
+
+* 导入路径 (packages)
+* 包名
+
+### 1、常见命令
+
+> [官方文档](https://golang.org/cmd/go/)
+> [极客](https://wiki.jikexueyuan.com/project/go-command-tutorial/0.1.html)
+
+包含在 `go` 的子命令中，格式一般为
+
+```bash
+go subcommand [arg]
+```
+
+go 命令路径
+
+* go 命令的相对路径 如 `go build github.com/rectcircle/go-improve` 是相对于 `GOPATH` 和 `GOROOT`，不是常规的 `pwd`
+* go 命令的绝对路径 如 `go build ./basic` 相当于 `$(pwd)/./basic`
+* 路径可以是一个 go 文件，也可以是一个 go package（目录）
+* 对整个项目实施命令 `./...`
+
+module-aware mode 指 go mod 模式，在 module-aware mode 启用和禁用时 go 的命令的行为会有不同。
+
+module-aware mode 开启的情况如下
+
+|                           | 当前目录或祖宗目录包含 go.mod | 当前目录或祖宗目录**不**包含 go.mod |
+| ------------------------- | ----------------------------- | ----------------------------------- |
+| GO111MODULE= "" 或 "auto" | ✅                             | ❌                                   |
+| GO111MODULE= "off"        | ❌                             | ❌                                   |
+| GO111MODULE= "on"         | ✅                             | ✅                                   |
+
+#### go env
+
+* 查看 Go 环境变量 `go env`
+* 设置 Go 环境变量 `go env -w name=value`
+
+#### go run
+
+运行一个main包的main函数
+
+#### go test
+
+基本用法
+
+```bash
+go test 路径
+```
+
+常用参数
+
+* `-v` 输出测试细节，包括测试手动打的日志等
+* `-timeout 30s` 超时时间
+* `-run ^Test_parseArgs$` 指定运行的测试函数名的正则表达式
+* `-bench regexp` 通过正则表达式执行基准测试，默认不执行基准测试。可以使用 `-bench .` 或 `-bench=.` 执行所有基准测试。
+* `-benchtime t` 每个基准测试迭代的时间默认 `1s
+* `-count n` 运行每个测试和基准测试的次数（默认 1），如果 -cpu 指定了，则每个 GOMAXPROCS 值执行 n 次
+* `-cover` 开启覆盖分析，开启覆盖分析可能会在编译或测试失败时，代码行数不对。
+* `-covermode set,count,atomic` 覆盖分析的模式，默认是 set，如果设置 -race，将会变为 atomic
+    * set，bool，这个语句运行吗？
+    * count，int，该语句运行多少次？
+    * atomic，int，数量，在多线程正确使用，但是耗资源的。
+* `-coverpkg pkg1,pkg2,pkg3` 指定分析哪个包，默认值只分析被测试的包，包为导入的路径。
+
+常见用法
+
+```bash
+# 运行当前目录下的全部包的全部单元测试
+go test ./...
+# 运行 $GOPATH 下的全部单元测试
+go test ...
+# This should run all tests with import path prefixed with foo/:
+go test foo/...
+# This should run all tests import path prefixed with foo
+go test foo...
+```
+
+#### go build install
+
+* `go build` 用于测试编译包，在项目目录下生成可执行文件（必须有main包）。
+* `go install` 主要用来生成库和工具
+    * 一是编译包文件（无main包），将编译后的包文件放到 pkg 目录下（$GOPATH/pkg）需满足：**项目目录必须在 GOPATH 下**。
+    * 二是编译生成可执行文件（有main包），将可执行文件放到 bin 目录（$GOPATH/bin）。
+
+go build 常见参数
+
+* `-o` 指定编译输出的路径及名称
+* `-i` 安装依赖包到 `$GOPATH/pkg`，默认不会
+* `-a` 强制重新构建，不使用缓存的 pkg 文件（强行对所有涉及到的代码包（包含标准库中的代码包）进行重新构建，即使它们已经是最新的了。）
+* `-v` 打印出那些被编译的代码包的名字。
+* `-n` 打印编译期间所用到的其它命令，但是并不真正执行它们。
+* `-p n` 指定编译过程中执行各任务的并行数量（确切地说应该是并发数量）。在默认情况下，该数量等于CPU的逻辑核数。
+* `-race` 开启竞态条件的检测。不过此标记目前仅在linux/amd64、freebsd/amd64、darwin/amd64和windows/amd64平台下受到支持。
+* `-work` 打印出编译时生成的临时工作目录的路径，并在编译结束时保留它。在默认情况下，编译结束时会删除该目录。
+* `-x` 打印编译期间所用到的其它命令。注意它与-n标记的区别。
+
+go build 常用用法
+
+```bash
+# 构建当前目录下的 main 包下的 main 函数，在当前目录(pwd)生成可执行文件，文件名为目录名，
+go build  # 等价于 go build ./
+# 构建某目录下的 main 包下的 main 函数，在当前目录(pwd)生成可执行文件，文件名为目录名
+go build dirpath #  package path
+# 构建某些源代码文件，在当前目录(pwd)生成可执行文件，文件名为包含main函数的源代码文件名
+# 主要用来构建一些小脚本文件
+# 限制：源代码文件必须包含一个 main 函数，必须是 main 包，所有main函数依赖的函数所在的文件必须手动写在命令里，所有文件必须在同一路径下
+go build filepath1 filepath2
+```
+
+go install 命令只比 go build 命令多做了一件事，即：安装编译后的结果文件（静态链接文件安装到 GOPATH 的 `pkg` 目录，**项目目录必须在 GOPATH 下**）到指定目录。
+
+参数和 go build 常见参数 类似
+
+```bash
+# 那么命令将试图编译当前目录所对应的代码包
+go install  # 等价于 go install ./
+# 强制重新编译，并输出编译的包内容
+go install -a -v -work
+```
+
+#### go get
+
+禁用 module-aware mode 模式（传统 Legacy GOPATH）
+
+帮助：`go help gopath-get`
+
+基本使用：`go get [-d] [-f] [-t] [-u] [-v] [-fix] [-insecure] [build flags] [packages]`
+
+使用效果：
+
+* 将源代码下载到 `$GOPATH/src`
+* 如果 `packages` 是 main 包，且包含 main 函数，将会 编译安装可执行文件到 `$GOPAHT/bin` 下，文件名为 `packages` 的目录名
+
+标志：
+
+* go get 特有标志
+    * `-d` 下载软件包后停止；也就是说，它指示不要安装软件
+    * `-u` 检查更新软件包。默认情况下，只会下载，不会更新
+    * `-f` ？？？
+    * `-fix` 让命令程序在下载代码包后先执行修正动作，而后再进行编译和安装。
+    * `-insecure` 允许命令程序使用非安全的scheme（如HTTP）去下载指定的代码包。如果你用的代码仓库（如公司内部的Gitlab）没有HTTPS支持，可以添加此标记。请在确定安全的情况下使用它。
+    * `-t` 让命令程序同时下载并安装指定的代码包中的测试源码文件中依赖的代码包。
+* 通用标志
+    * -`v` 启用详细进度和调试输出。
+
+启用 module-aware mode 模式（Go mod 模式），类似于上面，差别在于
+
+* 按照 Go Module 规则选择要下载的版本
+* 代码下载到 `$GOPATH/pkg/mod` 下
+
+#### go fmt vet fix
+
+检查与格式化系列命令
+
+格式化文档：`usage: go fmt [-n] [-x] [packages]`
+
+* `-n` 仅打印出内部要执行的go fmt的命令
+* `-x` 命令既打印出go fmt命令又执行它，如果需要更细化的配置，需要直接执行 gofmt 命令
+
+例子
+
+```bash
+# 格式化整个项目，并输出格式化了那些文件
+go fmt -x ./...
+```
+
+当 Go 版本升级后，API发生变更后，提示修复问题：`go fix [packages]` 对源代码进行更新
+
+代码静态检查：`go vet [-n] [-x] [-vettool prog] [build flags] [vet flags] [packages]`
+
+#### go clean
+
+remove object files and cached files
+
+#### go list
+
+列出软件包或模块，[参考](https://wiki.jikexueyuan.com/project/go-command-tutorial/0.8.html)
+
+* `go list -m all` 查看主模块和其依赖
+
+#### go mod
+
+* `go mod init` 创建 `go.mod` 文件到当前目录
+* `go mod tidy` 下载项目依赖的第三方库，同时会去掉不相关的库
+* `go mod graph` 打印依赖图
+* `go mod why` explain why packages or modules are needed
+* `go mod vendor` make vendored copy of dependencies
+
+#### go tool
+
+其他常用工具
+
+TODO
+
+#### 其他命令
+
+TODO
+
+golint
+
+### 2、条件编译
+
+### 3、交叉编译
+
+### 4、文档注释
+
+https://blog.golang.org/godoc
+
+https://github.com/fluhus/godoc-tricks
+
+### 5、特殊注释
+
+https://blog.jbowen.dev/2019/09/the-magic-of-go-comments/
+
+### 6、元编程之代码生成
+
+### 7、编写测试
+
+* 需要测试的文件为 `main.go`
+* 在源文件所在目录创建 `main_test.go` 文件
+
+#### （1）单元测试
+
+若要为 `func Add(a, b int) int` 创建单元测试，函数声明为 `func TestAdd(t *testing.T)`，`t.Errorf` 等方法可以报告失败
+
+```go
+package xxx
+
+import "testing"
+
+func TestAdd(t *testing.T) {
+	type args struct {
+		a int
+		b int
+	}
+	tests := []struct {
+		name string
+		args args
+		want int
+	}{
+		{
+			"case1",
+			args{
+				1,
+				1,
+			},
+			2,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := Add(tt.args.a, tt.args.b); got != tt.want {
+				t.Errorf("Add() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+```
+
+#### （2）基准测试
+
+若要为 `func Add(a, b int) int` 创建基准测试，函数声明为 `func BenchmarkAdd(b *testing.B)`
+
+```go
+func BenchmarkAdd(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		Add(1, i)
+	}
+}
+```
+
+输出
+
+```go
+pkg: github.com/rectcircle/go-improve/gocmd
+BenchmarkAdd
+BenchmarkAdd-4   	1000000000	         0.292 ns/op	       0 B/op	       0 allocs/op
+```
+
+* 表示循环了 1000000000 次（10亿）
+* 每次循环凭据花费 0.292 纳秒
+* allocs/op 表示每个操作发生了多少个不同的内存分配(单次迭代)。
+* B/op 是每个操作分配了多少字节
 
 ## 十、Go 标准库
+
+### 0、常用工具库
 
 ### 1、Socket和IO
 
@@ -2488,8 +2775,12 @@ http
 
 ### 4、SQL
 
+### 5、子进程 和 Terminal 编程
+
 ## 十一、项目结构
 
 ### 1、开源项目项目结构
+
+https://github.com/golang-standards/project-layout/blob/master/README_zh.md
 
 ### 2、企业级后端项目结构
