@@ -5,7 +5,7 @@ draft: false
 toc: true
 comments: true
 tags:
-  - 其他编程语言
+  - golang
 ---
 
 > [实验代码](https://github.com/rectcircle/go-improve)
@@ -120,6 +120,11 @@ go get -u -v golang.org/x/tools/cmd/goimports
 > 版本：>= 1.11
 
 Go Modules 是 Go1.11 版本引入的包管理技术。再此之前，Golang 官方没有提供包的版本管理，管理版本冲突的能力。在Go1.11引入，Go1.13稳定后，解决了此问题。
+
+之前存在的问题（不使用第三方工具和 vender）
+
+* 没有模块版本管理
+* 依赖关系无法声明，拉下来代码后需要手动 一个一个 go get
 
 ### 1、使用 Go Modules
 
@@ -2464,15 +2469,40 @@ TODO
 
 ## 九、Docs、编译、devops和常见命令
 
-### 0、路径搜索
+### 0、导入路径（import path）
 
-* 导入路径 (packages)
-* 包名
+> [官方文档](https://golang.org/cmd/go/#hdr-Import_path_syntax)
+
+在Go源码中 `import "xxx"` 中的 `xxx` 称为导入路径。
+
+* 导入路径核心功能
+    * 指示 go get 如何从网络上下载软件包
+    * 下载下来存放在 `$GOPATH/src` 中的什么位置
+* 导入路径语法
+    * 相对路径（不推荐），以 `./` 或 `../` 开头
+    * 远端导入路径 `host/path1/path2/path3...`
+        * `host/path1` 必须存在 `path1` 一般是 namespace 或者 org
+        * `path2` 是可选的一般是仓库名
+        * `path3` 是可选的仓库中的目录
+
+go get 如何从 远端导入路径 下载包大概流程（不考虑go module 模式）
+
+* 访问 `https://导入路径前缀`
+* 获取 `<meta name="go-import" content="import-prefix vcs repo-root"`，例如 `<meta name="go-import" content="gorm.io/gorm git https://github.com/go-gorm/gorm">`
+* 使用 vsc 去 repo-root 去拉代码，并保存在 `$GOPATH/src/导入路径前缀` 中
+
+实现 导入路径 和 git 路径不同
+
+* 参考 `https://gorm.io/gorm` 的 `<meta name="go-import" content="gorm.io/gorm git https://github.com/go-gorm/gorm">`
+
+go module 中的 goproxy
+
+* 参考 `go help goproxy`
 
 ### 1、常见命令
 
 > [官方文档](https://golang.org/cmd/go/)
-> [极客](https://wiki.jikexueyuan.com/project/go-command-tutorial/0.1.html)
+> [极客（版本较老）](https://wiki.jikexueyuan.com/project/go-command-tutorial/0.1.html)
 
 包含在 `go` 的子命令中，格式一般为
 
