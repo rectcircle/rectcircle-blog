@@ -2814,3 +2814,98 @@ http
 https://github.com/golang-standards/project-layout/blob/master/README_zh.md
 
 ### 2、企业级后端项目结构
+
+### 3、RESTful 项目结构
+
+> [RESTful 项目结构](https://github.com/bxcodec/go-clean-arch)
+
+暂时记录一下：[一站式解决方案（并未强调项目结构）](https://github.com/ribice/gorsk)
+
+[Robert C. Martin 的 The Clean Architecture](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html) 的一些规则
+
+* 独立于框架。该体系结构不依赖于某些功能丰富的软件库的存在。这使您可以将这些框架用作工具，而不必将系统塞入有限的约束中。
+* 可测试性。可以在不使用UI，数据库，Web服务器或任何其他外部元素的情况下测试业务规则。
+* 独立于UI。UI可以轻松更改，而无需更改系统的其余部分。例如，可以在不更改业务规则的情况下用控制台UI替换Web UI。
+* 独立于数据库。您可以将Oracle或SQL Server换成Mongo，BigTable，CouchDB或其他东西。您的业务规则未绑定到数据库。
+* 独立于任何外部机构。实际上，您的业务规则根本对外界一无所知。
+
+现阶段，代码结构划分，最终都只会落地到分文件和分目录上。其中目录是最重要的划分方式。而目录的划分是一维而非多维的。这就引出一个问题，代码目录结构是先分业务还是先分层
+
+比如一个简化的博客系统有 `user` 业务和 `article` 业务。分层 按照 controller、service、repository、model进行
+
+若 先业务再分层，则，结构可能是
+
+* `user`
+    * `controller`
+    * `service`
+    * `repository`
+    * `model`
+* `article`
+    * `controller`
+    * `service`
+    * `repository`
+    * `model`
+
+若 先分层再业务，则，结构可能是
+
+* `controller`
+    * `user`
+    * `article`
+* `service`
+    * `user`
+    * `article`
+* `repository`
+    * `user`
+    * `article`
+* `model`
+    * `user`
+    * `article`
+
+在目前流行的微服务体系来看 `先分实体再分层` 可能更适合微服务
+
+#### 代码目录划分推荐方案
+
+更好的方案可能是结合两者的优缺点，结合来进行分层
+
+* `domain` （`model`）
+    * `mocks`
+    * `user`
+    * `article`
+* `user`
+    * `delivery`（`controller`）
+        * `http`
+    * `usecase` （`service`）
+    * `repository`
+        * `mysql`
+* `article`
+    * `delivery`（`controller`）
+        * `http`
+    * `service`
+    * `repository`
+        * `mysql`
+
+说明
+
+* 层次
+    * `domain` 层：主要是传统的 `model`，除了包含传统的 `model` 信息外，还包含，`service` 和 `repository` 的接口声明，这样做的好处是，更加内聚，看这个一个文件即可理解业务的大部分内容
+        * `mocks` 针对接口的 mock
+    * `delivery` 层：就是传统的 `controller`，表示交付
+        * `http` 为 HTTP 交付所需要的组件包含 Router （Controller）和 中间件等
+    * `usecase` 层：就是传统的 `service`，表示用例，业务逻辑的核心
+    * `repository` 层：与数据库交互
+        * `mysql`  MySQL 的实现
+* `domain` 为先层次再按业务划分，原因是，其他层次都需要依赖该层
+* 其他都是，先业务再按分层，这样可以使逻辑更内聚，减少阅读代码时的反复跳转
+
+#### 如何进行组合
+
+为了实现各个模块各个层次的可测试性
+
+* 所有层次的代码都必须 声明接口，并在 struct 上实现，struct 的成员必须是 其依赖的 下一层次的 接口
+* 组合有两种方案
+    * 方式1：每个层次导出一个实例化全局单例对象，在 init 中进行初始化（比较推荐）
+        * 优点：main 函数比较简单
+        * 缺点：切换某实现，需要更改多个文件
+    * 方式2：所有的逻辑都在 main 函数入口中进行组合和构建，并提供一个 NewXxx 函数
+        * 优点：可以无感的替换实现（比如无感切换 SQL 数据库实现）
+        * 缺点：main 函数比较复杂
