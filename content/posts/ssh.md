@@ -185,7 +185,8 @@ scp username@host:远端路径 本地路径  # 远端路径相对路径为用户
 
 ### 4、端口转发
 
-https://www.cnblogs.com/keerya/p/7612715.html
+* [博客1](https://www.cnblogs.com/keerya/p/7612715.html)
+* [文章2](https://github.com/st286/SSH-port-forwarding)
 
 ```bash
 ssh -L localport:remotehost:remoteport sshserver -N  # 将远程端口映射到本地

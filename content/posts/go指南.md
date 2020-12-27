@@ -8,7 +8,7 @@ aliases:
   - /detail/139
   - /detail/139/
 tags:
-  - 其他编程语言
+  - golang
 ---
 
 > 参考
@@ -405,7 +405,7 @@ for i, j := 0, len(a)-1; i < j; i, j = i+1, j-1 {
 
 #### （2）if条件
 
-* 具有C语言全功能的 `if - else if - else` 功能‘
+* 具有C语言全功能的 `if - else if - else` 功能
 * 支持初始化语句（类似于for的init部分）
 
 **例子**

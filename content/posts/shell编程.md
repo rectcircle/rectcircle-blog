@@ -803,3 +803,28 @@ echo $filenameNoExt # file
 DIR=$(dirname $(readlink -f "$0"))
 echo $DIR
 ```
+
+## 八、zsh
+
+### 1、自动完成脚本
+
+* [blog](https://askql.wordpress.com/2011/01/11/zsh-writing-own-completion/)
+* [Q&A](https://stackoverflow.com/questions/26121022/writing-own-oh-my-zsh-plugin)
+
+创建一个目录，用于存放提示脚本 `~/.zsh.d`
+
+将脚本加入到 `rpath` 环境变量 `vim ~/.zshrc`（注意如果安装了 `oh my zsh`，请将其**写入在文件的开头**）
+
+```bash
+fpath=(~/.zsh.d/ $fpath)
+```
+
+编写脚本，文件名命名必须以 `_` 开头，比如 `_hello`
+
+```bash
+#compdef hello
+
+_arguments "1: :(World)"
+```
+
+更多参见： [blog](https://askql.wordpress.com/2011/01/11/zsh-writing-own-completion/)

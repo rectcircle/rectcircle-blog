@@ -2831,7 +2831,7 @@ https://github.com/golang-standards/project-layout/blob/master/README_zh.md
 
 现阶段，代码结构划分，最终都只会落地到分文件和分目录上。其中目录是最重要的划分方式。而目录的划分是一维而非多维的。这就引出一个问题，代码目录结构是先分业务还是先分层
 
-比如一个简化的博客系统有 `user` 业务和 `article` 业务。分层 按照 controller、service、repository、model进行
+例子一个简化的博客系统有 `user` 业务和 `article` 业务。分层 按照 controller、service、repository、model进行
 
 若 先业务再分层，则，结构可能是
 

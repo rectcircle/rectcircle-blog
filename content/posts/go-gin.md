@@ -6,6 +6,7 @@ toc: true
 comments: true
 tags:
   - web
+  - golang
 ---
 
 ## 快速开始
