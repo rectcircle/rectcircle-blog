@@ -51,7 +51,8 @@ curl https://sh.rustup.rs -sSf | sh
 
 开发环境安装
 
-https://marketplace.visualstudio.com/items?itemName=rust-lang.rust
+* [旧版不需要安装](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust)
+* [推荐安装](https://marketplace.visualstudio.com/items?itemName=matklad.rust-analyzer)
 
 调试器安装
 
@@ -529,7 +530,7 @@ fn main() {
 
 #### （10）其他标准库常见类型
 
-参见 
+参见
 
 * [四、所有权系统 - 8、切片类型](#8-切片类型)
 * [八、常见的集合](#八-常见的集合)
@@ -2027,7 +2028,7 @@ if let Some(3) = some_u8_value {
 * match 目前特别支持的语法（未来在 `if let` 和 `while let` 可能稳定）
     * 守卫语法 `match Option::Some(1) { Some(x) if x > 0 => -x, _ => 0, };`
     * 范围匹配（稳定仅支持 `..=`）`match 1 { 0..=10 => true, _ => false };`
-    * 变量绑定 `match 1 { x @ 0..=10 | x @ 100..=200 => true, _ => false };` 
+    * 变量绑定 `match 1 { x @ 0..=10 | x @ 100..=200 => true, _ => false };`
 
 示例
 
