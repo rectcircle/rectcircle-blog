@@ -206,3 +206,27 @@ ssh 协议
 #### gitlab
 
 与 github 类似
+
+## 三、git commit lint
+
+```
+<type>(<scope>): <subject>
+<BLANK LINE>
+<body>
+<BLANK LINE>
+<footer>
+```
+
+* Type
+    * feat (feature)
+    * fix (bug fix)
+    * docs (documentation)
+    * style (formatting, missing semi colons, …)
+    * refactor (重构)
+    * test (when adding missing tests)
+    * chore (琐事)
+    * perf (性能)
+    * build (build script, like gradle file)
+    * revert (回滚代码)
+* Scope 使用 Model 名
+* Subject 简要说明

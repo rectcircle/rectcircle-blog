@@ -10,6 +10,10 @@ tags:
 
 ### V2ray
 
+### Mac 安装
+
+`brew install v2ray`
+
 ### 参考链接
 
 * [v2ray通俗易懂的介绍](https://toutyrater.github.io/)

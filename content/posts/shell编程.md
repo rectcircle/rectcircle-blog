@@ -806,6 +806,10 @@ echo $DIR
 
 ## 八、zsh
 
+### 0、安装配置参见
+
+https://segmentfault.com/a/1190000022813972
+
 ### 1、自动完成脚本
 
 * [blog](https://askql.wordpress.com/2011/01/11/zsh-writing-own-completion/)

@@ -581,3 +581,4 @@ spring-boot-starter-logging 默认使用 `Logback` 作为日志后端，使用 `
 
 * 在 classpath 下 创建 `logback.xml` 或者 `logback-spring.xml`
 * `logback-spring.xml` 参加 [SpringBoot特性文档](https://docs.spring.io/spring-boot/docs/current/reference/html/spring-boot-features.html#boot-features-logback-extensions)
+* [引用 Spring boot 配置文件变量](https://www.cnblogs.com/jianliang-Wu/p/8945343.html)
