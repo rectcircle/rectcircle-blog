@@ -60,7 +60,7 @@ PWA 必须基于 HTTPS 协议，否则无法安装
 HTML 页面中 包含一个 `<link rel="manifest" ...>` 标签时（例如 `<link rel="manifest" href="js13kpwa.webmanifest">`）。
 
 * 方式 1：地址栏将出现一个 `⊕` 符号，点击安装即可
-* 方式 2：在菜单栏中，会出现 安装 xxx app 的字样 的字样
+* 方式 2：在 溢出菜单 中，会出现 安装 xxx app 的字样 的字样
 
 安装完成后，页面将以 独立 窗口打开
 
@@ -123,4 +123,4 @@ window.open('https://m.weibo.cn/','system', 'directories=0');
 ```html
 <!-- 不能有第三个参数 -->
 <a href="https://m.weibo.cn/" target="bd" onclick="window.open('','bd');" >浏览器窗口打开</a>
-````
+```
