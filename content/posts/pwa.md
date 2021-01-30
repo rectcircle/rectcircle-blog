@@ -16,7 +16,7 @@ PWA 的出现可以解决 传统 Web APP 的如下核心问题
 
 * 传统 Web APP 在标准上不支持独立的图标和窗口和 Native APP 比算是二等公民，PWA 在标准上提供了 独立的图标 和 窗口，在表现上和 Native APP 几乎相同
 * 传统 Web APP 必须在有网络的环境才能使用，PWA 提供了一套完善的资源缓存机制，可以实现无网络使用
-* 传统 Web APP 只有在用户打开页面的情况才能执行业务代码，PWA 可以在后台一致运行一个生命周期更长的 线程，称为 service worker，以实现推送等能力
+* 传统 Web APP 只有在用户打开页面的情况才能执行业务代码，PWA 可以在后台一致运行一个生命周期更长的 线程，称为 worker service，以实现推送等能力
 
 称为 渐进式 的原因有几点
 
@@ -26,10 +26,10 @@ PWA 的出现可以解决 传统 Web APP 的如下核心问题
 假设你有了一个现成的 Web App，将其转换为 PWA 开发步骤一般如下
 
 * 提供一个描述文件，描述 APP 的图标标题等内容，使该 APP 可以安装到系统中，并以独立的窗口运行（完成这一步的 Web App 就是一个 PWA 了），其他的行为和 Web App 几乎一样
-* 现有 业务 JS 中，注册 service worker 代码文件
-* 在 service worker 线程中实现很多特殊功能，其可以实现的能力如下
+* 现有 业务 JS 中，注册 worker service 代码文件
+* 在 worker service 线程中实现很多特殊功能，利用如下能力，优化体验
     * 提供缓存 API，DB 等 API，将数据资源存储在本地
-    * service worker 可以拦截该网站的所有网络请求，并直接返回本地中的资源以实现无网络运行
+    * worker service 可以拦截该网站的所有网络请求，并直接返回本地中的资源以实现无网络运行
     * 提供和 业务 JS 通信双向通信的 API
     * 窗口关闭后，该线程仍然存在，可以实现后台消息推送能力
 
@@ -38,13 +38,13 @@ PWA 的出现可以解决 传统 Web APP 的如下核心问题
 主要就两个内容
 
 * [Manifest](https://developer.mozilla.org/en-US/docs/Web/Manifest)
-* [Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API)
+* [worker service API](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API)
 
 ## 相关资源
 
 * MDN 文档 [中文](https://developer.mozilla.org/zh-CN/docs/Web/Progressive_web_apps) | [英文](https://developer.mozilla.org/en-US/docs/Web/Progressive_web_apps) 中文可能有所滞后，但概念还是挺清晰的
     * [Manifest](https://developer.mozilla.org/en-US/docs/Web/Manifest)
-    * [Service Worker API](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API)
+    * [worker service API](https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API)
 * [很棒的一个教程](https://pwa.alienzhou.com/)
 
 ## 特别提醒
@@ -57,7 +57,7 @@ PWA 必须基于 HTTPS 协议，否则无法安装
 
 > [微博 Lite](https://m.weibo.cn/) 实现了 PWA，可以前往体验
 
-HTML 页面中 包含一个 `link rel="manifest" ...>` 标签时（例如 `<link rel="manifest" href="js13kpwa.webmanifest">`）。
+HTML 页面中 包含一个 `<link rel="manifest" ...>` 标签时（例如 `<link rel="manifest" href="js13kpwa.webmanifest">`）。
 
 * 方式 1：地址栏将出现一个 `⊕` 符号，点击安装即可
 * 方式 2：在菜单栏中，会出现 安装 xxx app 的字样 的字样
@@ -98,7 +98,7 @@ HTML 页面中 包含一个 `link rel="manifest" ...>` 标签时（例如 `<link
 
 #### PWA 窗口 调转到 其他 PWA App 的内部链接
 
-PWA 窗口 跳转到外部链接（非新窗口/新页面），行为一致
+* 和 PWA 窗口 跳转到外部链接（非新窗口/新页面），行为一致
 
 #### PWA 窗口 实现打开新的本 PWA 窗口
 
