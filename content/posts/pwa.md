@@ -10,6 +10,8 @@ tags:
 
 ## 简介
 
+> [InfoQ 文章](https://www.infoq.cn/article/js2oc7ugfjdjdgjldars)
+
 PWA 全称 Progressive Web App， 即渐进式 Web 应用
 
 PWA 的出现可以解决 传统 Web APP 的如下核心问题
