@@ -2208,6 +2208,24 @@ func SyncOnce() {
 }
 ```
 
+注意：不要在在 `Once.Do(func)` 的 func 中对 Once 进行赋值
+
+```go
+package main
+
+import (
+	"sync"
+)
+
+var once sync.Once
+
+func main() {
+    once.Do(func() {
+        once = sync.Once{}
+    })
+}
+```
+
 #### （3）`sync.WaitGroup`
 
 WaitGroup 用于等待一组 goroutine 结束，核心 API
