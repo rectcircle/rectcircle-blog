@@ -1,7 +1,7 @@
 ---
 title: "云化 JetBrains 系列 IDE"
 date: 2021-01-31T22:17:54+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
