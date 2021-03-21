@@ -24,6 +24,8 @@ RFC 概念最早在 互联网 标准指定领域出现。在互联网技术标�
 
 较新的开源项目，会考虑使用 Github + RFC + IM/论坛 机制来实现 Feature 管理。比如 Rust、React。
 
+关于 Github 和 mail list 参见：[博客](https://begriffs.com/posts/2018-06-05-mailing-list-vs-github.html)
+
 ## RFC 内容
 
 参考：[Rust RFC 项目管理调研 / 模板](/series/software-project-management/rust-rfc/#rust-rfc-模板)
