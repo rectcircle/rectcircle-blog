@@ -11,6 +11,9 @@ tags:
   - linux
 ---
 
+* 本文执行引擎为 Bash（不同实现的 Shell 可能存在差异）
+* [脚本说明](https://explainshell.com/)
+
 ## 一、Shell编程基础
 
 ### 1、简介
@@ -38,9 +41,7 @@ echo -e "\e[1;31mHello Shell\e[0m"
 
 ### 4、bash基本功能
 
-#### （1）命令别名和快捷键
-
-##### 别名
+#### 别名
 
 ```bash
 alias	//查看系统
@@ -51,7 +52,7 @@ unalias 别名 //删除别名
 
 ```
 
-##### 命令生效的优先级
+#### 命令生效的优先级
 
 ```bash
 绝对定位或相对定位(../ ./)执行的命令
@@ -63,7 +64,7 @@ bash内置命令如cd
 $PATH顺序查找的第一个
 ```
 
-##### 快捷键
+#### 快捷键
 
 ```
 ctrl + c强制退出
@@ -108,7 +109,7 @@ tab tab
 命令 >> 文件 //追加，只能输出正确输出
 命令 2>>文件 //输出错误输出
 
-命令 >> 文件 2>&1	//正确错误输出到同一文件
+命令 >> 文件 2>&1	//正确错误输出到同一文件，重定向
 命令 &>> 文件 //正确错误输出到同一文件
 命令 >> 文件1 2>>文件2  //正确错误输出不同文件
 ```
@@ -126,15 +127,7 @@ wc < 文件
 
 ### 8、管道符
 
-#### （1）多命令执行顺序
-
 ```bash
-; //顺序不管前后是否出错
-命令1&&命令2 //两者同时执行或同时不执行
-命令1||命令2	//前者不正确，后者才执行；前者执行，后者不执行
-	例子
-		命令1 && 命令2 || 命令3 //相当于 ?:
-
 命令1 | 命令2 //命令1的正确输出作为命令2的操作对象
 	例子：ls -l / | more //分页显示ls结果
 		netstat -an | grep ESTABLISHED | wc -l //统计有多少用户远程连接
@@ -164,16 +157,91 @@ $str 调用变量
 \str 转移符
 ```
 
+### 11、shell 和 C 系列通用编程语言比较
+
+shell 虽然也是一种编程语言，但是其相对比较特殊，是用来串联操作系统的一些进行使用的。因此和 C 系列通用编程语言 有很大的不同。
+
+* shell 被设计出来的目的是为了在操作系统中执行进程的脚本语言（这是 和 其他 C 系列通用编程语言 最大的不同）
+* shell 中最基本的东西只有两样 命令 和 变量，因此 shell 中基本语法规则就两种：变量声明 `A=xx`，命令执行 `foo p1 p2`
+* 命令（包括可执行程序）的执行的核心要素是
+    * 命令名/路径
+    * 参数 （args）
+    * 环境变量
+    * 标准输入
+    * 标准输出
+    * 标准出错
+    * 退出码
+* shell 流程控制是通过 shell 内置命令实现的，通过 `help <cmd>` 可以查看帮助
+* 命令具体可以分为三类（通过 `type -a <cmd1> <cmd2> ...` 查看）
+    * 任意编程语言编写的，可执行程序（bin）
+    * shell 内置命令，比如 `cd` `test` 等
+    * shell 函数
+* shell 的变量本质上都是字符串，通过一些特殊的命令可以将一个字符串在逻辑上看作数字，数组
+* shell 的 逻辑语句 和 其他编程语言不一样，其依靠的是 命令退出码：
+    * 0 为 true
+    * 非零为 false
+
+### 12、shell 脚本的Shebang
+
+* 推荐使用 env 启动 bash
+* 推荐使用 bash 原因如下
+    * 兼容性不错
+    * 能力较强，比 sh 强不少
+
+```bash
+#!/usr/bin/env bash
+```
+
+### 13、配置 shell 属性
+
+[set](http://www.ruanyifeng.com/blog/2017/11/bash-set.html)
+
+### 14、bash 中的几种引号
+
+* `""` 双引号
+    * 换行会被替换为空格
+    * 内部的 shell 特殊符号会进行相应，比如 `$var`  `$(cmd)`
+* `''` 单引号
+    * 换行会被替换为空格
+    * 内部的 shell 特殊符号会不会进行相应
+
 ## 二、shell变量
 
 * 默认变量类型为字符串
 * 用户自定义变量、环境变量、预定义变量
 
-### 1、定义变量
+### 1、变量类型
+
+#### 全局变量
 
 ```bash
 x=5 #等号两边不能有空格
 ```
+
+如上方式定义变量的方式
+
+* 作用域为当前的 Shell，声明后，在整个 shell 执行期间均有效
+* 即使用在函数中，在函数调用结束后，变量仍然可见
+
+#### 局部变量
+
+```bash
+foo(){
+    local a=99
+}
+```
+
+如上方式定义变量的方式
+
+* 如上声明的 变量作用域为当前函数，超出当前函数后将无法访问
+
+#### 环境变量
+
+```bash
+export 变量名=变量值
+```
+
+以上声明的变量不仅在当前 shell 中有效，所有启动子进程（包括子 shell），都可以访问。访问方式为通过进程的环境变量列表
 
 ### 2、调用变量
 
@@ -254,7 +322,24 @@ read [options] [var name]
 	-s 隐藏输入数据如密码
 ```
 
-## 三、shell运算符
+### 7、将变量传递给命令（进程）
+
+在 shell 给命令，传递变量方式如下：
+
+* 导出的环境变量 `export A=xxx`，调用命令（比如 `env`），在进程中通过 环境变量 列表即可查看到变量的值。这样做 变量 A 会污染整个 shell 脚本的变量空间
+* 导出的环境变量
+
+### 8、作用域
+
+### 9、操纵变量的几种方式
+
+* set 查看全部类型变量，设置当前 shell 一些属性
+* unset 取消一个变量
+* `=` 符号，及其修饰符 `local` `export`，创建/修改一个变量
+* declare 查看全部类型变量，创建全部类型变量，**修改变量的属性**
+* env 查看所有 export 变量
+
+## 三、shell 操作符
 
 ### 1、声明变量
 
@@ -282,7 +367,6 @@ declare [+|-][选项] 变量名
 
 声明环境变量：
 	declare -x test=1
-
 ```
 
 ### 2、数值运算
@@ -295,11 +379,30 @@ c=$(($a+$b))
 c=$[$a+$b]
 ```
 
-### 3、支持运算符
+### 3、数组操作
 
-类似c语言
+* 下标从 0 开始（zsh 以 1 开始）
+* 定义数组：使用小括号扩起来的，以空白字符分割的字符串
 
-### 4、测试变量 //脚本优化
+```bash
+# 定义数组
+arr1=("114.114.114.114" "8.8.8.8" "8.8.4.4")
+arr2=(a b c)
+
+# 修改元素
+arr2[1]=bb
+
+# 访问元素
+echo ${arr2[0]}
+
+# 删除元素
+unset arr2[1]
+
+# 数组长度
+echo ${#arr2[@]}
+```
+
+### 4、变量默认值
 
 ```bash
 x=${y-2}	//为y设置未定义默认值
@@ -311,6 +414,84 @@ x=${y:-2}
 	如果y未定义 x=2
 	如果y为空("") x=2
 	如果y存在值 x=y
+```
+
+### 5、逻辑运算符
+
+* `;` 顺序多个命令，不管前后是否出错
+* `命令1&&命令2` 短路与特性，两者同时执行或同时不执行
+* `命令1||命令2` 前者不正确，后者才执行；前者执行，后者不执行
+* 利用 `&&` 和 `||` 实现三目运算符 `命令1 && 命令2 || 命令3`
+
+### 6、字符串运算符
+
+参考： https://www.cnblogs.com/sparkdev/p/10006970.html
+
+**字符串拼接**
+
+```bash
+c="$a$b"
+```
+
+**字符串长度**
+
+```bash
+string="abcde"
+echo ${#string}
+```
+
+**字符串切片**
+
+```bash
+MyString=abcABC123ABCabc
+echo ${MyString:3}       # ABC123ABCabc，注意：此时索引是从 0 开始的。
+echo ${MyString:1:5}     # bcABC
+```
+
+**删除子串**
+
+```bash
+MyString=abcABC123ABCabc
+MyPath="/path/to/file.tar.gz"
+
+# ${string#substring} # 从 $string 的开头位置截掉最短匹配的 $substring。
+# 截掉 'a' 到 'C' 之间最短的匹配字符串。
+echo ${MyString#a*C} # 123ABCabc
+ext=${MyPath#*.} # 获取后缀
+echo ${ext}
+
+# ${string##substring} # 从 $string 的开头位置截掉最长匹配的 $substring。
+# 截掉 'a' 到 'C' 之间最长的匹配字符串。
+echo ${MyString##a*C} # abc
+filename=${MyPath##*/} # 获取文件名
+echo $filename # file.tar.gz
+
+# ${string%substring} # 从 $string 的结尾位置截掉最短匹配的 $substring。
+# 从 $MyString 的结尾位置截掉 'b' 到 'c' 之间最短的匹配。
+echo ${MyString%b*c} # abcABC123ABCa
+dirPath=${MyPath%/*} # 获取文件所在目录
+echo $dirPath # /path/to
+
+# ${string%%substring} # 从 $string 的结尾位置截掉最长匹配的 $substring。
+# 从 $MyString 的结尾位置截掉 'b' 到 'c' 之间最长的匹配。
+echo ${MyString%%b*c} # a
+filenameNoExt=${filename%%.*} # 获取不包含后缀的文件名
+echo $filenameNoExt # file
+```
+
+**子串替换**
+
+* `${string/substring/replacement}` 使用 `$replacement` 来替换第一个匹配的 `$substring`。
+* `${string//substring/replacement}` 使用 `$replacement` 来替换所有匹配的 `$substring`。
+* `${string/#substring/replacement}` 如果 `$substring` 匹配 `$string` 的开头部分，那么就用 `$replacement` 来替换 `$substring`。
+* `${string/%substring/replacement}` 如果 `$substring` 匹配 `$string` 的结尾部分，那么就用 `$replacement` 来替换 `$substring`。
+
+**字符串格式化**
+
+shell 内置命令
+
+```bash
+printf '%s\n%s\n%s' a b c
 ```
 
 ## 四、环境变量配置文件
@@ -423,79 +604,19 @@ wc [选项] [文件名] //统计字符
 
 ## 六、流程控制
 
-### 1、`test [options] 文件或目录`
+### 1、if
 
 ```bash
-或者 [ 选项 文件或目录 ]
-
-判断文件相关
-	-d 判断文件是否为目录
-	-e 判断文件是否存在
-	-f 判断文件是否为普通文件
-	-r 判断文件是否有写权限
-	-w 判断文件是否有读权限
-	-x 判断文件是否有执行权限
-
-两个文件比较
-	file1 -nt file2 1是否比2新
-	file1 -ot file2 1是否比2旧
-	file1 -et file2 1、2的Inode是否一致 //1、2是否为硬链接
-
-整数比较
-	int1 -eq int2 //==
-	int1 -ne int2 //!=
-	int1 -gt int2 //>
-	int1 -lt int2 //<
-	int1 -ge int2 //>=
-	int1 -le int2 //<=
-
-字符串判断
-	-z 字符串 //""为真
-	-n 字符串 //非空
-	str1 == str2
-	str1 != str1
-
-逻辑
-	判断1 -a 判断2 //&&
-	判断1 -o 判断2 // ||
-	! 判断1 //!
+if <logic_expr> ;then
+    # stat
+elif <logic_expr> ;then # optional
+    # stat
+else # optional
+    # stat
+fi
 ```
 
-### 2、if
-
-```bash
-if ...
-	if []
-		then
-			语句
-	fi
-
-if ... else ...
-
-	if []
-		then
-			语句
-		else
-			语句
-	fi
-
-
-if ... else if  ...... else
-	if []
-		then
-
-	elif []
-		then
-
-	......
-	else
-		then
-
-	fi
-
-```
-
-### 3、case
+### 2、case
 
 ```bash
 case $变量 in
@@ -516,7 +637,7 @@ esac
 ### 4、for
 
 ```bash
-for i in 1 2 3 4 5
+for i in <arr>
 	do
 		语句
 	done
@@ -525,7 +646,7 @@ for i in 1 2 3 4 5
 ### 5、while
 
 ```bash
-while []
+while <logic_expr>
 	do
 		语句
 	done
@@ -533,52 +654,140 @@ while []
 
 ### 6、until
 
+`until <logic_expr>` 等价于 `while ! <logic_expr>`
+
 ```bash
-while []
+until <logic_expr>
 	do
 		语句
 	done
 ```
 
-### 8、使用样例
+### 7、函数
 
-#### （1）字符串判等
+基本结构
 
 ```bash
-if [ "$var"x = "abc"x ]
-then
-	#todo
+func_name(){
+    # do sth
+    return 0 # optional 默认返回 0
+}
+```
+
+函数参数，参见 [4、位置参数变量](#4-位置参数变量)
+
+函数返回值。通过 `return` 只能返回 数字，该数字只能用来进行逻辑判断。
+
+如果想返回字符串，只能通过 在函数中 `echo` 然后通过 `$()` 调用函数获得
+
+```bash
+foo(){
+    echo "$@"
+}
+
+ret= $(foo 1 2 3)
+echo $ret # 输出 1 2 3
+```
+
+### 8、逻辑判断语句
+
+下面所有例子都可以用于 if 等流程判断语句，所有语句都可以使用 `&&` `||` 进行连接
+
+https://wangdoc.com/bash/condition.html
+
+#### 核心
+
+* if 等流程判断语句，通过检查进程的退出码来进行流程控制，因此任意一个语句都可以作为流程控制语句
+* test 内置命令是流程判断语句的核心，`[]` `[[]]` `&&` `||` `(())` 都是 test 的语法糖
+
+#### 字符串
+
+```bash
+# 存在（为空串"" 或者已定义）
+[ "$var" ]
+# 相等
+[ "$var"x = "abc"x ]
+[ "$var"x == "abc"x ]
+# 不等
+[ "$var"x != "abc"x ]
+! [ "$var"x = "abc"x ]
+# 前缀
+[[ x"$var" = x"abc"* ]]
+# 后缀
+[[ *"$var"x = *"abc"x ]]
+# 字典序比较
+[ string1 '>' string2 ]
+[ string1 '<' string2 ]
+```
+
+#### 数字
+
+```bash
+[ integer1 -eq integer2 ]
+[ integer1 -ne integer2 ]
+[ integer1 -le integer2 ]
+[ integer1 -lt integer2 ]
+[ integer1 -ge integer2 ]
+[ integer1 -gt integer2 ]
+
+((1 < 2))
+((1 == 2))
+((1 <= 2))
+((1 >= 2))
+((1 != 2))
+```
+
+#### 文件判断
+
+* `test 选项 参数` 或者 `[ 选项 文件或目录 ]`
+
+```bash
+判断文件相关
+	-d 判断文件是否为目录
+	-e 判断文件是否存在
+	-f 判断文件是否为普通文件
+	-r 判断文件是否有写权限
+	-w 判断文件是否有读权限
+	-x 判断文件是否有执行权限
+
+两个文件比较
+	file1 -nt file2 1是否比2新
+	file1 -ot file2 1是否比2旧
+	file1 -et file2 1、2的Inode是否一致 //1、2是否为硬链接
+```
+
+#### 命令是否存在
+
+```bash
+if type "vim" > /dev/null 2>&1; then
+  echo "已安装"
+else
+  echo "未安装"
+fi
+
+if ! type "fasdfgasd" > /dev/null 2>&1; then
+  echo "未安装"
+else
+  echo "已安装"
 fi
 ```
 
-#### （2）数字判等
+#### 文件是否包含字符串
 
 ```bash
-if [ $i -eq 1 ]
-then
-	#todo
+# grep -q 判断文件内容是否存在
+if ! grep -q '待查找字符串' 文件名; then
+	echo '字符串不存在'
 fi
 ```
 
-#### （3）遍历参数
+#### true
 
-```bash
-for var in $*
-do
-	echo $var
-done
-```
+内置命令
 
-#### （4）执行字符串命令
+## 七、常见场景
 
-```bash
-	cmd="mv -f"$opts" /tmp/trash""
-	$($cmd)
-```
-
-## 七、备忘小技巧
-
-### 1、内置选项解析器getopts
+### 内置选项解析器getopts
 
 基本用法
 
@@ -618,75 +827,30 @@ echo P
 echo C
 ```
 
-### 2、常用的条件判断
-
-**某命令是否存在**
-
-```bash
-if type "vim" > /dev/null 2>&1; then
-  echo "已安装"
-else
-  echo "未安装"
-fi
-
-if ! type "fasdfgasd" > /dev/null 2>&1; then
-  echo "未安装"
-else
-  echo "已安装"
-fi
-```
-
-**某命令执行是否成功**
-
-```bash
-# grep -q 判断文件内容是否存在
-if ! grep -q '待查找字符串' 文件名; then
-	echo '字符串不存在'
-fi
-```
-
-**字符串是否为空或相等**
-
-```bash
-if [ ""z == "$STR"z ]; then
-	echo '字符串相等'
-fi
-```
-
-**文件是否存在**
-
-```bash
-if [  -f  "/usr/bin/code" ]; then
-  echo "VSCode 已安装"
-fi
-```
-
-**目录是否存在**
-
-```bash
-if [ ! -d $DPATH  ]; then
-  mkdir -p $DPATH
-fi
-```
-
-### 3、动态执行字符串命令
+### 动态执行字符串命令
 
 ```bash
 CMD='ls -al'
 eval $CMD
+# 等价于 $() 或者 ``
 ```
 
-### 4、多行文本处理
+### 多行文本处理
 
 **定义多行文本变量**
 
 ```bash
+# 方法 1
 A=$(cat <<EOF
 abc
 def
 EOF
 )
-echo -e $A
+echo $A
+# 方法 2
+nl=$'\n'
+msg="Line 1${nl}Line 2"
+echo $msg
 ```
 
 **某命令输出的多行文本赋值到变量**
@@ -709,7 +873,7 @@ EOF
 LAST=$(echo -e "$A" | tail -1)
 ```
 
-### 5、常见的循环操作
+### 常见的循环操作
 
 **数组遍历**
 
@@ -732,76 +896,63 @@ do
 done
 ```
 
-### 6、获取用户输入
+### 获取用户输入
 
 ```bash
 read -p 'tips' VAR
 ```
 
-### 7、常见字符串操作
-
-参考： https://www.cnblogs.com/sparkdev/p/10006970.html
-
-**字符串长度**
-
-```bash
-string="abcde"
-echo ${#string}
-```
-
-**字符串切片**
-
-```bash
-MyString=abcABC123ABCabc
-echo ${MyString:3}       # ABC123ABCabc，注意：此时索引是从 0 开始的。
-echo ${MyString:1:5}     # bcABC
-```
-
-**删除子串**
-
-```bash
-MyString=abcABC123ABCabc
-MyPath="/path/to/file.tar.gz"
-
-# ${string#substring} # 从 $string 的开头位置截掉最短匹配的 $substring。
-# 截掉 'a' 到 'C' 之间最短的匹配字符串。
-echo ${MyString#a*C} # 123ABCabc
-ext=${MyPath#*.} # 获取后缀
-echo ${ext}
-
-# ${string##substring} # 从 $string 的开头位置截掉最长匹配的 $substring。
-# 截掉 'a' 到 'C' 之间最长的匹配字符串。
-echo ${MyString##a*C} # abc
-filename=${MyPath##*/} # 获取文件名
-echo $filename # file.tar.gz
-
-# ${string%substring} # 从 $string 的结尾位置截掉最短匹配的 $substring。
-# 从 $MyString 的结尾位置截掉 'b' 到 'c' 之间最短的匹配。
-echo ${MyString%b*c} # abcABC123ABCa
-dirPath=${MyPath%/*} # 获取文件所在目录
-echo $dirPath # /path/to
-
-# ${string%%substring} # 从 $string 的结尾位置截掉最长匹配的 $substring。
-# 从 $MyString 的结尾位置截掉 'b' 到 'c' 之间最长的匹配。
-echo ${MyString%%b*c} # a
-filenameNoExt=${filename%%.*} # 获取不包含后缀的文件名
-echo $filenameNoExt # file
-```
-
-**子串替换**
-
-* `${string/substring/replacement}` 使用 `$replacement` 来替换第一个匹配的 `$substring`。
-* `${string//substring/replacement}` 使用 `$replacement` 来替换所有匹配的 `$substring`。
-* `${string/#substring/replacement}` 如果 `$substring` 匹配 `$string` 的开头部分，那么就用 `$replacement` 来替换 `$substring`。
-* `${string/%substring/replacement}` 如果 `$substring` 匹配 `$string` 的结尾部分，那么就用 `$replacement` 来替换 `$substring`。
-
-### 8、获取当前脚本所在目录
+### 获取当前脚本所在目录
 
 ```bash
 #!/usr/bin/env bash
 
-DIR=$(dirname $(readlink -f "$0"))
-echo $DIR
+case "`uname`" in
+    Linux)
+        ABS_PATH=$(readlink -f $(dirname $0))
+        ;;
+        *)
+        ABS_PATH=`cd $(dirname $0); pwd`
+        ;;
+esac
+```
+
+### 如果字符串不存在则添加到文件中
+
+```bash
+# 添加到文件尾部
+grep -q '[[ -r /etc/profile ]] && . /etc/profile' ~/.bashrc || echo '[[ -r /etc/profile ]] && . /etc/profile' >> ~/.bashrc
+# 添加到文件首部
+grep -q '[[ -r ~/.bashrc ]] && . ~/.bashrc' ~/.zshrc || printf '%s\n%s\n' '[[ -r ~/.bashrc ]] && . ~/.bashrc' "$(cat ~/.zshrc)" > ~/.zshrc
+```
+
+### 网络请求和json解析
+
+* jq [教程](https://www.baeldung.com/linux/jq-command-json) | [官网](https://stedolan.github.io/jq/)
+
+```bash
+# 解析网络请求 json 返回体的 mgs 字段
+msg=$(curl -fsSL https://xxx | jq -r '.msg')
+```
+
+### 文件下载
+
+```bash
+# 常用写法（自定义文件名+覆盖写入文件）
+# https://linux.die.net/man/1/wget
+# 没有 tty 配置
+wget -q --show-progress --progress=bar:force <url> -O <写入文件>
+# 有 tty 配置
+wget -q --show-progress --progress=dot:mega <url> -O <写入文件>
+
+# 静默下载
+curl -fsSL <url> -o <写入文件>
+```
+
+### 执行一个网络上的脚本
+
+```bash
+curl -fsSL https://get.docker.com | sudo sh
 ```
 
 ## 八、zsh
