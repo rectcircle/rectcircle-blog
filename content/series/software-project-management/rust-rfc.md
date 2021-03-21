@@ -2,7 +2,7 @@
 title: "Rust RFC 项目管理调研"
 date: 2021-03-21T14:20:13+08:00
 draft: false
-toc: false
+toc: true
 comments: true
 weight: 100
 summary: Rust 项目组的 RFC 机制的调研
