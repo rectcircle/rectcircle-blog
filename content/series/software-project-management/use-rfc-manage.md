@@ -12,7 +12,7 @@ summary: 分析 RFC 在 开源项目 和 商业项目 管理中的使用
 
 ## 参考
 
-* [Rust RFC 项目管理调研](/series/software-project-management/rust-rfc.md/)
+* [Rust RFC 项目管理调研](/series/software-project-management/rust-rfc/)
 
 ## 简介
 
