@@ -26,7 +26,7 @@ RFC 概念最早在 互联网 标准指定领域出现。在互联网技术标�
 
 ## RFC 内容
 
-参考：[Rust RFC 项目管理调研 / 模板](/series/software-project-management/rust-rfc.md/#Rust-rfc-模板)
+参考：[Rust RFC 项目管理调研 / 模板](/series/software-project-management/rust-rfc/#Rust-rfc-模板)
 
 ## 开源项目的 RFC 使用姿势
 
@@ -97,7 +97,7 @@ RFC 开发阶段（工作在 项目代码库）
 
 使用 RFC 管理 需求
 
-* 参考 [Rust RFC 项目管理调研 / 模板](/series/software-project-management/rust-rfc.md/#Rust-rfc-模板) 给出 RFC 模板，该模板需要按照业务类型需求重新设计，主要包含 PRD、 技术方案、测试验收方案的内容
+* 参考 [Rust RFC 项目管理调研 / 模板](/series/software-project-management/rust-rfc/#Rust-rfc-模板) 给出 RFC 模板，该模板需要按照业务类型需求重新设计，主要包含 PRD、 技术方案、测试验收方案的内容
 * 一个 RFC 一般需要三种角色
     * PM
     * 技术（两人）
