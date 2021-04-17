@@ -95,3 +95,56 @@ systemd 有两种模式启动一个服务：
 * 启动服务的权限问题
     * Systemd user 启动的服务的权限继承自用户的 systemd 进程的权限，无法配置（如果配置了则直接报错），且 systemd 一旦启动则无法动态修改，只能重新登录，重启 systemd 才能生效。
     * Systemd 配置文件指定 user，可以通过配置文件，灵活指定用户权限
+
+## 常见问题
+
+### 某用户 systemd --user 无法使用
+
+症状
+
+* `systemd --user` 相关操作输出 `Failed to connect to bus: No such file or directory`
+
+解决方案
+
+* 安装 一些依赖 `sudo apt-get install systemd libpam-systemd policykit-1 dbus-user-session`
+* 重启 dbus，执行
+    * `sudo systemctl restart systemd-dbus.service`
+    * `sudo systemctl restart systemd-dbus.sock`
+* 重置 systemd ，执行 `sudo systemctl daemon-reexec`
+* 如果还不行，重启 设备
+
+### ssh 或 su 巨慢
+
+以下症状同时如下情况
+
+* ssh 或 su 切换用户巨慢
+* ssh -v 卡在 `debug1: pledge: network`
+* 查看 `sudo tail -f /var/log/auth.log` 存在 `pam_systemd(sshd:session): Failed to create session: Connection timed out` 报错
+
+可能的症状
+
+* `systemctl status systemd-logind` 状态异常 `Active: active (running)`
+* `sudo systemctl restart systemd-logind` 卡顿
+
+解决方案
+
+* 重启 dbus，执行
+    * `sudo systemctl restart systemd-dbus.service`
+    * `sudo systemctl restart systemd-dbus.sock`
+* 重置 systemd ，执行 `sudo systemctl daemon-reexec`
+* 重启 polkit， `sudo systemctl restart polkit`
+* 重启 logind， `sudo systemctl restart systemd-logind`
+
+参考
+
+* [解释为何重启 logind](https://littlerpl.me/2019/11/08/ssh-shuck-network/)
+* [执行 `sudo systemctl daemon-reexec` 的原因](https://unix.stackexchange.com/questions/393394/systemd-logind-service-fails-to-start-when-attempting-to-return-from-rescue-tar)
+* https://serverfault.com/questions/792486/ssh-connection-takes-forever-to-initiate-stuck-at-pledge-network
+
+相关组件
+
+* systemd
+* [Linux PAM](https://www.cnblogs.com/kevincaptain/p/10493885.html)
+* [polkit](https://wiki.archlinux.org/index.php/Polkit_(%E7%AE%80%E4%BD%93%E4%B8%AD%E6%96%87))
+* logind
+* dbus
