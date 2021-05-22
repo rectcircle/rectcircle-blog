@@ -138,3 +138,13 @@ curl --unix-socket /tmp/firecracker.socket -i \
 ### 更多
 
 网络/镜像制作等，参见 [Github/docs](https://github.com/firecracker-microvm/firecracker/tree/master/docs)
+
+## firecracker-containerd
+
+[firecracker-containerd](https://github.com/firecracker-microvm/firecracker-containerd) 使用 firecracker 作为容器运行时，可以理解为 将容器运行在 microVM 中。以做到更好的隔离性。
+
+https://tech.sina.com.cn/roll/2020-08-27/doc-iivhvpwy3377841.shtml
+
+https://blog.csdn.net/SpanningWings/article/details/88532036
+
+https://blog.csdn.net/com_stu_zhang/article/details/104903920
