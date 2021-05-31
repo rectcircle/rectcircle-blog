@@ -112,9 +112,21 @@ apt install -y curl
 * `startx11vnc` 启动 vnc
 * `stopvnc` 停止 vnc
 
-建议
+非交互式命令
+
+* `tmoe --help`
+
+建议和问题
 
 * 建议使用 tigerVNC 或 x11VNC，连接效果较好
+* VSCode 可能导致 vnc 直接断开连接：
+    * 在配置文件中 `.zshrc` 或 `.bashrc` 中 添加 `alias rcode='sudo code --user-data-dir /root/.vscode'`
+    * 打开 VSCode 直接从终端，输入 `rcode` 打开
+
+#### termux 常用配置
+
+* 安装 sshd 从远程设备进行管理
+* 安装 [Boot](https://wiki.termux.com/wiki/Termux:Boot) 插件，配置开机自启（不生效可以重启手机试试），并配置 [service](https://wiki.termux.com/wiki/Termux-services)，配置 sshd 开机自启
 
 ### 性能测试
 
