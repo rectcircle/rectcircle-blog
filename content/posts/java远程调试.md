@@ -169,7 +169,7 @@ cd tomcat目录/bin
 
 ```bash
 # docker 创建 一个 TCP Server
-nc -l -p 15005
+nc -lv -p 15005
 # 本地连接测试
 telnet docker_ip docker暴露端口
 nc -vz -w 2 docker_ip docker暴露端口

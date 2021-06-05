@@ -31,9 +31,9 @@ mac homebrew-v2ray `vim /usr/local/etc/v2ray/config.json`
 
 ```bash
 # 手动运行查看问题
-cat /usr/local/opt/v2ray-core/homebrew.mxcl.v2ray-core.plist
+cat /usr/local/opt/v2ray/homebrew.mxcl.v2ray-core.plist
 # 重启
-brew services restart v2ray-core
+brew services restart v2ray
 ```
 
 ### cloudflare(CDN)+ws+tls

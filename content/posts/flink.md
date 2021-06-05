@@ -343,7 +343,7 @@ public class SocketWindowWordCount {
 **使用 nc 创建 Socket Server**
 
 ```bash
-nc -l 9000
+nc -lv -p 6787
 ```
 
 **调试运行**
@@ -466,7 +466,7 @@ object SocketWindowWordCount {
 **使用 nc 创建 Socket Server**
 
 ```bash
-nc -l 9000
+nc -lv -p 6787
 ```
 
 **提交任务**

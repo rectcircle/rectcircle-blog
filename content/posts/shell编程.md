@@ -920,10 +920,11 @@ esac
 ### 如果字符串不存在则添加到文件中
 
 ```bash
+# grep -F 表示原样字符串
 # 添加到文件尾部
-grep -q '[[ -r /etc/profile ]] && . /etc/profile' ~/.bashrc || echo '[[ -r /etc/profile ]] && . /etc/profile' >> ~/.bashrc
+grep -q -F '[[ -r /etc/profile ]] && . /etc/profile' ~/.bashrc || echo '[[ -r /etc/profile ]] && . /etc/profile' >> ~/.bashrc
 # 添加到文件首部
-grep -q '[[ -r ~/.bashrc ]] && . ~/.bashrc' ~/.zshrc || printf '%s\n%s\n' '[[ -r ~/.bashrc ]] && . ~/.bashrc' "$(cat ~/.zshrc)" > ~/.zshrc
+grep -q -F '[[ -r ~/.bashrc ]] && . ~/.bashrc' ~/.zshrc || printf '%s\n%s\n' '[[ -r ~/.bashrc ]] && . ~/.bashrc' "$(cat ~/.zshrc)" > ~/.zshrc
 ```
 
 ### 网络请求和json解析
@@ -953,6 +954,18 @@ curl -fsSL <url> -o <写入文件>
 
 ```bash
 curl -fsSL https://get.docker.com | sudo sh
+```
+
+### 字符串输出到没权限的文件
+
+```bash
+echo "abc" | sudo tee filepath
+```
+
+### apt 脚本中使用（非交互）
+
+```bash
+DEBIAN_FRONTEND=noninteractive apt-get install -q -y xxx
 ```
 
 ## 八、zsh

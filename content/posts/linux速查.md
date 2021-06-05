@@ -735,6 +735,8 @@ nmtui #配置，似乎不需要重启网络服务，可配置多个，激活一�
 
 #### （13）`tcpdump -i eth0 -nnX port 80` 抓包
 
+#### （14） `nc -lv -p $PORT` 监听 TCP 端口
+
 ### 2、网络相关配置文件
 
 #### （1）网卡信息文件`/etc/sysconfig/network-scripts/ifcfg-网卡名`
