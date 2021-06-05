@@ -47,16 +47,12 @@ nc -lv -p 8022 > request.bin
 
 重新执行 cli，后端配置成 8022
 
-```bash
-npx @byted/ovsx -r http://10.227.8.141:8022/extensions -p xxx-xx-xx-xx-xxxx publish vscodevim.vim-1.20.3.vsix
-```
-
 此时查看 request.bin 文件当做文本文件打开间将看到如下内容
 
 ```http
 POST /xxx HTTP/1.1
 Content-Type: application/octet-stream
-Host: 10.227.8.141:8022
+Host: xxxx
 Connection: close
 Transfer-Encoding: chunked
 
