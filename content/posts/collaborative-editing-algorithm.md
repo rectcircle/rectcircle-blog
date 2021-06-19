@@ -1,12 +1,15 @@
 ---
 title: "协同编辑算法"
 date: 2021-06-18T20:53:11+08:00
-draft: false
+draft: true
 toc: true
 comments: true
 tags:
   - untagged
 ---
+
+> http://www.alloyteam.com/2019/07/13659/
+> https://github.com/Operational-Transformation/ot.js
 
 ## 目标
 
