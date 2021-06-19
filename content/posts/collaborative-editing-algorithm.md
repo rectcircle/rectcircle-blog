@@ -92,7 +92,7 @@ tags:
 
 ### 数据结构
 
-```golang
+```go
 // 编辑操作
 type EditOperation struct {
     Type string
