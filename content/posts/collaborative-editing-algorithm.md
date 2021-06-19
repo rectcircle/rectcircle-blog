@@ -120,7 +120,7 @@ type Server struct {
 
 ### 核心函数 rebase
 
-![core](/image/collaborative-editing-algorithm-rebase.png)
+![rebase](/image/collaborative-editing-algorithm-rebase.png)
 
 ### 核心函数 diff
 
