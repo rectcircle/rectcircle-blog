@@ -107,7 +107,7 @@ type Stream struct {
     Operations []EditOperation
 }
 
-type Server struct {
+type ServerEditor struct {
 	Stream Stream
 	Mutex sync.Mutex // 锁定对Stream的处理
 	Sessions []struct {
