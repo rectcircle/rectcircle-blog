@@ -62,7 +62,7 @@ tags:
 1. 用户首次操作时，lockStream = lockStream' = 用户操作，此时 lockStream 将不会发生变化
 2. 客户端将 lockStream 会发起 push，在接收到 ACK 之前， 以下两种情况可能发生多次
     1. 若用户继续操作对当前文本进行操作，所有操作将 append 到 bufferStream 中
-    2. 若有接收到服务端 receivedStream，则对 (lockStream', bufferStream, receivedStream) 执行 transform，并将返回更新 lockStream' bufferStream （最明显的变化是版本号都 + 1）
+    2. 若有接收到服务端 receivedStream，则对 (lockStream', bufferStream, receivedStream) 执行 transform，并将返回应用到 content 中，并更新 lockStream' bufferStream （最明显的变化是版本号都 + 1）
 3. 客户端接收到 ACK 后，将执行 lockStream = lockStream' = bufferStream ，清空 bufferStream，并跳到第 2 步
 
 ## 协同编辑（多用户编辑行为分析）
