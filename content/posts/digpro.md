@@ -33,7 +33,7 @@ tags:
     * Lower Level API 可以直接用于 [uber-go/dig][dig-github]，可获得 [digpro][digpro-github] 部分能力
     * High Level API 是对 [uber-go/dig][dig-github] 的一个 wrap 类型，可获得 [digpro][digpro-github] 全部能力
 
-## [uber-go/dig][dig-github] API 分析
+## dig API 分析
 
 > v1.13.0
 
