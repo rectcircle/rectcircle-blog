@@ -10,7 +10,7 @@ tags:
 
 ## 缘由
 
-在 [Go 依赖注入](/posts/go-dependency-injection/) 调研过程中，发现主流的 go 依赖注入库，功能均有所确实。
+在 [Go 依赖注入](/posts/go-dependency-injection/) 调研过程中，发现主流的 go 依赖注入库，功能均有所缺失。
 
 经过调研发现，[uber-go/fx](fx-github) 也是基于 [uber-go/dig][dig-github]，通过仔细阅读器文档阅读和源码。可以看出 [uber-go/dig][dig-github] 是一个比较优质的开源库，且有较好的扩展性。
 

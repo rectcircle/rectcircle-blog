@@ -105,10 +105,6 @@ func ManualInitialize(aField string, bField int) *C {
 }
 ```
 
-### 真实世界场景 Bean
-
-TODO
-
 ### 仓库地址
 
 https://github.com/rectcircle/go-dependency-injection-learn
@@ -694,10 +690,6 @@ Provider Sets 声明到库里面时。在迭代过程中，不应该破坏Provid
 
 * 由于其实现限制，类型不能相同，需要定义许多额外的基础类型别名
 * [mock支持暂时不够友好](https://juejin.cn/post/6844903901469097998#heading-14)
-
-### 真实世界场景例子
-
-TODO
 
 ## dig
 
@@ -1294,10 +1286,6 @@ func RunNameAndGroup() {
 * 某些高级特性（比如：参数对象、结果对象等），对业务代码有一定的侵入性
 * 众多 option 配置复杂，case 很多，接口不太直观，相对难以理解一些
 
-### 真实世界场景例子
-
-TODO
-
 ## fx
 
 > * version: v1.14.2
@@ -1584,7 +1572,7 @@ func main() {
 
 剩余三个质量均比较高
 
-* 如果想使用编译时依赖注入，使用 wire 是最好的选则
+* 如果想使用编译时依赖注入，使用 wire 是最好的选择
 * 如果想使用运行时依赖植入，且只想用依赖注入特性，dig 是较好的选择
 * 如果需求不仅仅是依赖注入，而是想找一个轻量级 App 框架，name fx 可以满足需求
 
