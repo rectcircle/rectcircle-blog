@@ -8,6 +8,12 @@ tags:
   - golang
 ---
 
+## 库信息
+
+* [github](https://github.com/rectcircle/digpro/)
+* [中文文档](https://github.com/rectcircle/digpro/blob/master/README_zh-CN.md)
+* [GoDoc](https://pkg.go.dev/github.com/rectcircle/digpro)
+
 ## 缘由
 
 在 [Go 依赖注入](/posts/go-dependency-injection/) 调研过程中，发现主流的 go 依赖注入库，功能均有所缺失。
