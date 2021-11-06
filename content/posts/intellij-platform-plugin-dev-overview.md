@@ -217,6 +217,8 @@ tasks {
 
 ### 构建插件
 
+> [官方文档](https://plugins.jetbrains.com/docs/intellij/deployment.html#building-distribution)
+
 ```
 ./gradlew buildPlugin
 ```
@@ -264,3 +266,13 @@ tasks {
     }
 }
 ```
+
+## 发布
+
+### 发布到官方市场
+
+参考：[官方文档](https://plugins.jetbrains.com/docs/intellij/deployment.html)
+
+### 发布私有插件市场
+
+参考：[官方文档](https://plugins.jetbrains.com/docs/intellij/update-plugins-format.html)
