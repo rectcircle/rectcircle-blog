@@ -8,6 +8,13 @@ tags:
   - untagged
 ---
 
+## 相关资源
+
+* [官方文档](https://plugins.jetbrains.com/docs/intellij/basics.html)
+* [官方 Demo](https://github.com/JetBrains/intellij-sdk-code-samples)
+* [插件源码搜索浏览](https://plugins.jetbrains.com/intellij-platform-explorer)
+* [本文 Demo 库](https://github.com/rectcircle/learn-intellij-platform-plugin)
+
 ## 相关术语
 
 ### FQN
@@ -18,6 +25,8 @@ Fully qualified name, 完全限定名称。在本文语境中，可能是
 * 类的全名
 
 ## 本地化
+
+TODO
 
 ## 状态持久化
 
