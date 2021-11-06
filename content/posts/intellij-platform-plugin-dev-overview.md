@@ -147,9 +147,9 @@ pluginVersion = 0.0.1
 
 ```
 
-### 源码简述
+### 源码概览
 
-整体来看，Jetbrains 插件是一个 Gradle 驱动的 Java  / Kotlin 项目。
+整体来看，Jetbrains 插件是一个 Gradle 驱动的 Java  / Kotlin 项目，UI 方面主要使用了 Swing 技术。
 
 `src/main/kotlin/com/github/rectcircle/learnintellijplatformplugin`
 
@@ -170,6 +170,8 @@ pluginVersion = 0.0.1
 ### 调试运行插件
 
 该模板已经默认配置了调试配置，选择 `Run Plugin` 即可。
+
+此时，调试 IDE 的数据目录将存储在 `$buildDir/idea-sandbox/config` （`build/idea-sandbox/config`）下
 
 ## 调试运行最佳实践
 
