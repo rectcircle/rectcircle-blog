@@ -149,6 +149,8 @@ pluginVersion = 0.0.1
 
 ### 源码简述
 
+整体来看，Jetbrains 插件是一个 Gradle 驱动的 Java  / Kotlin 项目。
+
 `src/main/kotlin/com/github/rectcircle/learnintellijplatformplugin`
 
 ```
