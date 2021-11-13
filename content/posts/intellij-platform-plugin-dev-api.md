@@ -24,6 +24,20 @@ Fully qualified name, 完全限定名称。在本文语境中，可能是
 * 插件中各个贡献点（组件）的 ID
 * 类的全名
 
+## 插件运行时分析
+
+### 类加载
+
+> [官方文档](https://plugins.jetbrains.com/docs/intellij/plugin-class-loaders.html)
+
+IntelliJ 平台的 IDE 是通过 Java 编写的，因此其插件是以 Jar 包的被加载到 IDE 的 JVM 中的。
+
+IntelliJ 平台的 IDE 和插件都是运行在同一个 JVM 中的，因此插件与插件、插件和 IDE 是运行在同一个进程中的。为了保证隔离性，对于每个插件创建一个独立的 ClassLoader 并用这个 ClassLoader 来加载这个插件 jar 包的类。这个 ClassLoader 为 `com.intellij.ide.plugins.cl.PluginClassLoader`。
+
+由于该 ClassLoader 类实现了双亲委派机制。所以，针对 Jetbrains API 相关的单例对象来说，对于不同的插件来说就不是隔离的，因此需要小心。（比如 `JBCefApp`）
+
+而，针对其他插件的依赖，因为不同的插件使用不同的类加载器，所以默认情况下是无法查找到类的。因此，需在在 `plugin.xml` 的声明 `<depends>`，这是，本插件的的类加载器就会尝试委托依赖的插件的类加载器来加载依赖的类。
+
 ## 本地化
 
 > [官方文档](https://plugins.jetbrains.com/docs/intellij/localization-guide.html)
@@ -564,10 +578,6 @@ public class MyToolWindowFactory implements ToolWindowFactory {
 ### 通过代码注册窗口
 
 参见 [com.intellij.openapi.wm.ToolWindowManager.registerToolWindow()](https://upsource.jetbrains.com/idea-ce/file/idea-ce-8f0275fd7faaeafdb8900147eab3d256fe4221cb/platform/platform-api/src/com/intellij/openapi/wm/ToolWindowManager.kt?_ga=2.177404709.189575459.1636082800-220348679.1634563234)
-
-### 自定义组件与 Webview
-
-所有自定义 UI 的地方都可以使用 Webview，细节参见 [JCEF](https://plugins.jetbrains.com/docs/intellij/jcef.html)
 
 ### 其他 UI 组件
 
@@ -1206,3 +1216,194 @@ public class DemoRunService {
 ```xml
         <projectService serviceImplementation="com.github.rectcircle.learnintellijplatformplugin.run.DemoRunService" />
 ```
+
+## Webview （JCEF）
+
+> [官方文档](https://plugins.jetbrains.com/docs/intellij/jcef.html)
+
+IntelliJ 插件提供了利用 Web 前端技术栈开发插件的的能力，即 JCEF。（类似安卓开发的 Webview，参见 从 [Blink 内核渲染架构演进看浏览器技术发展](https://zhuanlan.zhihu.com/p/28184028) ）
+
+JCEF 即 Java 端的 [CEF](https://bitbucket.org/chromiumembedded/cef/wiki/Home) 框架（CEF 即 Chromium Embedded Framework Chromium 嵌入框），其提供一种可以将 Chromium 嵌入到 Swing 的能力。
+
+### 示例代码
+
+在 Toolwindows 加载一个 Webview
+
+`src/main/java/com/github/rectcircle/learnintellijplatformplugin/toolwindow/MyWebviewFactory.java`
+
+```java
+package com.github.rectcircle.learnintellijplatformplugin.toolwindow;
+
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowFactory;
+import com.intellij.ui.content.Content;
+import com.intellij.ui.content.ContentFactory;
+import com.intellij.ui.jcef.*;
+import com.jetbrains.cef.JCefAppConfig;
+import org.cef.browser.CefBrowser;
+import org.cef.browser.CefFrame;
+import org.cef.handler.*;
+
+import org.jetbrains.annotations.NotNull;
+
+import javax.swing.*;
+import java.awt.*;
+
+public class MyWebviewFactory implements ToolWindowFactory {
+
+    @Override
+    public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
+        var panel = new JPanel();
+        panel.setLayout(new BorderLayout());
+        ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
+        Content content = contentFactory.createContent(panel, "", false);
+        toolWindow.getContentManager().addContent(content);
+
+        // API 1 - JBCefApp 判断是否支持
+        if (!JBCefApp.isSupported()) {
+            var notSupportedLabel = new JLabel();
+            notSupportedLabel.setText("Not support webview: see https://plugins.jetbrains.com/docs/intellij/jcef.html#jbcefapp");
+            panel.add(notSupportedLabel);
+            return;
+        }
+        // API 2 - 对 JBCefApp 进行配置的单例类，需在 JBCefApp.getInstance() 调用前进行配置（如 new JBCefBrowser()）。
+        // 不建议进行配置，因为所有插件共享一个
+        System.out.println(this.getClass().getClassLoader().toString());
+        System.out.println(JBCefApp.class.getClassLoader().toString());
+        JCefAppConfig.getInstance().getCefSettings();
+        // API 3 - JBCefBrowser Jetbrains 对 Cef 的封装，包含 JBCefClient 和 CefBrowser
+        // 给定 URL 或者 HTML 创建一个浏览器实例
+        // API 3.1 - 指定 URL 从网络上加载
+//        var jbCefBrowser = new JBCefBrowser("https://rectcircle.cn");
+        var jbCefBrowser =  new JBCefBrowser();
+
+        // API 3.2 - 指定 HTML 直接加载（打开开发者工具，刷新后就没了。看实现是，读取一次后就删掉了 JBCefFileSchemeHandlerFactory）
+        jbCefBrowser.loadHTML(
+                "<!DOCTYPE html><html lang=\"en\"><head><title>Test</title></head><body>拼成的HTML，不是从 URL 加载的</body></html>",
+                "https://rectcircle.cn"  // 可选的，最终浏览器访问的是 file:///jbcefbrowser/随机数#url=https://rectcircle.cn 走的文件协议，应该还是有跨域问题
+        );
+        jbCefBrowser.getJBCefClient().addLoadHandler(new CefLoadHandlerAdapter() { // 解决刷新问题的方案（后果是浏览器上会产生无效的 history），更好的做法是不使用 JBCefApp 来创建 JBCefBrowser，而是使用自建的 CefApp 来创建 CefClient 和 CefBrowser
+            @Override
+            public void onLoadError(CefBrowser browser, CefFrame frame, ErrorCode errorCode, String errorText, String failedUrl) {
+                if (errorCode == ErrorCode.ERR_FILE_NOT_FOUND && failedUrl.startsWith("file:///jbcefbrowser")) {
+                    jbCefBrowser.loadHTML(
+                            "<!DOCTYPE html><html lang=\"en\"><head><title>Test</title></head><body>拼成的HTML，不是从 URL 加载的 2</body></html>",
+                            "https://rectcircle.cn"  // 可选的，最终浏览器访问的是 file:///jbcefbrowser/随机数#url=https://rectcircle.cn 走的文件协议，应该还是有跨域问题
+                    );
+                }
+            }
+        }, jbCefBrowser.getCefBrowser());
+        panel.add(jbCefBrowser.getComponent(), BorderLayout.CENTER);
+        // API 4 - JBCefClient 可以添加一些事件回调，拦截网络请求等
+        // API 5 - CefBrowser 动态执行 JS 代码，获取 Dom 等
+        jbCefBrowser.getJBCefClient().addLoadHandler(new CefLoadHandlerAdapter() {
+            @Override
+            public void onLoadEnd(CefBrowser browser, CefFrame frame, int httpStatusCode) {
+                // API 5.1 - 动态执行 JS 代码
+                browser.executeJavaScript(
+                        "setInterval(()=>{console.log(\"Java 调用的\")}, 1000)"
+                        , "https://rectcircle.cn/js/main.js" // 假装这个代码是从该 URL 中下载的
+                        , 0);
+            }
+        }, jbCefBrowser.getCefBrowser());
+        // API 6 - JBCefJSQuery JS 调用 Java 回调函数
+        final JBCefJSQuery myJSQuery = JBCefJSQuery.create((JBCefBrowserBase) jbCefBrowser);
+        myJSQuery.addHandler((args) -> {
+            System.out.println("JS 调用了 这个函数，参数是：" + args);
+            if ("null".equals(args)) {
+                return new JBCefJSQuery.Response(null, 1, "不允许 null");
+            } else if ("undefined".equals(args)) {
+                return new JBCefJSQuery.Response(null); // 这样 JS 侧，会掉 onFailure
+            }
+            return new JBCefJSQuery.Response("Java 的返回值");
+        });
+        jbCefBrowser.getJBCefClient().addLoadHandler(new CefLoadHandlerAdapter() {
+            @Override
+            public void onLoadEnd(CefBrowser browser, CefFrame frame, int httpStatusCode) {
+                // 将模块注入到浏览器中执行里面
+                /*
+                window.JavaPanelBridge = {
+                    callJava: function(arg) {
+                        window.cefQuery_762768232_1({
+                            request: '' + JSON.stringify(arg),
+                            onSuccess: response=>console.log('callJava 成功', response),
+                            onFailure: (error_code,error_message)=>console.log('callJava 失败', error_code, error_message)
+                        });
+                    }
+                };
+                */
+                browser.executeJavaScript(
+                        "window.JavaPanelBridge = {" +
+                                "callJava : function(arg) {" +
+                                myJSQuery.inject(
+                                        "JSON.stringify(arg)",
+                                        "response => console.log('callJava 成功', response)",
+                                        "(error_code, error_message) => console.log('callJava 失败', error_code, error_message)"
+                                    ) +
+                                "}" +
+                            "};" +
+                            "setInterval(()=>{JavaPanelBridge.callJava(); JavaPanelBridge.callJava(null); JavaPanelBridge.callJava({a:1}); JavaPanelBridge.callJava(\"这是参数\");}, 5000)",
+                        "https://rectcircle.cn/js/js-bridge.js", 0);
+            }
+        }, jbCefBrowser.getCefBrowser());
+
+    }
+}
+```
+
+注册 `src/main/resources/META-INF/plugin.xml`
+
+```xml
+        <toolWindow id="Webview"
+                    secondary="true"
+                    icon="AllIcons.General.Modified"
+                    anchor="right"
+                    factoryClass="com.github.rectcircle.learnintellijplatformplugin.toolwindow.MyWebviewFactory"/>
+```
+
+运行后，打开该 webview ，右键可以打开开发者工具
+
+### Cef API
+
+> [文章](https://github.com/fanfeilong/cefutil/blob/master/doc/CEF%20General%20Usage-zh-cn.md)
+
+* CefApp - 表示一组共享配置的进程组，提供了进程粒度的一些回调函数，可以理解为同样配置的 Chrome 窗口的集合
+* CefClient - 提供访问 Browser 实例的回调接口。一个 CefClient 实现可以在任意数量的 Browser 进程中共享
+* CefBrowser 和 CefFrame - 可以给浏览器发送命令和获取浏览器的各种信息，可以理解为 Chrome 浏览器的一个标签页和其顶层 frame（如果包含 iframe 则会有多个 CefFrame）
+
+### JB 封装的 API
+
+#### JBCefApp
+
+对 org.cef.CefApp 进行封装的单例类，包含几个常用的静态方法
+
+* `isSupported` 当前环境是否支持
+* `getInstance` 获取 `JBCefApp` （如果不存在将创建） 的实例，配置内容 `JCefAppConfig` 来确认
+
+#### JCefAppConfig
+
+对 JBCefApp 进行配置的单例类，需在 JBCefApp.getInstance() 调用前进行配置（如 new JBCefBrowser()）。
+
+不建议进行配置，因为所有插件共享一个，更多参见上文 《类加载》
+
+#### JBCefBrowser
+
+对 CefBrowserClient 和 CefBrowser 的封装。可以返回一个 swing 组件，直接用在各种 UI 上（如 ToolWindow）。
+
+创建方式有几种
+
+* 不指定 CefBrowserClient 和 CefBrowser ，将通过 JBCefApp 来创建 `public JBCefBrowser()` 和 `public JBCefBrowser(@NotNull String url)`
+* 复用已经创建的 JBCefClient 和 CefBrowser `public JBCefBrowser(@NotNull CefBrowser cefBrowser, @NotNull JBCefClient client)` 和 `public JBCefBrowser(@NotNull JBCefClient client, @Nullable String url)`
+
+#### JBCefClient
+
+添加或删除各种事件处理函数。比如，页面加载、生命周期事件等等
+
+#### CefBrowser
+
+Cef 原生浏览器对象，对应一个浏览器页面。可以获取 URL、dom，**执行 JS** 等，利用该特性可以实现 js-bridge 发送事件给浏览器的能力
+
+#### JBCefJSQuery
+
+创建一个 JS 回调处理函数，可以做到在 JS 调用 Java 函数的特点，利用该特性可以实现 js-bridge 调用原生 API 的能力
