@@ -38,6 +38,29 @@ IntelliJ 平台的 IDE 和插件都是运行在同一个 JVM 中的，因此插�
 
 而，针对其他插件的依赖，因为不同的插件使用不同的类加载器，所以默认情况下是无法查找到类的。因此，需在在 `plugin.xml` 的声明 `<depends>`，这是，本插件的的类加载器就会尝试委托依赖的插件的类加载器来加载依赖的类。
 
+### UI 线程与并发
+
+> [官方文档](https://plugins.jetbrains.com/docs/intellij/general-threading-rules.html)
+
+IntelliJ 平台的 IDE UI 是基于 Java Swing 技术实现的。不像 JavaScript 是单线程的，而 Java 是支持多线程的。
+
+在 Swing 的设计中，为了简化并发带来的问题，所有的 UI 更新操作都应该在 `EDT` 线程，即 Event Dispatch Thread。（关于为什么 UI 框架都要使用单线程的讨论 [stackoverflow](https://stackoverflow.com/questions/5544447/why-are-most-ui-frameworks-single-threaded)）
+
+因此，如果在 IntelliJ 平台插件中，非 `EDT` 线程中想要触发 UI 更新操作，需按照如下写法，将相关逻辑放到 `EDT` 线程中执行
+
+```java
+// Exception in thread "AWT-AppKit" com.intellij.openapi.diagnostic.RuntimeExceptionWithAttachments: EventQueue.isDispatchThread()=false Toolkit.getEventQueue()=com.intellij.ide.IdeEventQueue@68959cb5
+// https://intellij-support.jetbrains.com/hc/en-us/community/posts/206754235/comments/208642689
+Application application = ApplicationManager.getApplication();
+if(application.isDispatchThread()) {
+    application.runWriteAction(runnable);
+} else {
+    application.invokeLater(()-> application.runWriteAction(runnable));
+}
+```
+
+更多，关于多线程的设计和 API，参见[官方文档](https://plugins.jetbrains.com/docs/intellij/general-threading-rules.html)
+
 ## 本地化
 
 > [官方文档](https://plugins.jetbrains.com/docs/intellij/localization-guide.html)
