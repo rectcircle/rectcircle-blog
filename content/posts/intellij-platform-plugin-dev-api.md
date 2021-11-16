@@ -38,7 +38,7 @@ IntelliJ 平台的 IDE 和插件都是运行在同一个 JVM 中的，因此插�
 
 而，针对其他插件的依赖，因为不同的插件使用不同的类加载器，所以默认情况下是无法查找到类的。因此，需在在 `plugin.xml` 的声明 `<depends>`，这是，本插件的的类加载器就会尝试委托依赖的插件的类加载器来加载依赖的类。
 
-### UI 线程与并发
+### UI、线程与并发
 
 > [官方文档](https://plugins.jetbrains.com/docs/intellij/general-threading-rules.html)
 
