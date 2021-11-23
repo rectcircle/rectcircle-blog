@@ -277,6 +277,7 @@ VSCode 的配置是基于文件的配置（格式为JSON，允许包含注释）
         "**/.git": false,
     },
     "files.insertFinalNewline": true,  // 在保存时，自动插入一行
+    "workbench.editor.wrapTabs": true,  // 编辑器组标签溢出后自动换行
     "workbench.commandPalette.preserveInput": true,  // 再次打开命令面板恢复上次输入的内容
     "workbench.quickOpen.closeOnFocusLost": false,  // 失去焦点时，命令面板也不自动关闭
     "workbench.quickOpen.preserveInput": true,  // 再次打开快速打开板恢复上次输入的内容
