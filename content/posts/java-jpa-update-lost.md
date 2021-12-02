@@ -1,7 +1,7 @@
 ---
-title: "Java Jpa 更新丢失问题"
+title: "Java JPA 更新丢失问题"
 date: 2021-12-01T18:02:20+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
