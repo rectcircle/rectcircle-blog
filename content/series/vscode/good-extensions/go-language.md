@@ -10,6 +10,8 @@ summary: 阅读本章节，可以了解到如何使用 VSCode 开发 Go 语言�
 
 ## 导读
 
+> VSCode Go  扩展版本 0.29.0
+
 阅读本章节，可以了解到如何使用 VSCode 开发 Go 语言项目，并可以获取到基本不输于 Goland 的体验。
 
 ## 特性速览
@@ -625,9 +627,7 @@ VSCode 调试配置如下
 
 参见下文：[全部配置项](#全部配置项) 的 gopls 配置
 
-### 其他
-
-#### 全部命令列表
+### 全部命令列表
 
 > 扩展版本 0.29.0，参考：[官方文档](https://github.com/golang/vscode-go/blob/master/docs/commands.md)
 
@@ -685,9 +685,9 @@ go.survey.resetConfig|Go: Reset Survey Configuration|重置 Go 扩展的问卷�
 go.workspace.resetState|Go: Reset Workspace State|重置工作空间状态
 go.global.resetState|Go: Reset Global State|重置全局状态
 
-#### 全部配置项
+### 全部配置项
 
-> 参考：[官方文档](https://github.com/golang/vscode-go/blob/master/docs/settings.md)
+> 扩展版本 0.29.0，参考：[官方文档](https://github.com/golang/vscode-go/blob/master/docs/settings.md)
 
 除非特殊说明，下文配置项的值为默认值。
 
@@ -1030,11 +1030,14 @@ go.global.resetState|Go: Reset Global State|重置全局状态
 
 * 执行 `>Go: Locate Configured Go Tools` 命令，确认 dlv 安装位置
 * 执行 `GOBIN=上面输出的dlv所在目录 GO111MODULE=on go get github.com/go-delve/delve/cmd/dlv@v1.4.1`，安装旧版本 dlv
-* 确保关闭自动更新
+* 确保关闭自动更新并启用 legacy 模式
 
 ```json
 {
-    "go.toolsManagement.autoUpdate": true, // 自动更新扩展依赖的命令行工具，不提示用户 
+    "go.toolsManagement.autoUpdate": false,
+    "go.delveConfig": {
+        "debugAdapter": "legacy",
+    }
 }
 ```
 
