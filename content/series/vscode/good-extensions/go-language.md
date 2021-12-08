@@ -1045,7 +1045,7 @@ go.global.resetState|Go: Reset Global State|重置全局状态
 
 core dump 是 *nix 类操作系统提供的进程 crash 时刻的进程状态快照。在该文件中，包含进程 crash 时刻的所有堆栈和寄存器信息。利用调试器，可以查看 crash 时刻的各个线程的栈帧，变量。（以下仅在 Linux 测试通过）
 
-假设，编写一个 go 程序，改程序会 sleep 1 小时。在 sleep 的是否通过 `ctrl + \` 发送一个 `SIGQUIT` 信号，制造一个 go 的 coredump 文件。在此之前确保确保操作系统不限制 core dump 大小：执行 `ulimit -a`，观察 `-c` 一行是否为 `unlimited`。如果不是执行 `ulimit -c unlimited` （恢复方式为 `ulimit -c 原始值`）
+假设，编写一个 go 程序，该程序会 sleep 1 小时。在 sleep 的时候通过 `ctrl + \` 发送一个 `SIGQUIT` 信号，制造一个 go 的 coredump 文件。在实验之前确保确保操作系统不限制 core dump 大小：执行 `ulimit -a`，观察 `-c` 一行是否为 `unlimited`。如果不是执行 `ulimit -c unlimited` （恢复方式为 `ulimit -c 原始值`）
 
 ```go
 package main
