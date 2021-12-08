@@ -1041,6 +1041,68 @@ go.global.resetState|Go: Reset Global State|重置全局状态
 }
 ```
 
+#### 如何调试 core dump 文件
+
+core dump 是 *nix 类操作系统提供的进程 crash 时刻的进程状态快照。在该文件中，包含进程 crash 时刻的所有堆栈和寄存器信息。利用调试器，可以查看 crash 时刻的各个线程的栈帧，变量。（以下仅在 Linux 测试通过）
+
+假设，编写一个 go 程序，改程序会 sleep 1 小时。在 sleep 的是否通过 `ctrl + \` 发送一个 `SIGQUIT` 信号，制造一个 go 的 coredump 文件。在此之前确保确保操作系统不限制 core dump 大小：执行 `ulimit -a`，观察 `-c` 一行是否为 `unlimited`。如果不是执行 `ulimit -c unlimited` （恢复方式为 `ulimit -c 原始值`）
+
+```go
+package main
+
+import (
+	"fmt"
+	"time"
+)
+
+func main() {
+	a := 1
+	fmt.Println(a)
+
+	// ctrl + \
+	time.Sleep(1 * time.Hour)
+
+	b := 2
+
+	fmt.Println(b)
+}
+```
+
+编译成带有符号信息的可执行文件
+
+```bash
+go build -gcflags='all=-N -l' -o main ./
+```
+
+执行（注意环境变量），键盘输入 `ctrl + \`
+
+```bash
+GOTRACEBACK=crash ./main
+```
+
+执行 `cat /proc/sys/kernel/core_pattern` 获取 core dump 路径。
+
+配置 VSCode 调试器 `.vscode/launch.json`
+
+```json
+
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch core dump",
+            "type": "go",
+            "request": "launch",
+            "mode": "core",
+            "coreFilePath": "上一步获取到 core dump 文件路径",
+            "program": "${workspaceFolder}/main"
+        }
+    ]
+}
+```
+
+按 F5 即可启动调试，此时观察下，调试视图的调用栈视图，即可观察各个栈帧的变量情况。
+
 ### 如何高效进行项目源码阅读
 
 * 参见本文的 [代码导航](#代码导航) 章节
