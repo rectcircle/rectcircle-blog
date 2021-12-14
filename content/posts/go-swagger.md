@@ -35,7 +35,7 @@ swagger version
 
 ## 样例说明
 
-> Github 代码库
+> [Github 代码库](https://github.com/rectcircle/go-swagger-learn)
 
 ### 新建项目
 
