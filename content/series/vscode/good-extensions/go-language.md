@@ -1103,6 +1103,35 @@ GOTRACEBACK=crash ./main
 
 按 F5 即可启动调试，此时观察下，调试视图的调用栈视图，即可观察各个栈帧的变量情况。
 
+#### 一键同时调试多个进程
+
+假设某个项目是同时包含客户端和服务端。调试时，希望一键启动客户端和服务端。配置如下：
+
+```json
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Server",
+      // ...
+    },
+    {
+      "name": "Client",
+      // ...
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Server/Client",
+      "configurations": ["Server", "Client"],
+      "preLaunchTask": "${defaultBuildTask}"
+    }
+  ]
+}
+```
+
+更多参见：https://code.visualstudio.com/docs/editor/debugging#_compound-launch-configurations
+
 ### 如何高效进行项目源码阅读
 
 * 参见本文的 [代码导航](#代码导航) 章节
