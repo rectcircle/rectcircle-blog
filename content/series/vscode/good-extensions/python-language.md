@@ -12,7 +12,7 @@ summary: 阅读本章节，可以了解到如何使用 VSCode 开发 Python 语�
 
 > VSCode Python 扩展版本 v2021.12.1559732655
 
-阅读本章节，可以了解到如何使用 VSCode 开发 Python 语言项目，主要介绍如下几款 VSCode Python 扩展：
+阅读本章节，可以了解到如何使用 VSCode 开发 Python 语言项目，其功能主要由如下几款 VSCode Python 扩展：
 
 * [Python](https://marketplace.visualstudio.com/items?itemName=ms-python.python) - [MIT 许可证](https://marketplace.visualstudio.com/items/ms-python.python/license)
 * [Jupyter](https://marketplace.visualstudio.com/items?itemName=ms-toolsai.jupyter) - [MIT 许可证](https://marketplace.visualstudio.com/items/ms-toolsai.jupyter/license) （仅交互式 Python 涉及部分）
@@ -855,7 +855,7 @@ pydocstyle
 prospector
 
 | Setting  (python.linting.) | 默认值 | 描述 |
-| --- | --- | --- | --- |
+| --- | --- | --- |
 | prospectorEnabled | `false` | 启用 prospector|
 | prospectorArgs | `[]` | prospector 命令行参数|
 | prospectorPath | `"prospector"` | prospector 路径|
@@ -1047,7 +1047,7 @@ VSCode 添加如下配置
 
 ### 如何开发 Python 2.7 项目
 
-只要不使用 Jedi，即可很好的支持 Python 2.7 项目
+Jedi 完全不支持 Python 2.7。Pylance 和 Pyright 可以支持 Python 2.7 （但是只能识别 Python3 的语法和智能提示），参见：[Python 2.7 的限制](https://code.visualstudio.com/docs/python/environments#_limited-support-for-python-27)
 
 ### 如何让 IDE 更了解你的项目
 
