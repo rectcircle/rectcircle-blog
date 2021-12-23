@@ -615,7 +615,7 @@ VSCode 调试配置如下
 注意：
 
 * Delve DAP 不支持代码同步，因此 mode 为 `debug`、`test` 模式，编译的代码是远端的代码
-* Delve DAP 不支持 `--accept-multiclient` 或 `--continue` 标志，这意味着在调试会话结束后，`dlv-dap` 进程将始终退出。
+* Delve DAP 1.7.3：Delve DAP 不支持 `--accept-multiclient` 或 `--continue` 标志，这意味着在调试会话结束后，`dlv-dap` 进程将始终退出。[1.7.3 之后已经支持](https://github.com/go-delve/delve/blob/master/CHANGELOG.md#173-2021-11-16)
 
 #### 官方报告调试相关问题
 
