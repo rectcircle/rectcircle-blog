@@ -223,6 +223,16 @@ swagger generate spec -o ./api/swagger.json
           "description": "用户名",
           "type": "string",
           "x-go-name": "Name"
+        },
+        "status": {
+          "description": "状态\nactive StatusActive\ninactive StatusInactive",
+          "type": "string",
+          "enum": [
+            "active",
+            "inactive"
+          ],
+          "x-go-enum-desc": "active StatusActive\ninactive StatusInactive",
+          "x-go-name": "Status"
         }
       },
       "x-go-package": "github.com/rectcircle/go-swagger-learn/domain"
@@ -268,6 +278,8 @@ swagger serve api/swagger.json
 * 接口描述注释：`// swagger:route [method] [path pattern] [?tag1 tag2 tag3] [operation id]`，允许位于任何位置
 * 接口请求注释：`// swagger:parameters [operationid1 operationid2]` 必须在一个结构体声明上方，在内部通过 `in: body` 声明哪个字段是 body，注意字段名需要通过 `json` 注解声明。
 * 接口返回注释：`// swagger:response [?response name]` 必须在一个结构体声明上方，在内部通过 `in: body` 声明哪个字段是 body，需要在 `// swagger:route` 下方关联上 response name。
+* 枚举类型注释：`// swagger:enum [Type]` 在 `type Xxx string` 或 `type Xxx int` 上方可以声明一个枚举类型
+* 字符串格式声明注释：`// swagger:strfmt [name]`，参见：[官方文档](https://goswagger.io/use/spec/strfmt.html)
 
 ### 命令行使用
 
@@ -301,6 +313,83 @@ Help Options:
 ### 注释规范
 
 参考：[官方文档](https://goswagger.io/use/spec.html)
+
+### 常见场景
+
+#### 上传文件
+
+假设我们实现一个简单上传文件接口，该接口请求体包含两部分
+
+* 文件内容
+* 额外的一些元数据
+
+```go
+interface Xxx { 
+	// swagger:route POST /uploads uploads Upload
+	//
+	// 上传文件
+	//
+	//     Consumes:
+	//     - multipart/form-data
+	//
+	//     Security:
+	//       token:
+	//
+	//     Responses:
+	//       200: UploadResponse
+	// 实现的时候使用流式上传以节约内存
+    Upload(ctx context.Context, meta UploadMeta, data io.ReadCloser) (*FileInfo, error)
+}
+
+// UploadRequest 上传文件的请求
+// swagger:parameters Upload
+type UploadRequest struct {
+	// 上传文件请求中的元数据部分，JSON 解构
+	//
+	// 结构参见 [UploadMeta model](#model-UploadMeta) （Content-Type 为 application/json）
+	// 特别说明：由于 Swagger/OpenAPI 2.0 multipart/form-data 的限制，这里只能定义为 string，且不支持指定每个部分的 Content-Type，参见：
+	//  [Swagger/OpenAPI 3.0 multipart-content 说明](https://github.com/OAI/OpenAPI-Specification/blob/main/versions/3.0.1.md#special-considerations-for-multipart-content) |
+	//  [stackoverflow](https://stackoverflow.com/questions/44323585/how-to-send-a-json-object-as-part-of-a-multipart-request-in-swagger-editor) |
+	//  [Swagger/OpenAPI 2.0 upload file](https://swagger.io/docs/specification/2-0/file-upload/)
+	//
+	// Required: true
+	// in: formData
+	Data string
+	// 上传的文件内容
+	//
+	// 参见：[github issue](https://github.com/go-swagger/go-swagger/issues/1887)
+	//
+	// Required: false
+	// in: formData
+	// swagger:file
+	File *bytes.Buffer
+}
+
+type BaseResponseBody struct {
+	// 错误码
+	Code int `json:"code"`
+	// 错误信息
+	Message string `json:"message"`
+}
+
+// UploadResponse 返回某个 UploadResponse
+// swagger:response UploadResponse
+type UploadResponse struct {
+	// in: body
+	Body struct {
+		BaseResponseBody
+		Data FileInfo `json:"data"`
+	}
+}
+
+type UploadMeta struct {
+  //...
+}
+
+type FileInfo struct {
+  //...
+}
+```
 
 ## 从 swagger 规范文件生成 client 代码
 
