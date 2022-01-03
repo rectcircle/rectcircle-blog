@@ -12,6 +12,8 @@ tags:
 
 OCI 全称 [Open Container Initiative](https://www.opencontainers.org/)，即开放容器倡议。是一个对容器技术进行标准化的组织。
 
+该组织的使命是围绕容器技术推广一套通用的、最小的、开放的标准和规范。
+
 该组织在 Linux 基金会的支持下成立，核心成员主要包括：Docker、Redhat、IBM、微软、Google 等。
 
 特别说明：目前 OCI 的标准基本上都是来源于 Docker，也就是说 Docker 的核心组件是符合 OCI 标准的，是 OCI 的一个参考实现。
@@ -75,6 +77,7 @@ OCI 全称 [Open Container Initiative](https://www.opencontainers.org/)，即开
 
 * Docker 商业公司
 * Podman 完全开源
+* rkt
 
 ### 集群
 
