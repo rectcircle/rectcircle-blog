@@ -38,7 +38,7 @@ tags:
 * 数据线
 * 手柄挂绳 * 2
 
-![pico-neo3-and-some-accessories](/image/vr/pico-neo3-all.jpeg)
+![pico-neo3-all](/image/vr/pico-neo3-all.jpeg)
 
 ## 设置
 
@@ -52,7 +52,7 @@ tags:
 
 在正式玩之前，需将系统升级到最新版本，才能获得更好的体验，升级方式为：设置 -> 屏幕最右侧，点击检查更新。
 
-![pico-neo3-quick-start-guide](/image/vr/pico-neo3-settings-check-update.jpeg)
+![pico-neo3-settings-check-update](/image/vr/pico-neo3-settings-check-update.jpeg)
 
 下面梳理了一些比较有用的设置项，可以先进行设置
 
