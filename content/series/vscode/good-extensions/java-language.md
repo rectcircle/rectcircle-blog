@@ -162,7 +162,7 @@ VSCode Java 支持如下几种类型的 Java 项目
 
 * `|->` 导出到 Jar 文件，快速创建一个 Jar 包 （命令为：`>java: export jar...`）
 
-![image](/image/vscode/java/exportjar.png)
+![image](/image/vscode/java/exportjar.gif)
 
 * `🔄` 刷新项目视图 （命令为：`>java: refresh`）
 * `折叠` 折叠树
