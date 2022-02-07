@@ -100,9 +100,9 @@ VSCode Java 支持 Java 1.5 到 Java 17 版本的 JDK。
 * `JAVA_HOME` 环境变量
 * `PATH` 环境变量（路径应以包含 bin 文件夹的父文件夹结尾。示例路径：如果 `/usr/lib/jvm/java-11/bin` 中存在 bin，则使用 `/usr/lib/jvm/java-11`）
 
-此 JDK 将用于启动 Java Language。默认情况下，将用于编译项目。
+此 JDK 将用于启动 Java Language Server。默认情况下，将用于编译项目。
 
-如果您需要针对不同的 JDK 版本编译项目，建议您在用户设置中配置 java.configuration.runtimes 属性，例如：
+如果需要针对不同的 JDK 版本编译项目，建议您在用户设置中配置 `java.configuration.runtimes` 属性，例如：
 
 ```json
 {
@@ -277,7 +277,7 @@ VSCode Java 支持如下几种类型的 Java 项目
 
 切换到标准模式方法如下：
 
-![image](/image/vscode/java/switch-to-standard.png)
+![image](/image/vscode/java/switch-to-standard.gif)
 
 ### 构建工具
 
@@ -1525,6 +1525,31 @@ java.project.refreshLibraries | 刷新 |
 
 #### 代码片段
 
+前缀 | 说明
+---- | ----
+main | 生成 main 函数
+ctor | 生成公有构造函数
+try_catch | 生成 try catch 块
+try_resources | 生成 try resources 块
+private_method| 生成私有方法
+public_method | 生成公有方法
+private_static_method | 生成私有静态方法
+public_static_method | 生成公有静态方法
+protected_method | 生成受保护方法
+switch | 生成 switch 块
+new | 生成 new 块
+prf | 生成私有字段声明
+sysout | 生成 System.out.println
+syserr | 生成 System.err.println
+fori | 生成 for int ...
+foreach | 生成 `for (type var : iterable)` 语句
+if | 生成 if 语句
+ifelse | 生成 if else 语句
+ifnull | 生成 if (condition == null)
+ifnotnull | 生成 if (condition != null)
+while | 生成 while 块
+dowhile | 生成 do while 块
+
 #### 配置
 
 名称 | 说明 | 默认值
@@ -1772,11 +1797,42 @@ pom.xml 中添加 `build-helper-maven-plugin`，让 Java Language Server 识别�
 </dependency>
 ```
 
+### 避免断点到 Spring 切面代码中
+
+将相关不想断点进入的包路径，配置到 launch.json 的 Java 调试配置的 `stepFilters` 的 `skipClasses` 中。
+
+示例如下：
+
+```json
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Launch DemoApplication",
+            "request": "launch",
+            "mainClass": "com.example.demo.DemoApplication",
+            "projectName": "demo",
+            "stepFilters": {
+                "skipClasses": [
+                    "$JDK",
+                    "$Libraries",
+                ],
+                "skipSynthetics": true,
+                "skipStaticInitializers": false,
+                "skipConstructors": false
+            }
+        }
+    ]
+}
+```
+
+注意：上例中的配置将会禁止调试时进入 `JDK` 和 所有外部依赖库，可能会影响阅读和调试库代码。可以尝试使用：`xxx.xxx.ClassXxx` 或 `xxx.xxx.*`的方式进行细粒度的禁用（相对比较繁琐）。
+
 ## 故障排除 Troubleshooting
 
 * [FAQ](https://code.visualstudio.com/docs/java/java-faq)
 * 确认提供该 Feature 的扩展
-* 查看该扩展 Troubleshooting 手册
+* 查看各个扩展 Troubleshooting 手册
     * 调试相关 [Troubleshooting](https://github.com/microsoft/vscode-java-debug/blob/main/Troubleshooting.md)
     * Language Server [Troubleshooting](https://github.com/redhat-developer/vscode-java/wiki/Troubleshooting)
     * Language Server [证书问题](https://github.com/redhat-developer/vscode-java/wiki/Use-proper-cacerts-to-import-Java-projects)
