@@ -3,4 +3,8 @@
 		"source.fixAll.markdownlint": true
 	},
 	"commentTranslate.targetLanguage": "zh-CN",
+	"git.repositoryScanIgnoredFolders": [
+		"node_modules",
+		"themes"
+	],
 }
