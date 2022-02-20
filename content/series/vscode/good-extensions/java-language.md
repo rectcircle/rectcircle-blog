@@ -1759,6 +1759,9 @@ wrapperUrl=https://mirrors.huaweicloud.com/repository/maven/io/takari/maven-wrap
 pom.xml 中添加 `build-helper-maven-plugin`，让 Java Language Server 识别生成的代码。
 
 ```xml
+  <properties>
+    <generatedSources>${project.build.directory}/generated-sources/java</generatedSources>
+  </properties>
   <build>
     <plugins>
       <plugin>

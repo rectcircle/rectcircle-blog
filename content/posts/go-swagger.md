@@ -391,6 +391,23 @@ type FileInfo struct {
 }
 ```
 
+#### 支持 `*string` 类型
+
+```go
+type XxxRequest struct {
+	// 命名
+	// Extensions:
+	// ---
+	// x-nullable: true
+	Name *string `json:"name"`
+}
+```
+
+参见：
+
+* [官方文档 Extensions](https://goswagger.io/use/spec.html#known-vendor-extensions)
+* [Github Issue](https://github.com/go-swagger/go-swagger/issues/2166)
+
 ## 从 swagger 规范文件生成 client 代码
 
 > [官方文档](https://goswagger.io/generate/client.html)
