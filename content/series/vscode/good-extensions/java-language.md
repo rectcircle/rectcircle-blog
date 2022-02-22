@@ -4,7 +4,7 @@ date: 2021-12-29T19:40:51+08:00
 draft: false
 toc: true
 comments: true
-weight: 1500
+weight: 1600
 summary: 阅读本章节，可以了解到如何使用 VSCode 开发 Java 语言项目。
 ---
 
