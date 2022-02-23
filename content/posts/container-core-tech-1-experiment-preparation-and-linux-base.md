@@ -39,6 +39,23 @@ tags:
     ```
 
 * 宿主机执行 `ssh 普通用户名@192.168.56.xxx` 输入密码登录
+* 安装必备环境（常见命令以及 C 和 Golang 开发环境）
+
+    ```
+    su root
+    apt install sudo wget curl
+    echo '普通用户名 ALL=(ALL) NOPASSWD:ALL' /etc/sudoers.d/myuser
+    apt install build-essential gdb
+    wget https://go.dev/dl/go1.17.7.linux-amd64.tar.gz
+    tar -zxvf go1.17.7.linux-amd64.tar.gz -C /usr/local/
+    echo 'export GOROOT=/usr/local/go' >> /etc/profile
+    echo 'export PATH=/usr/local/go/bin:$PATH' >> /etc/profile
+    ```
+
+* 查看 系统版本（内核、gcc、glibc、go）
+    * 内核版本 `uname -r`： `5.10.0-11-amd64`
+    * gcc 版本 `gcc -v`： `gcc version 10.2.1 20210110 (Debian 10.2.1-6) `
+    * glibc 版本 `ldd --version`：`ldd (Debian GLIBC 2.31-13+deb11u2) 2.31`
 * 停止虚拟机 Debian11-base，复制一份 `Debian11-exp01` 来做实验，防止把环境搞坏了还要重新从头安装
 
 ## 系统调用、库函数和工具

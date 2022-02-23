@@ -1174,3 +1174,18 @@ Go 开启如下配置即可开启该特性（目前处于实验阶段）
 ### 非 go mod 项目
 
 GOPATH 迁移到 Go modudle 非常容易，建议花少量时间迁移到 Go modudle 模式。如果仍要使用 GOPATH 开发模式，可以参考：[官方文档](https://github.com/golang/vscode-go/blob/master/docs/gopath.md)
+
+### 跨平台开发，如在 Mac 开发 Linux
+
+添加如下 VSCode 配置，参考： [github issue](https://github.com/golang/go/issues/29202#issuecomment-488469829)
+
+```json
+{
+    "gopls": {
+        "build.env": {
+            "GOOS": "linux",
+            "GOARCH": "amd64"
+        },
+    },
+}
+```
