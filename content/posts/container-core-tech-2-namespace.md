@@ -77,16 +77,124 @@ Mount Namespace 就是实现了进程间目录树挂载的隔离，即：不同 
 
 ### 实验设计
 
-为了验证 Mount Namespace 能力的能力，我们将启动一个具有新 Mount Namespace 的 bash 的进程，这个进程将会使用 bind 挂载的方式将 `data/binding/source` 目录挂载到当前目录的 `data/binding/target` 目录。并观察：
+为了验证 Mount Namespace 能力的能力，我们将启动一个具有新 Mount Namespace 的 bash 的进程，这个进程将会使用 bind 挂载的方式将 `data/binding/source` 目录挂载到当前目录的 `data/binding/target` 目录，其中 `data/binding/source` 包含一个文件 `a`。并观察：
 
 * 具有新 Mount Namespace 的 bash 进程，看到 `data/binding/source` 目录和 `data/binding/target` 目录，内容一致
 * 其他普通进程，看到的 `data/binding/source` 目录和 `data/binding/target` 目录，内容**不**一致
 
-此外还可以观察两个进程的 `mount` 命令的输出，以及 `/proc/self/ns/mnt`、`readlink /proc/self/ns/mnt`、`cat /proc/self/mounts`、`cat /proc/self/mountinfo` 以及 `/proc/self/mountstats` 等的输出。
+此外还可以观察两个进程的 `mount` 命令的输出，以及 `readlink /proc/self/ns/mnt`、`cat /proc/self/mounts`、`cat /proc/self/mountinfo` 以及 `cat /proc/self/mountstats` 等的输出。
 
 ### 实验源码、效果和解释
 
 ### C 语言描述
+
+```cpp
+// gcc src/c/01-namespace/01-mount/main.c && sudo ./a.out
+
+#define _GNU_SOURCE	   // Required for enabling clone(2)
+#include <sys/wait.h>  // For waitpid(2)
+#include <sys/mount.h> // For mount(2)
+#include <sys/mman.h>  // For mmap(2)
+#include <sched.h>	   // For clone(2)
+#include <signal.h>	   // For SIGCHLD constant
+#include <stdio.h>	   // For perror(3), printf(3), perror(3)
+#include <unistd.h>    // For execv(3), sleep(3)
+#include <stdlib.h>    // For exit(3), system(3)
+
+#define STACK_SIZE (1024 * 1024)
+
+char *const child_args[] = {
+	"/bin/bash",
+	"-xc",
+	"ls data/binding/target \
+	&& readlink /proc/self/ns/mnt \
+	&& cat /proc/self/mounts | grep data/binding/target \
+	&& cat /proc/self/mountinfo | grep data/binding/target \
+	&& cat /proc/self/mountstats | grep data/binding/target \
+	&& sleep 10 \
+	",
+	NULL};
+
+int new_namespace_func(void *args)
+{
+	// 首先，需要阻止挂载事件传播到其他 Mount Namespace，参见：https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#NOTES
+	// 如果不执行这个语句， cat /proc/self/mountinfo 所有行将会包含 shared，这样在这个子进程中执行 mount 其他进程也会受影响
+	// 更多参见：https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES
+	mount(NULL, "/", NULL , MS_SLAVE | MS_REC, NULL);
+	// 使用 MS_BIND 参数将 data/binding/source 挂载（绑定）到 data/binding/target
+	// 因为在新的 Mount Namespace 中执行，所有其他进程的目录树不受影响
+	mount("data/binding/source", "data/binding/target", NULL, MS_BIND, NULL);
+	printf("=== new mount namespace process ===\n");
+	execv(child_args[0], child_args);
+	perror("exec");
+	exit(EXIT_FAILURE);
+}
+
+pid_t old_namespace_exec()
+{
+	pid_t p = fork();
+	if (p == 0)
+	{
+		printf("=== old namespace process ===\n");
+		execv(child_args[0], child_args);
+		perror("exec");
+		exit(EXIT_FAILURE);
+	}
+	if (p == -1) {
+		perror("fork");
+		exit(1);
+	}
+	return p;
+}
+
+int main()
+{
+	// 为子进程提供申请函数栈
+	void *child_stack = mmap(NULL, STACK_SIZE,
+							 PROT_READ | PROT_WRITE,
+							 MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK,
+							 -1, 0);
+	// 创建新的 Mount Namespace 进程中执行 new_namespace_func 函数
+	pid_t p1 = clone(new_namespace_func, child_stack + STACK_SIZE, SIGCHLD | CLONE_NEWNS, NULL);
+	if (p1 == -1)
+	{
+		perror("clone");
+		exit(1);
+	}
+	sleep(5);
+	// 创建新的进程（不创建 Namespace），并执行测试命令
+	pid_t p2 = old_namespace_exec();
+	waitpid(p1, NULL, 0);
+	waitpid(p2, NULL, 0);
+	return 0;
+}
+```
+
+编译并运行，输出为：
+
+```
+=== new mount namespace process ===
++ ls data/binding/target
+a
++ readlink /proc/self/ns/mnt
+mnt:[4026532188]
++ grep data/binding/target
++ cat /proc/self/mounts
+/dev/sda1 /home/rectcircle/container-core-tech-experiment/data/binding/target ext4 rw,relatime,errors=remount-ro 0 0
++ grep data/binding/target
++ cat /proc/self/mountinfo
+231 210 8:1 /home/rectcircle/container-core-tech-experiment/data/binding/source /home/rectcircle/container-core-tech-experiment/data/binding/target rw,relatime master:1 - ext4 /dev/sda1 rw,errors=remount-ro
++ grep data/binding/target
++ cat /proc/self/mountstats
+device /dev/sda1 mounted on /home/rectcircle/container-core-tech-experiment/data/binding/target with fstype ext4
++ sleep 10
+=== old namespace process ===
++ ls data/binding/target
++ readlink /proc/self/ns/mnt
+mnt:[4026531840]
++ grep data/binding/target
++ cat /proc/self/mounts
+```
 
 ### Go 语言描述
 
