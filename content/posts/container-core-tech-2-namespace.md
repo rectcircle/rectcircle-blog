@@ -41,7 +41,68 @@ Namespace 在 Linux 中是进程的属性和进程组紧密相关：一个进程
 
 下文，将以 Go 语言、 C 语言、Shell 命令三种形式，来介绍这些 Namespace。实验环境说明参见：[容器核心技术（一） 实验环境准备 & Linux 基础知识](/posts/container-core-tech-1-experiment-preparation-and-linux-base)
 
-## UTS Namespace
+## Mount Namespace
+
+> 手册页面：[mount namespaces](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html)。
+
+### 核心知识
+
+目录树是 Linux 一种的全局系统资源，对目录树的一个节点绑定一个文件系统的操作叫做挂载（`mount`），即通过 `mount` 系统调用实现的。
+
+Linux 支持多种多样的挂载，这里先介绍几种常见的例子：
+
+* 挂载 一个 ext4 格式的文件系统（磁盘分区） 到某个目录上
+* 挂载 一个 U 盘到某个目录上
+* 挂载 一个 ISO 光盘镜像文件到某个目录上
+
+除了上述情况外，还有一个在容器技术中会用到的挂载类型
+
+* 挂载一个 tmpfs 到 /tmp 目录，tmpfs 是一种特殊的文件系统，一般用于缓存，数据存储在内存和 swap 中，系统重启后会丢失。
+* bind 某一个目录（也可以是文件）到另一个目录（也可以是文件，类型需和源保持一致），实现的效果类似于一个软链指向两一个目录，但是优点是，对于进程来说，是无法分辨出同一个文件的两个路径的关系。该能力是容器引擎实现挂载宿主机目录的核心技术。
+* 将几个目录组成一套 overlay 文件系统，并挂载在某个目录，这是容器引擎（如 Docker）实现镜像和容器数据存储的核心技术，在下一篇文章有专门介绍。
+
+本部分涉及的系统调用、函数、命令以及文档参见为：
+
+* [mount_namespaces(7)](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html)
+* [clone(2) 系统调用](https://man7.org/linux/man-pages/man2/clone.2.html)
+* [unshare(1) 命令](https://man7.org/linux/man-pages/man1/unshare.1.html)
+* [mount(2) 系统调用](https://man7.org/linux/man-pages/man8/mount.8.html)
+* [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)
+* [umount(2) 系统调用](https://man7.org/linux/man-pages/man2/umount.2.html)
+* [umount(8) 命令](https://man7.org/linux/man-pages/man8/umount.8.html)
+
+### 目的
+
+Mount Namespace 就是实现了进程间目录树挂载的隔离，即：不同 Namespace 的进程看到的目录树可以是不一样的，且这些进程中的挂载是相互不影响的。
+
+### 实验设计
+
+为了验证 Mount Namespace 能力的能力，我们将启动一个具有新 Mount Namespace 的 bash 的进程，这个进程将会使用 bind 挂载的方式将 `data/binding/source` 目录挂载到当前目录的 `data/binding/target` 目录。并观察：
+
+* 具有新 Mount Namespace 的 bash 进程，看到 `data/binding/source` 目录和 `data/binding/target` 目录，内容一致
+* 其他普通进程，看到的 `data/binding/source` 目录和 `data/binding/target` 目录，内容**不**一致
+
+此外还可以观察两个进程的 `mount` 命令的输出，以及 `/proc/self/ns/mnt`、`readlink /proc/self/ns/mnt`、`cat /proc/self/mounts`、`cat /proc/self/mountinfo` 以及 `/proc/self/mountstats` 等的输出。
+
+### 实验源码、效果和解释
+
+### C 语言描述
+
+### Go 语言描述
+
+### Bash 命令
+
+```
+sudo mount --make-private -t overlay overlay -o lowerdir=overlay/demo1/lower1:overlay/demo1/lower2,upperdir=overlay/demo1/upper,workdir=overlay/demo1/work overlay/demo1/merged
+sudo mount --make-private -t overlay overlay -o lowerdir=overlay/demo2/lower1:overlay/demo2/lower2,upperdir=overlay/demo2/upper,workdir=overlay/demo2/work overlay/demo2/merged
+sudo umount overlay/demo1/merged
+sudo umount overlay/demo2/merged
+
+cat /proc/self/mountinfo
+readlink /proc/$$/ns/mnt 
+
+sudo mount --bind /tmp binded
+```
 
 ## 备忘
 
@@ -50,3 +111,4 @@ unshare / mount https://segmentfault.com/a/1190000006913509 。
 https://osh-2020.github.io/lab-4/namespaces/
 https://osh-2020.github.io/
 http://121.36.228.94/2021/02/21/linux_kernel_namespace/
+https://www.redhat.com/sysadmin/behind-scenes-podman
