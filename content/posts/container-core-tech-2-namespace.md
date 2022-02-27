@@ -70,6 +70,8 @@ mount 还需要注意关于 Shared subtrees 的相关内容，在此不过多阐
 * [文章：Linux mount （第二部分 - Shared subtrees）](https://segmentfault.com/a/1190000006899213)
 * [mount_namespaces(7) Shared subtrees](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES)
 
+此外，对于根目录挂载点的切换，需要通过 [pivot_root(2) 系统调用](https://man7.org/linux/man-pages/man2/pivot_root.2.html) 实现。
+
 本部分涉及的系统调用、函数、命令以及文档的手册参见为：
 
 * [mount_namespaces(7)](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html)
@@ -79,8 +81,8 @@ mount 还需要注意关于 Shared subtrees 的相关内容，在此不过多阐
 * [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)
 * [umount(2) 系统调用](https://man7.org/linux/man-pages/man2/umount.2.html)
 * [umount(8) 命令](https://man7.org/linux/man-pages/man8/umount.8.html)
-
-### 相关 API
+* [pivot_root(2) 系统调用](https://man7.org/linux/man-pages/man2/pivot_root.2.html)
+* [pivot_root(8) 系统调用](https://man7.org/linux/man-pages/man8/pivot_root.8.html)
 
 ### 实验
 
@@ -108,6 +110,9 @@ mount 还需要注意关于 Shared subtrees 的相关内容，在此不过多阐
 #include <unistd.h>    // For execv(3), sleep(3)
 #include <stdlib.h>    // For exit(3), system(3)
 
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \
+                               } while (0)
+
 #define STACK_SIZE (1024 * 1024)
 
 char *const child_args[] = {
@@ -133,7 +138,8 @@ int new_namespace_func(void *args)
 	// 说明：
 	//   MS_SLAVE 换成 MS_PRIVATE 也能达到同样的效果
 	//   等价于执行：mount --make-rslave / 命令
-	mount(NULL, "/", NULL , MS_SLAVE | MS_REC, NULL);
+	if (mount(NULL, "/", NULL , MS_SLAVE | MS_REC, NULL) == -1)
+		errExit("mount-MS_SLAVE");
 	// 使用 MS_BIND 参数将 data/binding/source 挂载（绑定）到 data/binding/target
 	// 因为在新的 Mount Namespace 中执行，所有其他进程的目录树不受影响
 	// 等价命令为：mount --bind data/binding/source data/binding/target
@@ -142,7 +148,8 @@ int new_namespace_func(void *args)
 	//              const char *filesystemtype, unsigned long mountflags,
 	//              const void *data);
 	// 更多参见：https://man7.org/linux/man-pages/man2/mount.2.html
-	mount("data/binding/source", "data/binding/target", NULL, MS_BIND, NULL);
+	if (mount("data/binding/source", "data/binding/target", NULL, MS_BIND, NULL) != -1)
+		errExit("mount-MS_BIND");
 	printf("=== new mount namespace process ===\n");
 	execv(child_args[0], child_args);
 	perror("exec");
@@ -159,10 +166,6 @@ pid_t old_namespace_exec()
 		perror("exec");
 		exit(EXIT_FAILURE);
 	}
-	if (p == -1) {
-		perror("fork");
-		exit(1);
-	}
 	return p;
 }
 
@@ -173,6 +176,8 @@ int main()
 							 PROT_READ | PROT_WRITE,
 							 MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK,
 							 -1, 0);
+	if (child_stack == MAP_FAILED)
+		errExit("mmap");
 	// 创建新进程，并为该进程创建一个 Mount Namespace（CLONE_NEWNS），并执行 new_namespace_func 函数
 	// clone 库函数声明为：
 	// int clone(int (*fn)(void *), void *stack, int flags, void *arg, ...
@@ -180,13 +185,12 @@ int main()
 	// 更多参见：https://man7.org/linux/man-pages/man2/clone.2.html
 	pid_t p1 = clone(new_namespace_func, child_stack + STACK_SIZE, SIGCHLD | CLONE_NEWNS, NULL);
 	if (p1 == -1)
-	{
-		perror("clone");
-		exit(1);
-	}
+		errExit("clone");
 	sleep(5);
 	// 创建新的进程（不创建 Namespace），并执行测试命令
 	pid_t p2 = old_namespace_exec();
+	if (p2 == -1)
+		errExit("fork");
 	waitpid(p1, NULL, 0);
 	waitpid(p2, NULL, 0);
 	return 0;
@@ -227,6 +231,7 @@ func newNamespaceExec() <-chan error {
 		// 说明：
 		//   --make-rprivate 换成 --make-rslave 也能达到同样的效果
 		//   等价于系统调用：mount(NULL, "/", NULL , MS_PRIVATE | MS_REC, NULL)
+		// Go 语言对应 api 为：syscall.Mount
 		"mount --make-rprivate /"+
 			// 将 data/binding/source 挂载（绑定）到 data/binding/target
 			// 因为在新的 Mount Namespace 中执行，所有其他进程的目录树不受影响
@@ -363,15 +368,186 @@ mnt:[4026531840]
 
 ### 扩展：切换根文件系统
 
-TODO chroot pivot_root，设计一个  （TODO，改为 busybox）
+最早，切换某个进程的根目录的系统调用为 [chroot(2)](https://man7.org/linux/man-pages/man2/chroot.2.html)，该能力最早出现在 1979 年的Unix V7 系统。chroot 仅仅是通过修改，进程的 task 结构体中 fs 结构体中的 root 字段实现的（[博客 1](https://huadeyu.tech/system/chroot-implement-detail.html)）。存在很多越狱手段，参见：[博客2](https://zhengyinyong.com/post/chroot-mechanism/#chroot-%E7%9A%84%E5%AE%89%E5%85%A8%E9%97%AE%E9%A2%98)。
+
+配合 Mount Namespace，[pivot_root(2) 系统调用](https://man7.org/linux/man-pages/man2/pivot_root.2.html)可以实现完全隔离的根目录。
 
 #### 实验设计
 
+为了验证 [pivot_root(2) 系统调用](https://man7.org/linux/man-pages/man2/pivot_root.2.html)隔离根目录挂载点的能力。我们准备一个包含 `busybox` 的目录，用来充当新的根目录（下文称为 rootfs）。该目录位于 `data/busybox/rootfs`。准备命令为：
+
+```bash
+mkdir -p data/busybox/rootfs/bin
+cd data/busybox/rootfs/bin
+wget https://busybox.net/downloads/binaries/1.35.0-x86_64-linux-musl/busybox
+chmod +x busybox
+# ./busybox --install -s ./
+ln -s busybox sh
+ln -s busybox ls
+cd ..
+mkdir .oldrootfs
+touch README
+```
+
+最终 `data/busybox/rootfs` 目录数结构为
+
+```
+./data/busybox/rootfs/
+├── bin
+│   ├── busybox
+│   ├── ls -> busybox
+│   ├── README
+│   └── sh -> busybox
+└── .oldrootfs
+    └── README
+```
+
+本实验，启动具有新 Mount Namespace 进程，该进程会执行 pivot_root 将根目录切换到 `data/busybox/rootfs/`，并执行新的根目录的 `/bin/sh` （即 `data/busybox/rootfs/bin/sh`），执行 `ls /` 和 `ls /bin` 观察其输出。
+
+> 💡 busybox 是一个没有任何外部依赖（不依赖任何动态链接库，包括 glibc）的命令行工具合集，包含如 sh、ls 等常用命令。更多参见：[busybox 官网](https://busybox.net/)
+
 #### C 语言描述
+
+```cpp
+// gcc src/c/01-namespace/01-mount/pivot_root/main.c && sudo ./a.out
+
+// 本例参考了：https://man7.org/linux/man-pages/man2/pivot_root.2.html#EXAMPLES
+
+#define _GNU_SOURCE    // Required for enabling clone(2)
+#include <sys/wait.h>  // For waitpid(2)
+#include <sys/mount.h> // For mount(2)
+#include <sys/mman.h>  // For mmap(2)
+#include <sched.h>     // For clone(2)
+#include <signal.h>    // For SIGCHLD constant
+#include <stdio.h>     // For perror(3), printf(3), perror(3)
+#include <unistd.h>    // For execv(3), sleep(3)
+#include <stdlib.h>    // For exit(3), system(3)
+#include <limits.h>    // For PATH_MAX
+#include <sys/syscall.h> // For  SYS_* constants
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \
+                               } while (0)
+
+static int
+pivot_root(const char *new_root, const char *put_old)
+{
+    return syscall(SYS_pivot_root, new_root, put_old);
+}
+
+#define STACK_SIZE (1024 * 1024)
+
+char *const child_args[] = {
+    "/bin/sh",
+    "-xc",
+    "export PATH=/bin && ls / && ls /bin",
+    NULL};
+
+char *const new_root = "data/busybox/rootfs";
+char *const put_old = "data/busybox/rootfs/.oldrootfs";
+char *const put_old_on_new_rootfs = "/.oldrootfs";
+
+int new_namespace_func(void *args)
+{
+    // 首先，需要阻止挂载事件传播到其他 Mount Namespace，参见：https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#NOTES
+    // 如果不执行这个语句， cat /proc/self/mountinfo 所有行将会包含 shared，这样在这个子进程中执行 mount 其他进程也会受影响
+    // 关于 Shared subtrees 更多参见：
+    //   https://segmentfault.com/a/1190000006899213
+    //   https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES
+    // 下面语句的含义是：重新递归挂（MS_REC）载 / ，并设置为不共享（MS_SLAVE 或 MS_PRIVATE）
+    // 说明：
+    //   MS_SLAVE 换成 MS_PRIVATE 也能达到同样的效果
+    //   等价于执行：mount --make-rslave / 命令
+    if (mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL) == -1)
+        errExit("mount-MS_SLAVE");
+    // 确保 new_root 是一个挂载点
+    if (mount(new_root, new_root, NULL, MS_BIND, NULL) == -1)
+        errExit("mount-MS_BIND");
+    // 切换根挂载目录，将 new_root 挂载到根目录，将旧的根目录挂载到 put_old 目录下
+    // - new_root 和 put_old 必须是一个目录
+    // - new_root 和 put_old 不能和当前根目录相同。
+    // - put_old 必须是 new_root 的子孙目录
+    // - new_root 必须是挂载点的路径，但不能是根目录。如果不是的话，可以通过 mount bind 方式转换为一个挂载点（参见上一个命令）。
+    // - 旧的根目录必须是挂载点。
+    // 更多参见：https: // man7.org/linux/man-pages/man2/pivot_root.2.html
+    // 此外，可以通过 pivot_root(".", ".") 来实现免除创建临时目录，参见： https://github.com/opencontainers/runc/commit/f8e6b5af5e120ab7599885bd13a932d970ccc748
+    if (pivot_root(new_root, put_old) == -1)
+        errExit("pivot_root");
+    // 根目录已经切换了，所以之前的工作目录已经不存在了，所以需要将 working directory 切换到根目录
+    if (chdir("/") == -1)
+        errExit("chdir");
+    // 取消挂载旧的根目录路径
+    if (umount2(put_old_on_new_rootfs, MNT_DETACH) == -1)
+        perror("umount2");
+    printf("=== new mount namespace and pivot_root process ===\n");
+    execv(child_args[0], child_args);
+    errExit("execv");
+}
+
+int main()
+{
+    // 为子进程提供申请函数栈
+    void *child_stack = mmap(NULL, STACK_SIZE,
+                             PROT_READ | PROT_WRITE,
+                             MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK,
+                             -1, 0);
+    if (child_stack == MAP_FAILED)
+        errExit("mmap");
+    // 创建新进程，并为该进程创建一个 Mount Namespace（CLONE_NEWNS），并执行 new_namespace_func 函数
+    // clone 库函数声明为：
+    // int clone(int (*fn)(void *), void *stack, int flags, void *arg, ...
+    // 		  /* pid_t *parent_tid, void *tls, pid_t *child_tid */);
+    // 更多参见：https://man7.org/linux/man-pages/man2/clone.2.html
+    pid_t p1 = clone(new_namespace_func, child_stack + STACK_SIZE, SIGCHLD | CLONE_NEWNS, NULL);
+    if (p1 == -1)
+        errExit("clone");
+    waitpid(p1, NULL, 0);
+    return 0;
+}
+```
 
 #### Go 语言描述
 
 #### 命令描述
+
+```bash
+#!/usr/bin/env bash
+
+# sudo ./src/shell/01-namespace/01-mount/pivot_root/main.sh
+
+new_root="data/busybox/rootfs"
+script="ls / && ls /bin"
+
+# unshare -m: 创建新进程，并为该进程创建一个 Mount Namespace（-m）
+# 更多参见：https://man7.org/linux/man-pages/man1/unshare.1.html\
+# 注意 unshare 会自动取消进程的所有共享，因此不需要手动执行：mount --make-rprivate /
+# 更多参见：https://man7.org/linux/man-pages/man1/unshare.1.html 的 --propagation 参数说明
+
+# mount --bind: 确保 new_root 是一个挂载点
+# cd $new_root: 确保 working directory 是新的 rootfs
+# pivot_root: 切换 rootfs
+# cd /: 根目录已经切换了，所以之前的工作目录已经不存在了，所以需要将 working directory 切换到根目录
+unshare -m /bin/bash -c "mount --bind $new_root $new_root \
+	&& cd $new_root \
+	&& pivot_root . . \
+	&& cd / \
+	&& echo '=== new mount namespace and pivot_root process ===' \
+	&& /bin/sh -xc \"$script\"" &
+pid1=$!
+
+wait $pid1
+```
+
+#### 输出及分析
+
+```
+=== new mount namespace and pivot_root process ===
++ ls /
+bin
++ ls /bin
+README   busybox  ls       sh
+```
+
+可以看出根目录已经切换了。
 
 ## UTS Namespace
 
