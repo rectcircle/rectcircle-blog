@@ -58,6 +58,10 @@ tags:
     * glibc 版本 `ldd --version`：`ldd (Debian GLIBC 2.31-13+deb11u2) 2.31`
 * 停止虚拟机 Debian11-base，复制一份 `Debian11-exp01` 来做实验，防止把环境搞坏了还要重新从头安装
 
+## 实验代码库
+
+本系列实验代码库位于：[rectcircle/container-core-tech-experiment](https://github.com/rectcircle/container-core-tech-experiment)
+
 ## 系统调用、库函数和工具
 
 学习 Linux 可以分两个比较独立的两个层面，其一 Linux 内核层，其二 Linux 应用层。本系列仅涉及 Linux 应用层相关内容。

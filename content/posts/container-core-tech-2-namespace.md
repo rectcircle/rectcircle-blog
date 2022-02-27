@@ -45,7 +45,9 @@ Namespace 在 Linux 中是进程的属性和进程组紧密相关：一个进程
 
 > 手册页面：[mount namespaces](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html)。
 
-### 核心知识
+Mount Namespace 实现了进程间目录树挂载（文件系统）的隔离，即：不同 Namespace 的进程看到的目录树可以是不一样的，且这些进程中的挂载是相互不影响的。
+
+### 相关知识
 
 目录树是 Linux 一种的全局系统资源，对目录树的一个节点绑定一个文件系统的操作叫做挂载（`mount`），即通过 `mount` 系统调用实现的。
 
@@ -61,7 +63,14 @@ Linux 支持多种多样的挂载，这里先介绍几种常见的例子：
 * bind 某一个目录（也可以是文件）到另一个目录（也可以是文件，类型需和源保持一致），实现的效果类似于一个软链指向两一个目录，但是优点是，对于进程来说，是无法分辨出同一个文件的两个路径的关系。该能力是容器引擎实现挂载宿主机目录的核心技术。
 * 将几个目录组成一套 overlay 文件系统，并挂载在某个目录，这是容器引擎（如 Docker）实现镜像和容器数据存储的核心技术，在下一篇文章有专门介绍。
 
-本部分涉及的系统调用、函数、命令以及文档参见为：
+关于更多常见的挂载命令，可以参见：[文章：Linux mount （第一部分）](https://segmentfault.com/a/1190000006878392)
+
+mount 还需要注意关于 Shared subtrees 的相关内容，在此不过多阐述，参见：
+
+* [文章：Linux mount （第二部分 - Shared subtrees）](https://segmentfault.com/a/1190000006899213)
+* [mount_namespaces(7) Shared subtrees](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES)
+
+本部分涉及的系统调用、函数、命令以及文档的手册参见为：
 
 * [mount_namespaces(7)](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html)
 * [clone(2) 系统调用](https://man7.org/linux/man-pages/man2/clone.2.html)
@@ -71,11 +80,11 @@ Linux 支持多种多样的挂载，这里先介绍几种常见的例子：
 * [umount(2) 系统调用](https://man7.org/linux/man-pages/man2/umount.2.html)
 * [umount(8) 命令](https://man7.org/linux/man-pages/man8/umount.8.html)
 
-### 目的
+### 相关 API
 
-Mount Namespace 就是实现了进程间目录树挂载的隔离，即：不同 Namespace 的进程看到的目录树可以是不一样的，且这些进程中的挂载是相互不影响的。
+### 实验
 
-### 实验设计
+#### 实验设计
 
 为了验证 Mount Namespace 能力的能力，我们将启动一个具有新 Mount Namespace 的 bash 的进程，这个进程将会使用 bind 挂载的方式将 `data/binding/source` 目录挂载到当前目录的 `data/binding/target` 目录，其中 `data/binding/source` 包含一个文件 `a`。并观察：
 
@@ -84,9 +93,7 @@ Mount Namespace 就是实现了进程间目录树挂载的隔离，即：不同 
 
 此外还可以观察两个进程的 `mount` 命令的输出，以及 `readlink /proc/self/ns/mnt`、`cat /proc/self/mounts`、`cat /proc/self/mountinfo` 以及 `cat /proc/self/mountstats` 等的输出。
 
-### 实验源码、效果和解释
-
-### C 语言描述
+#### C 语言描述
 
 ```cpp
 // gcc src/c/01-namespace/01-mount/main.c && sudo ./a.out
@@ -108,9 +115,9 @@ char *const child_args[] = {
 	"-xc",
 	"ls data/binding/target \
 	&& readlink /proc/self/ns/mnt \
-	&& cat /proc/self/mounts | grep data/binding/target \
-	&& cat /proc/self/mountinfo | grep data/binding/target \
-	&& cat /proc/self/mountstats | grep data/binding/target \
+	&& cat /proc/self/mounts | grep data/binding/target || true \
+	&& cat /proc/self/mountinfo | grep data/binding/target || true \
+	&& cat /proc/self/mountstats | grep data/binding/target || true \
 	&& sleep 10 \
 	",
 	NULL};
@@ -119,10 +126,22 @@ int new_namespace_func(void *args)
 {
 	// 首先，需要阻止挂载事件传播到其他 Mount Namespace，参见：https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#NOTES
 	// 如果不执行这个语句， cat /proc/self/mountinfo 所有行将会包含 shared，这样在这个子进程中执行 mount 其他进程也会受影响
-	// 更多参见：https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES
+	// 关于 Shared subtrees 更多参见：
+	//   https://segmentfault.com/a/1190000006899213
+	//   https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES
+	// 下面语句的含义是：重新递归挂（MS_REC）载 / ，并设置为不共享（MS_SLAVE 或 MS_PRIVATE）
+	// 说明：
+	//   MS_SLAVE 换成 MS_PRIVATE 也能达到同样的效果
+	//   等价于执行：mount --make-rslave / 命令
 	mount(NULL, "/", NULL , MS_SLAVE | MS_REC, NULL);
 	// 使用 MS_BIND 参数将 data/binding/source 挂载（绑定）到 data/binding/target
 	// 因为在新的 Mount Namespace 中执行，所有其他进程的目录树不受影响
+	// 等价命令为：mount --bind data/binding/source data/binding/target
+	// mount 函数声明为：
+	//    int mount(const char *source, const char *target,
+	//              const char *filesystemtype, unsigned long mountflags,
+	//              const void *data);
+	// 更多参见：https://man7.org/linux/man-pages/man2/mount.2.html
 	mount("data/binding/source", "data/binding/target", NULL, MS_BIND, NULL);
 	printf("=== new mount namespace process ===\n");
 	execv(child_args[0], child_args);
@@ -154,7 +173,11 @@ int main()
 							 PROT_READ | PROT_WRITE,
 							 MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK,
 							 -1, 0);
-	// 创建新的 Mount Namespace 进程中执行 new_namespace_func 函数
+	// 创建新进程，并为该进程创建一个 Mount Namespace（CLONE_NEWNS），并执行 new_namespace_func 函数
+	// clone 库函数声明为：
+	// int clone(int (*fn)(void *), void *stack, int flags, void *arg, ...
+	// 		  /* pid_t *parent_tid, void *tls, pid_t *child_tid */);
+	// 更多参见：https://man7.org/linux/man-pages/man2/clone.2.html
 	pid_t p1 = clone(new_namespace_func, child_stack + STACK_SIZE, SIGCHLD | CLONE_NEWNS, NULL);
 	if (p1 == -1)
 	{
@@ -170,7 +193,133 @@ int main()
 }
 ```
 
-编译并运行，输出为：
+#### Go 语言描述
+
+```go
+//go:build linux
+
+// sudo go run ./src/go/01-namespace/01-mount/main.go
+
+package main
+
+import (
+	"os"
+	"os/exec"
+	"syscall"
+	"time"
+)
+
+const script = "ls data/binding/target " +
+	"&& readlink /proc/self/ns/mnt " +
+	"&& cat /proc/self/mounts | grep data/binding/target || true" +
+	"&& cat /proc/self/mountinfo | grep data/binding/target || true " +
+	"&& cat /proc/self/mountstats | grep data/binding/target || true " +
+	"&& sleep 10"
+
+func newNamespaceExec() <-chan error {
+	cmd := exec.Command("/bin/bash", "-c",
+		// 首先，需要阻止挂载事件传播到其他 Mount Namespace，参见：https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#NOTES
+		// 如果不执行这个语句， cat /proc/self/mountinfo 所有行将会包含 shared，这样在这个子进程中执行 mount 其他进程也会受影响
+		// 关于 Shared subtrees 更多参见：
+		//   https://segmentfault.com/a/1190000006899213
+		//   https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES
+		// 下面语句的含义是：重新递归挂（r）载 / ，并设置为私有
+		// 说明：
+		//   --make-rprivate 换成 --make-rslave 也能达到同样的效果
+		//   等价于系统调用：mount(NULL, "/", NULL , MS_PRIVATE | MS_REC, NULL)
+		"mount --make-rprivate /"+
+			// 将 data/binding/source 挂载（绑定）到 data/binding/target
+			// 因为在新的 Mount Namespace 中执行，所有其他进程的目录树不受影响
+			// 等价系统调用为：mount("data/binding/source", "data/binding/target", NULL, MS_BIND, NULL);
+			// 更多参见：https://man7.org/linux/man-pages/man8/mount.8.html
+			"&& mount --bind data/binding/source data/binding/target"+
+			"&& echo '=== new mount namespace process ===' "+
+			"&& set -x &&"+
+			script)
+	// 创建新进程，并为该进程创建一个 Mount Namespace（syscall.CLONE_NEWNS）
+	// 更多参见：https://man7.org/linux/man-pages/man2/clone.2.html
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Cloneflags: syscall.CLONE_NEWNS,
+	}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	result := make(chan error)
+	go func() {
+		result <- cmd.Run()
+	}()
+	return result
+}
+
+func oldNamespaceExec() <-chan error {
+	cmd := exec.Command("/bin/bash", "-c", "echo '=== old namespace process ===' && set -x && "+script)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	result := make(chan error)
+	go func() {
+		result <- cmd.Run()
+	}()
+	return result
+}
+
+func main() {
+	r1 := newNamespaceExec()
+	time.Sleep(5 * time.Second)
+	// 创建新的进程（不创建 Namespace），并执行测试命令
+	r2 := oldNamespaceExec()
+	err1, err2 := <-r1, <-r2
+	if err1 != nil {
+		panic(err1)
+	}
+	if err2 != nil {
+		panic(err2)
+	}
+}
+```
+
+#### Shell 描述
+
+```bash
+#!/usr/bin/env bash
+
+# sudo ./src/shell/01-namespace/01-mount/main.sh
+
+script="ls data/binding/target  \
+	&& readlink /proc/self/ns/mnt  \
+	&& cat /proc/self/mounts | grep data/binding/target || true \
+	&& cat /proc/self/mountinfo | grep data/binding/target || true  \
+	&& cat /proc/self/mountstats | grep data/binding/target || true  \
+	&& sleep 10"
+
+# 创建新进程，并为该进程创建一个 Mount Namespace（-m）
+# 更多参见：https://man7.org/linux/man-pages/man1/unshare.1.html
+
+# 注意 unshare 会自动取消进程的所有共享，因此不需要手动执行：mount --make-rprivate /
+# 更多参见：https://man7.org/linux/man-pages/man1/unshare.1.html 的 --propagation 参数说明
+
+# 将 data/binding/source 挂载（绑定）到 data/binding/target
+# 因为在新的 Mount Namespace 中执行，所有其他进程的目录树不受影响
+# 等价系统调用为：mount("data/binding/source", "data/binding/target", NULL, MS_BIND, NULL);
+# 更多参见：https://man7.org/linux/man-pages/man8/mount.8.html
+unshare -m /bin/bash -c "mount --bind data/binding/source data/binding/target \
+	&& echo '=== new mount namespace process ===' && set -x $script" &
+pid1=$!
+
+sleep 5
+# 创建新的进程（不创建 Namespace），并执行测试命令
+/bin/bash -c "echo '=== old namespace process ===' && set -x $script" &
+pid2=$!
+
+wait $pid1
+wait $pid2
+```
+
+#### 输出及分析
+
+按照代码上方注释，编译并运行，输出形如：
 
 ```
 === new mount namespace process ===
@@ -194,23 +343,37 @@ device /dev/sda1 mounted on /home/rectcircle/container-core-tech-experiment/data
 mnt:[4026531840]
 + grep data/binding/target
 + cat /proc/self/mounts
++ true
++ grep data/binding/target
++ cat /proc/self/mountinfo
++ true
++ grep data/binding/target
++ cat /proc/self/mountstats
++ true
++ sleep 10
 ```
 
-### Go 语言描述
+分析
 
-### Bash 命令
+* 前半部分输出为，具有新的 Mount Namespace 的进程打印的，以 `=== new mount namespace process ===` 开头
+* 后半部分输出为，在旧的 Namespace 中进程打印的，以 `=== old namespace process ===` 开头
+* 两半部分执行的测试命令是相同的
+    * ls data/binding/target 输出，前半部分结果为 `a`，后半部分为空。证明了 Mount Namespace 隔离是有效的
+    * 后面的一系列对 `/proc` 关于 `mount` 的观察，前半部分有输出，后半部分没有输出。也证明了 Mount Namespace 隔离是有效的
 
-```
-sudo mount --make-private -t overlay overlay -o lowerdir=overlay/demo1/lower1:overlay/demo1/lower2,upperdir=overlay/demo1/upper,workdir=overlay/demo1/work overlay/demo1/merged
-sudo mount --make-private -t overlay overlay -o lowerdir=overlay/demo2/lower1:overlay/demo2/lower2,upperdir=overlay/demo2/upper,workdir=overlay/demo2/work overlay/demo2/merged
-sudo umount overlay/demo1/merged
-sudo umount overlay/demo2/merged
+### 扩展：切换根文件系统
 
-cat /proc/self/mountinfo
-readlink /proc/$$/ns/mnt 
+TODO chroot pivot_root，设计一个  （TODO，改为 busybox）
 
-sudo mount --bind /tmp binded
-```
+#### 实验设计
+
+#### C 语言描述
+
+#### Go 语言描述
+
+#### 命令描述
+
+## UTS Namespace
 
 ## 备忘
 
