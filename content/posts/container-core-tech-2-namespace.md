@@ -377,8 +377,10 @@ mnt:[4026531840]
 为了验证 [pivot_root(2) 系统调用](https://man7.org/linux/man-pages/man2/pivot_root.2.html)隔离根目录挂载点的能力。我们准备一个包含 `busybox` 的目录，用来充当新的根目录（下文称为 rootfs）。该目录位于 `data/busybox/rootfs`。准备命令为：
 
 ```bash
-mkdir -p data/busybox/rootfs/bin
-cd data/busybox/rootfs/bin
+mkdir -p data/busybox/rootfs
+cd data/busybox/rootfs
+mkdir bin .oldrootfs
+cd bin
 wget https://busybox.net/downloads/binaries/1.35.0-x86_64-linux-musl/busybox
 chmod +x busybox
 # ./busybox --install -s ./
@@ -387,6 +389,7 @@ ln -s busybox ls
 cd ..
 mkdir .oldrootfs
 touch README
+touch .oldrootfs/README
 ```
 
 最终 `data/busybox/rootfs` 目录数结构为
@@ -396,10 +399,10 @@ touch README
 ├── bin
 │   ├── busybox
 │   ├── ls -> busybox
-│   ├── README
 │   └── sh -> busybox
-└── .oldrootfs
-    └── README
+├── .oldrootfs
+│   └── README
+└── README
 ```
 
 本实验，启动具有新 Mount Namespace 进程，该进程会执行 pivot_root 将根目录切换到 `data/busybox/rootfs/`，并执行新的根目录的 `/bin/sh` （即 `data/busybox/rootfs/bin/sh`），执行 `ls /` 和 `ls /bin` 观察其输出。
@@ -542,9 +545,9 @@ wait $pid1
 ```
 === new mount namespace and pivot_root process ===
 + ls /
-bin
+README  bin
 + ls /bin
-README   busybox  ls       sh
+busybox  ls       sh
 ```
 
 可以看出根目录已经切换了。
