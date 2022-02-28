@@ -729,7 +729,7 @@ UTS (UNIX Time-Sharing System) Namespace 提供了个对 hostname 和 NIS domain
 * `NIS/YP domainname` (在 Linux 内核语境下直接叫 `domainname`，又称 `nisdomainname`、`ypdomainname` 、 `Local domain name`)
     * 获取
         * [`hostname(1)` 命令](https://man7.org/linux/man-pages/man1/hostname.1.html) `-y` 或 `--yp` 或 `--nis` 参数
-        * [`domainname(1)` 命令](https://linux.die.net/man/1/domainname)、[nisdomainname(1) 命令](https://linux.die.net/man/1/nisdomainname)、[ypdomainname 命令](https://linux.die.net/man/1/ypdomainname)
+        * [`domainname(1)` 命令](https://linux.die.net/man/1/domainname)、[`nisdomainname(1)` 命令](https://linux.die.net/man/1/nisdomainname)、[`ypdomainname(1)`命令](https://linux.die.net/man/1/ypdomainname)
         * [`getdomainname(2)` 系统调用](https://man7.org/linux/man-pages/man2/getdomainname.2.html)
     * 设置
         * [`setdomainname(2)` 系统调用](https://man7.org/linux/man-pages/man2/setdomainname.2.html)
