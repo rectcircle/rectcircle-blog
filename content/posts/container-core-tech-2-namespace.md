@@ -711,11 +711,11 @@ UTS (UNIX Time-Sharing System) Namespace 提供了个对 hostname 和 NIS domain
     * 配置
         * [`hostname(1)` 命令](https://man7.org/linux/man-pages/man1/hostname.1.html) （加一个参数）或者 `--file`
         * [`sethostname(2)` 系统调用](https://man7.org/linux/man-pages/man2/sethostname.2.html)
-        * [/etc/hostname(5) 配置文件](https://man7.org/linux/man-pages/man5/hostname.5.html) ，在系统启动时配置一次
-* `FQDN` (Fully Qualified Domain Name，在域名解析语境下直接叫 hostname)，解释在 [hostname(7)](https://man7.org/linux/man-pages/man7/hostname.7.html)
+        * [`/etc/hostname(5)` 配置文件](https://man7.org/linux/man-pages/man5/hostname.5.html) ，在系统启动时配置一次
+* `FQDN` (Fully Qualified Domain Name，在域名解析语境下直接叫 hostname)，解释参见： [hostname(7)](https://man7.org/linux/man-pages/man7/hostname.7.html)
     * 获取
         * [`hostname(1)` 命令](https://man7.org/linux/man-pages/man1/hostname.1.html) `--fqdn` 参数
-        * [gethostbyname2(3) 库函数](https://linux.die.net/man/3/gethostbyname2)
+        * [`gethostbyname2(3)` 库函数](https://linux.die.net/man/3/gethostbyname2)
     * 设置 ([原文](https://man7.org/linux/man-pages/man1/hostname.1.html#DESCRIPTION))
         * 默认通过 [/etc/hosts(5)](https://man7.org/linux/man-pages/man5/hosts.5.html) 配置（每一行的格式为 `IP_address canonical_hostname [aliases...]`），值为 [/etc/hosts(5)](https://man7.org/linux/man-pages/man5/hosts.5.html) 文件中 alias 为 [/etc/hostname(5)](https://man7.org/linux/man-pages/man5/hostname.5.html) 的那一行的 `canonical_hostname`
         * 具体取决于 [/etc/host.conf(5) 配置文件](https://man7.org/linux/man-pages/man5/host.conf.5.html)
