@@ -1056,26 +1056,26 @@ hostname: Local domain name not set
 > 手册：[pid_namespaces(7)](https://man7.org/linux/man-pages/man7/pid_namespaces.7.html)
 
 * 通过 `CLONE_NEWPID` 可以创建一个 PID Namespace
-    * `clone(2)` 系统调用产生的进程就是该 PID Namespace 的第一个进程
+    * `clone(2)` 系统调用产生的进程就是该 PID Namespace 的**第一个进程**
     * `setns(2)` 系统调用后，再调用 `fork/clone` 系统调用（不需要指定 `CLONE_NEWPID`），产生的进程就是该 PID Namespace 的进程。注意：调用 `setns(2)` 的进程的 PID Namespace 不会发生变化。
-    * `unshare(2)` 系统调用后，再调用 `fork/clone` 系统调用（不需要指定 `CLONE_NEWPID`），产生的进程就是该 PID Namespace 的进程，第一次调用时产生的进程，就是该 PID Namespace 的第一个进程。注意：调用 `unshare(2)` 的进程的 PID Namespace 不会发生变化。
-* `setns(2)` 和 `unshare(2)` 语义，由于一个进程的 PID Namespace 从创建的那一刻就固定了，所以 `setns(2)` 和 `unshare(2)`，并不会影响当前进程的 PID Namespace（ 仅仅修改 `/proc/[pid]/ns/pid_for_children` 文件）。（试想一下，如果 PID Namespace 发生了变化，那么他们的进程号就变了，而很多程序假设自身的进程好不会发生变化的，这样就破坏了兼容性）
-* 新的 PID Namespace 的第一个进程的进程号为 `1`，即在该 PID Namespace 中，该进程就是受内核特殊处理的 1 号进程（参见上文：1 号进程和信号），此外还需要注意：
+    * `unshare(2)` 系统调用后，再调用 `fork/clone` 系统调用（不需要指定 `CLONE_NEWPID`），产生的进程就是该 PID Namespace 的进程，第一次调用时产生的进程，就是该 PID Namespace 的**第一个进程**。注意：调用 `unshare(2)` 的进程的 PID Namespace 不会发生变化。
+* PID Namespace 支持嵌套
+    * 最大 32 层
+    * 当前 PID Namespace 可见所有子孙 Namespace 的进程，可见意味着可以 kill、设置优先级
+    * 当前 PID Namespace 无法看到祖先 Namespace 下的进程
+    * 一个进程在每一层 PID Namespace 都有一个 PID，进程自身调用 `getpid` 看到的是当前 PID Namespace 的 PID
+    * 如果当前 PID Namespace 的进程的父进程也是当前 PID Namespace 内的进程，则  `getppid(2)` 返回该父进程在该 PID Namespace 的 PID
+    * 如果当前 PID Namespace 的进程的父进程不是当前 PID Namespace 内的进程，则  `getppid(2)` 返回该父进程返回 0 （`setns(2)` 和 `unshare(2)` 语义造成的）
+* `setns(2)` 和 `unshare(2)` 语义，由于一个进程的 PID Namespace 从创建的那一刻就固定了，所以 `setns(2)` 和 `unshare(2)`，并不会影响当前进程的 PID Namespace（ 仅仅修改 `/proc/[pid]/ns/pid_for_children` 文件）。（试想一下，如果 PID Namespace 发生了变化，那么他们的进程号就变了，而很多程序假设自身的进程号不会发生变化的，这样就破坏了兼容性）
+* 新的 PID Namespace 的**第一个进程**的进程号为 `1`，即在该 PID Namespace 中，该进程就是受内核特殊处理的 1 号进程（参见上文：1 号进程和信号，1 号进程和进程树），此外还需要注意：
     * 该 PID Namespace 内的进程无法 `kill -9` 杀死 1 号进程，但是祖先 PID Namespace 的进程可以发送信号，此时该进程的行为和普通进程一致
     * 如果某 PID Namespace 的 1 号进程退出了，则整个 PID Namespace 所有进程将被杀死，也就是说这个 PID Namespace 已经消失了。
         * 内核会向该 PID Namespace 下的所有进程发送 `SIGKILL` (9) 信号
-        * 无法再在该 Namespace 中 `fork` 进程，比如：之前通过调用了 `setns(2)` 和 `unshare(2)` 将其 `/proc/[pid]/ns/pid_for_children` 设置为一个 1 号进程现在已经退出的 PID Namespace，然后执行 `fork`，此时会报 `ENOMEM` 错误.
+        * 无法再在该 Namespace 中 `fork` 进程，比如：之前通过调用了 `setns(2)` 和 `unshare(2)` 将该进程 `/proc/[pid]/ns/pid_for_children` 设置为一个 1 号进程现在已经退出的 PID Namespace，然后执行 `fork`，此时会报 `ENOMEM` 错误.
     * 在非 Init PID Namespace 调用 [`reboot(2)`](https://man7.org/linux/man-pages/man2/reboot.2.html) 行为不同，调用后，1 号进程将直接被终止，该进程的父进程 [`wait(2)`](https://man7.org/linux/man-pages/man2/wait.2.html) 收到子进程的退出信号为 `SIGHUP` 或 `SIGINT` （由参数决定） 信号（通过 `WTERMSIG(wstatus)` 获得）
     * PID Namespace 1 号进程收养孤儿机制
-        * `getppid(2)` 不为 0 的不是被当前 PID Namespace 1 号进程收养
-        * `getppid(2)` 为 0 的不是被当前 PID Namespace 1 号进程收养，而是被之前父 PID 所在的 PID Namespace 收养 （产生这种进程的原因还是 `setns(2)` 和 `unshare(2)` 语义造成的），在当前 PID Namespace 看来，该进程的 `getppid(2)` 仍为 0
-* PID Namespace 支持嵌套
-    * 最大 32 层
-    * 当前 PID Namespace 可以可见所有子孙 Namespace 的进程，可见意味着可以 kill、设置优先级
-    * 当前 PID Namespace 无法看到祖先 Namespace 下的进程
-    * 一个进程在每一层 PID Namespace 都有一个 PID，进程自身调用 `getpid` 看到的是当前 `PID Namespace` 的 PID
-    * 如果当前 PID Namespace 的进程的父进程也是当前 PID Namespace 内的进程，则  `getppid(2)` 返回该父进程在该 PID Namespace 的 PID
-    * 如果当前 PID Namespace 的进程的父进程不是当前 PID Namespace 内的进程，则  `getppid(2)` 返回该父进程返回 0 （`setns(2)` 和 `unshare(2)` 语义造成的）
+        * `getppid(2)` 不为 0 的会被当前 PID Namespace 的 1 号进程收养
+        * `getppid(2)` 为 0 的不会被当前 PID Namespace 的 1 号进程收养，而是被之前父 PID 所在的 PID Namespace 的 1 号进程收养 （产生这种进程的原因还是 `setns(2)` 和 `unshare(2)` 语义造成的），在当前 PID Namespace 看来，该进程的 `getppid(2)` 仍为 0
 * `/proc`
     * 显示的是在执行 mount 时刻进程所属的 PID Namespace 下的可见的进程（包含子孙进程）。
     * 一个常见做法是，PID Namespace 配合 Mount Namespace 使用，执行 `mount -t proc proc /proc`，将当前 PID Namespace 的进程信息挂载进去。（如果不这么做，`/proc/self` 看到的还是该进程在父 PID Namespace 中的信息）
