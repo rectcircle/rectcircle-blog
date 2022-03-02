@@ -35,8 +35,8 @@ tags:
 Namespace 在 Linux 中是进程的属性和进程组紧密相关：一个进程的 Namespace 默认是和其父进程保持一致的。Linux 提供了几个系统调用，来创建、加入观察 Namespace：
 
 * 创建：通过 [`clone` 系统调用](https://man7.org/linux/man-pages/man2/clone.2.html)的 flag 来为**新创建的进程**创建新的 Namespace
-* 加入：通过 [`setns` 系统调用](https://man7.org/linux/man-pages/man2/setns.2.html)将**当前进程**加入某个其他进程的 Namespace（注意：当前进程的权限必须大于加入的进程的 Namespace 即不能发生越权），`docker exec` 就是通过这个系统调用实现的
-* 创建：通过 [`unshare` 系统调用](https://man7.org/linux/man-pages/man2/unshare.2.html)为**当前进程**创建新的 Namespace
+* 加入：通过 [`setns` 系统调用](https://man7.org/linux/man-pages/man2/setns.2.html)将**当前进程**加入某个其他进程的 Namespace（注意：当前进程的权限必须大于加入的进程的 Namespace 即不能发生越权），`docker exec` 就是通过这个系统调用实现的（PID Namespace 是个例外，参见下文）
+* 创建：通过 [`unshare` 系统调用](https://man7.org/linux/man-pages/man2/unshare.2.html)为**当前进程**创建新的 Namespace（PID Namespace 是个例外，参见下文）
 * 查看：通过 [`ioctl` 系统调用(ioctl_ns)](https://man7.org/linux/man-pages/man2/ioctl_ns.2.html)来查找有关命名空间的信息
 
 下文，将以 Go 语言、 C 语言、Shell 命令三种形式，来介绍这些 Namespace。实验环境说明参见：[容器核心技术（一） 实验环境准备 & Linux 基础知识](/posts/container-core-tech-1-experiment-preparation-and-linux-base)
@@ -45,9 +45,7 @@ Namespace 在 Linux 中是进程的属性和进程组紧密相关：一个进程
 
 > 手册页面：[mount namespaces](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html)。
 
-Mount Namespace 实现了进程间目录树挂载（文件系统）的隔离，即：不同 Namespace 的进程看到的目录树可以是不一样的，且这些进程中的挂载是相互不影响的。
-
-### 相关知识
+### 背景知识
 
 目录树是 Linux 一种的全局系统资源，对目录树的一个节点绑定一个文件系统的操作叫做挂载（`mount`），即通过 `mount` 系统调用实现的。
 
@@ -71,6 +69,10 @@ mount 还需要注意关于 Shared subtrees 的相关内容，在此不过多阐
 * [mount_namespaces(7) Shared subtrees](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES)
 
 此外，对于根目录挂载点的切换，需要通过 [pivot_root(2) 系统调用](https://man7.org/linux/man-pages/man2/pivot_root.2.html) 实现。
+
+### 描述
+
+Mount Namespace 实现了进程间目录树挂载（文件系统）的隔离，即：不同 Namespace 的进程看到的目录树可以是不一样的，且这些进程中的挂载是相互不影响的。
 
 本部分涉及的系统调用、函数、命令以及文档的手册参见为：
 
@@ -700,7 +702,7 @@ busybox  ls       sh
 
 UTS (UNIX Time-Sharing System) Namespace 提供了个对 hostname 和 NIS domain name 这两个系统标识符的的隔离。
 
-### 相关知识
+### 背景知识
 
 在 Linux 中，`hostname` 和 `domainname` 有很多种，需要区分清楚：
 
@@ -751,6 +753,8 @@ UTS (UNIX Time-Sharing System) Namespace 提供了个对 hostname 和 NIS domain
 ```
 ${FQDN} = ${system hostname} . ${DNS domainname}
 ```
+
+### 描述
 
 而 UTS Namespace 可以隔离的全局系统资源为：`system hostname` 和 `NIS/YP domainname`，设计的系统调用为：
 
@@ -1003,6 +1007,81 @@ hostname: Local domain name not set
 
 * 具有新的 Mount Namespace 的进程打印的 hostname 和 domainname 发生了变化
 * 旧的 Namespace 中进程打印的 hostname 和 domainname 没有受到影响
+
+## PID Namespace
+
+### 背景知识
+
+#### 信号
+
+> 手册：[signal(7)](https://man7.org/linux/man-pages/man7/signal.7.html)
+
+信号是类 Unix 操作系统一种进程间通知的机制。本部分涉及的为：
+
+* 用来协调多个进程的执行，如监听子孙进程的状态变更 `SIGCHLD`，默认忽略。需要注意的是，如果一个进程退出后，其父进程进程没有处理 `SIGCHLD` 信号，则该进程占用 PCB 将不会释放，此时该进程被称为僵尸进程。
+* 无法覆盖的特权信号，`SIGKILL` （终止） 和 `SIGSTOP` （挂起，需通过 `SIGCONT` 信号唤醒）
+* `SIGTERM`，可以覆盖默认的行为，一般用于优雅退出
+
+#### 1 进程
+
+1 号进程是内核创建的第 1 个用户态进程，内核对该进程的有特殊处理。
+
+##### 1 进程和进程树
+
+在 Unix 类系统中，进程会组成一颗进程树，其根节点是 0 号进程。每个进程都有一个父进程，有 0 个或多个子进程。
+
+一个进程通过 fork/clone 系统调用创建一个子进程，一个进程的父进程一般为 fork 该进程的进程，但是有一个例外是：
+
+当一个进程的父进程退出了，为了维持进程树的关系，该进程的父进程将会被设置为 1 号进程。这种父进程变化为 1 号进程的进程被称为孤儿进程。这个过程可以叫做：1 号进程收养了该孤儿进程。
+
+#### 1 号进程和信号
+
+* 1 号进程只能收到一种信号，即 1 号进程注册了信号处理器的信号。参见：[kill(2)](https://man7.org/linux/man-pages/man2/kill.2.html#NOTES) （因此 `kill -9 1` 也收不到，即： `SIGKILL` 和 `SIGSTOP`）
+* 通过 [reboot(2)](https://man7.org/linux/man-pages/man2/reboot.2.html) （`LINUX_REBOOT_CMD_CAD_OFF`）关闭 CAD （Ctrl-Alt-Del） 快捷键时，CAD 将会向 1 号进程发送 `SIGINT` 信号
+
+#### `/proc` 文件系统
+
+> 手册：[proc(5)](https://man7.org/linux/man-pages/man5/proc.5.html)
+
+进程文件系统，通过 `mount -t proc proc /proc` 调用。top、ps 等命令都是通过该文件系统实现的。
+
+#### Unix domain socket
+
+> 手册：[unix(7)]( https://man7.org/linux/man-pages/man7/unix.7.html)
+
+遵循 Socket API 的 进程通讯方式，相比于网络层面的 Socket API 接口，性能是更好。
+
+### 描述
+
+> 手册：[pid_namespaces(7)](https://man7.org/linux/man-pages/man7/pid_namespaces.7.html)
+
+* 通过 `CLONE_NEWPID` 可以创建一个 PID Namespace
+    * `clone(2)` 系统调用产生的进程就是该 PID Namespace 的第一个进程
+    * `setns(2)` 系统调用后，再调用 `fork/clone` 系统调用（不需要指定 `CLONE_NEWPID`），产生的进程就是该 PID Namespace 的进程。注意：调用 `setns(2)` 的进程的 PID Namespace 不会发生变化。
+    * `unshare(2)` 系统调用后，再调用 `fork/clone` 系统调用（不需要指定 `CLONE_NEWPID`），产生的进程就是该 PID Namespace 的进程，第一次调用时产生的进程，就是该 PID Namespace 的第一个进程。注意：调用 `unshare(2)` 的进程的 PID Namespace 不会发生变化。
+* `setns(2)` 和 `unshare(2)` 语义，由于一个进程的 PID Namespace 从创建的那一刻就固定了，所以 `setns(2)` 和 `unshare(2)`，并不会影响当前进程的 PID Namespace（ 仅仅修改 `/proc/[pid]/ns/pid_for_children` 文件）。（试想一下，如果 PID Namespace 发生了变化，那么他们的进程号就变了，而很多程序假设自身的进程好不会发生变化的，这样就破坏了兼容性）
+* 新的 PID Namespace 的第一个进程的进程号为 `1`，即在该 PID Namespace 中，该进程就是受内核特殊处理的 1 号进程（参见上文：1 号进程和信号），此外还需要注意：
+    * 该 PID Namespace 内的进程无法 `kill -9` 杀死 1 号进程，但是祖先 PID Namespace 的进程可以发送信号，此时该进程的行为和普通进程一致
+    * 如果某 PID Namespace 的 1 号进程退出了，则整个 PID Namespace 所有进程将被杀死，也就是说这个 PID Namespace 已经消失了。
+        * 内核会向该 PID Namespace 下的所有进程发送 `SIGKILL` (9) 信号
+        * 无法再在该 Namespace 中 `fork` 进程，比如：之前通过调用了 `setns(2)` 和 `unshare(2)` 将其 `/proc/[pid]/ns/pid_for_children` 设置为一个 1 号进程现在已经退出的 PID Namespace，然后执行 `fork`，此时会报 `ENOMEM` 错误.
+    * 在非 Init PID Namespace 调用 [`reboot(2)`](https://man7.org/linux/man-pages/man2/reboot.2.html) 行为不同，调用后，1 号进程将直接被终止，该进程的父进程 [`wait(2)`](https://man7.org/linux/man-pages/man2/wait.2.html) 收到子进程的退出信号为 `SIGHUP` 或 `SIGINT` （由参数决定） 信号（通过 `WTERMSIG(wstatus)` 获得）
+    * PID Namespace 1 号进程收养孤儿机制
+        * `getppid(2)` 不为 0 的不是被当前 PID Namespace 1 号进程收养
+        * `getppid(2)` 为 0 的不是被当前 PID Namespace 1 号进程收养，而是被之前父 PID 所在的 PID Namespace 收养 （产生这种进程的原因还是 `setns(2)` 和 `unshare(2)` 语义造成的），在当前 PID Namespace 看来，该进程的 `getppid(2)` 仍为 0
+* PID Namespace 支持嵌套
+    * 最大 32 层
+    * 当前 PID Namespace 可以可见所有子孙 Namespace 的进程，可见意味着可以 kill、设置优先级
+    * 当前 PID Namespace 无法看到祖先 Namespace 下的进程
+    * 一个进程在每一层 PID Namespace 都有一个 PID，进程自身调用 `getpid` 看到的是当前 `PID Namespace` 的 PID
+    * 如果当前 PID Namespace 的进程的父进程也是当前 PID Namespace 内的进程，则  `getppid(2)` 返回该父进程在该 PID Namespace 的 PID
+    * 如果当前 PID Namespace 的进程的父进程不是当前 PID Namespace 内的进程，则  `getppid(2)` 返回该父进程返回 0 （`setns(2)` 和 `unshare(2)` 语义造成的）
+* `/proc`
+    * 显示的是在执行 mount 时刻进程所属的 PID Namespace 下的可见的进程（包含子孙进程）。
+    * 一个常见做法是，PID Namespace 配合 Mount Namespace 使用，执行 `mount -t proc proc /proc`，将当前 PID Namespace 的进程信息挂载进去。（如果不这么做，`/proc/self` 看到的还是该进程在父 PID Namespace 中的信息）
+    * `/proc/sys/kernel/ns_last_pid` 是当前 PID Namespace 的 last pid，可以通过更改该文件的值，来配置即将创建的进程的 ID（从 `ns_last_pid + 1` 开始查找）
+* 杂项
+    * `SCM_CREDENTIALS` `unix(7)` 会翻译成对应的 PID Namespace 的 PID
 
 ## 备忘
 
