@@ -31,7 +31,7 @@ Maven 下载依赖的过程中，有两个配置项：Repositories 和 Mirrors�
 
 自 Maven 3.8.1 起，maven 禁止了对 Repository URL 为 http 协议的 Repository 进行下载。
 
-禁止的原理就是利用 Mirror 特性实现的，在默认配置文件（`$MAVEN_HOME/conf/settings.xml`）添加了配置：
+禁止的原理就是利用 Mirror 特性实现的，Maven 3.8.1 起，其默认配置文件（`$MAVEN_HOME/conf/settings.xml`）添加如下配置：
 
 ```xml
   <mirrors>
@@ -50,7 +50,7 @@ Maven 下载依赖的过程中，有两个配置项：Repositories 和 Mirrors�
 解决的办法为：
 
 1. 不使用 http，全部切换为 https
-2. 每天添加一个 http 的 Repository，都需要在用户配置（`~/.m2/settings.xml` 该文件优先级高于默认配置文件） 中添加配置：
+2. 每添加一个 http 的 Repository，都需要在用户配置（`~/.m2/settings.xml` 该文件优先级高于默认配置文件） 中添加配置：
 
 ```xml
   <mirrors>
