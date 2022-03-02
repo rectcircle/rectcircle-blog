@@ -63,7 +63,7 @@ Maven 下载依赖的过程中，有两个配置项：Repositories 和 Mirrors�
   </mirrors>
 ```
 
-### 关于 `mirrorOf`
+## 关于 `mirrorOf`
 
 结合上文下载流程。常见的配置为：
 
