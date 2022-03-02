@@ -47,14 +47,17 @@ Maven 下载依赖的过程中，有两个配置项：Repositories 和 Mirrors�
 
 根据上文提到的下载流程，可以看出，所有 http Repository 都会匹配到该 mirror，然而当前 mirror 又配置了 blocked 为 true，则直接下载失败。
 
-解决的办法为，在用户配置（`~/.m2/settings.xml` 该文件优先级高于默认配置文件） 中添加配置：
+解决的办法为：
+
+1. 不使用 http，全部切换为 https
+2. 每天添加一个 http 的 Repository，都需要在用户配置（`~/.m2/settings.xml` 该文件优先级高于默认配置文件） 中添加配置：
 
 ```xml
   <mirrors>
     <mirror>
-      <id>maven-default-http-unblocker</id>
-      <mirrorOf>external:http:*</mirrorOf>
-      <url>https://maven.aliyun.com/repository/public</url>
+      <id>xxx-mirror</id>
+      <mirrorOf>xxx-repo</mirrorOf> <!-- mirrorOf 需要匹配 -->
+      <url>http://maven.aliyun.com/repository/public</url>
       <!-- <url>https://repo.maven.apache.org/maven2</url> -->
     </mirror>
   </mirrors>
@@ -67,9 +70,9 @@ Maven 下载依赖的过程中，有两个配置项：Repositories 和 Mirrors�
 * `*` 永远匹配，不建议使用
 * `central` maven 中心仓库 `https://repo.maven.apache.org/maven2` （不包含各种安卓相关的依赖）
 
-mirrorOf 匹配很不灵活，不建议使用。
-
 ## 最佳配置
+
+不建议使用 `mirror` ，`mirror` 很容易出问题。
 
 ### 场景 1：仅包含开源依赖
 
