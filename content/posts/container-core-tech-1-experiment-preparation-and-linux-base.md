@@ -43,7 +43,7 @@ tags:
 
     ```
     su root
-    apt install sudo wget curl
+    apt install sudo wget curl vim psmisc
     echo '普通用户名 ALL=(ALL) NOPASSWD:ALL' /etc/sudoers.d/myuser
     apt install build-essential gdb
     wget https://go.dev/dl/go1.17.7.linux-amd64.tar.gz
