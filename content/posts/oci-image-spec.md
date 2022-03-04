@@ -342,11 +342,13 @@ skopeo --insecure-policy copy docker://nginx:1.21.6 oci:$(pwd)/nginx-oci:test1
 }
 ```
 
-#### rootfs vs layers
+#### rootfs.diff_ids vs layers
 
-manifest layer 的 digest 和 config 的 diff_ids 有可能不一样。比如这里的 layer 文件格式是 `tar+gzip`，那么这里的 sha256 就是 `tar+gzip` 包的 `sha256`，而 `diff_ids` 是 `tar+gzip` 解压后 `tar` 文件的 `sha256。
+manifest layer 的 digest 和 config 的 diff_ids 有可能不一样。比如这里的 layer 文件格式是 `tar+gzip`，那么这里的 sha256 就是 `tar+gzip` 包的 `sha256`，而 `diff_ids` 是 `tar+gzip` 解压后 `tar` 文件的 sha256。
 
-看起来有些重复，diff_ids 存在的目的主要是用于校验层内容没有被篡改（作者猜测）。
+此外，layers 和 diff_ids 长度相等，一一对应，且数组的顺序和层应用的顺序一致（作者猜测）。
+
+看起来有些重复，diff_ids 存在的目的（作者猜测）：试想将一个 layers 构建成 rootfs 文件系统的过程：首先会解压这些层为一个个目录，这些目录的目录名按照规范来说，就是目录的 sha256。但是 layer 的 sha256 是压缩文件（`tar.gz`），如果作为目录名就不合适。而一个目录的 sha256 可以理解为未压缩的归档文件 (`tar`) 的 sha256。此时就可以用到 diff_ids 中的 sha256 了，避免了一次多余的 sha256。另外，在比较严格场景下，可以用 `diff_ids` 对 layers 进行校验。
 
 验证 manifest layer 的 digest，以 `sha256:5eb5b503b37671af16371272f9c5313a3e82f1d0756e14506704489ad9900803` 为例。
 
@@ -1229,19 +1231,19 @@ $ cat ./blobs/sha256/9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107
 
 #### 镜像 Manifest 属性
 
-* **`schemaVersion`** *int*
+* **`schemaVersion`** _int_
 
   此 REQUIRED 属性指定镜像清单架构版本。对于这个版本的规范，这必须是 2 以确保向后兼容旧版本的 Docker。该字段的值不会改变。在规范的未来版本中，该字段可能会被删除。
 
-* **`mediaType`** *string*
+* **`mediaType`** _string_
 
     此 SHOULD 属性被使用并且与本规范的早期版本和其他类似的外部格式[保持兼容](#兼容性-matrix)。使用时，此字段必须包含媒体类型 `application/vnd.oci.image.manifest.v1+json`。此字段的使用与 mediaType 的[描述符](#内容描述符)使用不同。
 
-* **`config`** *[内容描述符](#内容描述符)*
+* **`config`** _[内容描述符](#内容描述符)_
 
     此 REQUIRED 属性通过摘要引用容器的配置对象。除了[描述符要求](#描述符属性)之外，该值还有以下附加限制：
 
-    * **`mediaType`** *string*
+    * **`mediaType`** _string_
 
         config 字段对这个[描述符属性](#描述符属性) 有额外的限制。实现必须至少支持以下媒体类型：
 
@@ -1249,13 +1251,13 @@ $ cat ./blobs/sha256/9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107
 
         与可移植性有关的 Manifest SHOULD 使用上述媒体类型之一。
 
-* **`layers`** *array of objects*
+* **`layers`** _array of objects_
 
     数组中的每个项目必须是一个[描述符](#内容描述符)。数组 MUST 在索引 0 处具有基础层。随后的层必须按照堆栈顺序（即从 `layers[0]` 到 `layers[len(layers)-1]`）。最终的文件系统布局必须与将层[应用](#应用变更集)到空目录的结果相匹配。初始空目录的所有权、模式和其他属性未指定。
 
     除了[描述符要求](#描述符属性)之外，该值还有以下附加限制：
 
-    * **`mediaType`** *string*
+    * **`mediaType`** _string_
 
         `layers[]` 对此[描述符属性](#描述符属性)对有额外的限制。实现必须至少支持以下媒体类型：
 
@@ -1268,7 +1270,7 @@ $ cat ./blobs/sha256/9834876dcfb05cb167a5c24953eba58c4ac89b1adf57f28f2f9d09af107
 
         此字段中的条目将经常使用 `+gzip` 类型。
 
-* **`annotations`** *string-string map*
+* **`annotations`** _string-string map_
 
     此 OPTIONAL 属性包含镜像 Manifest 的任意元数据。此可选属性必须使用[注释规则](#注释规则)。
 
@@ -1713,37 +1715,37 @@ ChainID(A|B|C) = Digest(Digest(DiffID(A) + " " + DiffID(B)) + " " + DiffID(C))
 
 注意：任何 OPTIONAL 字段也可以设置为 null，相当于不存在。
 
-* **created** *string*, OPTIONAL
+* **created** _string_, OPTIONAL
 
     创建镜像的日期时间，格式为 [RFC 3339, section 5.6][rfc3339-s5.6].
 
-* **author** *string*, OPTIONAL
+* **author** _string_, OPTIONAL
 
     提供创建并负责维护镜像的个人或实体的姓名 and/or 电子邮件地址。
 
-* **architecture** *string*, REQUIRED
+* **architecture** _string_, REQUIRED
 
     此镜像中的二进制文件是为在其上运行而构建的CPU架构。
     配置 SHOULD 用Go语言文件中列出的值，而实现应理解这些值 [`GOARCH`][go-environment].
 
-* **os** *string*, REQUIRED
+* **os** _string_, REQUIRED
 
     镜像运行的操作系统的名称。
     配置 SHOULD 用Go语言文件中列出的值，而实现应理解这些值 [`GOOS`][go-environment].
 
-* **config** *object*, OPTIONAL
+* **config** _object_, OPTIONAL
 
     在使用该映像运行容器时应作为基础的执行参数。
     这个字段可以是 `null`，在这种情况下，任何执行参数都应该在创建容器时指定。
 
-    * **User** *string*, OPTIONAL
+    * **User** _string_, OPTIONAL
 
         用户名或UID，这是一个平台特定的结构，允许具体控制进程以哪个用户身份运行。
         当创建容器时没有指定该值时，这将作为一个默认值使用。
         对于基于Linux的系统，以下所有的都是有效的。`user`, `uid`, `user:group`, `uid:gid`, `uid:group`, `user:gid`。
         如果没有指定`group` / `gid`，将应用容器中 `/etc/passwd` 中给定的 `user` / `uid` 的默认组和补充组。
 
-    * **ExposedPorts** *object*, OPTIONAL
+    * **ExposedPorts** _object_, OPTIONAL
 
         一组要从运行此镜像的容器中公开的端口。
         它的键可以是以下格式。
@@ -1751,77 +1753,77 @@ ChainID(A|B|C) = Digest(Digest(DiffID(A) + " " + DiffID(B)) + " " + DiffID(C))
         这些值作为默认值，在创建容器时与任何指定的值合并。
         **注意：**这个JSON结构值是不寻常的，因为它是Go类型 `map[string]struct{}` 的直接JSON序列化，在JSON中表示为一个将其键映射到一个空对象的对象。
 
-    * **Env** *array of strings*, OPTIONAL
+    * **Env** _array of strings_, OPTIONAL
 
         条目格式为：`VARNAME=VARVALUE'。
         这些值作为默认值，在创建容器时与任何指定的值合并。
 
-    * **Entrypoint** *array of strings*, OPTIONAL
+    * **Entrypoint** _array of strings_, OPTIONAL
 
         一个参数列表，用作容器启动时要执行的命令。
         这些值作为默认值，可以由创建容器时指定的入口取代。
 
-    * **Cmd** *array of strings*, OPTIONAL
+    * **Cmd** _array of strings_, OPTIONAL
 
         容器的 entrypoint 的默认参数。
         这些值作为默认值，可以由创建容器时指定的任何值来代替。
         如果没有指定 `Entrypoint` 值，那么 `Cmd` 数组的第一个条目就应该被解释为要运行的可执行文件。
 
-    * **Volumes** *object*, OPTIONAL
+    * **Volumes** _object_, OPTIONAL
 
         一组描述进程可能写入容器实例特定数据的目录。
         **注意：**这个JSON结构值是不寻常的，因为它是Go类型`map[string]struct{}`的直接JSON序列化，并在JSON中表示为将其键映射到一个空对象。
 
-    * **WorkingDir** *string*, OPTIONAL
+    * **WorkingDir** _string_, OPTIONAL
 
         设置容器中入口进程的当前工作目录。
         这个值作为默认值，可以由创建容器时指定的工作目录代替。
 
-    * **Labels** *object*, OPTIONAL
+    * **Labels** _object_, OPTIONAL
 
         该字段包含容器的任意元数据。
         这个属性必须使用[注释规则](#注释规则)
 
-    * **StopSignal** *string*, OPTIONAL
+    * **StopSignal** _string_, OPTIONAL
         该字段包含将被发送到容器中退出的系统调用信号。该信号可以是一个格式为 `SIGNAME` 的信号名称，例如 `SIGKILL` 或 `SIGRTMIN+3`。
 
-* **rootfs** *object*, REQUIRED
+* **rootfs** _object_, REQUIRED
 
     rootfs 键引用镜像所使用的层内容地址。
     这使得镜像配置的哈希值（译者注：即上文提到的 ImageID）依赖于文件系统的哈希值。
 
-    * **type** *string*, REQUIRED
+    * **type** _string_, REQUIRED
 
         必须被设置为`layers`。
         如果在验证或解压镜像时遇到一个未知的值，实现必须产生一个错误。
 
-    * **diff_ids** *array of strings*, REQUIRED
+    * **diff_ids** _array of strings_, REQUIRED
 
         一个层内容哈希值（`DiffIDs'）的数组，按从头到尾的顺序排列。
 
-* **history** *array of objects*, OPTIONAL
+* **history** _array of objects_, OPTIONAL
 
     描述了每个层的历史。
     数组从第一个到最后一个排序。
     该对象有以下字段。
 
-    * **created** *string*, OPTIONAL
+    * **created** _string_, OPTIONAL
 
         创建的日期时间，格式为 [RFC 3339, section 5.6][rfc3339-s5.6].
 
-    * **author** *string*, OPTIONAL
+    * **author** _string_, OPTIONAL
 
         构建点的作者。
 
-    * **created_by** *string*, OPTIONAL
+    * **created_by** _string_, OPTIONAL
 
         创建该层的命令。
 
-    * **comment** *string*, OPTIONAL
+    * **comment** _string_, OPTIONAL
 
         创建层时设置的一个自定义信息。
 
-    * **empty_layer** *boolean*, OPTIONAL
+    * **empty_layer** _boolean_, OPTIONAL
 
         这个字段用来标记历史项目是否创建了一个文件系统的差异。
         如果这个历史项目不对应于rootfs部分的实际层（例如，Dockerfile的[ENV](https://docs.docker.com/engine/reference/builder/#/env)命令导致文件系统没有变化），它被设置为true。
