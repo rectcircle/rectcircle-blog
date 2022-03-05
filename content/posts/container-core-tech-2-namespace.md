@@ -155,7 +155,7 @@ int new_namespace_func(void *args)
 	//              const char *filesystemtype, unsigned long mountflags,
 	//              const void *data);
 	// 更多参见：https://man7.org/linux/man-pages/man2/mount.2.html
-	if (mount("data/binding/source", "data/binding/target", NULL, MS_BIND, NULL) != -1)
+	if (mount("data/binding/source", "data/binding/target", NULL, MS_BIND, NULL) == -1)
 		errExit("mount-MS_BIND");
 	printf("=== new mount namespace process ===\n");
 	execv(child_args[0], child_args);
