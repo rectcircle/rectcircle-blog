@@ -34,20 +34,17 @@ tags:
 
 Namespace 在 Linux 中是进程的属性和进程组紧密相关：一个进程的 Namespace 默认是和其父进程保持一致的。Linux 提供了几个系统调用，来创建、加入观察 Namespace：
 
-* 创建：通过 [`clone` 系统调用](https://man7.org/linux/man-pages/man2/clone.2.html)的 flag 来为**新创建的进程**创建新的 Namespace
-* 加入：通过 [`setns` 系统调用](https://man7.org/linux/man-pages/man2/setns.2.html)将**当前进程**加入某个其他进程的 Namespace（注意：当前进程的权限必须大于加入的进程的 Namespace 即不能发生越权），`docker exec` 就是通过这个系统调用实现的（PID Namespace 是个例外，参见下文）
-* 创建：通过 [`unshare` 系统调用](https://man7.org/linux/man-pages/man2/unshare.2.html)为**当前进程**创建新的 Namespace（PID Namespace 是个例外，参见下文）
-* 查看：通过 [`ioctl` 系统调用(ioctl_ns)](https://man7.org/linux/man-pages/man2/ioctl_ns.2.html)来查找有关命名空间的信息
+* 创建：通过 [`clone(2) 系统调用`](https://man7.org/linux/man-pages/man2/clone.2.html)的 flag 来为**新创建的进程**创建新的 Namespace
+* 加入：通过 [`setns(2) 系统调用`](https://man7.org/linux/man-pages/man2/setns.2.html)将**当前进程**加入某个其他进程的 Namespace（注意：当前进程的权限必须大于加入的进程的 Namespace 即不能发生越权），`docker exec` 就是通过这个系统调用实现的（PID Namespace 是个例外，参见下文）
+* 创建：通过 [`unshare(2) 系统调用`](https://man7.org/linux/man-pages/man2/unshare.2.html)为**当前进程**创建新的 Namespace（PID Namespace 是个例外，参见下文）
+* 查看：通过 [`ioctl_ns(2) 系统调用`](https://man7.org/linux/man-pages/man2/ioctl_ns.2.html)来查看命名空间的关系（主要是 user namespace 和 pid namespace）
+
+除了系统调用外，Linux 也提供了响应的命令来创建、加入 Namespace：
+
+* 创建：通过 [`unshare(1) 命令`](https://man7.org/linux/man-pages/man1/unshare.1.html)启动一个进程，然后再为该进程，创建新的 Namespace（PID Namespace 是个例外，参见下文）
+* 加入：通过 [`nsenter(1) 命令`](https://man7.org/linux/man-pages/man1/nsenter.1.html)启动一个进程，然后再将该进程，加入一个 Namespace（PID Namespace 是个例外，参见下文）
 
 下文，将以 Go 语言、 C 语言、Shell 命令三种形式，来介绍这些 Namespace。实验环境说明参见：[容器核心技术（一） 实验环境准备 & Linux 基础知识](/posts/container-core-tech-1-experiment-preparation-and-linux-base)
-
-TODO 添加对应的命令介绍
-
-`nsenter` pid 的时候不会 fork 两次！
-
-## TODO 系统调用
-
-## TODO 命令
 
 ## Mount Namespace
 
