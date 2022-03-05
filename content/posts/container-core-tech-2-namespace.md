@@ -35,14 +35,14 @@ tags:
 Namespace 在 Linux 中是进程的属性和进程组紧密相关：一个进程的 Namespace 默认是和其父进程保持一致的。Linux 提供了几个系统调用，来创建、加入观察 Namespace：
 
 * 创建：通过 [`clone(2) 系统调用`](https://man7.org/linux/man-pages/man2/clone.2.html)的 flag 来为**新创建的进程**创建新的 Namespace
-* 加入：通过 [`setns(2) 系统调用`](https://man7.org/linux/man-pages/man2/setns.2.html)将**当前进程**加入某个其他进程的 Namespace（注意：当前进程的权限必须大于加入的进程的 Namespace 即不能发生越权），`docker exec` 就是通过这个系统调用实现的（PID Namespace 是个例外，参见下文）
+* 加入：通过 [`setns(2) 系统调用`](https://man7.org/linux/man-pages/man2/setns.2.html)将**当前线程**（注意当前进程不允许有多个线程）加入某个其他进程的 Namespace（注意：当前进程的权限必须大于加入的进程的 Namespace 即不能发生越权），`docker exec` 就是通过这个系统调用实现的（PID Namespace 是个例外，参见下文）
 * 创建：通过 [`unshare(2) 系统调用`](https://man7.org/linux/man-pages/man2/unshare.2.html)为**当前进程**创建新的 Namespace（PID Namespace 是个例外，参见下文）
 * 查看：通过 [`ioctl_ns(2) 系统调用`](https://man7.org/linux/man-pages/man2/ioctl_ns.2.html)来查看命名空间的关系（主要是 user namespace 和 pid namespace）
 
 除了系统调用外，Linux 也提供了响应的命令来创建、加入 Namespace：
 
-* 创建：通过 [`unshare(1) 命令`](https://man7.org/linux/man-pages/man1/unshare.1.html)启动一个进程，然后再为该进程，创建新的 Namespace（PID Namespace 是个例外，参见下文）
-* 加入：通过 [`nsenter(1) 命令`](https://man7.org/linux/man-pages/man1/nsenter.1.html)启动一个进程，然后再将该进程，加入一个 Namespace（PID Namespace 是个例外，参见下文）
+* 创建：通过 [`unshare(1) 命令`](https://man7.org/linux/man-pages/man1/unshare.1.html)启动一个进程，然后再为该进程，创建新的 Namespace（PID Namespace 是个例外，参见下文），该命令的实现为：先调用 [`unshare(2) 系统调用`](https://man7.org/linux/man-pages/man2/unshare.2.html)，然后 **`exec`** 执行命令
+* 加入：通过 [`nsenter(1) 命令`](https://man7.org/linux/man-pages/man1/nsenter.1.html)启动一个进程，然后再将该进程，加入一个 Namespace（PID Namespace 是个例外，参见下文），该命令的实现为：先调用 [`setns(2) 系统调用`](https://man7.org/linux/man-pages/man2/unshare.2.html)，然后 **`fork-exec`** 执行命令
 
 下文，将以 Go 语言、 C 语言、Shell 命令三种形式，来介绍这些 Namespace。实验环境说明参见：[容器核心技术（一） 实验环境准备 & Linux 基础知识](/posts/container-core-tech-1-experiment-preparation-and-linux-base)
 
@@ -1132,6 +1132,15 @@ TODO
 
 ![image](/image/container-core-tech-namespace-pid-exp.png)
 
+注意，上图描述的是 C 语言版本可以达到的效果：
+
+* 在 Go 语言 和 Shell 描述的实验代码中，`进程 c` 的父进程应该是 `nsenter`。这个 `nsenter` 的 PID Namespace 为 main，这个 `nsenter` 的父进程为 main。
+
+此外，阅读下列实验代码，可以关注注释中的如下内容：
+
+* `seq: xxs` 标明时序过程。
+* `进程 x` 表示相关语句来生成实验设计中的进程
+
 #### C 语言描述
 
 注意事项
@@ -1279,7 +1288,7 @@ void print_child_handler(int sig) {
 }
 
 void register_signal_handler() {
-	// 忽略 SIGCHLD 信号，解决僵尸进程
+	// 处理 SIGCHLD 信号，解决僵尸进程阻塞 Namespace 进程退出的情况。
 	signal(SIGCHLD, print_child_handler);
 }
 
@@ -1296,7 +1305,7 @@ int main(int argc, char *argv[])
 							 -1, 0);
 	if (child_stack == MAP_FAILED)
 		errExit("mmap");
-	// 创建新进程，并为该进程创建一个 Mount Namespace（CLONE_NEWNS），并执行 new_namespace_func 函数
+	// 创建新进程，并为该进程创建一个 PID Namespace（CLONE_NEWPID），并执行 new_namespace_func 函数
 	// clone 库函数声明为：
 	// int clone(int (*fn)(void *), void *stack, int flags, void *arg, ...
 	// 		  /* pid_t *parent_tid, void *tls, pid_t *child_tid */);
@@ -1318,10 +1327,11 @@ int main(int argc, char *argv[])
 	if (pbp == -1)
 		errExit("clone-PB");
 	my_sleep(1);
-	// 此时 kill 掉 nsenter 进程，sleep infinity 就称为满足条件的进程 b 了
-	kill(pbp, SIGKILL);
 
 	// seq: 2s
+
+	// 此时 kill 掉 nsenter 进程，sleep infinity 就能称为满足条件的进程 b
+	kill(pbp, SIGKILL);
 
 	// 主进程 setns PID Namespace 为 进程 a
 	set_pid_namespace(pa);
@@ -1344,6 +1354,265 @@ int main(int argc, char *argv[])
 
 	return 0;
 }
+```
+
+#### Go 语言描述
+
+注意事项：
+
+* Go 不能直接使用 setns 系统调用（因为 setns 不支持多线程调用，而 go runtime 是多线程），因此还是通过 nsenter 命令实现 `进程 c`
+
+```go
+//go:build linux
+
+// sudo go run src/go/01-namespace/04-pid/main.go
+
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+	"os/exec"
+	"os/signal"
+	"syscall"
+	"time"
+)
+
+const (
+	sub = "sub"
+)
+
+var proccess_a_args = []string{
+	"/bin/bash",
+	"-xc",
+	"bash -c 'nohup sleep infinity >/dev/null 2>&1 &' " +
+		"&& echo $$ " +
+		"&& ls /proc " +
+		"&& ps -o pid,ppid,cmd " +
+		"&& kill -9 1 " +
+		"&& ps -o pid,ppid,cmd " +
+		"&& exec sleep infinity ",
+}
+
+var proccess_e_args = []string{
+	"/bin/bash",
+	"-xc",
+	"ls /proc " +
+		"&& ps -eo pid,ppid,cmd | grep sleep | grep -v grep " +
+		"&& kill -9 $(ps -eo pid,ppid | grep $PPID | awk '{print $1}' | sed -n '2p') " +
+		"&& ps -eo pid,ppid,cmd | grep sleep | grep -v grep ",
+}
+
+func asyncExec(name string, arg ...string) int {
+	cmd := exec.Command(name, arg...)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Start()
+	return cmd.Process.Pid
+}
+
+func newNamespaceProccess() int {
+	cmd := exec.Command(os.Args[0], "sub")
+	// 创建新进程，并为该进程创建一个 PID Namespace（syscall.CLONE_NEWPID
+	// 更多参见：https://man7.org/linux/man-pages/man2/clone.2.html
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Cloneflags: syscall.CLONE_NEWNS | syscall.CLONE_NEWPID,
+	}
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	cmd.Start()
+	return cmd.Process.Pid
+}
+
+func newNamespaceProccessFunc() {
+	// seq: 0s
+	// 首先，需要阻止挂载事件传播到其他 Mount Namespace，参见：https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#NOTES
+	// 如果不执行这个语句， cat /proc/self/mountinfo 所有行将会包含 shared，这样在这个子进程中执行 mount 其他进程也会受影响
+	// 关于 Shared subtrees 更多参见：
+	//   https://segmentfault.com/a/1190000006899213
+	//   https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES
+	// 下面语句的含义是：重新递归挂（MS_REC）载 / ，并设置为不共享（MS_SLAVE 或 MS_PRIVATE）
+	// 说明：
+	//   MS_SLAVE 换成 MS_PRIVATE 也能达到同样的效果
+	//   等价于执行：mount --make-rslave / 命令
+	if err := syscall.Mount("", "/", "", syscall.MS_SLAVE|syscall.MS_REC, ""); err != nil {
+		panic(err)
+	}
+	// 挂载当前 PID Namespace 的 proc
+	// 因为在新的 Mount Namespace 中执行，所有其他进程的目录树不受影响
+	// 等价命令为：mount -t proc proc /proc
+	// 更多参见：https://man7.org/linux/man-pages/man8/mount.8.html
+	if err := syscall.Mount("proc", "/proc", "proc", 0, ""); err != nil {
+		panic(err)
+	}
+	time.Sleep(3 * time.Second)
+
+	// seq: 3s
+	fmt.Println("=== new pid namespace process ===")
+	if err := syscall.Exec(proccess_a_args[0], proccess_a_args, nil); err != nil {
+		panic(err)
+	}
+}
+
+func registerSignalhandler() {
+	// 处理 SIGCHLD 信号，解决僵尸进程阻塞 Namespace 进程退出的情况。
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGCHLD)
+	go func() {
+		for {
+			<-sigs
+			for {
+				var wstatus syscall.WaitStatus
+				pid, err := syscall.Wait4(-1, &wstatus, syscall.WNOHANG, nil)
+				if err != nil || pid == -1 || pid == 0 {
+					break
+				}
+				fmt.Printf("*** pid %d exit by %d signal\n", pid, wstatus.Signal())
+			}
+		}
+	}()
+}
+
+func mainProccess() {
+	// seq: 0s
+	fmt.Printf("=== main: %d\n", os.Getpid())
+	// 注册 SIGCHLD 处理程序，会产生僵尸进程，而导致 PID Namespace 无法退出
+	registerSignalhandler()
+	// 1. 执行 newNamespaceExec，启动一个具有新的 PID Namespace 的进程
+	pa := newNamespaceProccess()
+	fmt.Printf("=== PA: %d\n", pa)
+
+	time.Sleep(1 * time.Second)
+	// seq: 1s
+
+	// 构造 进程 b
+	// 通过 nsenter 进入进程 a 的 PID Namespace
+	pbp := asyncExec("/bin/bash", "-c", fmt.Sprintf("exec nsenter -p -t %d bash -c 'echo === PB: \"$$ in new pid namespace\" && exec sleep infinity'", pa))
+	time.Sleep(1 * time.Second)
+	// 此时 kill 掉 nsenter 进程，sleep infinity 就能称为满足条件的进程 b
+	syscall.Kill(pbp, syscall.SIGKILL)
+
+	// seq: 2s
+	// 构造进程 c
+	// Go 不能直接使用 setns 系统调用（因为 setns 不支持多线程调用，而 go runtime 是多线程），因此还是通过 nsenter 命令实现
+	_ = asyncExec("/bin/bash", "-c", fmt.Sprintf("exec nsenter -p -t %d bash -c 'echo === PC: \"$$ in new pid namespace\" && exec sleep infinity'", pa))
+
+	time.Sleep(2 * time.Second)
+	// seq: 4s
+	fmt.Println("=== old pid namespace process ===")
+	_ = asyncExec(proccess_e_args[0], proccess_e_args[1:]...)
+
+	time.Sleep(1 * time.Second)
+	// seq: 5s
+
+	return
+}
+
+func main() {
+	switch len(os.Args) {
+	case 1:
+		mainProccess()
+		return
+	case 2:
+		if os.Args[1] == sub {
+			newNamespaceProccessFunc()
+			return
+		}
+	}
+	log.Fatalf("usage: %s [sub]", os.Args[0])
+}
+```
+
+#### Shell 描述
+
+`src/shell/01-namespace/04-pid/main.sh`
+
+```bash
+#!/usr/bin/env bash
+
+# sudo ./src/shell/01-namespace/04-pid/main.sh
+
+# 注意：该脚本运行于进程为 main
+# 设置 main 进程的 /proc/[pid]/ns/pid_for_children
+# mount namespace 不能在此设置，因为 mount namespace 会立即生效 
+exec unshare -p bash $(cd $(dirname "$0"); pwd)/seq00.sh
+```
+
+`src/shell/01-namespace/04-pid/seq00.sh`
+
+```bash
+#!/usr/bin/env bash
+
+# 注意：该脚本运行于进程为 main
+
+# seq: 0s
+
+echo "=== main: $$"
+# bash 默认处理了 SIGCHLD 信号，因此不需要处理信号
+
+### 构造进程 a
+# 创建一个新的 mount namespace
+unshare -m bash -c 'mount -t proc proc /proc \
+    && sleep 3 \
+    && echo "=== new pid namespace process ===" \
+    && set -x \
+    && bash -c "nohup sleep infinity >/dev/null 2>&1 &" \
+    && echo $$ \
+    && ls /proc \
+    && ps -o pid,ppid,cmd \
+    && kill -9 1 \
+    && ps -o pid,ppid,cmd \
+    && exec sleep infinity \
+' &
+
+pa=$!
+echo "=== PA: $pa"
+sleep 1
+
+# seq: 1s
+
+# 恢复 main 进程 /proc/[pid]/ns/pid_for_children 为初始状态
+exec nsenter -p -t 1 bash $(cd $(dirname "$0"); pwd)/seq01.sh $pa
+```
+
+`src/shell/01-namespace/04-pid/seq01.sh`
+
+```bash
+#!/usr/bin/env bash
+
+# 注意：该脚本运行于 main 进程的子进程，其 PID Namespace 和 main 进程相同
+
+pa=$1
+
+# seq: 1s
+
+### 构造进程 b
+nsenter -p -t $pa bash -c 'echo "=== PB: $$ in new pid namespace" && exec sleep infinity' &
+pbp=$! # 进程 b 的父进程
+sleep 1
+
+# seq: 2s
+
+kill -9 $pbp # kill 进程 b 的父进程，进程 b 构造完成
+
+### 构造进程 c
+nsenter -p -t $pa bash -c 'echo "=== PC: $$ in new pid namespace" && exec sleep infinity' &
+
+sleep 2
+
+# seq: 4s
+
+echo "=== old pid namespace process ==="
+set -x
+ls /proc
+ps -eo pid,ppid,cmd | grep sleep | grep -v grep
+kill -9 $pa
+ps -eo pid,ppid,cmd | grep sleep | grep -v grep
+
 ```
 
 ### 输出及分析
@@ -1412,6 +1681,11 @@ int main(int argc, char *argv[])
 分析上面输出日志可以看出，第 3s 末进程关系和实验描述一致：
 
 ![image](/image/container-core-tech-namespace-pid-exp-result.png)
+
+注意，以上输出是 C 语言版本的 Go 和 Shell 版本略有不同：
+
+* 在 Go 语言场景，进程 B 的 PID 为 `5` 而不是 `2`，因为 Go 会启动多个线程，这些线程会占用一些 PID。
+* 在 Shell 语言场景，进程 B 的 PID 也不为 `2`，因为在 `seq00.sh` 脚本里面的一部分外部命令也占用了部分进程号。
 
 ## 备忘
 
