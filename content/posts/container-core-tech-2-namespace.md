@@ -43,7 +43,7 @@ Namespace 在 Linux 中是进程的属性和进程组紧密相关：一个进程
 
 TODO 添加对应的命令介绍
 
-`nsenter`
+`nsenter` pid 的时候不会 fork 两次！
 
 ## TODO 系统调用
 
@@ -708,6 +708,8 @@ busybox  ls       sh
 
 ## UTS Namespace
 
+> 手册页面：[uts namespaces](https://man7.org/linux/man-pages/man7/uts_namespaces.7.html)。
+
 UTS (UNIX Time-Sharing System) Namespace 提供了个对 hostname 和 NIS domain name 这两个系统标识符的的隔离。
 
 ### 背景知识
@@ -1022,13 +1024,13 @@ TODO
 
 ## PID Namespace
 
+> 手册页面：[pid namespaces](https://man7.org/linux/man-pages/man7/pid_namespaces.7.html)。
+
 ### 背景知识
 
 #### 信号
 
-> 手册：[signal(7)](https://man7.org/linux/man-pages/man7/signal.7.html)
-
-信号是类 Unix 操作系统一种进程间通知的机制。本部分涉及的为：
+信号是类 Unix 操作系统一种进程间通知的机制（参见：手册 [signal(7)](https://man7.org/linux/man-pages/man7/signal.7.html)）。本部分涉及的为：
 
 * 用来协调多个进程的执行，如监听子孙进程的状态变更 `SIGCHLD`，默认忽略。需要注意的是，如果一个进程退出后，其父进程进程没有处理 `SIGCHLD` 信号，则该进程占用 PCB 将不会释放，此时该进程被称为僵尸进程。
 * 无法覆盖的特权信号，`SIGKILL` （终止） 和 `SIGSTOP` （挂起，需通过 `SIGCONT` 信号唤醒）
@@ -1078,6 +1080,9 @@ TODO
     * 一个进程在每一层 PID Namespace 都有一个 PID，进程自身调用 `getpid` 看到的是当前 PID Namespace 的 PID
     * 如果当前 PID Namespace 的进程的父进程也是当前 PID Namespace 内的进程，则  `getppid(2)` 返回该父进程在该 PID Namespace 的 PID
     * 如果当前 PID Namespace 的进程的父进程不是当前 PID Namespace 内的进程，则  `getppid(2)` 返回该父进程返回 0 （`setns(2)` 和 `unshare(2)` 语义造成的）
+
+![image](/image/container-core-tech-namespace-pid-create-or-join.png)
+
 * `setns(2)` 和 `unshare(2)` 语义，由于一个进程的 PID Namespace 从创建的那一刻就固定了，所以 `setns(2)` 和 `unshare(2)`，并不会影响当前进程的 PID Namespace（ 仅仅修改 `/proc/[pid]/ns/pid_for_children` 文件）。（试想一下，如果 PID Namespace 发生了变化，那么他们的进程号就变了，而很多程序假设自身的进程号不会发生变化的，这样就破坏了兼容性）
 * 新的 PID Namespace 的**第一个进程**的进程号为 `1`，即在该 PID Namespace 中，该进程就是受内核特殊处理的 1 号进程（参见上文：1 号进程和信号，1 号进程和进程树），此外还需要注意：
     * 该 PID Namespace 内的进程无法 `kill -9` 杀死 1 号进程（受内核保护）。
@@ -1100,30 +1105,316 @@ TODO
 * 杂项
     * `SCM_CREDENTIALS` `unix(7)` 会翻译成对应的 PID Namespace 的 PID
 
+![image](/image/container-core-tech-namespace-pid-proccess-tree-and-operate.png)
+
 ### 实验
 
 #### 实验设计
 
 为了验证 PID Namespace 的能力，按照时序进行如下操作：
 
-* (0s) 主进程启动一个具有新 PID Namespace 和 Mount Namespace 的`子进程(a)`，这个进程会先挂载 `/proc`；然后`子进程(a)` sleep 2s，主进程 sleep 1s。
-* (1s) 主进程调用 `setns` 将 PID Namespace 设置为 上一步创建的`子进程(a)`，然后 fork 一个子进程执行 `bash -c 'nohup sleep infinity >/dev/null 2>&1 &' && exec sleep infinity`，产生 `子进程(b)` 和 `子进程(c)`；主进程 sleep 2s
-* (2s) `子进程(a)` exec bash 执行命令：
-    * 观察自己的进程号 `echo $$`
-    * 制造一个孤儿进程 `bash -c 'nohup sleep infinity >/dev/null 2>&1 &`，产生 `子进程(d)`
+* (0s) `主进程` 启动一个具有新 PID Namespace 和 Mount Namespace 的 `进程(a)`，主进程 sleep 1s
+* (0s) `进程(a)` 会先挂载 `/proc`， sleep 2s
+* (1s) `主进程` 构造一个孤儿进程，`进程(b)`，该进程在新 PID Namespace 中，其 ppid 为 0，在父 PID Namespace 中其 ppid 为 1
+* (2s) `主进程` 构造 `进程(c)`，该进程在新 PID Namespace 中，其 ppid 为 0，，在父 PID Namespace 中其 ppid 为 `主进程`
+* (3s) `子进程(a)` 执行命令：
+    * 构造一个 `孤儿进程(d)`，在该 PID Namespace，其 ppid 为 1
     * 观察 `/proc` 目录
-    * 观察 `pstree -psT -H 1`
-    * 尝试 `kill -9 1`，观察是否成功 `ps -eo pid,ppid,cmd`
+    * 观察该 PID Namespace 的所有进程
+    * 尝试 `kill -9 1`
+    * 再次观察该 PID Namespace 的所有进程
     * `exec sleep infinity`
-* (3s) 调用 `setns` 恢复 PID Namespace，然后 fork `子进程(e)` 通过 bash 执行命令
+* (4s) 然后 fork `子进程(e)`，该进程在主进程初始状态的 PID Namespace 中，执行命令：
     * 观察 `/proc` 目录
-    * 观察几个 sleep 进程的父进程是什么 `ps -eo pid,ppid,cmd | grep sleep | grep -v grep`
-    * 以主进程为根观察 `pstree -psT -H $PPID`
-    * 尝试 `kill -9 $(ps -eo pid,ppid | grep $PPID | awk '{print $1}' | sed -n '2p')` 杀死具有新的 PID Namespace 的 1 号进程
-    * 再次以主进程为根观察 `pstree -psT -H $PPID`
-    * waitpid 几个子进程，观察退出信号
+    * 观察所有 sleep 进程
+    * 尝试 `kill -9 进程(a)`
+    * 再次观察观察所有 sleep 进程
+* (5s) 主进程退出
+
+该实验在第 3s 末进程状态应该为：
+
+![image](/image/container-core-tech-namespace-pid-exp.png)
 
 #### C 语言描述
+
+注意事项
+
+* 父进程需要处理 `SIGCHLD` 信号，否则主进程 `kill -9` 新 PID Namespace 的 1 号进程（即 `进程 a`）时，上文实验设计 `进程 c` 变成僵尸进程，导致新 PID Namespace 的所有进程无响应
+* 使用 [`sleep(3) 库函数`](https://man7.org/linux/man-pages/man3/sleep.3.html) 会被 `SIGCHLD` 信号中断，导致时序不符合预期。因此需要使用 [`nanosleep(2) 系统调用`](https://man7.org/linux/man-pages/man2/nanosleep.2.html) 手动实现一个专门的 sleep。
+
+实验代码如下
+
+```cpp
+// gcc src/c/01-namespace/04-pid/main.c && sudo ./a.out
+
+#define _GNU_SOURCE	   // Required for enabling clone(2)
+#include <sys/wait.h>  // For waitpid(2)
+#include <sys/mount.h> // For mount(2)
+#include <sys/mman.h>  // For mmap(2)
+#include <sys/syscall.h> // For SYS_pidfd_open
+
+#include <time.h>	   // For nanosleep(2)
+#include <sched.h>	   // For clone(2)
+#include <signal.h>	   // For SIGCHLD
+#include <stdio.h>	   // For perror(3), printf(3), perror(3)
+#include <unistd.h>    // For execv(3), sleep(3)
+#include <stdlib.h>    // For exit(3), system(3)
+
+
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \
+                               } while (0)
+
+#define STACK_SIZE (1024 * 1024)
+
+void my_sleep(int sec)
+{
+	struct timespec t = {
+		.tv_sec = sec,
+		.tv_nsec = 0};
+	// sleep 会被信号打断，因此通过 nanosleep 重新实现一下
+	// https: // man7.org/linux/man-pages/man2/nanosleep.2.html
+	while (nanosleep(&t, &t) != 0)
+		;
+}
+
+// 进程 a：当前 bash，最终为 sleep infinity
+// 进程 d：nohup sleep infinity 孤儿进程在该 PID Namespace 中，其 ppid 为 1
+char *const proccess_a_args[] = {
+	"/bin/bash",
+	"-xc",
+	"bash -c 'nohup sleep infinity >/dev/null 2>&1 &' \
+	&& echo $$ \
+	&& ls /proc \
+	&& ps -o pid,ppid,cmd \
+	&& kill -9 1\
+	&& ps -o pid,ppid,cmd \
+	&& exec sleep infinity \
+	",
+	NULL};
+
+// 进程 b： 在该 PID Namespace 中，构造一个孤儿进程，其 ppid 为 0，在父 PID Namespace 中 为 1
+char *proccess_b_args[] = {
+	"/bin/bash",
+	"-c",
+	"",
+	NULL};
+
+// 进程 c： sleep infinity 进程在该 PID Namespace 中，其 ppid 为 0，在父 PID Namespace 中 ppid 为 主进程
+char *const proccess_c_args[] = {
+	"/bin/bash",
+	"-c",
+	"exec sleep infinity",
+	NULL};
+
+// 进程 e：
+char *const proccess_e_args[] = {
+	"/bin/bash",
+	"-xc",
+	"ls /proc \
+	&& ps -eo pid,ppid,cmd | grep sleep | grep -v grep  \
+	&& kill -9 $(ps -eo pid,ppid | grep $PPID | awk '{print $1}' | sed -n '2p') \
+	&& ps -eo pid,ppid,cmd | grep sleep | grep -v grep \
+	",
+	NULL};
+
+int new_namespace_func(void *args)
+{
+	// seq: 0s
+
+	// 首先，需要阻止挂载事件传播到其他 Mount Namespace，参见：https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#NOTES
+	// 如果不执行这个语句， cat /proc/self/mountinfo 所有行将会包含 shared，这样在这个子进程中执行 mount 其他进程也会受影响
+	// 关于 Shared subtrees 更多参见：
+	//   https://segmentfault.com/a/1190000006899213
+	//   https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES
+	// 下面语句的含义是：重新递归挂（MS_REC）载 / ，并设置为不共享（MS_SLAVE 或 MS_PRIVATE）
+	// 说明：
+	//   MS_SLAVE 换成 MS_PRIVATE 也能达到同样的效果
+	//   等价于执行：mount --make-rslave / 命令
+	if (mount(NULL, "/", NULL , MS_SLAVE | MS_REC, NULL) == -1)
+		errExit("mount-MS_SLAVE");
+	// 挂载当前 PID Namespace 的 proc
+	// 因为在新的 Mount Namespace 中执行，所有其他进程的目录树不受影响
+	// 等价命令为：mount -t proc proc /proc
+	// mount 函数声明为：
+	//    int mount(const char *source, const char *target,
+	//              const char *filesystemtype, unsigned long mountflags,
+	//              const void *data);
+	// 更多参见：https://man7.org/linux/man-pages/man2/mount.2.html
+	if (mount("proc", "/proc", "proc", 0, NULL) == -1)
+		errExit("mount-proc");
+	my_sleep(3);
+	// seq: 3s
+	printf("=== new pid namespace process ===\n");
+	execv(proccess_a_args[0], proccess_a_args);
+	perror("exec");
+	exit(EXIT_FAILURE);
+}
+
+pid_t fork_proccess(char *const *argv)
+{
+	pid_t p = fork();
+	if (p == 0)
+	{
+		execv(argv[0], argv);
+		perror("exec");
+		exit(EXIT_FAILURE);
+	}
+	return p;
+}
+
+void set_pid_namespace(pid_t pid) {
+	int fd = syscall(SYS_pidfd_open, pid, 0);
+	if (fd == -1)
+		errExit("pidfd_open");
+	if (setns(fd, CLONE_NEWPID) == -1)
+		errExit("setns");
+	close(fd);
+}
+
+void print_child_handler(int sig) {
+	int wstatus;
+	pid_t pid;
+	// https://man7.org/linux/man-pages/man2/waitpid.2.html
+	// 获取子进程退出情况
+	while ((pid=waitpid(-1, &wstatus, WNOHANG)) > 0) {
+		printf("*** pid %d exit by %d signal\n", pid, WTERMSIG(wstatus));
+	}
+}
+
+void register_signal_handler() {
+	// 忽略 SIGCHLD 信号，解决僵尸进程
+	signal(SIGCHLD, print_child_handler);
+}
+
+int main(int argc, char *argv[])
+{
+	// seq: 0s
+	printf("=== main: %d\n", getpid());
+	// 注册 SIGCHLD 处理程序，会产生僵尸进程，而导致 PID Namespace 无法退出
+	register_signal_handler();
+	// 为子进程提供申请函数栈
+	void *child_stack = mmap(NULL, STACK_SIZE,
+							 PROT_READ | PROT_WRITE,
+							 MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK,
+							 -1, 0);
+	if (child_stack == MAP_FAILED)
+		errExit("mmap");
+	// 创建新进程，并为该进程创建一个 Mount Namespace（CLONE_NEWNS），并执行 new_namespace_func 函数
+	// clone 库函数声明为：
+	// int clone(int (*fn)(void *), void *stack, int flags, void *arg, ...
+	// 		  /* pid_t *parent_tid, void *tls, pid_t *child_tid */);
+	// 更多参见：https://man7.org/linux/man-pages/man2/clone.2.html
+	pid_t pa = clone(new_namespace_func, child_stack + STACK_SIZE, SIGCHLD | CLONE_NEWNS | CLONE_NEWPID, NULL); // 进程 a
+	if (pa == -1)
+		errExit("clone-PA");
+	printf("=== PA: %d\n", pa);
+
+	my_sleep(1);
+	// seq: 1s
+
+	// 构造 进程 b
+	char buf[256];
+	// 通过 nsenter 进入进程 a 的 PID Namespace
+	sprintf(buf, "exec nsenter -p -t %d bash -c 'echo === PB: \"$$ in new pid namespace\" && exec sleep infinity'", pa);
+	proccess_b_args[2] = buf;
+	pid_t pbp = fork_proccess(proccess_b_args);
+	if (pbp == -1)
+		errExit("clone-PB");
+	my_sleep(1);
+	// 此时 kill 掉 nsenter 进程，sleep infinity 就称为满足条件的进程 b 了
+	kill(pbp, SIGKILL);
+
+	// seq: 2s
+
+	// 主进程 setns PID Namespace 为 进程 a
+	set_pid_namespace(pa);
+	// fork 进程 c
+	pid_t pc = fork_proccess(proccess_c_args);
+	if (pc == -1)
+		errExit("clone-PC");
+	printf("=== PC: %d\n", pc);
+
+	my_sleep(2);
+	// seq: 4s
+
+	// 恢复主进程 PID Namespace
+	set_pid_namespace(1);
+	printf("=== old pid namespace process ===\n");
+	pid_t pe = fork_proccess(proccess_e_args);
+
+	my_sleep(1);
+	// seq: 5s
+
+	return 0;
+}
+```
+
+### 输出及分析
+
+```
+=== main: 4683
+=== PA: 4684
+=== PB: 2 in new pid namespace
+=== PC: 4708
+*** pid 4697 exit by 9 signal
+=== new pid namespace process ===
++ bash -c 'nohup sleep infinity >/dev/null 2>&1 &'
++ echo 1
+1
++ ls /proc
+1  6          bus       cpuinfo    dma            fb           iomem     kcore      kpagecgroup  locks    mounts        partitions   self      swaps          thread-self  version
+2  acpi       cgroups   crypto     driver         filesystems  ioports   keys       kpagecount   meminfo  mtrr          pressure     slabinfo  sys            timer_list   vmallocinfo
+3  asound     cmdline   devices    dynamic_debug  fs           irq       key-users  kpageflags   misc     net           sched_debug  softirqs  sysrq-trigger  tty          vmstat
+5  buddyinfo  consoles  diskstats  execdomains    interrupts   kallsyms  kmsg       loadavg      modules  pagetypeinfo  schedstat    stat      sysvipc        uptime       zoneinfo
++ ps -o pid,ppid,cmd
+	PID    PPID CMD
+	  1       0 /bin/bash -xc bash -c 'nohup sleep infinity >/dev/null 2>&1 &' ?&& echo $$ ?&& ls /proc ?&& ps -o pid,ppid,cmd ?&& kill -9 1?&& ps -o pid,ppid,cmd ?&& exec sleep infini
+	  2       0 sleep infinity
+	  3       0 sleep infinity
+	  5       1 sleep infinity
+	  7       1 ps -o pid,ppid,cmd
++ kill -9 1
++ ps -o pid,ppid,cmd
+	PID    PPID CMD
+	  1       0 /bin/bash -xc bash -c 'nohup sleep infinity >/dev/null 2>&1 &' ?&& echo $$ ?&& ls /proc ?&& ps -o pid,ppid,cmd ?&& kill -9 1?&& ps -o pid,ppid,cmd ?&& exec sleep infini
+	  2       0 sleep infinity
+	  3       0 sleep infinity
+	  5       1 sleep infinity
+	  8       1 ps -o pid,ppid,cmd
++ exec sleep infinity
+=== old pid namespace process ===
++ ls /proc
+1    11    15    204   24    278  3     3853  4426  4683  48   585  691        cmdline    dynamic_debug  irq          kpageflags  net           softirqs       tty
+10   110   1558  2072  2445  280  302   3854  4458  4684  489  6    717        consoles   execdomains    kallsyms     loadavg     pagetypeinfo  stat           uptime
+104  1183  17    2078  25    283  306   4     45    4698  49   62   9          cpuinfo    fb             kcore        locks       partitions    swaps          version
+105  12    18    2079  253   285  311   4193  4586  47    490  621  acpi       crypto     filesystems    keys         meminfo     pressure      sys            vmallocinfo
+106  13    183   21    270   287  318   429   46    4708  50   641  asound     devices    fs             key-users    misc        sched_debug   sysrq-trigger  vmstat
+107  14    19    22    272   290  3762  43    462   4710  51   65   buddyinfo  diskstats  interrupts     kmsg         modules     schedstat     sysvipc        zoneinfo
+108  147   2     229   274   291  3764  44    463   4714  52   652  bus        dma        iomem          kpagecgroup  mounts      self          thread-self
+109  148   20    23    277   294  3852  4413  4682  4715  575  66   cgroups    driver     ioports        kpagecount   mtrr        slabinfo      timer_list
++ grep -v grep
++ grep sleep
++ ps -eo pid,ppid,cmd
+   4684    4683 sleep infinity
+   4698       1 sleep infinity
+   4708    4683 sleep infinity
+   4710    4684 sleep infinity
+++ sed -n 2p
+++ awk '{print $1}'
+++ grep 4683
+++ ps -eo pid,ppid
++ kill -9 4684
+*** pid 4708 exit by 9 signal
+*** pid 4684 exit by 9 signal
++ grep -v grep
++ grep sleep
++ ps -eo pid,ppid,cmd
+*** pid 4714 exit by 0 signal
+```
+
+分析上面输出日志可以看出，第 3s 末进程关系和实验描述一致：
+
+![image](/image/container-core-tech-namespace-pid-exp-result.png)
 
 ## 备忘
 
