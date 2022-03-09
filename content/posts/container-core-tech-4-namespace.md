@@ -8,6 +8,7 @@ tags:
   - 云原生
 ---
 
+TODO 这个文章拆分成多篇。
 
 ## 概述
 
@@ -44,6 +45,18 @@ Namespace 在 Linux 中是进程的属性和进程组紧密相关：一个进程
 * 创建：通过 [`unshare(1) 命令`](https://man7.org/linux/man-pages/man1/unshare.1.html)启动一个进程，然后再为该进程，创建新的 Namespace（PID Namespace 是个例外，参见下文），该命令的实现为：先调用 [`unshare(2) 系统调用`](https://man7.org/linux/man-pages/man2/unshare.2.html)，然后 **`exec`** 执行命令
 * 加入：通过 [`nsenter(1) 命令`](https://man7.org/linux/man-pages/man1/nsenter.1.html)启动一个进程，然后再将该进程，加入一个 Namespace（PID Namespace 是个例外，参见下文），该命令的实现为：先调用 [`setns(2) 系统调用`](https://man7.org/linux/man-pages/man2/unshare.2.html)，然后 **`fork-exec`** 执行命令
 
+关于 Namespace 的描述，Linux 手册非常详细的手册说明：
+
+* [namespaces(7)](https://man7.org/linux/man-pages/man7/namespaces.7.html) - 整体描述
+* [mount_namespaces(7)](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html)
+* [uts_namespaces(7)](https://man7.org/linux/man-pages/man7/uts_namespaces.7.html)
+* [ipc_namespaces(7)](https://man7.org/linux/man-pages/man7/ipc_namespaces.7.html)
+* [pid_namespaces(7)](https://man7.org/linux/man-pages/man7/pid_namespaces.7.html)
+* [network_namespaces(7)](https://man7.org/linux/man-pages/man7/network_namespaces.7.html)
+* [user_namespaces(7)](https://man7.org/linux/man-pages/man7/user_namespaces.7.html)
+* [cgroup_namespaces(7)](https://man7.org/linux/man-pages/man7/cgroup_namespaces.7.html)
+* [time_namespaces(7)](https://man7.org/linux/man-pages/man7/time_namespaces.7.html)
+
 下文，将以 Go 语言、 C 语言、Shell 命令三种形式，来介绍这些 Namespace。实验环境说明参见：[容器核心技术（一） 实验环境准备 & Linux 基础知识](/posts/container-core-tech-1-experiment-preparation-and-linux-base)
 
 ## Mount Namespace
@@ -51,6 +64,10 @@ Namespace 在 Linux 中是进程的属性和进程组紧密相关：一个进程
 > 手册页面：[mount namespaces](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html)。
 
 ### 背景知识
+
+> 手册：[mount(2) 系统调用](https://man7.org/linux/man-pages/man2/mount.2.html) | [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)
+
+#### mount 概述
 
 目录树是 Linux 一种的全局系统资源，对目录树的一个节点绑定一个文件系统的操作叫做挂载（`mount`），即通过 `mount` 系统调用实现的。
 
@@ -66,27 +83,333 @@ Linux 支持多种多样的挂载，这里先介绍几种常见的例子：
 * bind 某一个目录（也可以是文件）到另一个目录（也可以是文件，类型需和源保持一致），实现的效果类似于一个软链指向两一个目录，但是优点是，对于进程来说，是无法分辨出同一个文件的两个路径的关系。该能力是容器引擎实现挂载宿主机目录的核心技术。
 * 将几个目录组成一套 overlay 文件系统，并挂载在某个目录，这是容器引擎（如 Docker）实现镜像和容器数据存储的核心技术，在下一篇文章有专门介绍。
 
-关于更多常见的挂载命令，可以参见：[文章：Linux mount （第一部分）](https://segmentfault.com/a/1190000006878392)
+内核支持 mount 的文件系统类型参见： `/proc/filesystems`。
+
+关于更多常见的挂载命令，可以参见：[文章：Linux mount （第一部分）](https://segmentfault.com/a/1190000006878392)。
+
+mount 的调用需要 `CAP_SYS_ADMIN` 权限。
+
+#### mount 和 目录树
+
+Linux 的每个文件系统在目录树上都有一个挂载点，这个挂载点目录的子孙目录有两种可能：a) 当前文件系统的目录 b) 另一个文件系统的挂载点。因此，挂载点也是组成了一颗挂载点树。因此 Linux 文件相关  从文件系统、目录树和挂载点视角来看，如下图所示：
+
+![image](/image/container-core-tech-fs-mount-tree.png)
+
+因此，可以看出：`目录树 = 文件系统 + 挂载点`。
+
+#### mount 系统调用和命令
+
+> 手册：[mount(2) 系统调用](https://man7.org/linux/man-pages/man2/mount.2.html) | [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)
+
+mount 系统调用和命令一般有五个参数：
+
+* `type` 文件系统类型
+* `source` 源，与 `type` 有关，有可能是 目录、块设备或者 null 等等
+* `target` 目标，绑定到的路径，必填，一般情况下是一个目录（bind 的情况可能是一个文件），如果是目录，该文件在当前文件系统中必须存在。
+* `data` 参数，与 `type` 有关，一般是是一串由逗号分隔的选项
+* `mountflags` 附加选项 flag
+    * 配置 mount 的操作类型
+        * `MS_REMOUNT` 重新挂载
+        * `MS_BIND` bind 挂载
+        * `MS_SHARED`、`MS_PRIVATE`、`MS_SLAVE`、`MS_UNBINDABLE`。改变一个挂载的传播类型
+        * `MS_MOVE` 将现有挂载移动到新位置
+        * 创建一个新的挂载：`mountflags` 不包括上述任何一项
+    * 其他附加选项
+        * `MS_DIRSYNC` 所有文件系统的更新都应该立即完成写入磁盘。参见：[mount(8) dirsync](https://man7.org/linux/man-pages/man8/mount.8.html)
+        * `MS_LAZYTIME` 减少 inode 时间戳的磁盘更新（atime、mtime、ctime) 通过仅在内存中维护这些更改。这磁盘时间戳仅在以下情况下更新：
+            * 需要更新 inode 以进行一些更改与文件时间戳无关；
+            * 应用程序使用 fsync(2)、syncfs(2) 或同步（2）；
+            * 未删除的 inode 从内存中逐出；
+            * 自 inode 启动以来已超过 24 小时写入磁盘。
+        * `MS_REC` 递归，与 MS_BIND 结合使用以创建递归绑定挂载；结合传播类型标志递归地改变所有的传播类型子树中的挂载。
+        * `MS_RDONLY` 只读模式
+        * 其他参见：[mount(2) 系统调用](https://man7.org/linux/man-pages/man2/mount.2.html)
+
+#### 创建一个新的挂载
+
+不使用 `MS_REMOUNT`, `MS_BIND`, `MS_MOVE`, `MS_SHARED`, `MS_PRIVATE`, `MS_SLAVE`, `MS_UNBINDABLE` 这些特殊参数的情况下为创建一个新的挂载。其他参数由 `type` 决定。
+
+#### 重新挂载已存在挂载
+
+允许更改现有挂载的 `mountflags` 和 `data` ，而无需卸载和重新安装文件系统。
+
+* 使用 `MS_REMOUNT` 标志
+* 使用相同的 `target` 参数
+* `source` 和 `filesystemtype` 参数将被忽略
+
+更多参见：[mount(2) 系统调用](https://man7.org/linux/man-pages/man2/mount.2.html)
+
+#### 创建一个 bind 挂载
+
+* 使用 `MS_BIND` 标志
+* `sourcec` 源目录
+* `target` 目标目录
+* `data` 忽略
+* 默认情况只会绑定这个目录，而不会绑定这个目录下的其他挂载，可以通过 `MS_REC` 选项递归挂载
+
+经测试 bind 并不会造成递归。原理参见下文：mount 传播类型
+
+#### 移动一个挂载
+
+* 使用 `mountflags` 标志
+* `source` 指定一个现有的mount
+* `target` 指定该挂载的被搬迁新位置
+* `mountflags` 参数中的其余位将被忽略，同样，`type` 和 `data` 也会被忽略。
+* 这个操作是原子的：在任何时候子树的挂载都不会被卸载。
+
+#### mount 传播类型
+
+##### mount 属性介绍
+
+> 手册：[proc(5)](https://man7.org/linux/man-pages/man5/proc.5.html)
+
+挂载点列表以及每个挂载点的详细属性可以通过 `/proc/self/mountinfo` 文件查看，其每一行的格式为：
+
+```
+36 35 98:0 /mnt1 /mnt2 rw,noatime master:1 - ext3 /dev/root rw,errors=continue
+(1)(2)(3)   (4)   (5)      (6)      (7)   (8) (9)   (10)         (11)
+```
+
+* (1)  mount ID，此挂载点的唯一 ID。
+* (2)  parent ID，此挂载点的父挂载点 ID（如果此挂载点是挂载点树的根节点，parent ID = mount ID）。一个挂载点的父亲是当前挂载点的目录所在的挂载点。当当前挂载点的 parent 不在当前目录树，则这 parent ID 将不会出现在 `/proc/self/mountinfo` 文件中（比如 `chroot(2)`、`pivot_root(2)`）
+* (4)  root: 将相对于当前文件系统根目录的绝对路径挂载到挂载点
+* (5)  mount point: 相对于当前进程的绝对路径
+* (6)  mount options: `mount(2)` 的 `data` 参数
+* (7)  optional fields: 0 或多个以 `,` 分割的可选字段，每个字段格式为 `tag[:value]`
+* 其他略
+
+##### bind 引入的问题
+
+在引入 bind 之前，一个文件系统的内容只对应目录树上一个路径（不考虑硬链接/软链接）。
+
+引入 bind 之后，一个文件系统的内容在目录树上就会对应多个路径。如：将 `/home/a` 目录 bind 到 `/home_a` 路径下 （对应下图 `1. bind`）。
+
+此时。如果向对这些路径中的一个子目录中 bind 一个其他的目录，操作，其他路径是否可见呢？如：将 `/m2` bind 到 `/home_a/.m2`，`/home/a/.m2` 是否也自动绑定呢（对应下图 `2. bind` 后，`3.❓` 的情况）？
+
+![image](/image/container-core-tech-fs-mount-tree-bind.png)
+
+##### `传播特性` 和 `peer group`
+
+该问题由，Linux 在挂载点的 `optional fields` 字段： `${传播类型}:${peer group}` 决定。
+
+先来看 `peer group`。`peer group` 是一个数字 ID，Linux 保证同一个文件系统的 `peer group` 是相同的，这个 `peer group` 中必须有一个 `MS_SHARED`，否则 `peer group` 相同的所有挂载点的 `peer group` 都会被清空。
+
+以上图为例：执行完 `1.bind` 后，`/home_a` 和 `home` 属于同一个文件系统，所以其 `peer group` 是相同的。
+
+接下来看 `传播类型` 字段，关于挂载点的传播类型有四种：
+
+* `shared` (`MS_SHARED`)，共享：
+    * 以当前挂载点的子目录作为 mount 的 `target` 或删除当前挂载点子目录的一个挂载，这个挂载事件会传播到具有相同的 `peer group` （意味着同一个的文件系统）的挂载点。
+    * 当前挂载会接收其他具有相同的 `peer group`（意味着同一个的文件系统） 的挂载事件。
+* `-` (`MS_PRIVATE`)，私有：
+    * 以当前挂载点的子目录作为 mount 的 `target` 或删除当前挂载点子目录的一个挂载，不会影响其他挂载点。
+    * 当前挂载不会接收任何其他具有相同的 `peer group`（意味着同一个的文件系统） 的挂载事件。
+* `master` (`MS_SLAVE`)，从模式：
+    * 以当前挂载点的子目录作为 mount 的 `target` 或删除当前挂载点子目录的一个挂载，不会影响其他挂载点。
+    * 当前挂载会接收其他具有相同的 `peer group`（意味着同一个的文件系统） 的挂载事件。
+* `unbindable` (`MS_UNBINDABLE`)，发送和接收的行为和 `MS_PRIVATE`，此外，还附加如下约束：
+    * 针对某个目录进行递归 bind 时（`MS_BIND | MS_REC`），如果该目录的子目录存在一个配置 `MS_UNBINDABLE` 的挂载点，将忽略。
+    * 直接 bind 该挂载点，将报错。
+
+因此我们来枚举下上图操作 `2. bind` 后， `3.❓` 的情况：
+
+|  | `/home` 挂载点 `MS_SHARED` | `/home` 挂载点 `MS_PRIVATE` | `/home` 挂载点 `MS_SLAVE` |
+|---|---|---|---|
+| `/home_a` 挂载点 `MS_SHARED` | ✅|  ❌| ✅|
+| `/home_a` 挂载点 `MS_PRIVATE` | ❌ | ❌ |  ❌|
+| `/home_a` 挂载点 `MS_SLAVE` |  ❌| ❌ |  ❌|  ❌|
+
+假设， `/home` 挂载点 `MS_SHARED` 且 `/home_a` 挂载点 `MS_SHARED`，此时相关挂载点的属性如下表所示：
+
+| ID | Parent ID | Root | mount point | optional fields | 文件系统| 说明 |
+|----|-----------|------|-------------|-----------------|--------|-----|
+| 26 | 1         | `/`  | `/`         | `shared:1`      |  `/`   | 根目录挂载点 |
+| 209 | 26       | `/`  | `/home`     | `shared:122`    | `/home` | `/home` 挂载点 |
+| 216 | 26       | `/`  | `/m2`       | `shared:126`    | `/m2`   | `/m2` 挂载点 |
+| 223 | 26       | `/a` | `/home_a`   | `shared:122`    | `/home` | 操作 `1. bind` |
+| 230 | 223      | `/` | `/home_a/.m2`   | `shared:126` | `/m2`  | 操作 `2. bind` |
+| 231 | 209      | `/` | `/home/a/.m2`   | `shared:126` | `/m2`  |  `3. ❓` 结果 |
+
+接下来，探讨创建一个挂载点的 `传播类型` 和 `peer group` 的初始化情况：
+
+* 第一步，确认挂载的 `source` 所在的挂载点（以 `1. bind` 操作为例，其挂载点为 `/home`）。
+* 新的挂载点的 `传播类型` 和 `peer group` 为和第一步确认的挂载点保持一致。
+
+最后，探讨下一个挂载点的 `传播类型` 和 `peer group` 的变化情况：
+
+* 将一个 `MS_SHARED` 的挂载点设置为 `MS_SLAVE` 时，如果设置后，`peer group` 相同的挂载点不存在 `传播特性` 为 `MS_SHARED` 是，这个挂载点将直接变为 `MS_PRIVATE`（`peer group` 将丢失）。否则可以变为 `MS_SLAVE`。
+* 将 `MS_SHARED` 或 `MS_SLAVE` 设为 `MS_PRIVATE` 或 `MS_UNBINDABLE`，`peer group` 将丢失。
+* 将 `MS_PRIVATE` 或 `MS_UNBINDABLE` 设为 `MS_SLAVE` 将不生效
+* 将 `MS_PRIVATE` 或 `MS_UNBINDABLE` 设为 `MS_SHARED` 将分配一个新的 `peer group`
+
+##### 修改传播类型参数说明
+
+* `target` 填写要改变的挂载点
+* `source`、`data`、`type` 忽略
+* `mountflags` 上文已经介绍清楚
+    * `MS_SHARED`
+    * `MS_PRIVATE`
+    * `MS_SLAVE`
+    * `MS_UNBINDABLE`
+
+#### Example
+
+```bash
+#!/usr/bin/env bash
+
+abs_dir=$(cd $(dirname $0); pwd)
+cd $abs_dir
+
+# 开始测试
+echo '=== origin ==='
+tree
+
+sudo mount --bind source1 target1
+echo '=== bind ./source1 ./target1 ==='
+tree
+
+sudo mount --bind source2 target1/target2
+echo '=== / is share & ./target1 is share ==='
+echo '=== bind ./source2 ./target1/target2 : ./source1/target2 ✅  ==='
+cat /proc/self/mountinfo | grep "/ / "
+cat /proc/self/mountinfo | grep "propagation"
+tree
+
+sudo umount target1/target2
+sudo mount --make-slave target1
+sudo mount --bind source2 source1/target2
+echo '=== / is share & ./target1 is slave ==='
+echo '=== bind ./source2 ./source1/target2 : ./target1/target2/ ✅  ==='
+cat /proc/self/mountinfo | grep "/ / "
+cat /proc/self/mountinfo | grep "propagation"
+tree
+
+sudo umount source1/target2
+sudo mount --bind source2 target1/target2
+echo '=== bind ./source2 ./target1/target2 : ./source1/target2 ❌ ==='
+cat /proc/self/mountinfo | grep "/ / "
+cat /proc/self/mountinfo | grep "propagation"
+tree
+
+sudo umount target1/target2
+sudo umount target1
+```
+
+输出
+
+```
+=== origin ===
+.
+├── source1
+│   ├── source1
+│   └── target2
+│       └── target2
+├── source2
+│   └── mounted
+├── target1
+│   └── target1
+└── test.sh
+
+4 directories, 5 files
+=== bind ./source1 ./target1 ===
+.
+├── source1
+│   ├── source1
+│   └── target2
+│       └── target2
+├── source2
+│   └── mounted
+├── target1
+│   ├── source1
+│   └── target2
+│       └── target2
+└── test.sh
+
+5 directories, 6 files
+=== / is share & ./target1 is share ===
+=== bind ./source2 ./target1/target2 : ./source1/target2 ✅  ===
+26 1 8:1 / / rw,relatime shared:1 - ext4 /dev/sda1 rw,errors=remount-ro
+209 26 8:1 /home/rectcircle/container-core-tech-experiment/data/propagation/source1 /home/rectcircle/container-core-tech-experiment/data/propagation/target1 rw,relatime shared:1 - ext4 /dev/sda1 rw,errors=remount-ro
+216 209 8:1 /home/rectcircle/container-core-tech-experiment/data/propagation/source2 /home/rectcircle/container-core-tech-experiment/data/propagation/target1/target2 rw,relatime shared:1 - ext4 /dev/sda1 rw,errors=remount-ro
+217 26 8:1 /home/rectcircle/container-core-tech-experiment/data/propagation/source2 /home/rectcircle/container-core-tech-experiment/data/propagation/source1/target2 rw,relatime shared:1 - ext4 /dev/sda1 rw,errors=remount-ro
+.
+├── source1
+│   ├── source1
+│   └── target2
+│       └── mounted
+├── source2
+│   └── mounted
+├── target1
+│   ├── source1
+│   └── target2
+│       └── mounted
+└── test.sh
+
+5 directories, 6 files
+=== / is share & ./target1 is slave ===
+=== bind ./source2 ./source1/target2 : ./target1/target2/ ✅  ===
+26 1 8:1 / / rw,relatime shared:1 - ext4 /dev/sda1 rw,errors=remount-ro
+209 26 8:1 /home/rectcircle/container-core-tech-experiment/data/propagation/source1 /home/rectcircle/container-core-tech-experiment/data/propagation/target1 rw,relatime master:1 - ext4 /dev/sda1 rw,errors=remount-ro
+216 26 8:1 /home/rectcircle/container-core-tech-experiment/data/propagation/source2 /home/rectcircle/container-core-tech-experiment/data/propagation/source1/target2 rw,relatime shared:1 - ext4 /dev/sda1 rw,errors=remount-ro
+217 209 8:1 /home/rectcircle/container-core-tech-experiment/data/propagation/source2 /home/rectcircle/container-core-tech-experiment/data/propagation/target1/target2 rw,relatime master:1 - ext4 /dev/sda1 rw,errors=remount-ro
+.
+├── source1
+│   ├── source1
+│   └── target2
+│       └── mounted
+├── source2
+│   └── mounted
+├── target1
+│   ├── source1
+│   └── target2
+│       └── mounted
+└── test.sh
+
+5 directories, 6 files
+=== bind ./source2 ./target1/target2 : ./source1/target2 ❌ ===
+26 1 8:1 / / rw,relatime shared:1 - ext4 /dev/sda1 rw,errors=remount-ro
+209 26 8:1 /home/rectcircle/container-core-tech-experiment/data/propagation/source1 /home/rectcircle/container-core-tech-experiment/data/propagation/target1 rw,relatime master:1 - ext4 /dev/sda1 rw,errors=remount-ro
+216 209 8:1 /home/rectcircle/container-core-tech-experiment/data/propagation/source2 /home/rectcircle/container-core-tech-experiment/data/propagation/target1/target2 rw,relatime shared:1 - ext4 /dev/sda1 rw,errors=remount-ro
+.
+├── source1
+│   ├── source1
+│   └── target2
+│       └── target2
+├── source2
+│   └── mounted
+├── target1
+│   ├── source1
+│   └── target2
+│       └── mounted
+└── test.sh
+
+5 directories, 6 files
+```
 
 ### 描述
 
+#### 隔离
+
 Mount Namespace 实现了进程间目录树挂载（文件系统）的隔离，即：不同 Namespace 的进程看到的目录树可以是不一样的，且这些进程中的挂载是相互不影响的。
 
-本部分涉及的系统调用、函数、命令以及文档的手册参见为：
+#### 共享和传播
 
-* [mount_namespaces(7)](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html)
-* [clone(2) 系统调用](https://man7.org/linux/man-pages/man2/clone.2.html)
-* [unshare(1) 命令](https://man7.org/linux/man-pages/man1/unshare.1.html)
+> 本部分主要在手册：[mount_namespaces(7)](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES) 阐述
+
+已经在 《背景知识 —— mount 传播类型》阐述过了。
+
+共享和传播在容器技术中应用参见：《场景 —— 某 Namespace 的进程为其他 Namespace Mount 文件系统》
+
+#### 其他相关内容
+
+除了概述设计的相关系统调用、函数、命令以及文档的手册外，本部分还设计如下内容参见为：
+
 * [mount(2) 系统调用](https://man7.org/linux/man-pages/man8/mount.8.html)
 * [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)
 * [umount(2) 系统调用](https://man7.org/linux/man-pages/man2/umount.2.html)
 * [umount(8) 命令](https://man7.org/linux/man-pages/man8/umount.8.html)
 * [pivot_root(2) 系统调用](https://man7.org/linux/man-pages/man2/pivot_root.2.html)
 * [pivot_root(8) 系统调用](https://man7.org/linux/man-pages/man8/pivot_root.8.html)
-
-mount 还需要注意关于 Shared subtrees 的相关内容，在此不过多阐述，参见：
-
-TODO 添加描述和图
 
 * [文章：Linux mount （第二部分 - Shared subtrees）](https://segmentfault.com/a/1190000006899213)
 * [mount_namespaces(7) Shared subtrees](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES)
@@ -1693,7 +2016,7 @@ ps -eo pid,ppid,cmd | grep sleep | grep -v grep
 
 ### 某 Namespace 的进程为其他 Namespace Mount 文件系统
 
-分为管理者和使用者。管理者通过 share 传播特性 ([K8S CSI](https://kubernetes-csi.github.io/docs/deploying.html#driver-volume-mounts))
+TODO 分为管理者和使用者。管理者通过 share 传播特性 ([K8S CSI](https://kubernetes-csi.github.io/docs/deploying.html#driver-volume-mounts))
 
 ### 某 Namespace 的子进程进入其他 Namespace
 
