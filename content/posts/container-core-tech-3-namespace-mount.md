@@ -107,13 +107,13 @@ mount 系统调用和命令的参数可以分为五个类：
         * `MS_RDONLY` 只读模式
         * 其他参见：[mount(2) 系统调用](https://man7.org/linux/man-pages/man2/mount.2.html)
 
-### 创建一个新的挂载
+### 创建一个新的挂载点
 
 * [mount(2) 系统调用](https://man7.org/linux/man-pages/man2/mount.2.html)：不使用 `MS_REMOUNT`, `MS_BIND`, `MS_MOVE`, `MS_SHARED`, `MS_PRIVATE`, `MS_SLAVE`, `MS_UNBINDABLE` 这些特殊参数的情况下为创建一个新的挂载。其他参数由 `type` 决定。
 * [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)，参见文章：
 [Linux mount （第一部分）](https://segmentfault.com/a/1190000006878392)。
 
-### 重新挂载已存在挂载
+### 重新挂载已存在挂载点
 
 允许更改现有挂载的 `mountflags` 和 `data` ，而无需卸载和重新安装文件系统。
 
@@ -123,7 +123,7 @@ mount 系统调用和命令的参数可以分为五个类：
 
 更多参见：[mount(2) 系统调用](https://man7.org/linux/man-pages/man2/mount.2.html)
 
-### 创建一个 bind 挂载
+### 创建一个 bind 挂载点
 
 * 使用 `MS_BIND` 标志
 * `sourcec` 源目录
@@ -133,7 +133,7 @@ mount 系统调用和命令的参数可以分为五个类：
 
 经测试 bind 并不会造成递归。原理参见下文：mount 传播类型
 
-### 移动一个挂载
+### 移动一个挂载点
 
 * 使用 `mountflags` 标志
 * `source` 指定一个现有的mount
