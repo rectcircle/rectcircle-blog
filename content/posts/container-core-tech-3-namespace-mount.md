@@ -373,15 +373,13 @@ sudo umount target1
 5 directories, 6 files
 ```
 
-## Mount Namespace
+## 描述
 
-### 概述
-
-#### 隔离
+### 隔离
 
 Mount Namespace 实现了进程间挂载点树的隔离，即：不同 Namespace 的进程看到的挂载点树可以是不一样的（导致目录树不同），且这些进程中的挂载是相互不影响的。
 
-#### 传播类型
+### 传播类型
 
 > 本部分主要在手册：[mount_namespaces(7)](https://man7.org/linux/man-pages/man7/mount_namespaces.7.html#SHARED_SUBTREES) 阐述
 
@@ -389,7 +387,7 @@ Mount Namespace 实现了进程间挂载点树的隔离，即：不同 Namespace
 
 共享和传播在容器技术中应用参见：《场景 —— 某 Namespace 的进程为其他 Namespace Mount 文件系统》
 
-#### 文件共享
+### 文件共享
 
 Mount Namespace 隔离的是是挂载点树，而不是目录树，因此如果在两个不同 Mount Namespace 挂载了相同的文件系统，则该文件系统就在这两个 Mount Namespace 中实现了共享。两者对文件的修改上方都是可见的。这就是容器引擎可以通过宿主机目录共享数据的原因。
 
@@ -406,7 +404,7 @@ Mount Namespace 隔离的是是挂载点树，而不是目录树，因此如果�
 
 特别说明，对于根目录挂载点的切换，需要通过 [pivot_root(2) 系统调用](https://man7.org/linux/man-pages/man2/pivot_root.2.html) 实现。
 
-## Mount Namespace 实验
+## 实验
 
 ### 实验设计
 
