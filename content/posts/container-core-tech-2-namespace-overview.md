@@ -37,7 +37,7 @@ tags:
 Namespace 在 Linux 中是进程的属性和进程组紧密相关：一个进程的 Namespace 默认是和其父进程保持一致的。Linux 提供了几个系统调用，来创建、加入观察 Namespace：
 
 * 创建：通过 [`clone(2) 系统调用`](https://man7.org/linux/man-pages/man2/clone.2.html)的 flag 来为**新创建的进程**创建新的 Namespace
-* 加入：通过 [`setns(2) 系统调用`](https://man7.org/linux/man-pages/man2/setns.2.html)将**当前线程**（注意当前进程不允许有多个线程）加入某个其他进程的 Namespace（注意：当前进程的权限必须大于加入的进程的 Namespace 即不能发生越权），`docker exec` 就是通过这个系统调用实现的（PID Namespace 是个例外，参见后续文章）
+* 加入：通过 [`setns(2) 系统调用`](https://man7.org/linux/man-pages/man2/setns.2.html)将**当前线程**（注意当前进程不允许有多个线程）加入某个其他进程的 Namespace，`docker exec` 就是通过这个系统调用实现的（PID Namespace 是个例外，参见后续文章）
 * 创建：通过 [`unshare(2) 系统调用`](https://man7.org/linux/man-pages/man2/unshare.2.html)为**当前进程**创建新的 Namespace（PID Namespace 是个例外，参见后续文章）
 * 查看：通过 [`ioctl_ns(2) 系统调用`](https://man7.org/linux/man-pages/man2/ioctl_ns.2.html)来查看命名空间的关系（主要是 user namespace 和 pid namespace）
 
