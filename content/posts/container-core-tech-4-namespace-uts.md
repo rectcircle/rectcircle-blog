@@ -18,33 +18,33 @@ UTS (UNIX Time-Sharing System) Namespace 提供了个对 hostname 和 NIS domain
 
 * `system hostname` (在 Linux 内核语境下直接叫 `hostname`)
     * 获取
-        * [`hostname(1)` 命令](https://man7.org/linux/man-pages/man1/hostname.1.html) （无参数）
-        * [`gethostname(2)` 系统调用](https://man7.org/linux/man-pages/man2/gethostname.2.html)
+        * [`hostname(1) 命令`](https://man7.org/linux/man-pages/man1/hostname.1.html) （无参数）
+        * [`gethostname(2) 系统调用`](https://man7.org/linux/man-pages/man2/gethostname.2.html)
     * 配置
-        * [`hostname(1)` 命令](https://man7.org/linux/man-pages/man1/hostname.1.html) （加一个参数）或者 `--file`
-        * [`sethostname(2)` 系统调用](https://man7.org/linux/man-pages/man2/sethostname.2.html)
-        * [`/etc/hostname(5)` 配置文件](https://man7.org/linux/man-pages/man5/hostname.5.html) ，在系统启动时配置一次
-* `FQDN` (Fully Qualified Domain Name，在域名解析语境下直接叫 hostname)，解释参见： [hostname(7)](https://man7.org/linux/man-pages/man7/hostname.7.html)
+        * [`hostname(1) 命令`](https://man7.org/linux/man-pages/man1/hostname.1.html) （加一个参数）或者 `--file`
+        * [`sethostname(2) 系统调用`](https://man7.org/linux/man-pages/man2/sethostname.2.html)
+        * [`/etc/hostname(5) 配置文件`](https://man7.org/linux/man-pages/man5/hostname.5.html) ，在系统启动时配置一次
+* `FQDN` (Fully Qualified Domain Name，在域名解析语境下直接叫 hostname)，解释参见： [`hostname(7)`](https://man7.org/linux/man-pages/man7/hostname.7.html)
     * 获取
-        * [`hostname(1)` 命令](https://man7.org/linux/man-pages/man1/hostname.1.html) `--fqdn` 参数
-        * [`gethostbyname2(3)` 库函数](https://linux.die.net/man/3/gethostbyname2)
+        * [`hostname(1) 命令`](https://man7.org/linux/man-pages/man1/hostname.1.html) `--fqdn` 参数
+        * [`gethostbyname2(3) 库函数`](https://linux.die.net/man/3/gethostbyname2)
     * 设置 ([原文](https://man7.org/linux/man-pages/man1/hostname.1.html#DESCRIPTION))
-        * 默认通过 [/etc/hosts(5)](https://man7.org/linux/man-pages/man5/hosts.5.html) 配置（每一行的格式为 `IP_address canonical_hostname [aliases...]`），值为 [/etc/hosts(5)](https://man7.org/linux/man-pages/man5/hosts.5.html) 文件中 alias 为 [/etc/hostname(5)](https://man7.org/linux/man-pages/man5/hostname.5.html) 的那一行的 `canonical_hostname`
-        * 具体取决于 [/etc/host.conf(5) 配置文件](https://man7.org/linux/man-pages/man5/host.conf.5.html)
+        * 默认通过 [`/etc/hosts(5) 配置文件`](https://man7.org/linux/man-pages/man5/hosts.5.html) 配置（每一行的格式为 `IP_address canonical_hostname [aliases...]`），值为 [/etc/hosts(5)](https://man7.org/linux/man-pages/man5/hosts.5.html) 文件中 alias 为 [`/etc/hostname(5)`](https://man7.org/linux/man-pages/man5/hostname.5.html) 的那一行的 `canonical_hostname`
+        * 具体取决于 [`/etc/host.conf(5) 配置文件`](https://man7.org/linux/man-pages/man5/host.conf.5.html)
         * 没有对应系统调用（域名解析属于网络协议层面）
 * `DNS domainname`，为 FQDN 去掉 第一个 `.` 和之前的内容
     * 获取
-        * [`hostname(1)` 命令](https://man7.org/linux/man-pages/man1/hostname.1.html) `-d` 参数
-        * [`dnsdomainname(1)` 命令](https://linux.die.net/man/1/dnsdomainname) `-d` 参数
-        * [`gethostbyname2(3)` 库函数](https://linux.die.net/man/3/gethostbyname2)
+        * [`hostname(1) 命令`](https://man7.org/linux/man-pages/man1/hostname.1.html) `-d` 参数
+        * [`dnsdomainname(1) 命令`](https://linux.die.net/man/1/dnsdomainname) `-d` 参数
+        * [`gethostbyname2(3) 库函数`](https://linux.die.net/man/3/gethostbyname2)
     * 设置，参见 `FQDN` 设置
 * `NIS/YP domainname` (在 Linux 内核语境下直接叫 `domainname`，又称 `nisdomainname`、`ypdomainname` 、 `Local domain name`)
     * 获取
-        * [`hostname(1)` 命令](https://man7.org/linux/man-pages/man1/hostname.1.html) `-y` 或 `--yp` 或 `--nis` 参数
-        * [`domainname(1)` 命令](https://linux.die.net/man/1/domainname)、[`nisdomainname(1)` 命令](https://linux.die.net/man/1/nisdomainname)、[`ypdomainname(1)`命令](https://linux.die.net/man/1/ypdomainname)
-        * [`getdomainname(2)` 系统调用](https://man7.org/linux/man-pages/man2/getdomainname.2.html)
+        * [`hostname(1) 命令`](https://man7.org/linux/man-pages/man1/hostname.1.html) `-y` 或 `--yp` 或 `--nis` 参数
+        * [`domainname(1) 命令`](https://linux.die.net/man/1/domainname)、[`nisdomainname(1) 命令`](https://linux.die.net/man/1/nisdomainname)、[`ypdomainname(1) 命令`](https://linux.die.net/man/1/ypdomainname)
+        * [`getdomainname(2) 系统调用`](https://man7.org/linux/man-pages/man2/getdomainname.2.html)
     * 设置
-        * [`setdomainname(2)` 系统调用](https://man7.org/linux/man-pages/man2/setdomainname.2.html)
+        * [`setdomainname(2) 系统调用`](https://man7.org/linux/man-pages/man2/setdomainname.2.html)
 
 举一个例子，比如：
 
@@ -68,10 +68,10 @@ ${FQDN} = ${system hostname} . ${DNS domainname}
 
 而 UTS Namespace 可以隔离的全局系统资源为：`system hostname` 和 `NIS/YP domainname`，设计的系统调用为：
 
-* [`gethostname(2)` 系统调用](https://man7.org/linux/man-pages/man2/gethostname.2.html)
-* [`sethostname(2)` 系统调用](https://man7.org/linux/man-pages/man2/sethostname.2.html)
-* [`getdomainname(2)` 系统调用](https://man7.org/linux/man-pages/man2/getdomainname.2.html)
-* [`setdomainname(2)` 系统调用](https://man7.org/linux/man-pages/man2/setdomainname.2.html)
+* [`gethostname(2) 系统调用`](https://man7.org/linux/man-pages/man2/gethostname.2.html)
+* [`sethostname(2) 系统调用`](https://man7.org/linux/man-pages/man2/sethostname.2.html)
+* [`getdomainname(2) 系统调用`](https://man7.org/linux/man-pages/man2/getdomainname.2.html)
+* [`setdomainname(2) 系统调用`](https://man7.org/linux/man-pages/man2/setdomainname.2.html)
 
 下面，简单介绍下 `system hostname` 和 `NIS/YP domainname` 的应用。
 

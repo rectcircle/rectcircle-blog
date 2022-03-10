@@ -12,7 +12,7 @@ tags:
 
 ## 挂载 (mount)
 
-> 手册：[mount(2) 系统调用](https://man7.org/linux/man-pages/man2/mount.2.html) | [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)
+> 手册：[`mount(2) 系统调用`](https://man7.org/linux/man-pages/man2/mount.2.html) | [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)
 
 ### 概述
 
@@ -81,7 +81,7 @@ nodev   binfmt_misc
 
 ### mount 系统调用和命令
 
-> 手册：[mount(2) 系统调用](https://man7.org/linux/man-pages/man2/mount.2.html) | [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)
+> 手册：[`mount(2) 系统调用`](https://man7.org/linux/man-pages/man2/mount.2.html) | [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)
 
 mount 系统调用和命令的参数可以分为五个类：
 
@@ -105,12 +105,12 @@ mount 系统调用和命令的参数可以分为五个类：
             * 自 inode 启动以来已超过 24 小时写入磁盘。
         * `MS_REC` 递归，与 MS_BIND 结合使用以创建递归绑定挂载；结合传播类型标志递归地改变所有的传播类型子树中的挂载。
         * `MS_RDONLY` 只读模式
-        * 其他参见：[mount(2) 系统调用](https://man7.org/linux/man-pages/man2/mount.2.html)
+        * 其他参见：[`mount(2) 系统调用`](https://man7.org/linux/man-pages/man2/mount.2.html)
 
 ### 创建一个新的挂载点
 
-* [mount(2) 系统调用](https://man7.org/linux/man-pages/man2/mount.2.html)：不使用 `MS_REMOUNT`, `MS_BIND`, `MS_MOVE`, `MS_SHARED`, `MS_PRIVATE`, `MS_SLAVE`, `MS_UNBINDABLE` 这些特殊参数的情况下为创建一个新的挂载。其他参数由 `type` 决定。
-* [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)，参见文章：
+* [`mount(2) 系统调用`](https://man7.org/linux/man-pages/man2/mount.2.html)：不使用 `MS_REMOUNT`, `MS_BIND`, `MS_MOVE`, `MS_SHARED`, `MS_PRIVATE`, `MS_SLAVE`, `MS_UNBINDABLE` 这些特殊参数的情况下为创建一个新的挂载。其他参数由 `type` 决定。
+* [`mount(8) 命令`](https://man7.org/linux/man-pages/man8/mount.8.html)，参见文章：
 [Linux mount （第一部分）](https://segmentfault.com/a/1190000006878392)。
 
 ### 重新挂载已存在挂载点
@@ -121,7 +121,7 @@ mount 系统调用和命令的参数可以分为五个类：
 * 使用相同的 `target` 参数
 * `source` 和 `filesystemtype` 参数将被忽略
 
-更多参见：[mount(2) 系统调用](https://man7.org/linux/man-pages/man2/mount.2.html)
+更多参见：[`mount(2) 系统调用`](https://man7.org/linux/man-pages/man2/mount.2.html)
 
 ### 创建一个 bind 挂载点
 
@@ -395,14 +395,14 @@ Mount Namespace 隔离的是是挂载点树，而不是目录树，因此如果�
 
 除了 《Namespace 概述》 描述的相关系统调用、函数、命令以及文档的手册外，本部分还涉及如下内容：
 
-* [mount(2) 系统调用](https://man7.org/linux/man-pages/man8/mount.8.html)
-* [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)
-* [umount(2) 系统调用](https://man7.org/linux/man-pages/man2/umount.2.html)
-* [umount(8) 命令](https://man7.org/linux/man-pages/man8/umount.8.html)
-* [pivot_root(2) 系统调用](https://man7.org/linux/man-pages/man2/pivot_root.2.html)
-* [pivot_root(8) 系统调用](https://man7.org/linux/man-pages/man8/pivot_root.8.html)
+* [`mount(2) 系统调用`](https://man7.org/linux/man-pages/man8/mount.8.html)
+* [`mount(8) 命令`](https://man7.org/linux/man-pages/man8/mount.8.html)
+* [`umount(2) 系统调用`](https://man7.org/linux/man-pages/man2/umount.2.html)
+* [`umount(8) 命令`](https://man7.org/linux/man-pages/man8/umount.8.html)
+* [`pivot_root(2) 系统调用`](https://man7.org/linux/man-pages/man2/pivot_root.2.html)
+* [`pivot_root(8) 系统调用`](https://man7.org/linux/man-pages/man8/pivot_root.8.html)
 
-特别说明，对于根目录挂载点的切换，需要通过 [pivot_root(2) 系统调用](https://man7.org/linux/man-pages/man2/pivot_root.2.html) 实现。
+特别说明，对于根目录挂载点的切换，需要通过 [`pivot_root(2) 系统调用`](https://man7.org/linux/man-pages/man2/pivot_root.2.html) 实现。
 
 ## 实验
 
@@ -717,13 +717,13 @@ mnt:[4026531840]
 
 ## 扩展实验：切换根文件系统
 
-最早，切换某个进程的根目录的系统调用为 [chroot(2)](https://man7.org/linux/man-pages/man2/chroot.2.html)，该能力最早出现在 1979 年的Unix V7 系统。chroot 仅仅是通过修改，进程的 task 结构体中 fs 结构体中的 root 字段实现的（[博客 1](https://huadeyu.tech/system/chroot-implement-detail.html)）。存在很多越狱手段，参见：[博客2](https://zhengyinyong.com/post/chroot-mechanism/#chroot-%E7%9A%84%E5%AE%89%E5%85%A8%E9%97%AE%E9%A2%98)。
+最早，切换某个进程的根目录的系统调用为 [`chroot(2)`](https://man7.org/linux/man-pages/man2/chroot.2.html)，该能力最早出现在 1979 年的Unix V7 系统。chroot 仅仅是通过修改，进程的 task 结构体中 fs 结构体中的 root 字段实现的（[博客 1](https://huadeyu.tech/system/chroot-implement-detail.html)）。存在很多越狱手段，参见：[博客2](https://zhengyinyong.com/post/chroot-mechanism/#chroot-%E7%9A%84%E5%AE%89%E5%85%A8%E9%97%AE%E9%A2%98)。
 
-配合 Mount Namespace，[pivot_root(2) 系统调用](https://man7.org/linux/man-pages/man2/pivot_root.2.html)可以实现完全隔离的根目录。
+配合 Mount Namespace，[`pivot_root(2) 系统调用`](https://man7.org/linux/man-pages/man2/pivot_root.2.html)可以实现完全隔离的根目录。
 
 ### 实验设计
 
-为了验证 [pivot_root(2) 系统调用](https://man7.org/linux/man-pages/man2/pivot_root.2.html)隔离根目录挂载点的能力。我们准备一个包含 `busybox` 的目录，用来充当新的根目录（下文称为 rootfs）。该目录位于 `data/busybox/rootfs`。准备命令为：
+为了验证 [`pivot_root(2) 系统调用`](https://man7.org/linux/man-pages/man2/pivot_root.2.html) 隔离根目录挂载点的能力。我们准备一个包含 `busybox` 的目录，用来充当新的根目录（下文称为 rootfs）。该目录位于 `data/busybox/rootfs`。准备命令为：
 
 ```bash
 mkdir -p data/busybox/rootfs

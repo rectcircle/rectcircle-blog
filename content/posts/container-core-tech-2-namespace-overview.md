@@ -1,5 +1,5 @@
 ---
-title: "容器核心技术（二） Namespace 概览"
+title: "容器核心技术（二） Namespace 概述"
 date: 2022-03-10T22:30:01+08:00
 draft: false
 toc: true
