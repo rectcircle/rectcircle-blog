@@ -1,5 +1,5 @@
 ---
-title: "容器核心技术（三）Mount Namespace"
+title: "容器核心技术（三） Mount Namespace"
 date: 2022-03-10T23:38:00+08:00
 draft: false
 toc: true
@@ -12,7 +12,7 @@ tags:
 
 ## 挂载 (mount)
 
-> 手册：[`mount(2) 系统调用`](https://man7.org/linux/man-pages/man2/mount.2.html) | [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)
+> 手册：[`mount(2) 系统调用`](https://man7.org/linux/man-pages/man2/mount.2.html) | [`mount(8) 命令`](https://man7.org/linux/man-pages/man8/mount.8.html)
 
 ### 概述
 
@@ -81,7 +81,7 @@ nodev   binfmt_misc
 
 ### mount 系统调用和命令
 
-> 手册：[`mount(2) 系统调用`](https://man7.org/linux/man-pages/man2/mount.2.html) | [mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)
+> 手册：[`mount(2) 系统调用`](https://man7.org/linux/man-pages/man2/mount.2.html) | `[mount(8) 命令](https://man7.org/linux/man-pages/man8/mount.8.html)`
 
 mount 系统调用和命令的参数可以分为五个类：
 
