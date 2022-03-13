@@ -164,7 +164,7 @@ int mkfifoat(int dirfd, const char *pathname, mode_t mode);
 * 使用 [`write(2) 系统调用`](https://man7.org/linux/man-pages/man2/write.2.html) 写入一个 fifo 文件描述符时，类似与管道。如果没有进程打开该 fifo 文件的读断点(`O_RDONLY`)，将触发 `SIGPIPE` 信号，该信号的默认处理器为终止进程。如果处理了该信号，则写端将返回 `-1`，并且设置 `errno` 为 `EPIPE`。
 * 使用 [`read(2) 系统调用`](https://man7.org/linux/man-pages/man2/read.2.html) 读取一个 fifo 文件描述符时，类似与管道。如果没有进程打开该 fifo 文件的写断点(`O_WRONLY`)，读端将将返回 `0` 表示文件结束（不是 `-1`，`-1` 表示错误）。
 
-在 shell 中
+### 用途 1：在 shell 中数据流转而无需落盘
 
 * 可以通过 [`mkfifo(1) 系统命令`](https://man7.org/linux/man-pages/man1/mkfifo.1.html) 直接在文件系统中创建一个 fifo 文件。
 * 可以通过 `| tee fifo文件`，`<fifo文件`，`>fifo文件` 重定向和管道符读写 fifo 文件，来以有向无环图的方式串联多个标准 IO 处理程序，并不产生任何磁盘数据。
@@ -186,3 +186,7 @@ infile ----(pipe)---> prog1 ---(tee)---
                                        |
                                         ---(pipe)---> prog2
 ```
+
+### 用途 2：编写客户端/服务器模型的程序
+
+不推荐，有其他更好的方法，如 Unix Domain Socket。
