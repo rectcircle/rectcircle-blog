@@ -128,6 +128,8 @@ int pclose(FILE *stream);
 * 管道被设计来用于一对一单向通讯。并发使用存在如下问题：存在消息长度存在 `PIPE_BUF` 限制（4096）。如果单次写入超过该限制，则会被拆成多次发送。在多写的场景，会发生消息不连续的问题。这种场景让程序正确运行实现上比较困难，因此不建议用在在并发场景中。
 * 如果写一个写端已经关闭的管道，读端将将返回 `0` 表示文件结束（不是 `-1`，`-1` 表示错误）。
 * 如果写一个读端已经关闭的管道，将触发 `SIGPIPE` 信号，该信号的默认处理器为终止进程。如果处理了该信号，则写端将返回 `-1`，并且设置 `errno` 为 `EPIPE`。
+* 如果没有进程打开了管道，则这个管道会被自动销毁，数据将丢弃。
+* 管道的缓冲器长度为 `PIPE_BUF` （4096），如果缓冲区满了，`write` 调用将阻塞（未设置非阻塞），直到读端消费掉缓冲区数据。
 
 ## 命名管道 (FIFO)
 
@@ -163,6 +165,8 @@ int mkfifoat(int dirfd, const char *pathname, mode_t mode);
         * 如果设置了 `O_NONBLOCK`，`O_RDONLY` 要会立即返回，如果没有写入进程，则返回 -1，errno 设置为 `ENXIO`。
 * 使用 [`write(2) 系统调用`](https://man7.org/linux/man-pages/man2/write.2.html) 写入一个 fifo 文件描述符时，类似与管道。如果没有进程打开该 fifo 文件的读断点(`O_RDONLY`)，将触发 `SIGPIPE` 信号，该信号的默认处理器为终止进程。如果处理了该信号，则写端将返回 `-1`，并且设置 `errno` 为 `EPIPE`。
 * 使用 [`read(2) 系统调用`](https://man7.org/linux/man-pages/man2/read.2.html) 读取一个 fifo 文件描述符时，类似与管道。如果没有进程打开该 fifo 文件的写断点(`O_WRONLY`)，读端将将返回 `0` 表示文件结束（不是 `-1`，`-1` 表示错误）。
+* 如果没有进程打开 fifo 文件，这个文件将仍然在文件系统中保留，但 FIFO 中的数据已经被删除了。
+* 管道的缓冲器长度为 `PIPE_BUF` （4096），如果缓冲区满了，`write` 调用将阻塞（未设置非阻塞），直到读端消费掉缓冲区数据。
 
 ### 用途 1：在 shell 中数据流转而无需落盘
 
@@ -190,3 +194,136 @@ infile ----(pipe)---> prog1 ---(tee)---
 ### 用途 2：编写客户端/服务器模型的程序
 
 不推荐，有其他更好的方法，如 Unix Domain Socket。
+
+## System V (XSI) IPC
+
+> 手册：[sysvipc(7)](https://man7.org/linux/man-pages/man7/sysvipc.7.html)
+
+这一部分不详细介绍，只简要介绍函数声明吧
+
+System V (XSI) IPC 来源于 System V Unix 系统。System V IPC 饱受批评的地方是：没有使用文件系统作为标识符，而是构造了自己的命名空间。
+
+System V IPC 有三主要功能：
+
+* 消息队列
+* 信号量
+* 共享内存
+
+`apue` 书作者认为 System V IPC 基本上没有什么优点：
+
+* 最基本的问题：System V IPC 结构在系统范围内生效，且没有引用计数。以消息队列为例，也就是说，当所有进程都退出了，这个消息队列仍然存在，只有调用了 `ipcrm` 命令或者 `msgctl(2)` 系统调用才会删除。
+* 另一个问题：System V IPC 在文件系统中没有名字，无法使用任何文件系统相关的系统调用或命令（ls、rm、chmod 都不行）来访问消息队列。因此在内核中添加了数十个系统调用以及 `ipcmk(1)` `ipcs(1)`、`ipcrm(1)`、`lsipc` 等命令。不复用文件描述符机制，无法使用多路复用函数（select、poll）。
+* 不认为 System V IPC 作者列出的优点有说服力。
+* 性能上并不比其他 IPC 机制优秀。
+
+### 共性
+
+System V IPC 可以通过 `key_t` 和 `id` 来定位一个对象。
+
+* `key_t` 在 Linux 中为 `int`
+* `id` 类型为 `int`
+
+```cpp
+#include <sys/ipc.h>
+
+// 由文件系统路径和项目 id （只会用到低 8 位）生成一个 key_t
+key_t ftok(const char *pathname, int proj_id);
+```
+
+一般情况下，转换路径为，`pathname, proj_id ---(ftok)---> key_t ---(msgget/semget/shmget)---> id`，获取到 `id` 后，就可以操作 System V IPC 对象了。
+
+### 消息队列
+
+```cpp
+#include <sys/msg.h>
+
+// https://man7.org/linux/man-pages/man2/msgget.2.html
+// 创建或获取一个 System V 消息队列。
+// return 成功返回 id，失败返回 -1
+int msgget(key_t key, int msgflg);
+
+// https://man7.org/linux/man-pages/man2/msgctl.2.html
+// 对消息队列进行控制操作，如删除，修改元数据等
+int msgctl(int msqid, int cmd, struct msqid_ds *buf);
+
+// https://man7.org/linux/man-pages/man2/msgsnd.2.html
+// 发送消息
+int msgsnd(int msqid, const void *msgp, size_t msgsz, int msgflg);
+
+// https://man7.org/linux/man-pages/man2/msgrcv.2.html
+// 接收消息
+ssize_t msgrcv(int msqid, void *msgp, size_t msgsz, long msgtyp,
+               int msgflg);
+```
+
+### 信号量
+
+```cpp
+#include <sys/sem.h>
+
+// https://man7.org/linux/man-pages/man2/semget.2.html
+// 创建或获取一个 System V 信号量。
+// return 成功返回 id，失败返回 -1
+int semget(key_t key, int nsems, int semflg);
+
+// https://man7.org/linux/man-pages/man2/semctl.2.html
+// 对信号量进行控制操作，如删除，修改元数据等
+int semctl(int semid, int semnum, int cmd, ...);
+
+// https://man7.org/linux/man-pages/man2/semop.2.html
+// 信号量操作
+int semop(int semid, struct sembuf *sops, size_t nsops);
+int semtimedop(int semid, struct sembuf *sops, size_t nsops,
+               const struct timespec *timeout);
+```
+
+### 共享内存
+
+```cpp
+#include <sys/shm.h>
+
+// https://man7.org/linux/man-pages/man2/shmget.2.html
+// 创建或获取一个 System V 共享内存。
+int shmget(key_t key, size_t size, int shmflg);
+
+// https://man7.org/linux/man-pages/man2/shmctl.2.html
+// 对共享内存进行控制操作，如删除，修改元数据等
+int shmctl(int shmid, int cmd, struct shmid_ds *buf);
+
+// https://man7.org/linux/man-pages/man2/shmat.2.html
+// 将现有的共享内存对象 Attach 到调用进程的地址空间。
+void *shmat(int shmid, const void *shmaddr, int shmflg);
+
+// https://man7.org/linux/man-pages/man2/shmdt.2.html
+// 从调用进程的地址空间中 Detach 段。
+int shmdt(const void *shmaddr);
+```
+
+以上共享内存是支持在任意进程中实施的，但是如果是父进程和子孙进程间进行内存共享，可以通过如下方式实现：
+
+* mmap 设置为 `MAP_SHARED` 并绑定 `/dev/zero`。
+* mmap 设置为 `MAP_SHARED | MAP_ANONYMOUS`，fd 字段设置为 `-1`
+
+## POSIX IPC
+
+TODO
+
+### 消息队列
+
+> 手册：[mq_overview(7)](https://man7.org/linux/man-pages/man7/mq_overview.7.html)
+
+### 信号量
+
+> 手册：[sem_overview(7)](https://man7.org/linux/man-pages/man7/sem_overview.7.html)
+
+### 共享内存
+
+> 手册：[shm_overview(7)](https://man7.org/linux/man-pages/man7/shm_overview.7.html)
+
+## Socket
+
+TODO
+
+## Unix Demain Socket
+
+TODO
