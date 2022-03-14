@@ -10,7 +10,7 @@ tags:
 
 ## 起因
 
-在修改一个后端项目的上传文件的接口，然后使用该后端项目对应的前端 cli 工具，调试该上传文件的接口过程中 
+在修改一个后端项目的上传文件的接口，然后使用该后端项目对应的前端 cli 工具，调试该上传文件的接口过程中
 
 后端报错（后端是典型的 Java 11  Spring Boot 项目）
 
@@ -81,7 +81,7 @@ xxd request.bin request.hex
 
 ```bash
 nc 127.0.0.1 8020 < request.bin
-``` 
+```
 
 上文提到的问题又复现了，说明这 request.bin 确实存在问题。后面直接分析 request.bin 文件即可
 
@@ -189,8 +189,11 @@ go run main.go request2.bin
 ## Netcat 调试分析基于 TCP 的协议
 
 Netcat 是一个功能强大的网络工具，上述定位过程使用到了 netcat 的两个能力：监听某个端口创建一个 TCP Server 以及 作为一个客户端向 TCP Server 发送消息
+
+```bash
 nc -lv -p 8022 > request.bin
-nc 127.0.0.1 8020 < request.bin 
+nc 127.0.0.1 8020 < request.bin
+```
 
 更多 netcat 用法参见
 - [博客 1](https://mjd507.github.io/2018/01/15/Use-netcat-to-transfer-TCP-UDP-Data/)
