@@ -306,19 +306,64 @@ int shmdt(const void *shmaddr);
 
 ## POSIX IPC
 
-TODO
+POSIX IPC 是对 Systemc V IPC 的标准化产物。功能上和 Systemc V IPC 基本对等
 
 ### 消息队列
 
 > 手册：[mq_overview(7)](https://man7.org/linux/man-pages/man7/mq_overview.7.html)
 
+API 和 系统调用
+
+|glibc 库函数  |  系统调用 | 描述 |
+|---------------|-------|--------|
+|[mq_open(3)](https://man7.org/linux/man-pages/man3/mq_open.3.html)         |  [mq_open(2)](https://man7.org/linux/man-pages/man2/mq_open.2.html) | 创建或打开一个消息队列 |
+|[mq_getattr(3)](https://man7.org/linux/man-pages/man3/mq_getattr.3.html)      |  mq_getsetattr(2) | 获取属性 |
+|[mq_setattr(3)](https://man7.org/linux/man-pages/man3/mq_setattr.3.html)      |  mq_getsetattr(2) | 修改属性 |
+|[mq_notify(3)](https://man7.org/linux/man-pages/man3/mq_notify.3.html)       |  [mq_notify(2)](https://man7.org/linux/man-pages/man2/mq_notify.2.html) |  注册一个处理函数，当一个空的消息队列放入消息是，处理函数将被调用 |
+|[mq_receive(3)](https://man7.org/linux/man-pages/man3/mq_receive.3.html)      |  [mq_timedreceive(2)](https://man7.org/linux/man-pages/man2/mq_timedreceive.2.html) | 从消息队列中接收消息 |
+|[mq_send(3)](https://man7.org/linux/man-pages/man3/mq_send.3.html)         |  [mq_timedsend(2)](https://man7.org/linux/man-pages/man2/mq_timedsend.2.html) | 向消息队列中发送消息 |
+|[mq_timedreceive(3)](https://man7.org/linux/man-pages/man3/mq_timedreceive.3.html) |  [mq_timedreceive(2)](https://man7.org/linux/man-pages/man2/mq_timedreceive.2.html) | 从消息队列中接收消息（支持超时） |
+|[mq_timedsend(3)](https://man7.org/linux/man-pages/man3/mq_timedsend.3.html)    |  [mq_timedsend(2)](https://man7.org/linux/man-pages/man2/mq_timedsend.2.html) | 向消息队列中发送消息（支持超时） |
+|[mq_close(3)](https://man7.org/linux/man-pages/man3/mq_close.3.html)        |  close(2) | 关闭消息队列 |
+|[mq_unlink(3)](https://man7.org/linux/man-pages/man3/mq_unlink.3.html)       |  [mq_unlink(2)](https://man7.org/linux/man-pages/man2/mq_unlink.2.html) | 删除消息队列 |
+
+更多参见：[mq_overview(7) 手册](https://man7.org/linux/man-pages/man7/mq_overview.7.html)
+
 ### 信号量
 
 > 手册：[sem_overview(7)](https://man7.org/linux/man-pages/man7/sem_overview.7.html)
 
+* [sem_open(3)](https://man7.org/linux/man-pages/man3/sem_open.3.html) 创建或打开一个信号量
+* [sem_post(3)](https://man7.org/linux/man-pages/man3/sem_post.3.html) 操作信号量
+* [sem_wait(3)](https://man7.org/linux/man-pages/man3/sem_wait.3.html) 如果一个值信号量当前为零，该操作将阻塞直到值大于零。
+* [sem_close(3)](https://man7.org/linux/man-pages/man3/sem_close.3.html) 关闭信号量
+* [sem_unlink(3)](https://man7.org/linux/man-pages/man3/sem_unlink.3.html) 删除信号量
+* [sem_init(3)](https://man7.org/linux/man-pages/man3/sem_init.3.html) 匿名信号量初始化
+* [sem_destroy(3)](https://man7.org/linux/man-pages/man3/sem_destroy.3.html) 匿名信号量销毁（在 free 内存前调用）
+
+在 Linux 上，命名信号量是在虚拟文件系统中创建的，通常安装在 /dev/shm 下，名称为 `sem.somename`。 （这就是信号量名称的限于 NAME_MAX-4 个字符，而不是 NAME_MAX 个字符的原因）
+
+更多参见：[sem_overview(7) 手册](https://man7.org/linux/man-pages/man7/sem_overview.7.html)
+
 ### 共享内存
 
 > 手册：[shm_overview(7)](https://man7.org/linux/man-pages/man7/shm_overview.7.html)
+
+相关 API
+
+* [shm_open(3)](https://man7.org/linux/man-pages/man3/shm_open.3.html) 创建或打开一个共享内存对象。类似于 [open(2)](https://man7.org/linux/man-pages/man2/open.2.html)。调用返回一个下面列出的其他接口需要使用的文件描述符。
+* [ftruncate(2)](https://man7.org/linux/man-pages/man2/ftruncate.2.html) 设置共享内存对象的大小。（一个新创建的共享内存对象的长度为零。）
+* [mmap(2)](https://man7.org/linux/man-pages/man2/mmap.2.html) 将共享内存对象映射到虚拟地址调用进程的空间。
+* [munmap(2)](https://man7.org/linux/man-pages/man2/munmap.2.html) 取消映射到当前进程虚拟内存空间的共享内存。
+* [shm_unlink(3)](https://man7.org/linux/man-pages/man3/shm_unlink.3.html) 删除共享内存对象名称。
+* [close(2)](https://man7.org/linux/man-pages/man2/close.2.html) 关闭由 [shm_open(3)](https://man7.org/linux/man-pages/man3/shm_open.3.html) 分配的不再需要文件描述符。
+* [fstat(2)](https://man7.org/linux/man-pages/man2/fstat.2.html) 获取描述共享内存对象的统计结构。 此调用返回的信息包括对象的大小 (st_size)、权限 (st_mode)、所有者 (st_uid) 和组 (st_gid)。
+* [fchown(2)](https://man7.org/linux/man-pages/man2/fchown.2.html) 更改共享内存对象的所有权。
+* [fchmod(2)](https://man7.org/linux/man-pages/man2/fchmod.2.html) 更改共享内存对象的权限。
+
+在 Linux 中，共享内存是在 [`tmpfs(5)`](https://man7.org/linux/man-pages/man5/tmpfs.5.html) 虚拟文件系统中创建的，通常安装在 `/dev/shm` 下。自从内核 2.6.19，Linux 支持使用访问控制列表 (ACL) 来控制虚拟对象的权限文件系统。
+
+更多参见：[shm_overview(7) 手册](https://man7.org/linux/man-pages/man7/shm_overview.7.html)
 
 ## Socket
 
