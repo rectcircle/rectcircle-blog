@@ -10,7 +10,7 @@ tags:
 
 ## HTTP Tunnel
 
-> Wiki: [HTTP隧道](https://zh.wikipedia.org/wiki/HTTP%E9%9A%A7%E9%81%93)
+> Wiki: [HTTP隧道](https://zh.wikipedia.org/wiki/HTTP%E9%9A%A7%E9%81%93)，又称 “HTTP 正向代理”。
 
 ### 原理
 
@@ -51,7 +51,7 @@ tags:
 # 前往 https://github.com/tinyproxy/tinyproxy/releases 获取连接
 wget https://github.com/tinyproxy/tinyproxy/releases/download/1.11.0/tinyproxy-1.11.0.tar.gz -O tinyproxy.tar.gz
 tar -xzvf tinyproxy.tar.gz
-cd tinyproxy*
+cd tinyproxy-*
 # 安装编译依赖
 yum install -y gcc
 # 编译安装
@@ -361,7 +361,7 @@ curl -x http://username:password@ip:port https://ifconfig.me
 
 ## HTTP(s) by MITM
 
-> Wiki：[MITM 中文](https://zh.wikipedia.org/wiki/%E4%B8%AD%E9%97%B4%E4%BA%BA%E6%94%BB%E5%87%BB) | [MITM 英文](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)
+> Wiki：[MITM 中文](https://zh.wikipedia.org/wiki/%E4%B8%AD%E9%97%B4%E4%BA%BA%E6%94%BB%E5%87%BB) | [MITM 英文](https://en.wikipedia.org/wiki/Man-in-the-middle_attack)，又称 “HTTP 透明代理”，属于 “反向代理”。
 
 ### 原理
 
@@ -433,6 +433,80 @@ http {
 
 ```bash
 nginx -s reload
+```
+
+##### Docker 方式
+
+docker 配置 `nginx.conf` 文件
+
+```nginx
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+stream {
+    log_format main '$remote_addr  [$time_local] $ssl_preread_server_name '
+                     '$protocol $status $bytes_sent $bytes_received '
+                     '$session_time';
+    access_log  /var/log/nginx/access.log  main;
+
+    server {
+        listen 443;
+        ssl_preread on;
+        resolver 8.8.8.8;
+        proxy_pass $ssl_preread_server_name:$server_port;
+    }
+}
+
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    #include /etc/nginx/conf.d/*.conf;
+
+    server {
+        listen 80 default_server;
+        resolver 8.8.8.8;
+        location / {
+            proxy_pass $scheme://$host$request_uri;
+            # 以下两个都不需要，做的不是透明代理
+            # proxy_bind $remote_addr transparent;
+            # proxy_set_header Host $host;
+        }
+    }
+
+}
+```
+
+docker 启动命令
+
+```bash
+# 启动
+docker run --name nginx-proxy -p 80:80 -p 443:443 -p 563:563 -v $(pwd)/nginx.conf:/etc/nginx/nginx.conf:ro -d nginx # 后台运行
+# 删除停止（后台运行时）
+docker rm -f nginx-proxy
 ```
 
 ##### 测试
