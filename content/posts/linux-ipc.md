@@ -369,6 +369,8 @@ API 和 系统调用
 
 TODO
 
-## Unix Demain Socket
+## Unix Domain Socket
+
+> 手册：[unix(7)](https://man7.org/linux/man-pages/man7/unix.7.html)
 
 TODO
