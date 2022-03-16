@@ -624,7 +624,7 @@ func main() {
 		}
 		return
 	case 2:
-		// 2. 该进程执行 newNamespaceProccessFunc，配置 hostname 和 domainname，并执行测试脚本
+        // 2. 该进程执行 newNamespaceProccessFunc，binding 文件系统，并执行测试脚本
 		if os.Args[1] == sub {
 			if err := <-newNamespaceProccessFunc(); err != nil {
 				panic(err)

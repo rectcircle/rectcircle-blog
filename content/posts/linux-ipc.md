@@ -226,6 +226,7 @@ System V IPC 可以通过 `key_t` 和 `id` 来定位一个对象。
 ```cpp
 #include <sys/ipc.h>
 
+// https://man7.org/linux/man-pages/man3/ftok.3.html
 // 由文件系统路径和项目 id （只会用到低 8 位）生成一个 key_t
 key_t ftok(const char *pathname, int proj_id);
 ```
