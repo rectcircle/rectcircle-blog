@@ -1,7 +1,7 @@
 ---
 title: "Linux IPC"
 date: 2022-03-13T01:28:48+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
