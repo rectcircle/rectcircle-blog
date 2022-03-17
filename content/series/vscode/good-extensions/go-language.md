@@ -1132,6 +1132,26 @@ GOTRACEBACK=crash ./main
 
 更多参见：https://code.visualstudio.com/docs/editor/debugging#_compound-launch-configurations
 
+#### VSCode Go 插件版本 v0.31.0 远程调试问题
+
+v0.31.0 后，默认 Remote 调试协议已经替换为 `dap`，因此需要使用，如果远端仍然使用旧的模式，需要在 `launch.json` 添加 `"debugAdapter":"legacy"`：
+
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch: server",
+            "type": "go",
+            "request": "attach",
+            "host": "127.0.0.1",
+            "port": 2345,
+            "debugAdapter":"legacy",
+        }
+    ]
+}
+```
+
 ### 如何高效进行项目源码阅读
 
 * 参见本文的 [代码导航](#代码导航) 章节
@@ -1141,13 +1161,11 @@ GOTRACEBACK=crash ./main
 
 可以尝试 `>Go: Choose Go Environment` 命令，官方解决办法参见：[官方文档](https://github.com/golang/vscode-go/blob/master/docs/advanced.md#choosing-a-different-version-of-go)
 
-### 多 module 项目
+### 多 module 项目 （Go workspace）
 
-> [官方文档](https://github.com/golang/tools/blob/master/gopls/doc/workspace.md#multiple-modules)
+> 参见：[官方文档](https://github.com/golang/tools/blob/master/gopls/doc/workspace.md#multiple-modules)
 
-形如：[Golang Multimodule Monorepos](https://irilivibi.medium.com/golang-multimodule-monorepo-tutorial-3f5cf10e9b9a) 的项目
-
-Go 开启如下配置即可开启该特性（目前处于实验阶段）
+形如：[Golang Multimodule Monorepos](https://irilivibi.medium.com/golang-multimodule-monorepo-tutorial-3f5cf10e9b9a) 的项目，Go 开启如下配置即可开启该特性（目前处于实验阶段）
 
 ```json
 {
@@ -1156,6 +1174,10 @@ Go 开启如下配置即可开启该特性（目前处于实验阶段）
     }
 }
 ```
+
+注意，目前处于实验阶段，已知 issue 为：
+
+* 该 feature 与 go mod vender 存在重复，开启后 go mod vender 的项目会报 `Inconsistent vendoring detected. Please re-run "go mod vendor". See https://github.com/golang/go/issues/39164 for more detail on this issue.` 错误。
 
 其他信息
 
