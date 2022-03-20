@@ -17,9 +17,22 @@ Go 1.18 是一个非常重要的更新。Go 1.18 虽然发布了泛型和工作�
 本文整体参考如下官方文档，介绍与 Go 1.17 相比，Go 1.18 的新特性。
 
 * [Go 1.18 Release Notes](https://go.dev/doc/go1.18)
-* [Spec - Type parameter declarations](https://go.dev/ref/spec#Type_parameter_declarations)
-* [Spec - Type constraints](https://go.dev/ref/spec#Type_parameter_declarations)
-* [Spec - Interface types - General interfaces](https://go.dev/ref/spec#General_interfaces)
+* 泛型相关
+    * [Tutorial: Getting started with generics](https://go.dev/doc/tutorial/generics)
+    * [Type Parameters Proposal](https://go.googlesource.com/proposal/+/refs/heads/master/design/43651-type-parameters.md)
+    * [Spec - Type parameter declarations](https://go.dev/ref/spec#Type_parameter_declarations)
+    * [Spec - Type constraints](https://go.dev/ref/spec#Type_parameter_declarations)
+    * [Spec - Interface types - General interfaces](https://go.dev/ref/spec#General_interfaces)
+* Fuzzing 单元测试
+    * [Tutorial: Getting started with fuzzing](https://go.dev/doc/tutorial/fuzz)
+    * [Go Fuzzing](https://go.dev/doc/fuzz/)
+    * [testing: add fuzz test support #44551](https://github.com/golang/go/issues/44551)
+* 工作空间
+    * [Tutorial: Getting started with multi-module workspaces](https://go.dev/doc/tutorial/workspaces)
+    * [Go Modules Reference - Workspaces](https://go.dev/ref/mod#workspaces)
+    * [Go Modules Reference - go work ... 命令](https://go.dev/ref/mod#go-work-init)
+    * [Go cmd - Workspace maintenance](https://pkg.go.dev/cmd/go#hdr-Workspace_maintenance)
+    * [Proposal: Multi-Module Workspaces in cmd/go](https://go.googlesource.com/proposal/+/master/design/45713-workspace.md#proposal-the-flag)
 
 ## 安装 Go 1.18
 
@@ -50,7 +63,7 @@ Go 1.18 是一个非常重要的更新。Go 1.18 虽然发布了泛型和工作�
 * 调用`泛型函数`：
     * 需要传递类型参数，如果类型推断可以推断出类型时，可以忽略（类型推断）。
     * 普通参数的类型为类型参数时，只能使用类型符合该类型参数约束的变量调用该函数。
-* 使用`泛型类型`：需要传递类型参数。
+* 实例化`泛型类型`：需要传递类型参数。
 
 ### 类型参数
 
@@ -153,7 +166,7 @@ func ExamplePrint2Same() {
 
 ### 类型参数约束
 
-和 Java / C++ 不同，在 Go 1.18 中，类型参数必须有一个显式的约束，且这个约束必须是一个接口类型。
+和 Java / C++ 不同，在 Go 1.18 中，类型参数必须有一个显式的约束，且这个约束必须是一个接口类型 或者 类型约束字面量。
 
 #### 允许任意类型的约束
 
@@ -163,7 +176,7 @@ func ExamplePrint2Same() {
 
 > 当然，`any` 的出现不仅仅对泛型编程有用，对简化冗长的 `interface{}` 非常有用。
 
-关于 `any` 的使用，上文已给出例子，这里可用 interface{} 替代。
+关于 `any` 的使用，上文已给出例子，这里可用 `interface{}` 替代。
 
 `01-generics/02-constraints.go`
 
@@ -226,7 +239,7 @@ InterfaceTypeName  = TypeName .
 * 0 或 多个 方法声明
 * 0 或 多个 类型集，可以分为两类
     * 嵌入的接口
-    * 【Go 1.18 新增】类型约束
+    * 【Go 1.18 新增】类型约束字面量
         * 嵌入的非接口类型
         * 嵌入的非接口类型的底层类型 (新操作符 `~`，参见下文)
         * 嵌入的任意类型（包含方法的接口除外）或 非接口类型的底层类型 的联合（union） (操作符 `|`，参见下文)
@@ -245,15 +258,15 @@ UnderlyingType = "~" Type .
 
 Go 1.18 的接口，可以分为两类：
 
-* **运行时接口**：只包含方法集的接口，这种接口可以作为类型参数的约束（`func F[T I](t I) ...`），也可以作为变量类型（`var a = I(nil)` 合法）。在语法上该类接口，只使用 Go 1.17 接口语法的接口。换言之接口声明只包含如下元素：
+* **运行时接口**：只包含方法集的接口，这种接口可以作为类型参数的约束（`func F[T I](t I) ...`），也可以作为变量类型（`var a = I(nil)` 合法）。在语法上表现为，只使用 Go 1.17 语法的接口。换言之接口声明只包含如下元素：
     * 0 或 多个 方法声明
     * 0 或 多个 接口类型（嵌入的接口）
-* **编译时接口**：专用于类型参数约束的接口，这种接口只可以作为类型参数的约束（`func F[T I](t I) ...`），不可以作为变量类型（`var a = I(nil)` 非法），即使用 Go 1.18 新增的语法特性的接口。换言之接口声明包含了如下元素：
+* **编译时接口**：专用于类型参数约束的接口，这种接口只可以作为类型参数的约束（`func F[T I](t I) ...`），不可以作为变量类型（`var a = I(nil)` 非法），即使用 Go 1.18 新增的语法特性的接口。换言之接口声明包含了如下类型约束字面量：
     * 约束为具体类型相同（嵌入的非接口类型）
     * 约束为底层类型相同（嵌入的使用新的前缀操作符 `~` 修饰的非接口类型）
     * 约束为类型联合（union）（非接口类型 或 使用新的前缀操作符 `~` 修饰的非接口类型 或不包含方法的编译时接口 的列表，该列表使用中缀操作符 `|` 分割)
 
-不管是编译时接口还是运行时接口，都可以作为类型参数的约束。也就是说，在 Go 1.18 中，定义约束就是定义接口。
+不管是编译时接口还是运行时接口，都可以作为类型参数的约束。也就是说，在 Go 1.18 中，定义约束本质上定义的是接口。
 
 #### 运行时接口约束
 
@@ -315,7 +328,7 @@ func ExampleStringify() {
 * 允许：该具体类型的类型别名
 * 不允许：类型不同，底层类型不同是
 
-该语法在实现上，基本上没有任何意义。
+单独使用该语法，对于开发者而言基本上没有任何意义。
 
 具体参见下方示例：
 
@@ -454,6 +467,12 @@ package generics
 
 import "fmt"
 
+type MyIntAddType int
+
+func (a MyIntAddType) Add(b int) int {
+	return int(a) + b
+}
+
 func ExampleMyIntWithAddAddOne() {
 	fmt.Println(MyIntWithAddAddOne(MyIntAddType(1)))
 	// output:
@@ -537,7 +556,7 @@ func ExamplePrintMyUnionAndType() {
 }
 ```
 
-union 不允许是接口类型，也不允许是包含方法的编译时接口类型
+union 不允许是包含方法的接口类型
 
 `01-generics/02-constraints.go`
 
@@ -584,7 +603,7 @@ type MyInt interface {
 var MyInt1 = MyInt(1)
 ```
 
-#### 字面量类型约束
+#### 类型约束字面量
 
 > [Spec - Type parameter declarations](https://go.dev/ref/spec#Type_parameter_declarations)
 
@@ -639,7 +658,7 @@ func ExampleEquals() {
 
 #### 从逻辑组合角度看
 
-（1）类型参数约束总的来看支持 `与` 和 `或` 两种逻辑运算来将具体约束元素组合。比如想实现一个约束 `comparable & (int | uint)`，此时语法为：
+（1）类型参数约束总的来看支持 `与` 和 `或` 两种逻辑运算来将具体约束元素进行组合。比如想实现一个约束 `comparable & (int | uint)`，此时语法为：
 
 ```go
 type ComparableInt interface {
@@ -675,7 +694,8 @@ type ComparableInt interface {
 * `[T fmt.Stringer](a T)`，相当于 `(s fmt.Stringer)`，就可以调用 `s` 的 `String` 方法。
 * `[T uint | int](a, b T)`，`a` 和 `b` 类型都为 `T`，显然 `a` 和 `b` 可以进行算数运算。针对 `|` 运算，要求对参数的操作必须同时满足这两者的约束。
 * `[T1, T2 int64 | int](a T1, b T2)`，`a` 和 `b` 类型约束都为 `int64 | int`，但是两者类型不同，因此直接进行算数运算，需要转换同一类型进行运算 `int64(a) + int64(b)`
-* 没有给对 `|` 运算元素的方法进行约束，默认行为是如果约束中没有直接或者嵌入该方法，则禁止调用：
+* `[T StructA](a T)`，假设 `StructA` 是个结构体，拥有方法 `A()`，在 Go 1.18 中，是无法调用 `a.A()` 的，参见下文：[限制章节](#go-118-限制)
+* `[T A1 | A2](a T)` ，假设类型 `A1` 和 `A2` 都拥有方法 `A()`，Go 1.18 中，是无法调用的 `a.A()` 的，参见下文：[限制章节](#go-118-限制)：
 
 `01-generics/02-constraints.go`
 
@@ -1061,12 +1081,12 @@ func FuzzReverse(f *testing.F) {
 以上这种项目结构，存在一些问题：
 
 1. 假设，在设计中，我们要求目录 dir2 单向依赖目录 dir1。但是在同一个 module 中，Go 编译器不能提供这种保证。在小型项目中，这种约束可以通过研发人员的意识进行约束，但是在大型项目中，没有工具层面的约束，是无法保证以上约束的。
-2. 在中大型项目中的设计中，项目可以按照项目的特点划分成多个相互独立的部分，这些部分之间的依赖关系是一张有向无环图，在 Go 语言中，这些部分在 Go 语言中对应的概念就是模块 (module)。
+2. 在中大型项目中的设计中，项目可以按照项目的特点划分成多个相互独立的部分，这些部分之间的依赖关系是一张有向无环图，这些部分在 Go 语言中对应的概念就是模块 (module)。
 3. 某个项目是需要部分公开的，部分闭源的，此时我们就需要将项目拆分为多个部分，这些部分在 Go 语言中对应的概念就是模块 (module)。
 
 为了解决上述问题，项目就会被拆成多个 module，此时我们的项目变成如下两个部分组成：
 
-* 多个项目 module：这些 module 可能处于同一个 git 仓库，也可能处于不同的代码仓库。作为项目代码，本项目开发人员完成一个 feature 可能需要编辑多个 module。
+* 多个项目 module：这些 module 可能处于同一个 git 仓库，也可能处于不同的 git 仓库。作为项目代码，本项目开发人员完成一个 feature 可能需要编辑多个 module。
 * 多个项目依赖：多个外部 Go Module，声明在项目代码 `go.mod` 文件中。作为项目的依赖，本项目开发人员不需要修改这些外部模块的代码，只需要管理这些依赖的版本。
 
 此时，在本项目的开发人员的设备中，则需要一个工作空间目录来管理这些项目 module：
@@ -1097,7 +1117,7 @@ func FuzzReverse(f *testing.F) {
 replace module1全名 => ../module1
 ```
 
-此时，在 module2 中 go 命令就可以看到磁盘中的 module1 目录的变更了（module2 作为依赖被其他 module 依赖时， `replace` 语句会被忽略，因此这个改动不会破坏使用者的依赖图）
+此时，在 module2 中 go 命令就可以看到磁盘中的 module1 目录的变更了（module2 作为依赖被其他 module 依赖时， `replace` 语句会被忽略，因此这个改动不会破坏下游使用者的依赖图）
 
 replace 并没有完美的解决了问题，还存在如下问题：
 
@@ -1181,12 +1201,9 @@ use (
 * `go work use [-r] [moddirs]` 将 module 目录添加到 `use` 子句下，目录下不存在 `go.mod` 将忽略，如果 `-r` 参数被指定，则递归搜索该目录下的所有 module 目录。
 * `go work edit [editing flags] [go.work]` 编辑 `go.work` 文件。
 * `go work sync` 说明参见，[官方文档](https://go.dev/ref/mod#go-work-sync)（没太理解这个命令的意义）。
-    按照官方文档的说法：
-    * 该命令会计算 workspace 构建列表，并将其写入 workspace 下的每个 module 的 `go.mod` 文件。
-    实验观察下来，可能会发生如下现象：
-    * 某些情况下，可能会生成一个 `go.work.sum` 文件。
-    经过实验，`go work sync` 的作用可能是：
-    * 类似于 go mod tidy，如果使用 `go get -u` 更新了一个依赖的版本，`go work sync` 会批量更新该 workspace 下的所有的 在 `use` 中声明的所有的相关 module 的 `go.mod` 文件。但是 `go.sum` 可能更新行为和 `go mod tidy` 不一致，因为部分 `sum` 会存储在 `go.work.sum` 中。该命令主要来更新间接 `go.mod` 的间接依赖 （`// indirect`）和 `go.sum`。
+    * 按照官方文档的说法：该命令会计算 workspace 构建列表，并将其写入 workspace 下的每个 module 的 `go.mod` 文件。
+    * 实验观察下来，可能会发生如下现象：某些情况下，可能会生成一个 `go.work.sum` 文件。
+    * 经过实验，`go work sync` 的作用可能是： 类似于 go mod tidy，如果使用 `go get -u` 更新了一个依赖的版本，`go work sync` 会批量更新该 workspace 下的所有的 在 `use` 中声明的所有的相关 module 的 `go.mod` 文件。但是 `go.sum` 可能更新行为和 `go mod tidy` 不一致，因为部分 `sum` 会存储在 `go.work.sum` 中。该命令主要来更新间接 `go.mod` 的间接依赖 （`// indirect`）和 `go.sum`。
 
 ### IDE 支持
 
@@ -1194,7 +1211,7 @@ use (
 
 ### 示例
 
-有两个 module，`util` 和 `hello` 且 `hello` 依赖 `util`。且 `hello` 和 `util` 属于同一个工作空间。
+有两个 module：`util` 和 `hello` ，`hello` 依赖 `util`，`hello` 和 `util` 属于同一个工作空间。
 
 ```bash
 mkdir 03-workspace
@@ -1214,7 +1231,7 @@ require github.com/rectcircle/go-1-18-feature/03-workspace/util v1.2.0
 
 执行 go 命令是，可以直接在 `03-workspace` 目录通过 `go run github.com/rectcircle/go-1-18-feature/03-workspace/hello` 即可运行 main 函数，而不需要去 `hello` 目录。
 
-发布是需要为 `util` 添加 `03-workspace/hello/go.mod` 声明的 `tag`，如果 `tag` 不对，下游依赖这将出现错误。
+发布是需要为 `util` 添加 `03-workspace/hello/go.mod` 声明的 `tag`，如果 `tag` 不对，`hello` 的下游依赖这将出现错误。
 
 ```bash
 # 规划好版本号，03-workspace/hello/go.mod 的 对 util 的依赖的版本。
@@ -1289,7 +1306,10 @@ git push --tags
 
 如上流程少有繁琐，不过流程固定，可以写一个脚本自动化的执行。
 
-注意，以上流程基本上没有问题，但是相关 module 间接依赖，更新会存在延迟（因为，只有 module 发布了，才能运行 go work sync 更新这些 module 的 go.mod，是个先有鸡还是先有蛋的问题）。但是并不影响将这些 module 作为 library 依赖的下游 module。原理参见博客：[Go 提升 - Go module - 高级话题](/posts/go-improve/#8-高级话题)
+注意
+
+* 以上流程基本上没有问题，但是相关 module 间接依赖，更新会存在延迟（因为，只有 module 发布了，才能运行 go work sync 更新这些 module 的 go.mod，是个先有鸡还是先有蛋的问题）。但是并不影响将这些 module 作为 library 依赖的下游 module。原理参见博客：[Go 提升 - Go module - 高级话题](/posts/go-improve/#8-高级话题)
+* 不要把 `go.work` 添加到 gitignore 中（`go.work.sum` 是否需要不确定）
 
 ## 其他
 
