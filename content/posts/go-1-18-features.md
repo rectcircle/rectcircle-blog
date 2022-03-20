@@ -1289,6 +1289,8 @@ git push --tags
 
 如上流程少有繁琐，不过流程固定，可以写一个脚本自动化的执行。
 
+注意，以上流程基本上没有问题，但是相关 module 间接依赖，更新会存在延迟（因为，只有 module 发布了，才能运行 go work sync 更新这些 module 的 go.mod，是个先有鸡还是先有蛋的问题）。但是并不影响将这些 module 作为 library 依赖的下游 module。原理参见博客：[Go 提升 - Go module - 高级话题](/posts/go-improve/#8-高级话题)
+
 ## 其他
 
 ### 编译优化
