@@ -507,7 +507,7 @@ require (
 
 #### （3）多 Module 代码仓库
 
-Go 支持一个仓库内部有多个 module，且这个 module 可以在任意目录，此时我们如果需要使用 `git tag` 来标识 module 版本时，tag 的的名字就位， `该module相对仓库根目录的路径/版本号`。以 `https://github.com/golang/tools/tree/master/gopls` 为例，其 `git tag` 的一个例子为 `gopls/v0.8.1`。
+Go 支持一个仓库内部有多个 module，且这个 module 可以在任意目录，此时我们如果需要使用 `git tag` 来标识 module 版本时，tag 的的名字就位， `该module相对仓库根目录的路径/版本号`。以 [`https://github.com/golang/tools/tree/master/gopls`](https://github.com/golang/tools/tree/master/gopls) 为例，其 `git tag` 的一个例子为 `gopls/v0.8.1`。
 
 ## 三、Go 类型系统
 
