@@ -433,14 +433,14 @@ export PATH=$PATH:$GOPATH/bin
 
 #### （2）间接依赖和依赖图修剪
 
-我们经常会在 `go.mod` 中看到带有 `// indirect` 注释的 `require` 子句，这表明这个依赖是间接依赖。
+我们经常会在 `go.mod` 中看到带有 `// indirect` 注释的 `require` 子句，字面意义上是间接依赖的意思。
 
 间接依赖指的是当前 module 没有直接 import 该依赖的代码，而是我们直接依赖的 module 中，依赖了该 module。此时，当前可能会出现带有 `// indirect` 的依赖。
 
-在 Go 1.17 之前，当前 module 的 `go.mod` 并不是中并不会包其依赖的所有间接依赖。换句话来说因此在 Go 1.17 之前， `// indirect` 的语义并不是间接依赖，而是在整个用 `go.mod` 构建的依赖图中，没有被明确 `require` 的那些依赖。举个例子，假设有一个 module a，其事实的依赖关系为 `a -> b -> c,d`，此时设想如下场景
+在 Go 1.17 之前，当前 module 的 `go.mod` 并不会包含所有间接依赖。换句话来说因此在 Go 1.17 之前， `// indirect` 的语义并不是间接依赖，而是在整个用 `go.mod` 构建的依赖图中，没有被明确 `require` 的那些依赖。举个例子，假设有一个 module a，其事实的依赖关系为 `a -> b -> c,d`，此时设想如下场景
 
-* 场景 1：`b` 的 `go.mod` 明确声明了 `require c; require d`。此时 `a` 的 `go.mod` 就不会出现  `require c; require d`，而只有 `require b`。
-* 场景 2：`b` 的 `go.mod` 只明确声明了 `require c`。此时 `a` 的 `go.mod` 为 `require b` 和 `require d // indirect`。
+* 场景 1：`b` 的 `go.mod` 明确声明了 `require c; require d`。此时 `a` 的 `go.mod` 就不会出现  `require c // indirect`、 `require d // indirect`，而只有 `require b`。
+* 场景 2：`b` 的 `go.mod` 只明确声明了 `require c`，缺失了 `d`。此时 `a` 的 `go.mod` 为 `require b` 和 `require d // indirect`。
 * 场景 3：`b` 不存在 `go.mod` 文件。此时 `a` 的 `go.mod` 为 `require b`、`require c // indirect`、`require d // indirect`。
 
 这和网上文章 [【Go 专家编程】go.mod 文件中的indirect准确含义](https://my.oschina.net/renhc/blog/3162751) 的结论一致。
@@ -466,7 +466,7 @@ require (
 retract v1.7.5
 ```
 
-但是在 Go 1.17 之后，情况发生了变化，Go 1.17 带来了依赖图修建的功能，此时 `// indirect` 的语义就真正变成了间接依赖。也就是说，在 Go 1.17 之后， 项目中的所有间接依赖都会以 `// indirect` 方式声明在 `go.mod` 中。
+但是在 Go 1.17 之后，情况发生了变化，Go 1.17 带来了依赖图修剪的功能，此时 `// indirect` 的语义就真正变成了间接依赖。也就是说，在 Go 1.17 之后， 项目中的所有间接依赖都会以 `// indirect` 方式声明在 `go.mod` 中。
 
 以 [gin](https://github.com/gin-gonic/gin) 为例，我们将其 `go.mod` 中的 go 版本修改为 `1.17`，此时 `go mod tidy` 执行完后， `go.mod` 中的内容如下：
 
@@ -503,7 +503,7 @@ require (
 )
 ```
 
-依赖图修建指的就是 Go 只会处理编译依赖的 module，某些 module 通过 `import` 分析可能存在，但是编译时并不会使用，就会被修剪掉。更多参见：[博客](https://tonybai.com/2021/08/19/go-module-changes-in-go-1-17/)
+依赖图修剪指的是 Go 只会处理编译依赖的 module，某些 module 按照 module 粒度分析可能存在，但是编译时其实并不会使用，就会被修剪掉。更多参见：[博客](https://tonybai.com/2021/08/19/go-module-changes-in-go-1-17/)
 
 #### （3）多 Module 代码仓库
 
