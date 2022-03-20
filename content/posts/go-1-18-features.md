@@ -1,7 +1,7 @@
 ---
 title: "Go 1.18 新特性"
 date: 2022-03-17T23:40:42+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
