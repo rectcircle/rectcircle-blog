@@ -311,7 +311,7 @@ github.com/golang/example v0.0.0-20170904185048-46695d81d1fa/go.mod h1:tO/5UvQ/u
 # 查看模块版本列表
 go list -m -versions rsc.io/sampler
 # 安装最新版本模块
-go get rsc.io/sampler
+go get -u rsc.io/sampler
 # 安装指定版本模块
 go get rsc.io/sampler@v1.3.1
 ```
@@ -361,7 +361,7 @@ Go Module 引入了版本管理，但是 Golong 直接使用了 git 等托管代
 
 ### 4、Module、Package 和 File
 
-* Module 是 Golang 的最小发布单元，与代码仓库一一对应，一般包含多个Package，包含版本概念
+* Module 是 Golang 的最小发布单元，一般与代码仓库一一对应，一般包含多个Package，包含版本概念
     * Module 的命名有一个强制的规则为 `{组织域名}/{group}/{project}` 例如 `github.com/rectcircle/go-improve`，go 会根据这个 module 名前往互联网下载代码
 * Package 是 Golang 的功能集合，与目录一一对应，一般包含多个 File，注意其中包含的其他目录（其他 Package）和当前 Package 没有任何关系，是 import 的主要实例
 * File 及代码文件，必须属于一个 Package，同一个目录下的 File 属于同一个 Package
@@ -412,6 +412,102 @@ Go Module 和之前的 GOPATH 方式的依赖管理是兼容的。注意以下 `
 export GOPATH=xxx
 export PATH=$PATH:$GOPATH/bin
 ```
+
+### 8、高级话题
+
+#### （1）理解 go module 的兼容性
+
+我们应该从两种场景看 `go.mod` 文件。
+
+* 场景 1：当前 module 作为主项目进行编译开发开发时，比如我们需要开发一个可执行文件（binary）。这种情况下 `go.mod` 就记录了主项目的所有依赖情况，即给 go 编译器提供完整的依赖信息。此时，如果信息不完整，就会编译失败。
+* 场景 2：当前 module 作为一个外部依赖提供给其他项目是，比如我们需要开发一个库（library）。这种情况下 go 对该 `go.mod` 的处理就很不一样了。
+
+我们重点看下场景 2。众所周知，Go module 在 Go 1.11 才正式推出，而在 Go 1.11 之前的基于 GOPATH 的项目 Go module 仍需要支持。所以 Go module 做了大量的兼容逻辑。
+
+因此，当 module 作为一个外部依赖时，go 不会假设 `go.mod` 完整的描述了整个项目的依赖情况。因此，go 可以接受如下场景（执行 `go get` 或 `go mod tidy` 时）：
+
+* 该 module 没有 `go.mod`，此时 go 会扫描代码中的 import 语句，分析出依赖，并下载依赖。然后依赖添加到当前 module 的 `go.mod` 的 `require` 子句中，并添加 `// indirect` 注释。
+* 该 module 有 `go.mod`，此时 go 会根据 `go.mod` 文件中的依赖信息，下载依赖。同时仍会扫描代码中的 import 语句，如果 `go.mod` 不完整，会自动补充这些缺失的依赖，然后添加到当前 module 的 `go.mod` 的 `require` 子句中，并添加 `// indirect` 注释。
+
+因此，可以看出，当 module 作为一个外部依赖时，`go.mod` 的作用只是用来约束其依赖的版本，如果缺失，也不会影响下游的正常编译。
+
+#### （2）间接依赖和依赖图修剪
+
+我们经常会在 `go.mod` 中看到带有 `// indirect` 注释的 `require` 子句，这表明这个依赖是间接依赖。
+
+间接依赖指的是当前 module 没有直接 import 该依赖的代码，而是我们直接依赖的 module 中，依赖了该 module。此时，当前可能会出现带有 `// indirect` 的依赖。
+
+在 Go 1.17 之前，当前 module 的 `go.mod` 并不是中并不会包其依赖的所有间接依赖。换句话来说因此在 Go 1.17 之前， `// indirect` 的语义并不是间接依赖，而是在整个用 `go.mod` 构建的依赖图中，没有被明确 `require` 的那些依赖。举个例子，假设有一个 module a，其事实的依赖关系为 `a -> b -> c,d`，此时设想如下场景
+
+* 场景 1：`b` 的 `go.mod` 明确声明了 `require c; require d`。此时 `a` 的 `go.mod` 就不会出现  `require c; require d`，而只有 `require b`。
+* 场景 2：`b` 的 `go.mod` 只明确声明了 `require c`。此时 `a` 的 `go.mod` 为 `require b` 和 `require d // indirect`。
+* 场景 3：`b` 不存在 `go.mod` 文件。此时 `a` 的 `go.mod` 为 `require b`、`require c // indirect`、`require d // indirect`。
+
+这和网上文章 [【Go 专家编程】go.mod 文件中的indirect准确含义](https://my.oschina.net/renhc/blog/3162751) 的结论一致。
+
+我们可以观察 [gin](https://github.com/gin-gonic/gin/blob/v1.7.7/go.mod) 项目的的依赖，确实很干净，没有 `// indirect`。
+
+```gomod
+module github.com/gin-gonic/gin
+
+go 1.13
+
+require (
+	github.com/gin-contrib/sse v0.1.0
+	github.com/go-playground/validator/v10 v10.4.1
+	github.com/golang/protobuf v1.3.3
+	github.com/json-iterator/go v1.1.9
+	github.com/mattn/go-isatty v0.0.12
+	github.com/stretchr/testify v1.4.0
+	github.com/ugorji/go/codec v1.1.7
+	gopkg.in/yaml.v2 v2.2.8
+)
+
+retract v1.7.5
+```
+
+但是在 Go 1.17 之后，情况发生了变化，Go 1.17 带来了依赖图修建的功能，此时 `// indirect` 的语义就真正变成了间接依赖。也就是说，在 Go 1.17 之后， 项目中的所有间接依赖都会以 `// indirect` 方式声明在 `go.mod` 中。
+
+以 [gin](https://github.com/gin-gonic/gin) 为例，我们将其 `go.mod` 中的 go 版本修改为 `1.17`，此时 `go mod tidy` 执行完后， `go.mod` 中的内容如下：
+
+```gomod
+module github.com/gin-gonic/gin
+
+go 1.17
+
+require (
+        github.com/gin-contrib/sse v0.1.0
+        github.com/go-playground/validator/v10 v10.10.0
+        github.com/goccy/go-json v0.9.5
+        github.com/json-iterator/go v1.1.12
+        github.com/mattn/go-isatty v0.0.14
+        github.com/stretchr/testify v1.7.0
+        github.com/ugorji/go/codec v1.2.6
+        golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
+        google.golang.org/protobuf v1.27.1
+        gopkg.in/yaml.v2 v2.4.0
+)
+
+require (
+        github.com/davecgh/go-spew v1.1.1 // indirect
+        github.com/go-playground/locales v0.14.0 // indirect
+        github.com/go-playground/universal-translator v0.18.0 // indirect
+        github.com/leodido/go-urn v1.2.1 // indirect
+        github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
+        github.com/modern-go/reflect2 v1.0.2 // indirect
+        github.com/pmezard/go-difflib v1.0.0 // indirect
+        golang.org/x/crypto v0.0.0-20210711020723-a769d52b0f97 // indirect
+        golang.org/x/sys v0.0.0-20210806184541-e5e7981a1069 // indirect
+        golang.org/x/text v0.3.6 // indirect
+        gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+)
+```
+
+依赖图修建指的就是 Go 只会处理编译依赖的 module，某些 module 通过 `import` 分析可能存在，但是编译时并不会使用，就会被修剪掉。更多参见：[博客](https://tonybai.com/2021/08/19/go-module-changes-in-go-1-17/)
+
+#### （3）多 Module 代码仓库
+
+Go 支持一个仓库内部有多个 module，且这个 module 可以在任意目录，此时我们如果需要使用 `git tag` 来标识 module 版本时，tag 的的名字就位， `该module相对仓库根目录的路径/版本号`。以 `https://github.com/golang/tools/tree/master/gopls` 为例，其 `git tag` 的一个例子为 `gopls/v0.8.1`。
 
 ## 三、Go 类型系统
 
