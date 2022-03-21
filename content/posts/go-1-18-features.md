@@ -12,7 +12,7 @@ tags:
 
 ## 介绍
 
-Go 1.18 是一个非常重要的更新。Go 1.18 虽然发布了泛型和工作空间等重磅特性。但是仍提供了完全的 [Go 1 兼容性](https://go.dev/doc/go1compat)，也就是说，符合 [Go 1 兼容性](https://go.dev/doc/go1compat) 要求的代码均可直接使用 Go 1.18 编译。
+2022 年 3 月 15 日，Go 1.18 正式发布，Go 1.18 是一个非常重要的更新。Go 1.18 虽然发布了泛型、Fuzzing 测试和工作空间等重磅特性。但是仍提供了完全的 [Go 1 兼容性](https://go.dev/doc/go1compat)，也就是说，符合 [Go 1 兼容性](https://go.dev/doc/go1compat) 要求的代码均可直接使用 Go 1.18 编译。
 
 本文整体参考如下官方文档，介绍与 Go 1.17 相比，Go 1.18 的新特性。
 
