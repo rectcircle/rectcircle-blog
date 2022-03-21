@@ -5,7 +5,7 @@ draft: false
 toc: true
 comments: true
 tags:
-  - untagged
+  - go
 ---
 
 > 官方文档：[Go 1.18 Release Notes](https://go.dev/doc/go1.18)
