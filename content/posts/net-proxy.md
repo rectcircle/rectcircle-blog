@@ -50,11 +50,11 @@ tags:
 * `no_proxy` 该环境变量的值，一般情况下是用逗号分隔的host列表，其兼容性如下：
     * 部分工具/库直接不支持识别该环境变量
     * `example.com` 一般支持 `no_proxy` 环境变量的工具/库都支持，但是作者理解可能不一样：
+        * [nodejs axios](https://github.com/axios/axios)、curl、wget 认为：严格匹配，即 `abc.example.com` 匹配不上，所以仍然进行代理。
         * [nodejs request](https://github.com/request/request) 认为：匹配所有子域，即 `abc.example.com` 会匹配上，不进行所以不进行代理。
-        * [nodejs axios](https://github.com/request/request)、curl、wget 认为：严格匹配，即 `abc.example.com` 匹配不上，所以仍然进行代理。
     * `.example.com` 只有部分库支持：
         * [nodejs axios](https://github.com/request/request)、curl、wget 认为：匹配所有子域，即 `abc.example.com` 会匹配上，不进行所以不进行代理。
-        * [nodejs request](https://github.com/request/request) 不支持该语法，且，只要存在该形式，其认为 `no_proxy` 非法，这个 `no_proxy` 都不生效。
+        * [nodejs request](https://github.com/axios/axios) 不支持该语法，且，只要存在该形式，其认为 `no_proxy` 非法，这个 `no_proxy` 都不生效。
     * `1.2.3.4` IP 地址，多数库工具支持。
     * `10.0.0.0/24` 网段格式，部分工具/库支持。
 
