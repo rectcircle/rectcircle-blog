@@ -29,10 +29,33 @@ tags:
 
 ### 客户端
 
-* Unix 命令行：通过 `http_proxy`、`https_proxy`、`no_proxy` 环境变量设置。
+* Unix 命令行：通过 `http_proxy`、`https_proxy`、`no_proxy` 环境变量设置（全大写也可以）。
 * 操作系统：网络 -> 代理配置进行配置
 * 软件层面：设置 -> HTTP Proxy
 * 编程语言 HTTP Client：搜索 `XXX HTTP Client Proxy`，`XXX` 为 编程语言名（一般情况下会默认识别 Unix 命令行的环境变量）
+
+注意：`http_proxy`、`https_proxy`、`no_proxy` 环境变量一种松散的业界约定俗称，并没有统一强制的规范，所以极度不统一，并且不是所有命令行工具和各个编程语言的客户端都支持的。下面表述一些工具和库的情况：
+
+* Linux 下的 wget 和 curl 支持后文描述的所有格式：
+    * [manual: wget Proxies](https://www.gnu.org/software/wget/manual/html_node/Proxies.html)
+    * [maual: curl Environment](https://curl.se/docs/manpage.html)
+* `http_proxy` 该环境变量的值，其兼容性下：
+    * `http://proxyHost:proxyPort` 一般所有的工具/库都支持
+    * `proxyHost:proxyPort` 一般所有工具/库都支持
+    * `http://user:password@proxyHost:proxyPort` 很多工具/库不支持
+* `https_proxy` 该环境变量的情况和 `http_proxy` 类似即可以配置为 `http` 协议的代理服务，但是需要注意的是：
+    * `http://proxyHost:proxyPort` 形式，很多 nodejs 的 http 客户端默认不支持，因为在 nodejs 社区认为 https over http tunnel 不安全，如果希望不报错，需要手动配置 proxy，并指定 `strictSSL` 为 false 才允许。
+    * `https://proxyHost:proxyPort` 这要求代理服务器支持 https，不太清楚其兼容性，。
+* `no_proxy` 该环境变量的值，一般情况下是用逗号分隔的host列表，其兼容性如下：
+    * 部分工具/库直接不支持识别该环境变量
+    * `example.com` 一般支持 `no_proxy` 环境变量的工具/库都支持，但是作者理解可能不一样：
+        * [nodejs request](https://github.com/request/request) 认为：匹配所由子域，即 `abc.example.com` 会匹配上，不进行所以不进行代理。
+        * [nodejs axios](https://github.com/request/request)、curl、wget 认为：严格匹配，即 `abc.example.com` 匹配不上，所以仍然进行代理。
+    * `.example.com` 只有部分库支持：
+        * [nodejs axios](https://github.com/request/request)、curl、wget 认为：匹配所由子域，即 `abc.example.com` 会匹配上，不进行所以不进行代理。
+        * [nodejs request](https://github.com/request/request) 不支持该语法，且，只要存在该形式，其认为 `no_proxy` 非法，这个 `no_proxy` 都不生效。
+    * `1.2.3.4` IP 地址，多数库工具支持。
+    * `10.0.0.0/24` 网段格式，部分工具/库支持。
 
 ### 服务端
 
