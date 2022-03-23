@@ -542,3 +542,90 @@ docker rm -f nginx-proxy
 curl -v https://ifconfig.me
 curl -v http://ifconfig.me
 ```
+
+##### 配置只代理指定域名
+
+* [https by map](http://nginx.org/en/docs/stream/ngx_stream_ssl_preread_module.html)
+* http by server_name: [博客](https://segmentfault.com/a/1190000021771733) | [官方](http://nginx.org/en/docs/http/server_names.html)
+
+下文以只代理 google.com 为例。
+
+```nginx
+user  nginx;
+worker_processes  auto;
+
+error_log  /var/log/nginx/error.log notice;
+pid        /var/run/nginx.pid;
+
+
+events {
+    worker_connections  1024;
+}
+
+
+stream {
+    log_format main '$remote_addr  [$time_local] $ssl_preread_server_name '
+                     '$protocol $status $bytes_sent $bytes_received '
+                     '$session_time';
+    access_log  /var/log/nginx/access.log  main;
+    
+    map $ssl_preread_server_name $name {
+        google.com google.com;
+    }
+
+    server {
+        listen 443;
+        ssl_preread on;
+        resolver 8.8.8.8;
+        proxy_pass $name:$server_port;
+    }
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                      '$status $body_bytes_sent "$http_referer" '
+                      '"$http_user_agent" "$http_x_forwarded_for"';
+
+    access_log  /var/log/nginx/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    #include /etc/nginx/conf.d/*.conf;
+
+    server {
+        listen 80;
+        resolver 8.8.8.8;
+        
+        server_name google.com;
+        location / {
+            proxy_pass $scheme://$host$request_uri;
+            # 以下两个都不需要，做的不是透明代理
+            # proxy_bind $remote_addr transparent;
+            # proxy_set_header Host $host;
+        }
+    }
+    
+    server {
+        listen       80 default_server;    
+
+        location / {
+            return 404;
+            root   /usr/share/nginx/html;
+            index  index.html index.htm;
+        }
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   /usr/share/nginx/html;
+        }
+    }
+}
+```
