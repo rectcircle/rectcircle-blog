@@ -1037,7 +1037,7 @@ VSCode 添加如下配置
 
 这几种情况，可以通过如下方式进行自定义配置
 
-* 1 和 2 的运行情况，通过 `python.terminal.executeInFileDir` 以及 `python.terminal.launchArgs` 指定 `cwd` 以及 `args`；通过 `python.envFile` 配置环境变量
+* 1 和 2 的运行情况，通过 `python.terminal.executeInFileDir` 以及 `python.terminal.launchArgs` 指定 `cwd` 以及 `args`；通过 `terminal.integrated.env.linux` 配置环境变量（如 `"PYTHONPATH": "."`）
 * 1 和 2 的调试情况，通过 `.vscode/launch.json` 中添加调试配置，并通过 `purpose` 字段添加 `debug-in-terminal` 将该配置项应用到调试中
 * 3 的情况，通过 `.vscode/launch.json` 中添加调试配置，并通过 `purpose` 字段添加 `debug-test` 将该配置项应用到调试中
 
