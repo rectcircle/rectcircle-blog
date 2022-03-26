@@ -62,6 +62,8 @@ int socket(int domain, int type, int protocol);
         * `SOCK_NONBLOCK` 设置该文件描述符是非阻塞 IO。
         * `SOCK_CLOEXEC` 表示该文件描述符在 fork-exec 后关闭
 * protocol，即 Socket 的具体网络协议，一般情况下设置为 0，表示根据 type 选择一个默认协议。具体可选值说明参见：[protocols(5)](https://man7.org/linux/man-pages/man5/protocols.5.html)
+
+最后，该函数将返回一个 socket 文件描述符。
   
 ### Socket 选项
 
