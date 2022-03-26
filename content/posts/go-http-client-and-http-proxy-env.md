@@ -89,7 +89,7 @@ HTTP Client 位于 Go 标准库 http 包中，http 包导出了如下关于 http
 ```go
 // 默认的 DefaultTransport 的 Proxy 设置为 nil
 http.DefaultTransport.(*http.Transport).Proxy = nil
-// 其他手动创建的 http.Transport （注意包含简介引用的地方）的 Proxy 设置为 nil
+// 其他手动创建的 http.Transport （注意包含间接引用的地方）的 Proxy 设置为 nil
 ```
 
 ## 结语
