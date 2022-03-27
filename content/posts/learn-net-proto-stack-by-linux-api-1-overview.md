@@ -51,13 +51,14 @@ int socket(int domain, int type, int protocol);
     * `AF_UNIX`，Unix Domain Socket；
     * `AF_INET`，IPv4 Only；
     * `AF_INET6`，IPv6 Only 或 IPv4 / IPv6 双栈（默认值为 `/proc/sys/net/ipv6/bindv6only`，通过 `setsockopt` 手动修改）。
+    * `AF_PACKET`，直接接收 IP Packet 原始数据
 * type，即 Socket 的类型，表示收发数据的特点，会影响操作 Socket 时的系统调用，该参数有如下可能性：
     * 选择该 Socket 最终使用的网络模型的传输层协议：
         * `SOCK_STREAM` 流式，表示可靠的连接，对应的 protocol 为 TCP；
         * `SOCK_DGRAM` 数据报，表示不可靠消息，对应的 protocol 为 UDP。
     * 该参数也可以用于指定该 Socket 收发底层数据：
         * `SOCK_RAW` 提供原始网络协议访问；
-        * `SOCK_PACKET` 已过时，表示提供数据链路层的数据。
+        * ~~`SOCK_PACKET` 已过时，需使用 type = `AF_PACKET` 替代~~。
     * 该参数可以 `|` 原酸用来配置文件描述符的一些特性；
         * `SOCK_NONBLOCK` 设置该文件描述符是非阻塞 IO。
         * `SOCK_CLOEXEC` 表示该文件描述符在 fork-exec 后关闭
