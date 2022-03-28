@@ -478,6 +478,11 @@ VSCode Java 支持无构建工具的 Java 项目，下方有一个例子（通�
   <source src="/image/vscode/java/type-hierarchy.mp4" type="video/mp4">
 </video>
 
+* 通过命令查看类型关系信息
+    * `>Types: Show supertypes` 查找当前类型的父类和实现的接口
+    * `>Types: Show subtypes` 查找当前类型的的子类或者实现
+    * `>Types: Show type hierarchy` 查看类型层次
+
 * 折叠
 
 <video autoplay="" loop="" muted="" playsinline="" controls="">
