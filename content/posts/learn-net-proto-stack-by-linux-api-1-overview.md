@@ -50,8 +50,8 @@ int socket(int domain, int type, int protocol);
 * domain，即 communication domain 通讯域，表示使用的协议族。从网络模型角度看，该参数用于选择网际层协议，即该 Socket 是通过 IPv4 还是 IPv6 等来进行通讯的。常见的可选值为：
     * `AF_UNIX`，Unix Domain Socket；
     * `AF_INET`，IPv4 Only；
-    * `AF_INET6`，IPv6 Only 或 IPv4 / IPv6 双栈（默认值为 `/proc/sys/net/ipv6/bindv6only`，通过 `setsockopt` 手动修改）。
-    * `AF_PACKET`，直接接收 IP Packet 原始数据
+    * `AF_INET6`，IPv6 Only 或 IPv4 / IPv6 双栈（默认值为 `/proc/sys/net/ipv6/bindv6only`，通过 `setsockopt` 手动修改）；
+    * `AF_PACKET`，直接面向数据链路层 Packet 原始数据。（本系列可能不会涉及）
 * type，即 Socket 的类型，表示收发数据的特点，会影响操作 Socket 时的系统调用，该参数有如下可能性：
     * 选择该 Socket 最终使用的网络模型的传输层协议：
         * `SOCK_STREAM` 流式，表示可靠的连接，对应的 protocol 为 TCP；
