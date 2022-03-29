@@ -1,7 +1,7 @@
 ---
 title: "通过 Linux API 学习网络协议栈（二）IP 协议"
 date: 2022-03-27T22:48:15+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
@@ -213,11 +213,26 @@ IP 协议的核心目标是：实现超大规模的互联网中的任意两台�
 * [packet(7) 手册](https://man7.org/linux/man-pages/man7/packet.7.html)
 * [Wiki 原始套接字](https://zh.wikipedia.org/wiki/%E5%8E%9F%E5%A7%8B%E5%A5%97%E6%8E%A5%E5%AD%97)
 
-### 说明
+### 手册
+
+创建一个协议为 [`protocol`](https://datatracker.ietf.org/doc/html/rfc790) 的 IPv4 原始套接字。
 
 ```cpp
-
+#include <sys/socket.h>
+#include <netinet/in.h>
+raw_socket = socket(AF_INET, SOCK_RAW, int protocol);
 ```
+
+* 创建 raw socket 的进程必须拥有 `CAP_NET_RAW` 权限。
+* 内核会将接收的 IP Packet 复制一份发送给 `protocol` 参数匹配的 raw socket，但是注意，内核的默认行为不会发生改变，如果需要禁用内核的默认行为，参考：[serverfault](https://serverfault.com/questions/387263/disable-kernel-processing-of-tcp-packets-for-raw-socket)。如果想 bind 的指定的地址，使用 [`bind(2) 系统调用`](https://man7.org/linux/man-pages/man2/bind.2.html)。
+* [`sendto(2) 系统调用`](https://man7.org/linux/man-pages/man2/sendto.2.html) 发送消息时
+    * 默认情况下，不需要提供 IP Packet Header，内核自动生成，此时如果想设置 IP Packet Header 的 Option，则可以通过 [`setsockopt(2) 系统调用`](https://man7.org/linux/man-pages/man2/setsockopt.2.html)  设置，更多参见 [`ip(7) 文档`](https://man7.org/linux/man-pages/man7/ip.7.html)。
+    * 如果该 raw socket 通过 [`setsockopt(2) 系统调用`](https://man7.org/linux/man-pages/man2/setsockopt.2.html) 设置了 `IP_HDRINCL` 则发送的消息必须包含 IP Packet Header。
+* `protocol` 参数说明
+    * 列表参见： [iana 站点](https://www.iana.org/assignments/protocol-numbers/protocol-numbers.xhtml)
+    * 如果 `protocol` 为  `IPPROTO_RAW` 且 通过 [`setsockopt(2) 系统调用`](https://man7.org/linux/man-pages/man2/setsockopt.2.html) 设置了 `IP_HDRINCL` 。
+        * 通过 [`sendto(2) 系统调用`](https://man7.org/linux/man-pages/man2/sendto.2.html) 发送消息时可以指定任意协议。
+        * 通过 [`recvfrom(2) 系统调用`](https://man7.org/linux/man-pages/man2/recvfrom.2.html) 接收不到任何消息，如果想接收任意协议的 IP Packet，需使用：[packet(7)](https://man7.org/linux/man-pages/man7/packet.7.html) socket 并设置 `ETH_P_IP`（注意 Raw socket 会自动根据 MTU 分片，而 packet socket 不会）。
 
 ### 示例
 
@@ -325,3 +340,5 @@ int main(int argc, char **argv)
     return 0;
 }
 ```
+
+输出为： `icmp echo reply from 127.0.0.1`
