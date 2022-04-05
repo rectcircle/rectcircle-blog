@@ -17,7 +17,7 @@ tags:
 信号是类 Unix 操作系统一种进程间通知的机制（参见：手册 [signal(7)](https://man7.org/linux/man-pages/man7/signal.7.html)）。本部分涉及的为：
 
 * 用来协调多个进程的执行，如监听子孙进程的状态变更 `SIGCHLD`，默认忽略。需要注意的是，如果一个进程退出后，其父进程进程没有处理 `SIGCHLD` 信号，则该进程占用 PCB 将不会释放，此时该进程被称为僵尸进程。
-* 无法覆盖的特权信号，`SIGKILL` （终止） 和 `SIGSTOP` （挂起，需通过 `SIGCONT` 信号唤醒）
+* 无法覆盖的特权信号（包括 1 号进程同样无法覆盖），`SIGKILL` （终止） 和 `SIGSTOP` （挂起，需通过 `SIGCONT` 信号唤醒）
 * `SIGTERM`，可以覆盖默认的行为，一般用于优雅退出
 
 ### 1 进程
@@ -28,13 +28,16 @@ tags:
 
 在 Unix 类系统中，进程会组成一颗进程树，其根节点是 0 号进程。每个进程都有一个父进程，有 0 个或多个子进程。
 
-一个进程通过 fork/clone 系统调用创建一个子进程，一个进程的父进程一般为 fork 该进程的进程，但是有一个例外是：
+0 号进程是内核进程，内核进程会创建 1 号进程，1 号进程是第一个用户态进程。
+
+一个进程通过 fork/clone 系统调用创建一个子进程，一个进程的父进程为 fork 该进程的进程。
 
 当一个进程的父进程退出了，为了维持进程树的关系，该进程的父进程将会被设置为 1 号进程。这种父进程变化为 1 号进程的进程被称为孤儿进程。这个过程可以叫做：1 号进程（如果该进程的祖先进程使用 [`prctl(2) 系统调用`](https://man7.org/linux/man-pages/man2/prctl.2.html) 和 `PR_SET_CHILD_SUBREAPER` 进行标记，则该进程会进行收养）收养了该孤儿进程。
 
 #### 1 号进程和信号
 
-* 1 号进程只能收到一种信号，即 1 号进程注册了信号处理器的信号。参见：[kill(2)](https://man7.org/linux/man-pages/man2/kill.2.html#NOTES)，因此 `kill -9 1` 也收不到（`SIGKILL` 和 `SIGSTOP` 两个特权信号都收不到）
+* 1 号进程只能收到一种信号，即 1 号进程注册了信号处理器的信号。参见：[kill(2)](https://man7.org/linux/man-pages/man2/kill.2.html#NOTES)。因此，默认情况下 `kill -15 1` 是收不到信号的。
+* 由于 `SIGKILL` 和 `SIGSTOP` 两个特权信号是无法覆盖的，所以任何情况下，其子进程向 1 号进程发送这两个信号都是无效的（父 PID Namespace 的进程发送是可以的）。
 * 通过 [reboot(2)](https://man7.org/linux/man-pages/man2/reboot.2.html) （`LINUX_REBOOT_CMD_CAD_OFF`）关闭 CAD （Ctrl-Alt-Del） 快捷键时，CAD 将会向 1 号进程发送 `SIGINT` 信号
 
 ### `/proc` 文件系统
@@ -69,7 +72,7 @@ tags:
 
 * `setns(2)` 和 `unshare(2)` 语义，由于一个进程的 PID Namespace 从创建的那一刻就固定了，所以 `setns(2)` 和 `unshare(2)`，并不会影响当前进程的 PID Namespace（ 仅仅修改 `/proc/[pid]/ns/pid_for_children` 文件）。（试想一下，如果 PID Namespace 发生了变化，那么他们的进程号就变了，而很多程序假设自身的进程号不会发生变化的，这样就破坏了兼容性）
 * 新的 PID Namespace 的**第一个进程**的进程号为 `1`，即在该 PID Namespace 中，该进程就是受内核特殊处理的 1 号进程（参见上文：1 号进程和信号，1 号进程和进程树），此外还需要注意：
-    * 该 PID Namespace 内的进程无法 `kill -9` 杀死 1 号进程（受内核保护）。
+    * 该 PID Namespace 内的进程永远无法通过 `kill -9` 杀死 1 号进程。
     * 祖先 PID Namespace 的进程可以向该 1 号进程通过 `kill -9` 发送信号，此时该进程的行为和普通进程一致。但是有一点需要注意的是（**手册也没有阐述** `5.10.0-11-amd64` 稳定复现）：
         * 如果该 PID Namespace 存在一个 `进程 a`，其父进程不在该 PID Namespace 中 （即：通过 `setns(2)` 创建到该 Namespace 中），且这个父进程没有处理 `SIGCHLD` 信号。此时 `kill -9` 1 号进程
         * `进程 a` 将变成僵尸进程，该名字空间下的所有进程都将无响应
