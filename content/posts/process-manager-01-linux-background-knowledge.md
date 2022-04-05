@@ -8,6 +8,80 @@ tags:
   - untagged
 ---
 
+## 系列综述
+
+## 本节概述
+
+参考 APUE （Unix 环境高级编程第 3版）和 Linux Manuel 站点。
+
+## 进程关系
+
+（采用问题引出的方式阐述本章）
+
+### 进程生命周期
+
+### 进程树
+
+### 进程和权限
+
+* 超级管理员 root 和 CAP_SYS_ADMIN 权限
+* setuid 降权
+* 设置用户 id 位提权
+
+（附加组不在讨论范围内）
+
+https://www.jianshu.com/p/be7d77068b44
+
+apue 1.8、4.4 、8.11、9.1
+
+### 进程组
+
+### 会话
+
+### 控制终端和前后台进程组
+
+### 孤儿进程组
+
+## 信号
+
+### 信号概念
+
+#### 信号处理的三种行为
+
+#### 信号处理函数调用
+
+真正的异步性（比多线程还早的一种异步性） 和 函数可重入（并发问题） 和 sleep 问题 和 中断系统调用（自动重启）
+
+### 信号集
+
+### 信号异步处理
+
+#### Signal 函数
+
+不可靠语义，有效一次（早期是这样的）
+
+#### sigaction 函数
+
+* 可靠语义，一直有效
+* 可实现异步串行化
+
+### 信号同步处理
+
+* sigwait & sigtimedwait https://pubs.opengroup.org/onlinepubs/009604499/functions/sigwait.html
+* sigsuspend
+
+### 信号继承
+
+### 常见信号说明
+
+#### 作业控制信号
+
+## shell 原理
+
+https://github.com/krallin/tini/issues/8
+
+## 备忘
+
 * docker --init
     * https://docs.docker.com/engine/reference/run/#specify-an-init-process
     * /sbin/docker-init
