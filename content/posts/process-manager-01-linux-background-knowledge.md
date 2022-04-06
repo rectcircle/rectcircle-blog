@@ -10,29 +10,69 @@ tags:
 
 ## 系列综述
 
+本系列将从 Linux 基础知识起步，并参考 tini 源码，使用 Golang 探索实现一个简单有效的进程管理器。该进程管理器将作为容器的 entrypoint 进程，即容器的 1 号进程，来管理工作进程。
+
 ## 本节概述
 
-参考 APUE （Unix 环境高级编程第 3版）和 Linux Manuel 站点。
+在 Linux 中实现一个可用于生产环境的 1 号进程并不容易，主要需要考虑如下问题：
 
-## 进程关系
+* 信号处理和转发
+* 收割子进程
+* 终端设备（tty）、会话和进程组管理
+* 正确的设置工作进程的权限
 
-（采用问题引出的方式阐述本章）
+本章节主要参考：
 
-### 进程生命周期
+* 书籍 APUE （即《Unix 环境高级编程》） 第三版
+* [Linux Manual 站点](https://man7.org/)
 
-### 进程树
+注意：本文主要以 Linux 为例阐述，不保证其他兼容 POSIX 标准的操作系统（Linux、MacOS 均是、Windows 不是）有同样的能力。
+
+## 进程
+
+### 进程和进程树
+
+* 在 Linux 中，每个用户态进程都有一个父进程（1 号进程除外，1 号进程的父进程是 内核进程即 0 号进程），这样就构成了一颗根节点为 1 号进程的树。
+* 当进程 a 创建了进程 b，此时进程 a 是进程 b 的父进程，进程 b 是进程 a 的子进程。
+* 每一个进程都有一个唯一标识 ID （即 PID），该 ID 在进程退出之前永远不变。
+
+### 进程的两个阶段
+
+进程的创建是以 `fork` 系统调用返回 0 作为起始的，而程序的执行是以 `exec` 系统调用载入于一个程序开始。在本系列，我们将定义：
+
+* `fork` 到当前进程的最后一次 `exec` 之间称为：引导阶段。
+* 当前进程的最后一次 `exec` 之后称为：执行阶段。
+
+```
+进程
+
+fork ---> exec ---> exec ... ---> exec --->  exit
+ |                                |  |        |
+  --------------------------------    ————————
+                  |                       |
+                  v                       v
+               引导阶段                  执行阶段
+```
+
+编写普通程序时，一般是 fork 之后 立即 exec，因此，引导阶段什么都不做。
+
+但是在编写一个进程管理器场景，区分这两个阶段非常重要。因为，进程管理器需要在引导阶段对当前进程进行一些配置工作。
 
 ### 进程和权限
 
-* 超级管理员 root 和 CAP_SYS_ADMIN 权限
-* setuid 降权
-* 设置用户 id 位提权
+在 Linux 操作系统中，多数发行版的进程管理器是 systemd，作为进程管理器，其一般以 root 权限运行。当我们使用安装一个 mysql server 后，其是以 mysql 用户运行的，systemd 是如何实现的呢？
 
-（附加组不在讨论范围内）
+Linux 提供了一个 `setuid/setgid` 的系统调用，当 root 权限（`CAP_SYS_ADMIN` 权限）的进程调用时，将会将该进程的 uid 和 gid 设置为指定的用户和组。因此就实现了权限降级，以实现最小化权限的要求。
 
-https://www.jianshu.com/p/be7d77068b44
+**扩展知识（和本系列无关，仅做分享）：权限升级**
 
-apue 1.8、4.4 、8.11、9.1
+上文提到了权限通过 `setuid/setgid` 即可实现权限降级，但是如何实现权限升级呢？比如一个没有 root 的进程如何以 root 的身份执行一个程序（比如 sudo、su 命令可以创建一个拥有 root 权限的 shell 进程）。
+
+Linux 在文件系统层面，为可执行文件提供了一种称为 设置用户/组 id 位的特性，当一个文件的属性中启用了 设置用户/组 id 位。那么一个进程使用 `exec` 系统调用执行该程序时，该程序的权限将变为这个可知执行文件的所属用户和所属组。
+
+因此，一个具有 设置用户/组 id 位 的程序需要自行实现对用户的身份验证，以保证系统安全。
+
+关于此，更多参见： 《APUE》第 4.4、8.11 章节
 
 ### 进程组
 
@@ -118,6 +158,9 @@ https://github.com/krallin/tini/issues/8
     * https://stackoverflow.com/questions/16977988/details-of-syscall-rawsyscall-syscall-syscall-in-go
 * go unix 库 https://cs.opensource.google/go/x/sys/+/483a9cbc:unix/ioctl.go;l=28
 * 终端颜色和环境变量 TERM，LS_COLORS
+* 控制终端
+    * http://shareinto.github.io/2016/11/17/linux-terminal/
+    * https://blog.csdn.net/weixin_44966641/article/details/120585519
 * 守护进程
     * https://www.kawabangga.com/posts/3849
     * https://www.cnblogs.com/yaodd/p/5558857.html
@@ -128,7 +171,7 @@ https://github.com/krallin/tini/issues/8
 * Go 语言的 tcxx 相关函数实现 https://github.com/snabb/tcxpgrp
 * GO 进程收割者 https://gist.github.com/williammartin/eb355f7d387791a9c225361e5d19ea40
 * Go exec https://gobyexample.com/execing-processes
-* APUE
+* APUE 进程管理作业管理
     * https://blog.csdn.net/qq_41453285/article/details/90484881
     * https://blog.csdn.net/TODD911/article/details/17011259
 * 信号继承
