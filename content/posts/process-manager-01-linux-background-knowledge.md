@@ -164,7 +164,8 @@ Teletype, Teletypewriter, Teleprinter 的中文翻译为[电传打印机](https:
 ### 终端行规程
 
 * 输出输出的处理
-* cbreak 和 raw mode (ssh client 原理之一)
+* 规范模式（行 ed 命令），非规范模式（vi）
+* cbreak 和 raw mode (ssh client 原理之一 [libssh](https://api.libssh.org/master/libssh_tutor_shell.html#write_data))
 
 ### 伪终端
 

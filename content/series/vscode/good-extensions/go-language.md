@@ -1165,7 +1165,11 @@ v0.31.0 后，默认 Remote 调试协议已经替换为 `dap`，因此需要使�
 
 > 参见：[官方文档](https://github.com/golang/tools/blob/master/gopls/doc/workspace.md#multiple-modules)
 
-形如：[Golang Multimodule Monorepos](https://irilivibi.medium.com/golang-multimodule-monorepo-tutorial-3f5cf10e9b9a) 的项目，Go 开启如下配置即可开启该特性（目前处于实验阶段）
+形如：[Golang Multimodule Monorepos](https://irilivibi.medium.com/golang-multimodule-monorepo-tutorial-3f5cf10e9b9a) 的项目。
+
+#### Go 1.17 及之前版本
+
+开启如下配置即可开启该特性（目前处于实验阶段）
 
 ```json
 {
@@ -1184,6 +1188,10 @@ v0.31.0 后，默认 Remote 调试协议已经替换为 `dap`，因此需要使�
 * [设计文档](https://github.com/golang/proposal/blob/master/design/37720-gopls-workspaces.md)
 * [gopls 配置文档](https://github.com/golang/tools/blob/master/gopls/doc/settings.md#experimentalworkspacemodule-bool)
 * [gopls/workspace-module milestone](https://github.com/golang/go/milestone/179)
+
+#### Go 1.18 及更新版本
+
+无需任何配置，在根目录添加 `go.work` 文件。
 
 ### 如何使用 VSCode Go 扩展开发 Go 标准库
 
