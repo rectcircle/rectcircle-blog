@@ -66,9 +66,9 @@ tags:
 
 这里有几个来自 Youtube 的关于电传打字机的老视频（更多可以在 Youtube 搜索：[Teleprinter](https://www.youtube.com/results?search_query=Teleprinter)）。
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/n-eFFd5BmpU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe  width="760" height="500"  src="https://www.youtube.com/embed/n-eFFd5BmpU" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/-2gXC-ZPKCM" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe  width="760" height="500"  src="https://www.youtube.com/embed/-2gXC-ZPKCM" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 ### 早期阶段
 
@@ -82,13 +82,13 @@ tags:
 
 下面有一些视频，可以看到电传打字机和计算机连接的场景。
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/E4IztV7M3jI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe  width="760" height="500"  src="https://www.youtube.com/embed/E4IztV7M3jI" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/ObgXrIYKQjc" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe  width="760" height="500"  src="https://www.youtube.com/embed/ObgXrIYKQjc" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/_eShaxVcLo8?start=99" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe  width="760" height="500"  src="https://www.youtube.com/embed/_eShaxVcLo8?start=99" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/39ZCb65plIQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe  width="760" height="500"  src="https://www.youtube.com/embed/39ZCb65plIQ" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 受限于电传打字机的物理特性，影响到了 Unix 的用户交互界面的设计以及一些其他特性：
 
@@ -100,7 +100,7 @@ tags:
 
 时至今日，目前的类 Unix 系统仍然可以使用电传打字机作为用户界面使用，下面有一个使用 1930 年的电传打字机操作 Linux 的案例。
 
-<iframe width="560" height="315" src="//player.bilibili.com/player.html?aid=582863800&bvid=BV1U64y1T7xR&cid=178411950&page=1&t=660.5" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
+<iframe width="760" height="500"  src="//player.bilibili.com/player.html?aid=582863800&bvid=BV1U64y1T7xR&cid=178411950&page=1&t=660.5" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
 在最初的 Unix 中，附带了几个著名的程序，均可以很好的在电传打字机交互界面中使用：
 
