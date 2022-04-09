@@ -136,7 +136,7 @@ tags:
 
 <iframe width="760" height="500" src="https://www.youtube.com/embed/6zBvYs5Zej0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
-此后推出的 [DEC VT220](https://en.wikipedia.org/wiki/VT220) 的键盘布局极大的影响了 [IBM Model M 键盘](https://en.wikipedia.org/wiki/Model_M_keyboard) 布局，从而影响到整个当代全键盘的样式。
+此后推出的 [DEC VT220](https://en.wikipedia.org/wiki/VT220) 的键盘布局极大的影响了 [IBM Model M 键盘](https://en.wikipedia.org/wiki/Model_M_keyboard) 布局，从而影响到当代全键盘的样式。
 
 到了这个阶段，我们当代从业人员使用的终端的标准已经确定了下来。也就是说，当代计算机行业从业人员，穿越到使用视频终端和 `vi` 的年代，我们也可以无成本的从事老本行。
 
@@ -144,7 +144,7 @@ tags:
 
 ### 当代阶段
 
-随着视频设备的和个人 PC 的发展，专门的终端硬件设备已经退出了历史舞台，终端的硬件被独立的显示器和键盘取代。而终端能力在当代被抽象为图形化交互界面下，一类叫做虚拟终端的软件，如：
+随着视频设备的和个人 PC 的发展，专门的终端硬件设备已经退出了历史舞台，终端的硬件被独立的显示器和键盘取代。而终端能力在当代的图形化交互界面中，被抽象为一类叫做虚拟终端的软件，如：
 
 * [类 Unix 系统的 xterm](https://invisible-island.net/xterm/)
 * [MacOS 的 iterm2](https://iterm2.com/)
