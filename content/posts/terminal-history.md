@@ -100,7 +100,7 @@ tags:
 
 时至今日，目前的类 Unix 系统仍然可以使用电传打字机作为用户界面使用，下面有一个使用 1930 年的电传打字机操作 Linux 的案例。
 
-<iframe src="//player.bilibili.com/player.html?aid=582863800&bvid=BV1U64y1T7xR&cid=178411950&page=1&t=660.5" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
+<iframe width="560" height="315" src="//player.bilibili.com/player.html?aid=582863800&bvid=BV1U64y1T7xR&cid=178411950&page=1&t=660.5" scrolling="no" border="0" frameborder="no" framespacing="0" allowfullscreen="true"> </iframe>
 
 在最初的 Unix 中，附带了几个著名的程序，均可以很好的在电传打字机交互界面中使用：
 
