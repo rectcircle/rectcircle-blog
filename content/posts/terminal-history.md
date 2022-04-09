@@ -134,7 +134,7 @@ tags:
 * 目前 [Linux 终端](https://man7.org/linux/man-pages/man7/term.7.html)仍然支持 vt100。
 * 24 行 80 字符宽，许多场景推荐的最大行长度限制 79/80 个字符（也可能来源于 IBM 穿孔卡片 或者 [A4 纸打印等宽字符](https://www.dongwm.com/post/pep8-max-line-length/)）。
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/6zBvYs5Zej0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+<iframe width="760" height="500" src="https://www.youtube.com/embed/6zBvYs5Zej0" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
 
 此后推出的 [DEC VT220](https://en.wikipedia.org/wiki/VT220) 的键盘布局极大的影响了 [IBM Model M 键盘](https://en.wikipedia.org/wiki/Model_M_keyboard) 布局，从而影响到整个当代全键盘的样式。
 
