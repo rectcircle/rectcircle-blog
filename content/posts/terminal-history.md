@@ -78,7 +78,7 @@ tags:
 
 [Unix](https://en.wikipedia.org/wiki/Unix) 在 1970 年左右被开发出来，并运行在 PDP-11 上，使用了 [Teletype Model 33](https://en.wikipedia.org/wiki/Teletype_Model_33) 作为其核心用户界面，这极大的影响了后面计算机终端的发展。
 
-> 在计算机领域，由于 Teletype 这家公司太过出名，Teletype 就是电传打字机的代名词，因此其直接被翻译为了电传打字机，在类 Unix 系统中，tty 就是次单词的缩写。其中最著名的是 Teletype Model 33 型，其历史影响参见：[wiki](https://en.wikipedia.org/wiki/Teletype_Model_33#Historical_impact) （这里提一下许多场景推荐的最大行长度限制 72，猜测主要自于 Teletype Model 33 的每行打印字母数）
+> 在计算机领域，由于 Teletype 这家公司太过出名，Teletype 就是电传打字机的代名词，因此其直接被翻译为了电传打字机，在类 Unix 系统中，tty 就是此单词的缩写。其中最著名的是 Teletype Model 33 型，其历史影响参见：[wiki](https://en.wikipedia.org/wiki/Teletype_Model_33#Historical_impact) （这里提一下许多场景推荐的最大行长度限制 72，猜测主要自于 Teletype Model 33 的每行打印字母数）
 
 下面有一些视频，可以看到电传打字机和计算机连接的场景。
 
