@@ -1,5 +1,5 @@
 ---
-title: "终端为什么长现在这个样子？"
+title: "探索终端的历史渊源"
 date: 2022-04-09T10:26:07+08:00
 draft: false
 toc: true
