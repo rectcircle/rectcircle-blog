@@ -296,7 +296,7 @@ int sigprocmask(int how, const sigset_t *restrict set,
 
 #### 递送信号
 
-除了上文描述的，解除一个信号的屏蔽，来让未决的信号递送外，还可以通过如下系统调用和库函数，将信号设置为已递送（也就是说，解除屏蔽后，不会再重复递送了，也就不会触发任何行为）。
+除了上文描述的，解除一个信号的屏蔽，来让未决的信号递送外，还可以通过如下系统调用和库函数，将信号设置为已递送（这些函数调用后，相当于消费掉了这个信号，解除屏蔽后，不会再重复递送了，即不会触发任何行为）。
 
 * [sigwaitinfo(2) 和 sigtimedwait(2) 系统调用](https://man7.org/linux/man-pages/man2/sigwaitinfo.2.html)
 * [sigwait(3) 库函数](https://man7.org/linux/man-pages/man3/sigwait.3.html)
@@ -308,12 +308,12 @@ int sigprocmask(int how, const sigset_t *restrict set,
 在 Linux 中，一个进程的 引导阶段 (fork) 和 执行阶段 (exec) 对上面信号的配置的继承是不一样的
 
 * 引导阶段 (fork)，当前进程和父进程的信号处理器完全一样，信号屏蔽字完全一样。
-* 执行阶段 (exec)，和 fork 阶段对比
-    * 相同的是
-        * 信号处理器为 ignore 和 默认的信号
-        * 信号屏蔽字
-    * 不同的是
-        * 信号处理器为 自定义函数 的信号其信号处理器将恢复为默认
+* 执行阶段 (exec)，和 fork 阶段对比：
+    * 相同的是：
+        * 信号处理器为 ignore 和 默认的信号。
+        * 信号屏蔽字。
+    * 不同的是：
+        * 信号处理器为 自定义函数 的信号其信号处理器将恢复为默认。
 
 ### 作业控制信号
 
@@ -342,14 +342,14 @@ POSIX.1 定义了 6 个作业控制相关的信号。
     * `shell` 进程接收到 `SIGCHLD` 信号，了解到进程子进程的状态变化，通过 `tcsetpgrp` 系统调用将 `shell` 所在进程组设置到前台，并打印提示输出和命令提示符。
     * 通过 `bg` 命令，向后台进程组发送 `SIGCONT` 信号，让其继续运行。
 * 管道符连接命令：`ps -o pid,ppid,pgid,sid,tpgid,comm | cat | cat`
-    * `bourne shell` 即 `sh` （debian 中的 `sh` 实际上是 `dash`，并不是 `bourne shell`）流程如下所示
+    * `bourne shell` 即 `sh` （debian 中的 `sh` 实际上是 `dash`，并不是 `bourne shell`）流程如下所示：
         * shell 主进程 fork 一个 c 进程, c 进程准备两个管道： `ab`, `bc` 。
         * c 进程 fork a 进程， a 进程 `dup2` 其标准输出为 `ab` 的输入端； `exec ps`。
         * c 进程 fork b 进程， b 进程 `dup2` 其标准输入为 `ab` 的输出端，`dup2` 其标准输出为 `bc` 的输入端； `exec cat` 。
         * c 进程， `dup2` 其标准输入为 `bc` 的输出端， `exec cat`。
         * a，b，c 进程依次退出，c 进程退出时，shell 主进程将收到 c 的 SIGCHLD 信号，且 waitpid 返回。
         * shell 记录 c 进程的退出吗。
-    * `bourne-agent shell` 即 `bash` （debian 中的 `sh` 实际上是 `dash`，并不是 `bourne shell`）流程如下所示
+    * `bourne-agent shell` 即 `bash` （debian 中的 `sh` 实际上是 `dash`，并不是 `bourne shell`）流程如下所示：
         * shell 主进程，准备两个管道（`pipe`）： `ab`, `bc`
         * shell 主进程 fork a 进程，主进程和 a 同时调用 `setpgid` 为 a 进程创建一个新的进程组。
         * shell 主进程 fork b, c 进程，随后 b, c 进程加入进程 a 所在的进程组。
