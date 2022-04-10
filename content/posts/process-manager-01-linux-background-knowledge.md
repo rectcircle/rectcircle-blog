@@ -351,7 +351,7 @@ POSIX.1 定义了 6 个作业控制相关的信号。
         * shell 记录 c 进程的退出吗。
     * `bourne-agent shell` 即 `bash` （debian 中的 `sh` 实际上是 `dash`，并不是 `bourne shell`）流程如下所示：
         * shell 主进程，准备两个管道（`pipe`）： `ab`, `bc`
-        * shell 主进程 fork a 进程，主进程和 a 同时调用 `setpgid` 为 a 进程创建一个新的进程组。
+        * shell 主进程 fork a 进程，主进程和 a 同时调用 `setpgid` 为 a 进程创建一个新的进程组（同时调用目的是防止出现时序问题）。
         * shell 主进程 fork b, c 进程，随后 b, c 进程加入进程 a 所在的进程组。
         * a 进程 `dup2` 其标准输出为 `ab` 的输入端； `exec ps`。
         * b 进程 `dup2` 其标准输入为 `ab` 的输出端，`dup2` 其标准输出为 `bc` 的输入端； `exec cat` 。
