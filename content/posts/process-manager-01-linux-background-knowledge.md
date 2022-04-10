@@ -1,11 +1,11 @@
 ---
 title: "进程管理器（一） Linux 背景知识"
 date: 2022-04-05T18:09:52+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
-  - untagged
+  - linux
 ---
 
 ## 系列综述
@@ -26,7 +26,7 @@ tags:
 * 书籍 APUE （即《Unix 环境高级编程》） 第三版
 * [Linux Manual 站点](https://man7.org/)
 
-注意：本文主要以 Linux 为例阐述，不保证其他兼容 POSIX 标准的操作系统（Linux、MacOS 均是、Windows 不是）有同样的能力。
+注意：本文主要以 Linux 为例阐述，不保证其他兼容 POSIX.1 标准的操作系统（Linux、MacOS 均是、Windows 不是）有同样的能力。
 
 ## 进程
 
@@ -68,7 +68,7 @@ Linux 提供了一个 `setuid/setgid` 的系统调用，当 root 权限（`CAP_S
 
 上文提到了权限通过 `setuid/setgid` 即可实现权限降级，但是如何实现权限升级呢？比如一个没有 root 的进程如何以 root 的身份执行一个程序（比如 sudo、su 命令可以创建一个拥有 root 权限的 shell 进程）。
 
-Linux 在文件系统层面，为可执行文件提供了一种称为 设置用户/组 id 位的特性，当一个文件的属性中启用了 设置用户/组 id 位。那么一个进程使用 `exec` 系统调用执行该程序时，该程序的权限将变为这个可知执行文件的所属用户和所属组。
+Linux 在文件系统层面，为可执行文件提供了一种称为 设置用户/组 id 位的 flag 属性，当一个文件的属性中启用了 设置用户/组 id 位。那么一个进程使用 `exec` 系统调用执行该程序时，该程序的权限将变为这个可知执行文件的所属用户和所属组。
 
 因此，一个具有 设置用户/组 id 位 的程序需要自行实现对用户的身份验证，以保证系统安全。
 
@@ -173,102 +173,190 @@ Linux 在文件系统层面，为可执行文件提供了一种称为 设置用�
 关于终端和前后台进程组、会话首进程的系统调用主要有：
 
 * `pid_t tcgetpgrp(int fd)` 返回 fd 指向终端的关联的前台进程组 id （fd 一般为 0 标准输入）。
-* `int setpgrp(int fd, pid_t pgrpid)` 更改 fd 指向终端的关联的前台进程组 id 为 `pgrpid` （fd 一般为 0 标准输入，pgrpid 一般为 `getpgrp` 返回值，即当前进程所在进程组 id）。
+* `int tcsetpgrp(int fd, pid_t pgrpid)` 更改 fd 指向终端的关联的前台进程组 id 为 `pgrpid` （fd 一般为 0 标准输入，pgrpid 一般为 `getpgrp` 返回值，即当前进程所在进程组 id）。
 * `pid_t tcgetsid(int fd)` 返回 fd 指向终端的会话首进程。
 
 ## 信号
 
+> Linux 手册： [signal(7) 文档](https://man7.org/linux/man-pages/man7/signal.7.html)
+
 ### 信号概念
 
-#### 信号处理的三种行为
+信号是软件中断。当一个进程收到一个信号时，可以配置如下几种处理方式：
 
-#### 信号处理函数调用
-
-真正的异步性（比多线程还早的一种异步性） 和 函数可重入（并发问题） 和 sleep 问题 和 中断系统调用（自动重启）
-
-### 信号集
+* 默认行为，不同的信号有不同的默认行为，默认行为有如下几种：
+    * TERM 终止进程（进程直接结束）。
+    * Ign 忽略信号。
+    * Core 终止进程，并触发 core dump。
+    * Stop 停止进程（进程调度状态变更为 Stop，进程不会结束）。
+    * Cont 如果它目前已停止，继续进程。
+* 忽略信号
+* 自定义处理函数
+* 屏蔽信号
 
 ### 信号异步处理
 
-#### Signal 函数
+信号异步处理指的是，给某个信号设置了自定义处理函数，此时就是信号异步处理函数。
 
-不可靠语义，有效一次（早期是这样的）
+（异步信号处理和多线程一样，存在并发问题，因此不推荐，具体参见下文：中断系统调用和库函数 和 可重入函数）
 
-#### sigaction 函数
+#### 配置自定义处理函数的方式
 
-* 可靠语义，一直有效
-* 可实现异步串行化
+* [signal(2) 系统调用](https://man7.org/linux/man-pages/man2/signal.2.html)（不推荐），该函数的语义，对信号的处理可能是不可靠的。原因是早期，当 signal 注册的自定义函数是一次性的，也就是说当函数被调用后，信号处理方式就会恢复为默认行为，这样可能会造成信号丢失。所以一般的如果需要一直生效的写法就是：
+
+    ```cpp
+    void sig_int() {
+        // 这个时间段，信号处理方式恢复为默认行为，导致信号丢失
+        signal(SIGINT, sig_int);
+        // ...
+    }
+    ```
+
+    但是现代 Linux 中，signal 是通过  sigaction 实现的，并不要上述写法，所以也是可靠的。
+
+* [sigaction(2) 系统调用](https://man7.org/linux/man-pages/man2/sigaction.2.html)，细粒度的控制一个信号的行为。可以用来是实现 `signal(2) 系统调用` 。可以实现如下效果
+    * 一旦对一个信号设置了一个动作，那么在再次显示的调用 sigaction 改变之前，将一直生效。
+    * 信号处理函数处理过程中屏蔽一些信号递送，通过 `sigaction.sa_mask` 设置在信号处理过程中，如果触发了其他信号，将这些信号屏蔽住，直到当前信号处理函数返回后，将自动解除这些信号屏蔽，进行递送。关于信号屏蔽参见同步信号处理。
+
+#### 自定义处理函数调用流程
+
+当针对一个进程配置一个自定义处理函数后，当信号被触发时，对这个自定义处理函数的调用，并不是启动一个新的线程进行处理。而是：
+
+1. 将当前进程的主线程暂停，将栈指针和寄存器信息保存下来。
+2. 在当前进程的主线程中执行自定义信号处理函数。
+3. 恢复主进程的上下文信息，继续执行。
+
+#### 中断系统调用和库函数
+
+假设在信号被触发时，当前进程正在调用阻塞性的系统调用时（如：read、write），这些系统调用可能被中断，此时这些函数有如下两种可选的行为：
+
+* 自动重启，当使用 `signal` 注册自定义处理函数，或者 `sigaction` 设置了 `SA_RESTART` 标志时。
+* 返回 `EINTR` 失败，`sigaction` 未设置 `SA_RESTART` 标志时。
+
+更多参见： [Interruption of system calls and library functions by signal handlers](https://man7.org/linux/man-pages/man7/signal.7.html)
+
+#### 可重入函数
+
+在信号处理函数的编写和普通函数的编写有额外的要求，即不可调用不可重入函数。
+
+可重入函数，即异步信号安全函数。和多线程的线程安全概念类似，更多参见：[signal-safety(7)](https://man7.org/linux/man-pages/man7/signal-safety.7.html)
 
 ### 信号同步处理
 
-* sigwait & sigtimedwait https://pubs.opengroup.org/onlinepubs/009604499/functions/sigwait.html
-* sigsuspend
+#### 信号未决和信号集、信号屏蔽
+
+在信号产生（generation）到信号递送（delivery），之前有一个状态，被称为信号未决（pending）。
+
+在信号异步处理过程中吗，信号未决基本无感，在信号同步处理过程中，可以实现让某信号长时间的处于信号未决的状态，然后通过调用某些函数让这些信号处于已递送的状态。实现这种效果的行为被称为信号屏蔽。换句话说：
+
+* 当一个信号被屏蔽之后，不管之前是该信号配置了处理函数还是忽略还是默认行为，该信号将不会触发任何行为。
+* 当一个信号被取消屏蔽后，如果存在一个处于未决状态的信号，则这个信号将会立即触发配置的行为（可能是忽略、默认行为、自定义处理函数）。
+
+Linux 支持屏蔽一批信号，标识这一批信号的的概念是[信号集](https://linux.die.net/man/3/sigfillset)（具体实现上是一个位图）， 相关系统调用如下所示：
+
+```cpp
+#include <signal.h>
+
+int sigemptyset(sigset_t *set); // 将参数修改为空的信号集
+int sigfillset(sigset_t *set);  // 赋值为将系统使用的所有信号机
+int sigaddset(sigset_t *set, int signum); // 添加一个信号
+int sigdelset(sigset_t *set, int signum); // 删除一个信号
+int sigismember(const sigset_t *set, int signum); // 判断一个信号是否在该信号集中
+```
+
+屏蔽一批信号的系统调用为 [sigprocmask(2) 系统调用](https://man7.org/linux/man-pages/man2/sigprocmask.2.html)。
+
+```cpp
+#include <signal.h>
+int sigprocmask(int how, const sigset_t *restrict set,
+                sigset_t *restrict oldset);
+```
+
+* how 为如何修改
+    * SIG_BLOCK 添加
+    * SIG_UNBLOCK 删除
+    * SIG_SETMASK 覆盖
+* set 带设置的信号机，如果为 NULL 则不会更改
+* oset 返回修改前的被屏蔽的信号集
+
+该系统调用的原理是读取和更改内核中当前进程的信号屏蔽字。
+
+#### 标准信号和实时信号
+
+在 Linux 中，信号分为如下两类
+
+* 标准信号，即 POSIX.1 定义的信号。针对每一个标准信号，每个进程只会存在一个未决的信号，也就是说：
+    * 当某个标准信号被屏蔽后，且收到一个该信号，此时该信号状态是未决的。
+    * 此后，在解除屏蔽之前，又收到了该信号多次（这些信号会被丢弃）。
+    * 在解除屏蔽后，该信号只会递送一次。
+* 实时信号，`SIGRTMIN` 到 `SIGRTMAX` 之间的信号。针对每一个标准信号，每个进程可以存在多个未决的信号，也就是说：
+    * 当某个标准信号被屏蔽后，且收到一个该信号，此时该信号状态是未决的。
+    * 此后，在解除屏蔽之前，又收到了该信号多次（进行排队）。
+    * 在解除屏蔽后，该信号会递送多次次。
+
+#### 递送信号
+
+除了上文描述的，解除一个信号的屏蔽，来让未决的信号递送外，还可以通过如下系统调用和库函数，将信号设置为已递送（也就是说，解除屏蔽后，不会再重复递送了，也就不会触发任何行为）。
+
+* [sigwaitinfo(2) 和 sigtimedwait(2) 系统调用](https://man7.org/linux/man-pages/man2/sigwaitinfo.2.html)
+* [sigwait(3) 库函数](https://man7.org/linux/man-pages/man3/sigwait.3.html)
+
+注意：[sigpending(2) 系统调用](https://man7.org/linux/man-pages/man2/sigpending.2.html) 可以获取到所有处于未决状态的信号，但是不会将这些信号设置为已递送。
 
 ### 信号继承
 
-### 常见信号说明
+在 Linux 中，一个进程的 引导阶段 (fork) 和 执行阶段 (exec) 对上面信号的配置的继承是不一样的
 
-#### 作业控制信号
+* 引导阶段 (fork)，当前进程和父进程的信号处理器完全一样，信号屏蔽字完全一样。
+* 执行阶段 (exec)，和 fork 阶段对比
+    * 相同的是
+        * 信号处理器为 ignore 和 默认的信号
+        * 信号屏蔽字
+    * 不同的是
+        * 信号处理器为 自定义函数 的信号其信号处理器将恢复为默认
 
-## shell 原理
+### 作业控制信号
 
-https://github.com/krallin/tini/issues/8
+POSIX.1 定义了 6 个作业控制相关的信号。
 
-## 备忘
+* SIGCHLD 子进程已停止或者终止，父进程将接收到该信号，默认行为为忽略。
+* SIGCONT 如果进程已停止，则使其继续运行，默认行为为继续该进程。
+* SIGSTOP 停止信号（不能被捕捉、忽略或屏蔽），默认行为为停止该进程。
+* SIGTSTP （Ctrl + Z）交互式停止信号，默认行为为停止该进程。
+* SIGTTIN 后台进程组成员读控制终端，默认行为停止。
+* SIGTTOU 后台进程组成员写控制终端，默认行为停止（仅当 tty 被设置为 TOSTOP 时才会发生，即停止后台进程组的输出（在 shell 中可以通过 `stty tostop` 命令关闭））。
 
-* docker --init
-    * https://docs.docker.com/engine/reference/run/#specify-an-init-process
-    * /sbin/docker-init
-* man signal https://man7.org/linux/man-pages/man7/signal.7.html
-    * SIGTTIN
-    * SIGTTOU
-    * SIGURG docker bug https://docs.docker.com/engine/release-notes/#20107
-* 信号处理函数
-    * https://man7.org/linux/man-pages/man2/sigaction.2.html
-    * https://www.jianshu.com/p/9b8281fe75c5
-* 实时信号 https://www.icode9.com/content-3-763729.html
-* 信号 mask
-    * https://blog.51cto.com/u_1793109/606688
-    * https://blog.csdn.net/u010709783/article/details/78390184
-    * https://jason--liu.github.io/2019/04/15/use-sigprocmask/
-    * https://www.cnblogs.com/my_life/articles/5146192.html
-* 查看进程各种 id https://unix.stackexchange.com/questions/82724/ps-arguments-to-display-pid-ppid-pgid-and-sid-collectively
-* Go 语言信号处理
-    * https://pkg.go.dev/os/signal
-    * https://juejin.cn/post/6875097644100763655
-    * https://www.hitzhangjie.pro/blog/2021-05-25-go%E7%A8%8B%E5%BA%8F%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B/#sigpipe%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86
-    * https://books.studygolang.com/The-Golang-Standard-Library-by-Example/chapter16/16.03.html
-    * https://golang.design/under-the-hood/zh-cn/part2runtime/ch06sched/signal/
-    * CGO
-        * https://stackoverflow.com/questions/47869988/how-does-cgo-handle-signals
-        * https://github.com/golang/go/issues/7227
-* 更改 session 的前台进程 https://man7.org/linux/man-pages/man3/tcgetpgrp.3.html#DESCRIPTION 和 SIGTTOU 信号未忽略，导致的阻塞问题
-* Go bug reset 不处理 ignored 信号
-    * https://github.com/golang/go/issues/46321
-    * https://github.com/golang/go/issues/20479
-* Go fork 多线程问题
-* Go syscall 和 RawSyscall 区别
-    * https://www.cnblogs.com/dream397/p/14301620.html
-    * https://stackoverflow.com/questions/16977988/details-of-syscall-rawsyscall-syscall-syscall-in-go
-* go unix 库 https://cs.opensource.google/go/x/sys/+/483a9cbc:unix/ioctl.go;l=28
-* 终端颜色和环境变量 TERM，LS_COLORS
-* 控制终端
-    * http://shareinto.github.io/2016/11/17/linux-terminal/
-    * https://blog.csdn.net/weixin_44966641/article/details/120585519
-* 守护进程
-    * https://www.kawabangga.com/posts/3849
-    * https://www.cnblogs.com/yaodd/p/5558857.html
-* Go fork 两种方式之 reexec 方式
-    * https://jiajunhuang.com/articles/2018_03_08-golang_fork.md.html
-    * https://github.com/moby/moby/blob/master/pkg/reexec/reexec.go
-* Go fork 问题 https://stackoverflow.com/questions/28370646/how-do-i-fork-a-go-process
-* Go 语言的 tcxx 相关函数实现 https://github.com/snabb/tcxpgrp
-* GO 进程收割者 https://gist.github.com/williammartin/eb355f7d387791a9c225361e5d19ea40
-* Go exec https://gobyexample.com/execing-processes
-* APUE 进程管理作业管理
-    * https://blog.csdn.net/qq_41453285/article/details/90484881
-    * https://blog.csdn.net/TODD911/article/details/17011259
-* 信号继承
-    * https://blog.csdn.net/guozhiyingguo/article/details/53837424
-    * https://www.freesion.com/article/2325480275/
-* Go 设置父进程死亡信号通知 https://gist.github.com/corvuscrypto/cec8255687aa962c3562d0e5c548da37#file-main-go-L52
+注意
+
+* 当一个进程产生四种为停止信号时（SIGSTOP、SIGTSTP、SIGTTIN、SIGTTOU），处于未决状态的 SIGCONT 的将被丢弃。
+* 当一个进程产生 SIGCONT 时，处于未决状态的四种停止信号时（SIGSTOP、SIGTSTP、SIGTTIN、SIGTTOU）将被丢弃。
+* SIGCONT 默认行为为继续，但是如果当前进程本身就继续，则该信号不会做任何事情。
+
+## Shell 原理简述
+
+* shell 进程不会创建会话，会话的创建取决于创建 shell 的进程（sshd、xterm 等）是否在其引导阶段分配，一般会分配一个。
+* 创建一个后台进程组：执行 `cmd1 &` ，通过 `setpgid` 系统调用创建。
+* 将一个后台进程组切换到前台：`fg <jobid>` 命令，通过 `tcsetpgrp` 系统调用将某后台进程组切换到前台。
+* 将一个前台进程组的进程切换到后台，并继续运行：
+    * 输入 `ctrl + z` 发送 `SIGTSTP` 让该进程组的进程停止。
+    * `shell` 进程接收到 `SIGCHLD` 信号，了解到进程子进程的状态变化，通过 `tcsetpgrp` 系统调用将 `shell` 所在进程组设置到前台，并打印提示输出和命令提示符。
+    * 通过 `bg` 命令，向后台进程组发送 `SIGCONT` 信号，让其继续运行。
+* 管道符连接命令：`ps -o pid,ppid,pgid,sid,tpgid,comm | cat | cat`
+    * `bourne shell` 即 `sh` （debian 中的 `sh` 实际上是 `dash`，并不是 `bourne shell`）流程如下所示
+        * shell 主进程 fork 一个 c 进程, c 进程准备两个管道： `ab`, `bc` 。
+        * c 进程 fork a 进程， a 进程 `dup2` 其标准输出为 `ab` 的输入端； `exec ps`。
+        * c 进程 fork b 进程， b 进程 `dup2` 其标准输入为 `ab` 的输出端，`dup2` 其标准输出为 `bc` 的输入端； `exec cat` 。
+        * c 进程， `dup2` 其标准输入为 `bc` 的输出端， `exec cat`。
+        * a，b，c 进程依次退出，c 进程退出时，shell 主进程将收到 c 的 SIGCHLD 信号，且 waitpid 返回。
+        * shell 记录 c 进程的退出吗。
+    * `bourne-agent shell` 即 `bash` （debian 中的 `sh` 实际上是 `dash`，并不是 `bourne shell`）流程如下所示
+        * shell 主进程，准备两个管道（`pipe`）： `ab`, `bc`
+        * shell 主进程 fork a 进程，主进程和 a 同时调用 `setpgid` 为 a 进程创建一个新的进程组。
+        * shell 主进程 fork b, c 进程，随后 b, c 进程加入进程 a 所在的进程组。
+        * a 进程 `dup2` 其标准输出为 `ab` 的输入端； `exec ps`。
+        * b 进程 `dup2` 其标准输入为 `ab` 的输出端，`dup2` 其标准输出为 `bc` 的输入端； `exec cat` 。
+        * c 进程， `dup2` 其标准输入为 `bc` 的输出端， `exec cat`。
+        * a，b，c 进程依次退出，shell 主进程将收到这些进程的 SIGCHLD 信号，且 waitpid 返回。
+        * shell 记录 c 进程的退出吗。
+
+其他更多参见：APUE 第 9.8 章、9.9 章。
