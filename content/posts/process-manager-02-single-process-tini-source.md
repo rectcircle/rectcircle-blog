@@ -1,12 +1,88 @@
 ---
-title: "进程管理器（二）单进程管理器 Tini 源码分析"
+title: "进程管理器（二）单进程管理器 tini 源码分析"
 date: 2022-04-05T18:11:53+08:00
 draft: true
 toc: true
 comments: true
 tags:
-  - untagged
+  - linux
 ---
+
+## tini 简介
+
+[tini](https://github.com/krallin/tini) 是一个超轻量级的 `init` （进程管理器），用作容器的守护进程。
+
+tini 只会做如下事情：
+
+* 生成一个进程（tini 旨在在容器中运行），并一直等待它退出。
+* 收割僵尸。
+* 执行信号转发。
+
+tini 编译产物只有一个可执行文件，其静态编译版本，没有任何依赖（如 glibc），可以在任何 Linux 发行版中使用。
+
+tini 并不是一个像 systemd 一样的全功能进程管理器，而是一个服务于容器的单进程管理器。一般情况下，服务容器化要求一个容器尽量只做一件事情，即只有一个或一组进程，因此 tini 在容器化场景足够使用了。
+
+## tini 使用
+
+> [README#using-tini](https://github.com/krallin/tini#using-tini)
+
+tini 预装到了 docker 中，在 `docker run` 命令中，可以通过 [`--init`](https://docs.docker.com/engine/reference/commandline/run/) 参数即可无感的使用 tini。通过这种方式，无法使用 `tini` 的一些选项，但在绝大多数场景够用。
+
+也可以吧 tini 直接打包到镜像中。然后配置 `ENTRYPOINT` 为： `["/path/to/tini", "--"]`。（可以添加 `tini` 的一些选项，但是需要在 `--` 的前面，如 `["/path/to/tini", "-vvv", "--"]` 打印更详细的日志）。
+
+更多关于 tini 的选项，参见其 [README](https://github.com/krallin/tini#options)。
+
+## tini 优势
+
+通过 tini 可以避免业务进程重复编写本该由 1 号进程该做的事情，可以帮传统的应用可以无感迁移到容器化部署。
+
+1. 收割意外的产生僵尸进程（如果业务进程作为容器的 1 号进程，且没有 wait 子进程退出，则可能产生僵尸进程）。
+2. 接收并转发信号，实现优雅退出（如果业务进程作为容器的 1 号进程，且没有配置信号处理程序，因为 1 号进程的信号的默认行为为：什么都不做，这导致 docker stop 时，发送给该进程的 TERM 信号无法让进程退出）。
+3. 从不不使用 tini，切换到使用 tini，是透明的，只需要 docker run 时添加 `--init` 选项，即：
+    * 不需要改变镜像
+    * 不需要 entrypoint 和 command
+
+> shell 也可以做到如上第一点，但是无法做到第二点。shell 默认的信号处理行为是默认，在 1 号进程中就是忽略，并不会将信号转发给其子进程，因此无法实现 `TERM` 信号优雅退出。更多参见：[What is advantage of Tini?](https://github.com/krallin/tini/issues/8)
+
+## tini 源码分析
+
+> 版本： [v0.19.0](https://github.com/krallin/tini/blob/v0.19.0/src/tini.c)
+
+### 项目结构
+
+tini 是一个 cmake 项目。代码非常简短，只有一个不到 700 行的 `.c` 源代码文件（[tini.c](https://github.com/krallin/tini/blob/v0.19.0/src/tini.c)）。
+
+### 流程概述
+
+tini 在运行时一共有两个进程：主进程和业务进程，由主进程启动业务进程。
+
+TODO 一个流程图图
+
+```
+初始化
+  |
+  |---------------子进程初始化
+  | 
+主循环
+```
+
+### 主进程初始化流程
+
+#### 解析参数
+
+#### 配置信号
+
+#### 配置父进程退出时子进程触发的信号（可选）
+
+#### 将当前进程注册为僵尸收割者（可选）
+
+#### 检查当前进程是否是进程收割者
+
+#### fork 子进程
+
+### 子进程引导阶段流程
+
+### 主进程循环流程
 
 https://github.com/krallin/tini
 
