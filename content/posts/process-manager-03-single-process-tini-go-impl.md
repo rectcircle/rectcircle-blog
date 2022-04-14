@@ -215,7 +215,7 @@ Go 存在一个运行时，在 Runtime 启动之处的主线程 M0，会对信�
 在 Go 中，虽然不能实现通过信号屏蔽字实现如上效果，但是可以通过 Go 提供的 `os/signal` 实现类似的效果：
 
 * 主进程
-    * 使用 `os/signal` 的 `Notify` 注册除出了 SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT, SIGTRAP, SIGSYS, SIGTTIN, SIGTTOU 信号处理函数，并启动一个协程转发信号。
+    * 使用 `os/signal` 的 `Notify` 接收除了 SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT, SIGTRAP, SIGSYS, SIGTTIN, SIGTTOU 之外的信号，并启动一个协程转发信号。
     * 使用 `os/signal` 的 `Ignored` 记录 SIGTTIN, SIGTTOU 信号的初始状态。
     * 使用 `os/signal` 的 `Ignore` 忽略 SIGTTIN, SIGTTOU 信号。
     * fork 子进程，将 SIGTTIN, SIGTTOU 的初始状态通过命令行参数传递给子进程（参见下文）。
@@ -228,25 +228,25 @@ Go 存在一个运行时，在 Runtime 启动之处的主线程 M0，会对信�
 
 上文我们看到。我们需要在子进程中的引导阶段（fork 和 exec 调用之间）插入一段逻辑，来恢复信号。
 
-### Linux 的 fork-exec
+### Linux C 的 fork-exec
 
-在 Linux fork 一个进程，分为两步，fork 和 exec。在 fork 后，子进程进行一些初始化操作后（引导阶段），调用 exec 执行新的进程。
+在 Linux 创建一个进程并执行一个程序，分为两步，fork 和 exec。在 fork 后，子进程进行一些初始化操作后（引导阶段），调用 exec 执行新的进程。
 
 ### Go `os/exec` 包及其原理
 
-Go 语言的启动一个新的进程，被封装到了 `os/exec` 下，看起来没有 Linux 中的 fork exec 两步，源码位于：[syscall.forkExec](https://github.com/golang/go/blob/a2baae6851a157d662dff7cc508659f66249698a/src/syscall/exec_unix.go#L141)。
+Go 语言的启动一个新的进程，被封装到了 `os/exec` 下，看起来没有 Linux 中的 fork exec 两步。实际上和 Linux C 类似，也有 fork exec 两个阶段，源码位于：[syscall.forkExec](https://github.com/golang/go/blob/a2baae6851a157d662dff7cc508659f66249698a/src/syscall/exec_unix.go#L141)。
 
 ### 方案一：syscall.SYS_FORK（错误）
 
-不适用使用 Go 标准库的 `os/exec` 而是直接使用 `syscall.SYS_FORK` 来 fork，然后加入一部分逻辑，然后再执行 `syscall.Exec` 启动业务进程。
+该方案为：不使用使用 Go 标准库的 `os/exec` 而是直接使用 `syscall.SYS_FORK` 来 fork，然后加入一部分逻辑，然后再执行 `syscall.Exec` 启动业务进程。
 
-但是这样做是错误的，原因在于：`fork` 在多线程场景的局限性。即：不管当前进程有多少个线程，fork 后创建的子进程，也只会有一个线程，其他线程都将不复存在。
+但是这样做是错误的，原因在于：`fork` 在多线程场景的局限性。即：不管当前进程有多少个线程，fork 后创建的子进程，也只会有一个线程，其他线程都将不会被复制下来。
 
 因此在 Go 语言中，经测试 fork 系统调用后， `os/signal` 将会失效，原因猜测是，fork 后，由于线程的丢失，在 runtime 中，与信号处理相关的逻辑将失效。
 
 ### 方案二：通过一个特殊参数启动当前程序
 
-fork 子进程仍然通过 `os/exec` 方式启动，但是启动的程序和主进程保持一致，指向完引导逻辑后，调用 `syscall.Exec` 指向其他程序（注意，第三个参数为 `os.Environ()` 以继承环境变量）。
+fork 子进程仍然通过 `os/exec` 方式启动，但是启动的程序就是主进程的程序。子进程执行完引导逻辑后，调用 `syscall.Exec` 执行其他程序（注意，第三个参数为 `os.Environ()` 以继承环境变量）。
 
 在 Linux 中，大致实现如下：
 
