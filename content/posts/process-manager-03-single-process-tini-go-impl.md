@@ -1,7 +1,7 @@
 ---
 title: "进程管理器（三）通过 Go 语言实现 tini"
 date: 2022-04-05T18:13:00+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
@@ -146,91 +146,134 @@ Go 提供了针对操作系统平台的条件编译的能力。针对 Linux 平�
 
 ### Go `os/signal` 包
 
-https://pkg.go.dev/os/signal
+> [os/signal](https://pkg.go.dev/os/signal)
+
+在 Go 语言中，信号的默认行为和 Linux(POSIX) 大致相同，但是存在如下区别：
+
+* `SIGBUS`（总线错误）, `SIGFPE`（算术错误）, `SIGSEGV`（段错误）称为同步信号，它们在程序执行错误时触发，而不是通过 `os.Process.Kill` 之类的触发。在 Linux 中是产生 core 文件的，在 Go 中是产生 panic 的。
+* `SIGPROF`，在 Linux 中默认行为为终止， Go 运行时使用该信号实现 `runtime.CPUProfile`。
+* `SIGPIPE`，默认行为和 Linux 不同：
+    * 写入文件描述符 1 或 2 上的损坏管道（标准输出或标准错误），将导致程序触发 SIGPIPE 信号，此时其默认行为为退出。
+    * 其他场景（如往一个关闭的 socket 或 pipe 写数据时），传统 Linux 程序会触发  `SIGPIPE` 信号，而 Go 只会返回 `EPIPE` 错误，也会出触发 SIGPIPE 信号，但此时其默认行为为什么都不做。
+
+在 Go 中，信号接收被抽象成了 Go 语言的 channel 特性。
+
+```go
+import (
+	"fmt"
+	"os"
+	"os/signal"
+)
+
+func main() {
+    // 构造一个 channel，用于接收信号
+    // 如果在发送信号时我们还没有准备好接收，我们必须使用缓冲通道，否则可能会丢失信号。
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+    // 阻塞等待，直到收到信号。
+	s := <-c
+	fmt.Println("Got signal:", s)
+}
+```
+
+其他函数为：
+
+* `signal.Ignore` 和 Linux 不同，在 Go 语言中忽略一个信号通过该专门的函实现的
+* `signal.Ignored` 检查一个信号是否被忽略。
+* `signal.Reset` 将信号处理函数恢复为默认行为（这里的默认行为是 Go 定义的默认行为）。
+* `signal.Stop` 不再将转发信号到信号中，但是不会将信号恢复为默认行为：
 
 ### 信号在 Go runtime 的实现
 
-https://golang.design/under-the-hood/zh-cn/part2runtime/ch06sched/signal/
+> [Go 语言原本](https://golang.design/under-the-hood/zh-cn/part2runtime/ch06sched/signal/) | [源码：Linux 下对信号的配置](https://github.com/golang/go/blob/f229e7031a6efb2f23241b5da000c3b3203081d6/src/runtime/sigtab_linux_generic.go#L9) | [源码：](https://github.com/golang/go/blob/9839668b5619f45e293dd40339bf0ac614ea6bee/src/runtime/signal_unix.go#L608)
+
+Go 存在一个运行时，在 Runtime 启动之处的主线程 M0，会对信号进程初始化（只会在 M0 初始化 1 次），大致步骤为：
+
+* 记录启动之初的信号屏蔽字，原因是，后续步骤会对信号屏蔽字进行更改，需要保存下来，以再创建新的进程时（`os/exec`）进行恢复。
+* 初始化信号栈，原因是， Go 的协程栈的特殊性，Go 的信号处理函数需要在单独的栈中运行。
+* 初始化信号屏蔽字，原因是，在 Go Runtime 启动时从父进程继承的信号屏蔽字可能屏蔽了一些信号，Go 为了一致性和 Go runtime 的正确性，需要将其恢复。（比如 Go 承诺 `ctrl + c` 可以终止进程，如果不恢复，`ctrl + c` 就失效了）
+* for 循环，为大多数信号（从父进程继承下来的 Ignore 情况等除外）注册信号处理函数。注意，会使用 `SA_ONSTACK` 标志，理由和第二点一致。这个处理函数实现了 `os/signal` 描述的默认行为，以及将信号发送给 `os/signal` 的 `Notify` 注册的 Channel 中。
 
 ### 一个 bug 或者说 特性
 
+从源码来看 `signal.Reset` 只能将 `signal.Notify` 的对应的信号的行为恢复为默认，对于 `signal.Igonre` 的信号则不会生效。
+
 ### tini 信号相关的设计
+
+在 tini 中，对信号信号处理的安排如下：
+
+* 主进程:
+    * SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT, SIGTRAP, SIGSYS 保持默认行为
+    * SIGTTIN, SIGTTOU 行为设置为忽略
+    * 其他信号转发给工作进程
+* 子进程:
+    * 和主进程从父进程继承下来的配置一致
 
 ### Go 语言实现思路
 
+在 Go 中，虽然不能实现通过信号屏蔽字实现如上效果，但是可以通过 Go 提供的 `os/signal` 实现类似的效果：
+
+* 主进程
+    * 使用 `os/signal` 的 `Notify` 注册除出了 SIGFPE, SIGILL, SIGSEGV, SIGBUS, SIGABRT, SIGTRAP, SIGSYS, SIGTTIN, SIGTTOU 信号处理函数，并启动一个协程转发信号。
+    * 使用 `os/signal` 的 `Ignored` 记录 SIGTTIN, SIGTTOU 信号的初始状态。
+    * 使用 `os/signal` 的 `Ignore` 忽略 SIGTTIN, SIGTTOU 信号。
+    * fork 子进程，将 SIGTTIN, SIGTTOU 的初始状态通过命令行参数传递给子进程（参见下文）。
+* 业务进程（子进程）
+    * 在引导阶段，恢复信号
+        * 如果 SIGTTIN, SIGTTOU 的默认状态为 Ignore，什么都不做，因为从父进程继承了 Ignore 的状态。
+        * 否则，使用 `os/signal` 的 `Notify` 以及 `Reset` 将 SIGTTIN（先 `Notify` 再 `Reset` 的原因参见上文所述 bug）, SIGTTOU 恢复为默认行为。
+
 ## Go 语言程序实现子进程的引导阶段
+
+上文我们看到。我们需要在子进程中的引导阶段（fork 和 exec 调用之间）插入一段逻辑，来恢复信号。
 
 ### Linux 的 fork-exec
 
-### Go `os/exec` 包
+在 Linux fork 一个进程，分为两步，fork 和 exec。在 fork 后，子进程进行一些初始化操作后（引导阶段），调用 exec 执行新的进程。
 
-### Go 创建进程原理分析
+### Go `os/exec` 包及其原理
+
+Go 语言的启动一个新的进程，被封装到了 `os/exec` 下，看起来没有 Linux 中的 fork exec 两步，源码位于：[syscall.forkExec](https://github.com/golang/go/blob/a2baae6851a157d662dff7cc508659f66249698a/src/syscall/exec_unix.go#L141)。
 
 ### 方案一：syscall.SYS_FORK（错误）
 
+不适用使用 Go 标准库的 `os/exec` 而是直接使用 `syscall.SYS_FORK` 来 fork，然后加入一部分逻辑，然后再执行 `syscall.Exec` 启动业务进程。
+
+但是这样做是错误的，原因在于：`fork` 在多线程场景的局限性。即：不管当前进程有多少个线程，fork 后创建的子进程，也只会有一个线程，其他线程都将不复存在。
+
+因此在 Go 语言中，经测试 fork 系统调用后， `os/signal` 将会失效，原因猜测是，fork 后，由于线程的丢失，在 runtime 中，与信号处理相关的逻辑将失效。
+
 ### 方案二：通过一个特殊参数启动当前程序
+
+fork 子进程仍然通过 `os/exec` 方式启动，但是启动的程序和主进程保持一致，指向完引导逻辑后，调用 `syscall.Exec` 指向其他程序（注意，第三个参数为 `os.Environ()` 以继承环境变量）。
+
+在 Linux 中，大致实现如下：
+
+```go
+// 父进程
+cmd := &exec.Cmd{
+    Path:   "/proc/self/exe", // 先只支持 Linux
+    Args:   []string{"tini-go-bootstrap", ...},
+    Stdin:  os.Stdin,
+    Stdout: os.Stdout,
+    Stderr: os.Stderr,
+}
+err := cmd.Start()
+
+// 子进程
+func main() {
+    if os.Args[0] == "tini-go-bootstrap" {
+        // 引导逻辑
+        // ...
+        err := syscall.Exec(childPath, os.Args[1:], os.Environ())
+        return 
+    }
+}
+```
 
 ## 源码
 
 除如上核心问题外，其他部分和 tini C 语言版本差别不大。
 
 Go 语言版本的 tini 已经开源在了 Github 上： [rectcircle/tini-go](https://github.com/rectcircle/tini-go)。
-
-https://github.com/krallin/tini
-
-* docker --init
-    * https://docs.docker.com/engine/reference/run/#specify-an-init-process
-    * /sbin/docker-init
-* man signal https://man7.org/linux/man-pages/man7/signal.7.html
-    * SIGTTIN
-    * SIGTTOU
-    * SIGURG docker bug https://docs.docker.com/engine/release-notes/#20107
-* 信号处理函数
-    * https://man7.org/linux/man-pages/man2/sigaction.2.html
-    * https://www.jianshu.com/p/9b8281fe75c5
-* 实时信号 https://www.icode9.com/content-3-763729.html
-* 信号 mask
-    * https://blog.51cto.com/u_1793109/606688
-    * https://blog.csdn.net/u010709783/article/details/78390184
-    * https://jason--liu.github.io/2019/04/15/use-sigprocmask/
-    * https://www.cnblogs.com/my_life/articles/5146192.html
-* 查看进程各种 id https://unix.stackexchange.com/questions/82724/ps-arguments-to-display-pid-ppid-pgid-and-sid-collectively
-* Go 语言信号处理
-    * https://pkg.go.dev/os/signal
-    * https://juejin.cn/post/6875097644100763655
-    * https://www.hitzhangjie.pro/blog/2021-05-25-go%E7%A8%8B%E5%BA%8F%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B/#sigpipe%E4%BF%A1%E5%8F%B7%E5%A4%84%E7%90%86
-    * https://books.studygolang.com/The-Golang-Standard-Library-by-Example/chapter16/16.03.html
-    * https://golang.design/under-the-hood/zh-cn/part2runtime/ch06sched/signal/
-    * CGO
-        * https://stackoverflow.com/questions/47869988/how-does-cgo-handle-signals
-        * https://github.com/golang/go/issues/7227
-* 更改 session 的前台进程 https://man7.org/linux/man-pages/man3/tcgetpgrp.3.html#DESCRIPTION 和 SIGTTOU 信号未忽略，导致的阻塞问题
-* Go bug reset 不处理 ignored 信号
-    * https://github.com/golang/go/issues/46321
-    * https://github.com/golang/go/issues/20479
-* Go fork 多线程问题
-* Go syscall 和 RawSyscall 区别
-    * https://www.cnblogs.com/dream397/p/14301620.html
-    * https://stackoverflow.com/questions/16977988/details-of-syscall-rawsyscall-syscall-syscall-in-go
-* go unix 库 https://cs.opensource.google/go/x/sys/+/483a9cbc:unix/ioctl.go;l=28
-* 终端颜色和环境变量 TERM，LS_COLORS
-* 控制终端
-    * http://shareinto.github.io/2016/11/17/linux-terminal/
-    * https://blog.csdn.net/weixin_44966641/article/details/120585519
-* 守护进程
-    * https://www.kawabangga.com/posts/3849
-    * https://www.cnblogs.com/yaodd/p/5558857.html
-* Go fork 两种方式之 reexec 方式
-    * https://jiajunhuang.com/articles/2018_03_08-golang_fork.md.html
-    * https://github.com/moby/moby/blob/master/pkg/reexec/reexec.go
-* Go fork 问题 https://stackoverflow.com/questions/28370646/how-do-i-fork-a-go-process
-* Go 语言的 tcxx 相关函数实现 https://github.com/snabb/tcxpgrp
-* GO 进程收割者 https://gist.github.com/williammartin/eb355f7d387791a9c225361e5d19ea40
-* Go exec https://gobyexample.com/execing-processes
-* APUE 进程管理作业管理
-    * https://blog.csdn.net/qq_41453285/article/details/90484881
-    * https://blog.csdn.net/TODD911/article/details/17011259
-* 信号继承
-    * https://blog.csdn.net/guozhiyingguo/article/details/53837424
-    * https://www.freesion.com/article/2325480275/
-* Go 设置父进程死亡信号通知 https://gist.github.com/corvuscrypto/cec8255687aa962c3562d0e5c548da37#file-main-go-L52
