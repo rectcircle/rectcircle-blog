@@ -8,6 +8,8 @@ tags:
   - untagged
 ---
 
+## IPv6 基础知识
+
 ```
 docker run -d --name ipv6nat --privileged --network host --restart unless-stopped -v /var/run/docker.sock:/var/run/docker.sock:ro -v /lib/modules:/lib/modules:ro robbertkl/ipv6nat
 docker network create my-net-ipv6 --ipv6 --subnet="fd00:1::1/80" --gateway="fd00:1::1"
@@ -22,6 +24,7 @@ docker run -u root --network my-net-ipv6  -it --entrypoint bash debian:11
 * docker ipv6 规划 https://dker.ru/docs/docker-engine/user-guide/network-configuration/default-bridge-network/ipv6-with-docker/
     * 方式一：宿主机分配了一整个 ipv6 网段
     * 方式二 NDP：宿主机只分配了一个 ip，但允许该主机分配其他网络。
+    * https://gdevillele.github.io/engine/userguide/networking/default_network/ipv6/
 * 配置默认 bridge 方法
     * 官方文档 https://docs.docker.com/config/daemon/ipv6/ https://docs.docker.com/network/bridge/#use-ipv6
     * 原理 https://blog.csdn.net/taiyangdao/article/details/83066009
