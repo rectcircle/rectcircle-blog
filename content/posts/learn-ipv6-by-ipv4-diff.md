@@ -1,7 +1,7 @@
 ---
 title: "通过和 IPv4 对比，学习 Ipv6 "
 date: 2022-04-23T20:01:00+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
@@ -10,20 +10,98 @@ tags:
 
 > 本文面向的是开发者，旨在让开发者通过和 IPv4 对比的方式，了解 IPv6 的大概原理。专业网工或者想了解协议细节者，建议阅读 RFC 原文或设备厂商文档。
 
-## IPv6 和 IPv4 对比概述
+## 通信过程和几种表
 
-https://datatracker.ietf.org/doc/html/rfc8200
-https://datatracker.ietf.org/doc/html/rfc2460
+> 本部分主要来复习下，计算机网络的基本通讯流程。
 
-https://en.wikipedia.org/wiki/IPv6
-https://zh.wikipedia.org/wiki/IPv6
+不管 IPv4 还是 IPv6，其单播通讯（关于单播参见下文）都依赖如下三种表：
 
-https://zhuanlan.zhihu.com/p/71684181
-https://www.ibm.com/docs/zh/i/7.2?topic=6-comparison-ipv4-ipv6
+| 类型 | 设备 | 层级| 核心字段 |
+| ---- | ---- | ----- |---- |
+| 路由表 | 主机/路由器 | 三层 | 目标 IP (key)，下一跳 IP (value)，网口 (value) |
+| ARP 表（IPv6 类似的叫 nd cache） | 主机/路由器 | 二层到三层之间 | IP 地址 (key) ，Mac 地址 (value)，网口 (value) |
+| Mac 地址表 | 交换机 | 一层到二层之间 | Mac 地址 (key)，网口 (value) |
 
-https://zhuanlan.zhihu.com/p/64598841
-https://zhuanlan.zhihu.com/p/67843942
-https://zhuanlan.zhihu.com/p/79633456
+这几种表在通讯过程中的用途需如下两种情况讨论：
+
+* 同网络通讯
+* 跨网络通讯
+
+同网络通讯场景，假设网络拓扑如下（以 IPv4 为例），主机 A 发送 IP 报文给 Host B：
+
+```
+Host A  ------------ Switch 0 ------------ Host B
+192.168.0.2/24                             192.168.0.3/24
+```
+
+* Host A 构造消息
+    * IP 层
+        * 目标地址需应用配置，为：`192.168.0.3`。
+        * 源地址若未配置按照如下逻辑确定，为 `192.168.0.2`。
+            * 用 目标地址 匹配每一个网卡的网段，如果在同一网段，则使用该网卡的 IP 地址作为源地址（本例符合该场景）。
+            * 否则，按照一定策略选择一个网卡作为源地址。
+            * 在这个场景，只有一个网卡，所以源地址为 `192.168.0.2`。
+    * 以太网层
+        * 目标地址按照如下逻辑确定，在这个场景中，Mac 地址就是 Host B 的 Mac 地址。
+            * 如果 IP 层的目标地址和源地址属于同一网段，则使用目标 IP 地址查询 **ARP 表**，获取目标的 Mac 地址（本例符合该场景）。
+            * 如果 IP 层的目标地址和源地址不属于同一网段，则查询**路由表**（主机的路由表是静态的下一跳固定位为网关地址），获取下一跳地址，则使用下一跳地址查询 **ARP 表**，获取目标的 Mac 地址。
+            * 如果 ARP 表中没有查到，将使用 ARP/NDP 协议解析 Mac 地址（参见下文：[Mac 地址解析](#mac-地址解析)）
+        * 源地址为选定网卡的 Mac 地址。
+    * 物理层，直接按照 ARP 表选定的网口发送报文。
+* Switch 0 转发消息
+    * 物理层，将信号还原为数据。
+    * 以太网层，查找 **Mac 地址表**，获取到目标 Mac 地址所属的网口（ARP/NDP 协议解析 会触发交换机的 Mac 地址表的自学习特性。所以一般情况下会存在，如果不存在就是属于过期的情况）。
+    * 物理层，如果 Mac 地址表找到了，直接将数据原封不动从该网口发送出去。如果找不到，则从所有网口发送出去。
+* Host B 接收消息
+    * 物理层，将信号还原为数据。
+    * 以太网层，检查包的目标 Mac 地址和当前网卡的 Mac 地址是否一样，不一样将丢弃。
+    * IP 层，检查包的目标 IP 地址和当前网卡的 Mac 地址是否一样，不一样将丢弃。
+
+跨网络通讯场景，假设网络拓扑如下（以 IPv4 为例），主机 A 发送 IP 报文给 Host B：
+
+```
+Host A  ------------------------ Router 0 ------------------------ Host B
+192.168.0.2/24     192.168.0.1/24        192.168.1.1/24            192.168.1.2/24
+```
+
+* Host A 构造消息
+    * IP 层
+        * 目标地址需应用配置，为：`192.168.1.2`。
+        * 源地址若未配置按照如下逻辑确定，为 `192.168.0.2`。
+            * 用 目标地址 匹配每一个网卡的网段，如果在同一网段，则使用该网卡的 IP 地址作为源地址（本例符合该场景）。
+            * 否则，按照一定策略选择一个网卡作为源地址。
+            * 在这个场景，只有一个网卡，所以源地址为 `192.168.0.2`。
+    * 以太网层
+        * 目标地址按照如下逻辑确定，在这个场景中，Mac 地址就是 Router0 左侧网口的 Mac 地址。
+            * 如果 IP 层的目标地址和源地址属于同一网段，则使用目标 IP 地址查询 **ARP 表**，获取目标的 Mac 地址。
+            * 如果 IP 层的目标地址和源地址不属于同一网段，则查询**路由表**（主机的路由表是静态的下一跳固定位为网关地址），获取下一跳地址，则使用下一跳地址查询 **ARP 表**，获取目标的 Mac 地址（本例符合该场景）。
+            * 如果 ARP 表中没有查到，将使用 ARP/NDP 协议解析 Mac 地址（参见下文：[Mac 地址解析](#mac-地址解析)）
+        * 源地址为选定网卡的 Mac 地址。
+    * 物理层，直接按照 ARP 表选定的网口发送报文。
+* Switch 0 路由消息
+    * 物理层接收解析，将信号还原为数据。
+    * 以太网层接收解析，检查包的目标 Mac 地址和当前设备的 Mac 地址是否一样，不一样将丢弃。
+    * IP 层接收解析，更新 IP 头上的跳数。
+    * 以太网层构造消息
+        * 目标 Mac 地址，根据包的目标 IP 地址，查询**路由表**，获取到下一跳地址（本例中为：`192.168.1.2`），使用下一跳地址查询 **ARP 表**，获取目标的 Mac 地址。
+        * 源 Mac 地址为当前设备的 Mac 地址。
+    * 物理层，直接按照 ARP 表选定的网口发送报文。
+* Host B  接收消息
+    * 物理层，将信号还原为数据。
+    * 以太网层，检查包的目标 Mac 地址和当前网卡的 Mac 地址是否一样，不一样将丢弃。
+    * IP 层，检查包的目标 IP 地址和当前网卡的 Mac 地址是否一样，不一样将丢弃。
+
+指的一提的是：
+
+* 交换机只会用到 **Mac 地址表**，而主机和路由器的行为非常类似，都会用到 **ARP 表**和 **路由表**。
+* 数据包经过交换器，数据包内容基本不变。
+* 数据包经过路由器：
+    * IP 层源和目的 IP 地址不变，只有 跳数 加一。
+    * 以太网层的源和目的地址都变了。
+
+参考：
+
+* [20张图深度详解MAC地址表、ARP表、路由表](https://www.bilibili.com/read/cv12782091)
 
 ## 报文格式
 
@@ -150,7 +228,7 @@ IPv6 中不在使用子网掩码来表示一个子网，而是使用前缀长度
 
 * 未指定地址：`::/32`。
 * 本地回环地址 `::1/128`。
-* 链路本地地址：`fe80::/16`。
+* 链路本地地址：`fe80::/10`。
 * 私有地址空间（在 IPv6 中叫做 Unique local address）：`fc00::/7`，其中 `fd00::/8` 可使用，`fc00::/8` 未定义。
 
 ## 广播
@@ -178,7 +256,7 @@ IPv4 想要实现广播协议，其基于的数据链路层必须也要支持广
 
 组播（multicast，又叫多播）在 IPv4 和 IPv6 中都存在，并且其在 IPv6 中占有更重要的地位，取代了 ARP 协议，为 Mac 地址解析提供底层支持。
 
-组播的应用场景比较多，比如 NTP 协议， mDNS 协议，IPTV，视频会议等。
+组播的应用场景比较多，比如 NTP 协议， mDNS 协议，IPTV，视频会议等（在应用层也基本基于 UDP 协议使用）。
 
 在 IPv4 中，组播可以实现：发送方，向一组（1个或多个）主机，发送报文，只需要指定一个组播地址，即可将消息发送到这个组内的所有主机。
 
@@ -208,7 +286,7 @@ IPv4 想要实现广播协议，其基于的数据链路层必须也要支持广
 
 在 IPv4 中，为了解决 IP 地址和 Mac 地址（以太网地址）的映射问题，使用的是 ARP 协议，ARP 协议基于的是以太网广播机制，这造成了难以避免的 ARP 攻击 和 ARP 风暴的问题。ARP 协议原理参见：[博客](https://www.cnblogs.com/juankai/p/10315957.html)。
 
-在 IPv6 中，Mac 地址解析不再使用 ARP 协议，而是使用基于一种点对点组播的 ICMPv6 协议。又被称为 NDP （邻居发现协议）。
+在 IPv6 中，Mac 地址解析不再使用 ARP 协议，而是使用基于一种点对点组播的 ICMPv6 协议。是 NDP （邻居发现协议）的一部分。
 
 * 每个 IPv6 单播地址的主机都会自动加入一个称为，被请求节点组播地址 的组播组。其组播地址为 `FF02::1:FFxx:xxxx`，其中 `xx:xxxx` 为该主机单播 IPv6 地址的最后 32 位。并将组播地址通过 MLD 协议（对应的是 IPv4 的 IGMP）进行上报。
 * 此时，主机 A，如果需要查询一个 IPv6 单播地址的 Mac 地址，发送者将：
@@ -234,6 +312,9 @@ IPv6 的 Mac 地址解析机制的总结：
 
 * 利用点对点组播，解决了 ARP 协议的风暴问题（由 ARP 广播查询，更改为了组播上报，单点查询），提高了效率。
 * 如果想要安全，可以使用 SEND 协议。
+* 通过 ICMPv6 统一实现，避免每一种数据链路都需要重复实现类似 ARP 类型的功能。
+
+关于 NDP 协议的其他内容，参见下文的：[链路本地地址](#链路本地地址)
 
 参考：
 
@@ -244,23 +325,125 @@ IPv6 的 Mac 地址解析机制的总结：
 * [IPv4/IPv6组播地址和组播MAC地址的转换](https://blog.csdn.net/Johan_Joe_King/article/details/105566111)
 * [对被请求-节点多播地址(solicited-node multicast address) 的理解](https://blog.csdn.net/jy15569597/article/details/7992127)
 
-## 几种表
-
-MAC地址表、ARP表、路由表。https://www.bilibili.com/read/cv12782091
-
 ## 任播
 
-IPv6 新增
+IPv4 作为实验特性，IPv6 正式纳入标准。简单的来说，当一个单播地址被分配到多于一个的接口上时，这些接口组成了一个任播组，这个 IP 可以称为任播 IP。
 
-## 地址作用域
+当请求该任播 IP，路由协议会按照一定的规则（如最短路径，超时时间等等）选择一个接口进行通讯。
 
-169.254
-fe80::/16
+可以看出，任播本质就是在网络层，实现负载均衡（参考：[cloudflare blog](https://blog.cloudflare.com/cloudflares-architecture-eliminating-single-p/)）和就近服务的能力。
 
-https://blog.csdn.net/dog250/article/details/88773892
+任播的应用场景有：
+
+* 根 DNS 服务器，采用任播提供服务。
+* CDN 实现就近接入，参考：[cloudflare](https://www.cloudflare.com/zh-cn/learning/cdn/glossary/anycast-network/)。
+* 缓解 DDoS 攻击，参考：[cloudflare](https://www.cloudflare.com/zh-cn/learning/cdn/glossary/anycast-network/)。
+
+更多参见：[Anycast](https://en.wikipedia.org/wiki/Anycast)。
+
+## 链路本地地址
+
+在 IPv4 中，链路本地地址为 `169.254.0.0/16`，是可选项，所以，只有在 Mac 连 WIFI 抽风时，才可能可以看到这个地址（出现在 DHCP 失败时，在这种情况下，一些操作系统可能会自动的分配一个链路本地地址）。链路本地地址的特点是：
+
+* 路由器不会将该地址转发到其他网络中，因此只能在网络内部使用。
+* 该类地址的分配是完全自动化的，主机随机分配，然后利用 ARP 协议检查是否和网络上的其他主机冲突。
+
+在 IPv6 中，链路本地地址为 `fe80::/10`，每个接口必须分配一个，也就是说，IPv6 的每个网卡，最少要有两个单播地址：
+
+* 链路本地地址 `fe80::/10` （scope link）。
+* 全局单播地址 (scope global)。
+
+在 IPv4 中，IP 地址的分配主要有两种方式：手动配置、DHCP（有状态地址自动分配）。
+
+在 IPv6 中，IP 地址的分配主要有三种方式：手动配置、DHCPv6（无状态地址自动分配）、无状态地址分配。
+
+在这里，重点介绍无状态地址分配。无状态地址分配原理是：基于 IPv6 的链路本地地址，可以自动的分配一个全局单播地址。流程基本如下：
+
+* 主机启动，自动生成一个链路本地地址。
+    * 一般按照 `EUI-48` 或 `EUI-64` 算法，自动分配一个链路本地地址（可以是任何算法，由实现者决定）。
+    * 通过上文提到 [Mac 地址解析](#mac-地址解析)（ICMPv6） 类似的方式，网络中是否已经存在了该链路本地地址（存在是，将能收到响应 `NA 消息`），称为 DAD （Duplicate address Detection，重复地址检测）。
+* 主机通过，路由器发现协议，获取当前网络的网络信息（全局单播地址的前缀）
+    * 主机发送一个 `Type = RS` 的 ICMPv6 消息（Router Solicitation 路由器请求），其目标地址为 `all-router multicast address`（即 `ff02::2` 一个路由器会加入的组播地址），源地址为链路本地地址。
+    * 路由器收到该消息后，会回复一个 `Type = RA` 的 ICMPv6 消息（Router Advertisement，路由器公告），其目的地址为主机的链路本地地址，源地址为路由器的链路本地地址。RA 消息包含了当前网络的一些配置情况：
+        * 是否使用 DHCPv6 分配地址？
+        * 网络前缀是什么？
+    * 此外：路由器会定时给所有节点发送 `Type = RA`，以告知节点网络变更情况，其目标地址是 `all-nodes multicast address`（即 `ff02::1` 一个所有节点会加入的组播地址）
+* 主机接收到 `RA` 消息后，根据网络前缀，自动生成一个全局单播地址。流程和第一步的自动生成一个链路本地地址类似。
+
+可以看出，无状态地址分配有如下好处：
+
+* 真正的即插即用。节点连接到没有DHCP服务器的网络时，无须手动配置地址等参数便可访问网络。
+* 网络迁移方便。当一个站点的网络前缀发生变化，主机能够方便地进行重新编址而不影响网络连接。
+* 地址配置方式选择灵活。系统管理员可根据情况决定使用何种配置方式——有状态，无状态还是两者兼容。
+
+由于，链路本地地址是一个 IPv6 中的一个整个网段，如果一个设备有多个网卡，连入了多个网络，他们的链路本地地址可能是一样，因此，需要区分从网卡。因此在应用层使用链路本地地址时，需要通过 `%网卡名` 指定网卡。 如：
+
+```bash
+ping -6 fe80::xxxxx%eth0
+```
+
+参考：
+
+* [IPv6知识概述 - ND协议](https://blog.csdn.net/Gina_wj/article/details/106708770)
+* [IPV6的链路本地地址和站点本地地址的不同](https://blog.51cto.com/u_11529070/3609608)
+* [IPv4和IPv6的链路本地地址的自动分配](https://blog.csdn.net/Johan_Joe_King/article/details/105564841)
+* [IPv6邻居发现，地址重复检测，及路由器发现机制，一分钟了解下](https://network.51cto.com/article/610565.html)
+* [IPv6邻居发现协议](https://cshihong.github.io/2018/01/29/IPv6%E9%82%BB%E5%B1%85%E5%8F%91%E7%8E%B0%E5%8D%8F%E8%AE%AE/)
+* [链路本地地址](https://zh.wikipedia.org/wiki/%E9%93%BE%E8%B7%AF%E6%9C%AC%E5%9C%B0%E5%9C%B0%E5%9D%80) | [Link-local address](https://en.wikipedia.org/wiki/Link-local_address)
+* [IPv6地址的%是啥意思](https://zhuanlan.zhihu.com/p/349733311)
+
+## IPv6 网口地址
+
+一旦节点启用 IPv6，那么网口（接口）就会自动绑定下列地址（也就是说通过这些地址可以将消息发送到该网口）：
+
+* 单播地址
+    * 回环地址 `::1`
+    * 本地链路地址 `fe80::xxxxxx`
+    * 全局单播地址
+* 组播地址
+    * 本地链路地址对应的，被请求节点组播地址 `FF02::1:FFxx:xxxx`
+    * 全局单播地址对应的，被请求节点组播地址 `FF02::1:FFxx:xxxx`
+    * 所有节点的组播地址 `FF02::1`
+    * 如果是路由器，还会有所有路由器组播地址 `FF02::2`
 
 ## IPv6 和 NAT
 
+IPv6 最重要的职责就是解决 IPv4 地址空间太小的问题。因此在 IPv6 中推荐不使用 NAT。也就是说，建议组织内网也采用公网单播地址。
+
+但是，在企业内部中，多数还是沿袭 IPv4 的习惯，仍然只给内网分配 私有 IPv6 地址。主要原因是如果给内网分配公网单播地址。之前基于 NAT 的安全策略可能都要重新设计了，成本比较高。
+
 ## Linux 常用命令
 
+观察网卡绑定的 IP 地址，如果存在 IPv6 将返回包含 inet6 的行。如果是本地链路地址，则显示 `scope link`，如果是全局单播地址则显示 `scope global`
+
+```bash
+ip addr show 
+ip addr show eth0
+```
+
 ## Socket API
+
+```cpp
+#include <sys/socket.h>
+
+// 创建 socket https://man7.org/linux/man-pages/man2/socket.2.html
+int socket(int domain, int type, int protocol);
+
+int tcp6_socket = socket(AF_INET6...)
+// 是否支持 IPv4/IPv6 双栈，默认值为 `/proc/sys/net/ipv6/bindv6only`
+// 可以通过 setsockopt 系统调用手动强制配置
+int ipv6_only_flag = 0;
+setsockopt(tcp6_socket, IPPROTO_IPV6, IPV6_V6ONLY, (void *)&ipv6_only_flag, sizeof(ipv6_only_flag));
+```
+
+更多参见：[通过 Linux API 学习网络协议栈（一）概览](/posts/learn-net-proto-stack-by-linux-api-1-overview/)
+
+## 其他参考
+
+* [RFC 8200: Internet Protocol, Version 6 (IPv6) Specification](https://datatracker.ietf.org/doc/html/rfc8200)
+* [Wiki IPv6](https://en.wikipedia.org/wiki/IPv6) | [Wiki IPv6 zh](https://zh.wikipedia.org/wiki/IPv6)
+* [IPv4与IPv6的区别是什么？](https://zhuanlan.zhihu.com/p/71684181)
+* [IBM IPv4 与 IPv6 的比较](https://www.ibm.com/docs/zh/i/7.2?topic=6-comparison-ipv4-ipv6)
+* [IPv6系列-入门指南](https://zhuanlan.zhihu.com/p/64598841)
+* [IPv6系列-初学者的10个常见困扰](https://zhuanlan.zhihu.com/p/67843942)
+* [IPv6 原理机制](https://zhuanlan.zhihu.com/p/79633456)
