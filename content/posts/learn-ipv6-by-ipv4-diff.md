@@ -1,5 +1,5 @@
 ---
-title: "通过和 IPv4 对比，学习 Ipv6 "
+title: "通过和 IPv4 对比，学习 IPv6 "
 date: 2022-04-23T20:01:00+08:00
 draft: false
 toc: true
