@@ -135,7 +135,7 @@ docker [bridge 网络](https://docs.docker.com/network/bridge/)，在 IPv4 场�
 
 ## 默认网络支持 IPv6
 
-> 本章节介绍的是如何配置默认的 bridge 网络支持 ipv6。（本方法未经过测试）
+> 本章节介绍的是如何配置默认的 bridge 网络支持 ipv6。（未经过测试，仅供参考）
 
 前置条件：确保自己的设备被分配了一个 IPv6。通过 `ip addr show` 查看当前设备的 IPv6。其输出的物理网卡存在包含 `inet6` 和 `scope global` 的行时，表示该网卡支持 IPv6。需要注意的是：其 IPv6 地址的前缀不能是 `/128`，如果是 `/128`，参见：[通过 IPv6NAT 方式支持 IPv6](#通过-ipv6nat-方式支持-ipv6)。
 
@@ -205,6 +205,8 @@ sudo systemctl reload docker
 
 ## 自定义网络支持 IPv6
 
+> 本章节介绍的是如何创建一个支持 IPv6 的 bridge 网络。（未经过测试，仅供参考）
+
 * 前置条件：确保自己的设备被分配了一个 IPv6，参见：[默认网络支持 IPv6](#默认网络支持-ipv6)。
 * 创建一个支持 IPv6 的 bridge 网络。其中 `--subnet` 参数为上一步获取到的 IPv6 网段的子网（自定义 bridge 网络，前缀长度不限制，可以大于于 80）。
 
@@ -220,7 +222,7 @@ sudo systemctl reload docker
 
 ## 通过 IPv6NAT 方式支持 IPv6
 
-> 本章节介绍的是如何配置自定义 bridge 网络支持 ipv6。（本方法未经过测试）
+> 测试可行，推荐使用该方式。
 
 上文也提到，上文展示的方案，容器获得的 IPv6 IP 并不是私有网络 IP，是和外部网络直接连通，而不会经过 NAT。在如下场景下，以上方式可能不能满足要求：
 
