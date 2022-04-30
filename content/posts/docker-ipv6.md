@@ -255,6 +255,7 @@ sudo systemctl reload docker
 ## 参考
 
 * [How to enable IPv6 for Docker containers on Ubuntu 18.04](https://medium.com/@skleeschulte/how-to-enable-ipv6-for-docker-containers-on-ubuntu-18-04-c68394a219a2)
+* [robbertkl/docker-ipv6nat](https://github.com/robbertkl/docker-ipv6nat)
 * [Docker Docs: Use bridge networks](https://docs.docker.com/network/bridge/)
 * [KVM + LinuxBridge 的网络虚拟化解决方案实践](https://www.cnblogs.com/jmilkfan-fanguiju/p/10589727.html)
 * [Docker Docs: docker network create 命令](https://docs.docker.com/engine/reference/commandline/network_create/)
