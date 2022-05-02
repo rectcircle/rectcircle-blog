@@ -25,7 +25,30 @@ sudo apt install -y iproute2 tcpdump
 
 ## 实验代码库
 
-TODO
+本系列实验代码库位于：[rectcircle/linux-network-manage-experiment](https://github.com/rectcircle/linux-network-manage-experiment)
+
+## 编程接口和工具
+
+总所周知，在 Linux 上，编写普通的网络应用程序（tcp 客户端/服务端）依赖的编程接口是最早来自于 BSD 的 Socket 模型。
+
+而对于内核网络的管理，在 Linux 的发展中，有两个阶段：
+
+* net-tools 阶段，通过 `/proc` 文件系统和 `ioctl` 系统调用来实现对内核网络的管理。
+* iproute2 阶段，在通过一种称为 `netlink` 的特殊类型的 `socket` 对象来实现对内核网络的管理。
+
+`net-tools` 工具箱提供了 `netstat`、`route`、`ifconfig` 等命令（`dpkg -L net-tools | grep "[s]*bin"`），2001 起就停止维护了。
+
+目前主流的 Linux 发行版，推荐使用 `iproute2` 工具箱来实现对内核网络的进行管理。该工具箱提供了 `ip` 等命令（`dpkg -L iproute2 | grep "[s]*bin"`）。
+
+关于 `net-tools` 和 `iproute2` 区别和对比，参考：[网络管理工具变迁 - 从 net-tools 到 iproute2](http://www.jiatcool.com/?p=762)。
+
+关于 `netlink`，更多参见：[netlink(7) 手册](https://man7.org/linux/man-pages/man7/netlink.7.html)。
+
+本文实验，将使用使用如下编程接口和命令行工具：
+
+* Shell 描述：使用 [iproute2 工具集](https://github.com/shemminger/iproute2)
+* Go 语言描述：使用 [vishvananda/netlink 库](https://github.com/vishvananda/netlink) （[runc 同款依赖](https://github.com/opencontainers/runc/blob/main/go.mod#L21)）
+* C 语言描述：直接使用 [netlink socket](https://man7.org/linux/man-pages/man7/netlink.7.html) 或 [libnl 库](https://www.infradead.org/~tgr/libnl/)
 
 ## 网络设备概述
 
@@ -47,6 +70,8 @@ Linux 网络设备可以分为物理网络设备和虚拟网络设备，这些�
 
 > 参考： [Linux虚拟网络设备之veth](https://segmentfault.com/a/1190000009251098)
 
+### 功能特性
+
 veth 即 virtual ethernet device，是对物理一台网卡的模拟。功能和物理以太网设备类似。此外有如下特点：
 
 * veth 的一端连接着内核网络协议栈。
@@ -65,7 +90,7 @@ veth 即 virtual ethernet device，是对物理一台网卡的模拟。功能和
 |..............|...............|...............|.................|
 |              ↓               ↓               ↓                 |
 |        +----------+    +-----------+   +-----------+           |
-|        |  enp0s3  |    |   veth0   |   | veth0pair |           |
+|        |  enp0s3  |    |   veth0   |   | veth0peer |           |
 |        +----------+    +-----------+   +-----------+           |
 |10.0.2.15     ↑               ↑               ↑                 |
 |              |               +---------------+                 |
@@ -75,7 +100,9 @@ veth 即 virtual ethernet device，是对物理一台网卡的模拟。功能和
          Physical Network
 ```
 
-### 示例
+### 实验
+
+#### 实验设计
 
 在一台虚拟机上实现上图所示的拓扑模型。并验证通过 `ping` 检查网络是否畅通。
 
@@ -95,16 +122,16 @@ echo
 
 echo '===创建并配置veth'
 # 创建一对 veth
-sudo ip link add veth0 type veth peer name veth0pair
+sudo ip link add veth0 type veth peer name veth0peer
 # 给这一对 veth 配置 ip 地址
 sudo ip addr add 192.168.4.2/24 dev veth0
-sudo ip addr add 192.168.4.3/24 dev veth0pair
+sudo ip addr add 192.168.4.3/24 dev veth0peer
 # 启动这两个网卡
 sudo ip link set veth0 up
-sudo ip link set veth0pair up
+sudo ip link set veth0peer up
 # 允许从非 lo 设备进来的数据包的源 IP 地址是本机地址
 sudo sysctl -w net.ipv4.conf.veth0.accept_local 1
-sudo sysctl -w net.ipv4.conf.veth0pair.accept_local 1
+sudo sysctl -w net.ipv4.conf.veth0peer.accept_local 1
 echo '完成创建并配置veth'
 echo
 
@@ -130,7 +157,84 @@ sudo ip link delete veth0
 
 #### Go 语言描述
 
-TODO
+```go
+package main
+
+// sudo go ./src/go/01-veth/
+
+import (
+	"fmt"
+	"net"
+	"os"
+	"os/exec"
+
+	sysctl "github.com/lorenzosaino/go-sysctl"
+	"github.com/vishvananda/netlink"
+)
+
+const (
+	beforeScript = "echo '===初始状态网络设备' && ip addr show && echo" +
+		" && echo '===初始状态 arp 表' && cat /proc/net/arp && echo"
+	afterScript = "echo '===配置完 veth 后网络设备' && ip addr show && echo" +
+		" && echo '===尝试是否可以 ping 通' && ping -c 4 192.168.4.3 -I veth0 && echo" +
+		" && echo '===ping 完成后 arp 表' && cat /proc/net/arp && echo " +
+		" && sudo ip link delete veth0"
+)
+
+func runtScript(script string) error {
+	cmd := exec.Command("/bin/sh", "-c", script)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	return cmd.Run()
+}
+
+func panicIfErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func main() {
+	// 输出初始化状态
+	panicIfErr(runtScript(beforeScript))
+
+	fmt.Println("===创建并配置veth")
+	// 创建一对 veth
+	panicIfErr(netlink.LinkAdd(&netlink.Veth{
+		LinkAttrs: netlink.LinkAttrs{
+			Name: "veth0",
+		},
+		PeerName: "veth0peer",
+	}))
+	// 配置 ip 地址
+	ip, ipNet, err := net.ParseCIDR("192.168.4.2/24")
+	ipNet.IP = ip
+	if err != nil {
+		panic(err)
+	}
+	panicIfErr(netlink.AddrAdd(netlink.NewLinkBond(netlink.LinkAttrs{Name: "veth0"}), &netlink.Addr{IPNet: ipNet}))
+
+	ip, ipNet, err = net.ParseCIDR("192.168.4.3/24")
+	ipNet.IP = ip
+	if err != nil {
+		panic(err)
+	}
+	panicIfErr(netlink.AddrAdd(netlink.NewLinkBond(netlink.LinkAttrs{Name: "veth0peer"}), &netlink.Addr{IPNet: ipNet}))
+
+	netlink.LinkSetUp(netlink.NewLinkBond(netlink.LinkAttrs{Name: "veth0"}))
+	netlink.LinkSetUp(netlink.NewLinkBond(netlink.LinkAttrs{Name: "veth0peer"}))
+
+	panicIfErr(sysctl.Set(fmt.Sprintf("net.ipv4.conf.%s.accept_local", "veth0"), "1"))
+	panicIfErr(sysctl.Set(fmt.Sprintf("net.ipv4.conf.%s.accept_local", "veth0peer"), "1"))
+	fmt.Println("完成创建并配置veth")
+	fmt.Println()
+
+	// 实验
+	panicIfErr(runtScript(afterScript))
+}
+
+```
 
 #### 输出和解释
 
@@ -164,7 +268,7 @@ IP address       HW type     Flags       HW address            Mask     Device
 
 ===创建并配置veth
 net.ipv4.conf.veth0.accept_local = 1
-net.ipv4.conf.veth0pair.accept_local = 1
+net.ipv4.conf.veth0peer.accept_local = 1
 完成创建并配置veth
 
 ===配置完 veth 后网络设备
@@ -186,13 +290,13 @@ net.ipv4.conf.veth0pair.accept_local = 1
        valid_lft 466sec preferred_lft 466sec
     inet6 fe80::a00:27ff:fe06:ffa6/64 scope link 
        valid_lft forever preferred_lft forever
-14: veth0pair@veth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+14: veth0peer@veth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
     link/ether ca:02:25:cf:ce:da brd ff:ff:ff:ff:ff:ff
-    inet 192.168.4.3/24 scope global veth0pair
+    inet 192.168.4.3/24 scope global veth0peer
        valid_lft forever preferred_lft forever
     inet6 fe80::c802:25ff:fecf:ceda/64 scope link tentative 
        valid_lft forever preferred_lft forever
-15: veth0@veth0pair: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
+15: veth0@veth0peer: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue state UP group default qlen 1000
     link/ether 7a:2d:96:17:8d:bc brd ff:ff:ff:ff:ff:ff
     inet 192.168.4.2/24 scope global veth0
        valid_lft forever preferred_lft forever
@@ -213,7 +317,7 @@ rtt min/avg/max/mdev = 0.032/0.067/0.086/0.021 ms
 ===ping 完成后 arp 表
 IP address       HW type     Flags       HW address            Mask     Device
 192.168.56.2     0x1         0x2         08:00:27:fa:d4:ec     *        enp0s8
-192.168.4.2      0x1         0x2         7a:2d:96:17:8d:bc     *        veth0pair
+192.168.4.2      0x1         0x2         7a:2d:96:17:8d:bc     *        veth0peer
 169.254.169.254  0x1         0x0         00:00:00:00:00:00     *        enp0s3
 10.0.2.2         0x1         0x2         52:54:00:12:35:02     *        enp0s3
 192.168.56.1     0x1         0x2         0a:00:27:00:00:00     *        enp0s8
@@ -223,7 +327,7 @@ IP address       HW type     Flags       HW address            Mask     Device
 * 初始状态网络设备：在 VirtualBox 虚拟机上进行实验，有两张物理网卡分别是 `enp0s3` 和 `enp0s8`。
 * 初始状态 arp 表：arp 表中只有关于这两种物理网卡的数据
 * 创建并配置veth：
-    * 创建了一对 veth 分别命名为 `veth0` 和 `veth0pair`。
+    * 创建了一对 veth 分别命名为 `veth0` 和 `veth0peer`。
     * 给这对 veth 分别分配两个 ip 地址： `192.168.4.2/24` 和 `192.168.4.3/24`
     * 启动这对 veth
     * 打开这两个设备 `accept_local` 选项（允许从非 lo 设备进来的数据包的源 IP 地址是本机地址）。
@@ -231,7 +335,7 @@ IP address       HW type     Flags       HW address            Mask     Device
     * 请求：
         * ping 配置了出口设备为 `veth0`，所以程序发送 ICMP echo 数据包的配置源 IP 地址为 `veth0` 绑定的地址，即 `192.168.4.2`（不配置 `veth0` 则 源 IP 地址为 `192.168.4.3`），目标 IP 地址为 `192.168.4.3`。
         * 由于配置了从 `veth0` 出口，因此需要 arp 流程，根据 local 路由表（`ip rule list`、`ip route list table local`），目标地址 `192.168.2.3` 和 `veth0` 地址处于同一网段，所以协议栈会先从 `veth0` 发送 ARP，询问 `192.168.2.3` 的 mac 地址。
-        * 内核协议栈将请求发送，将以太网数据包，发送到 `veth0pair`，`veth0pair` 将数据包转交到内核协议栈。
+        * 内核协议栈将请求发送，将以太网数据包，发送到 `veth0peer`，`veth0peer` 将数据包转交到内核协议栈。
         * 内核协议栈比对 目标 IP 地址和本地 IP 地址一致，构造 ICMP echo 数据包。
     * 响应
         * ICMP echo 数据包的目的地址是 `192.168.4.2`，是本地地址，所以会通过 lo 设备发送出去（`sudo tcpdump -n -i lo` 可以看到）（不需要 arp 流程）。
@@ -241,7 +345,7 @@ ping local ip 的流量路径：
 
 * `ping 192.168.4.3`：`socket ---内核协议栈--> lo ---内核协议栈回复---> lo ---内核协议栈--> socket`
 * `ping 192.168.4.3 -I 192.168.4.2`：`socket ---内核协议栈--> lo ---内核协议栈回复---> lo ---内核协议栈--> socket`（猜测不会调用 socket.bind）
-* `ping 192.168.4.3 -I veth0`：`socket ---内核协议栈--> veth0 ---> veth0pair ---内核协议栈回复---> lo ---内核协议栈--> socket`（猜测会调用 socket.bind）
+* `ping 192.168.4.3 -I veth0`：`socket ---内核协议栈--> veth0 ---> veth0peer ---内核协议栈回复---> lo ---内核协议栈--> socket`（猜测会调用 socket.bind）
 
 ## bridge 虚拟设备
 
