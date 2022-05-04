@@ -622,20 +622,7 @@ int main()
 
 https://www.cnblogs.com/jmilkfan-fanguiju/p/10589727.html
 
-## tun/tap 虚拟设备
-
-https://www.kernel.org/doc/html/v5.8/networking/tuntap.html
-https://en.wikipedia.org/wiki/TUN/TAP
-
-## vlan 虚拟设备
-
-https://www.linuxjournal.com/article/10821
-
-https://wiki.archlinux.org/title/VLAN
-
-https://pengpengxp.github.io/archive/before-2018-11-10/2017-01-23-Linux%E7%BD%91%E7%BB%9C%E8%AE%BE%E5%A4%87%E7%9B%B8%E5%85%B3%E7%9A%84%E5%A4%A7%E6%9D%82%E7%83%A9.html#orgfbca757
-
-## netfilter 虚拟设备
+## netfilter 模块
 
 * [Linux网络 - 数据包的接收过程](https://segmentfault.com/a/1190000008836467)
 * [Linux网络 - 数据包的发送过程](https://segmentfault.com/a/1190000008926093)
