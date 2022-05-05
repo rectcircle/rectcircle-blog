@@ -1,6 +1,6 @@
 ---
 title: "Linux 网络虚拟化技术（二）veth 虚拟设备"
-date: 2022-05-3T23:00:00+08:00
+date: 2022-05-03T23:00:00+08:00
 draft: false
 toc: true
 comments: true
