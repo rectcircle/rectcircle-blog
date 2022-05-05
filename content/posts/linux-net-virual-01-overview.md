@@ -14,7 +14,7 @@ tags:
 
 ## 实验环境准备
 
-参考：[容器核心技术（一） 实验环境准备 & Linux 概述](posts/container-core-tech-1-experiment-preparation-and-linux-base/#实验环境准备)
+> 参考：[容器核心技术（一） 实验环境准备 & Linux 概述](posts/container-core-tech-1-experiment-preparation-and-linux-base/#实验环境准备)。
 
 安装相关外部命令。
 
@@ -25,7 +25,7 @@ sudo apt install -y iproute2 tcpdump
 
 ## 实验代码库
 
-本系列实验代码库位于：[rectcircle/linux-network-virtualization-experiment](https://github.com/rectcircle/linux-network-virtualization-experiment)
+本系列实验代码库位于：[rectcircle/linux-network-virtualization-experiment](https://github.com/rectcircle/linux-network-virtualization-experiment)。
 
 ## 编程接口和工具
 
@@ -122,7 +122,7 @@ attribute 支持任意级别的嵌套，比如一个请求包含属性 a1, b1。
 
 ## 网络设备概述
 
-Linux 网络设备可以分为物理网络设备和虚拟网络设备，这些网络设备可以通过：`ip addr show` 可以查看：
+Linux 网络设备可以分为物理网络设备和虚拟网络设备，这些网络设备可以通过：`ip addr show` 可以查看。
 
 最常见的物理网络设备为：
 
