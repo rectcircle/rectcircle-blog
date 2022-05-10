@@ -1575,6 +1575,12 @@ variable           interface{} <--- .Interface() --- Reflect.Value
 * 调用 `reflect.Value.SetInt` 方法更新变量的值：
 * 且不能修改自由变量
 
+反射核心能力，运行时：
+
+* 读取类型和值的元数据
+* 设置指针的值
+* 构造新类型（[结构体嵌入，不支持方法](https://github.com/golang/go/issues/15924)）
+
 常用 API
 
 * `reflect.Type` 参见：https://pkg.go.dev/reflect#Type

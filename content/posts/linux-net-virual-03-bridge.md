@@ -8,35 +8,237 @@ tags:
   - linux
 ---
 
-## bridge 虚拟设备
+> 参考：[Network bridge](https://wiki.archlinux.org/title/Network_bridge) | [Linux虚拟网络设备之bridge(桥)](https://segmentfault.com/a/1190000009491002)
 
-### 功能特性
+## 简介
 
-https://www.cnblogs.com/jmilkfan-fanguiju/p/10589727.html
+bridge 桥，是 Linux 中的一种虚拟网络设备，一般用于虚拟机或容器的网络流量管理。
 
-Linux虚拟网络设备之bridge(桥) https://segmentfault.com/a/1190000009491002
-11、网络--Linux Bridge（网桥基础） 原创 https://blog.51cto.com/hostman/2106155
+bridge 具有现实中二层交换机的一切特性：判断包的类别（广播/单点），查找内部 MAC 端口映射表，定位目标端口号，将数据转发到目标端口或丢弃，自动更新内部 MAC 端口映射表以自我学习。
 
-## netfilter 模块
+但是不能简单的把 bridge 理解为现实中二层交换机，只能说 bridge 具有二层交换机的功能。因为，bridge 设备自己有一个 Mac 地址，并可以绑定一个 IP 地址。
 
-* [Linux网络 - 数据包的接收过程](https://segmentfault.com/a/1190000008836467)
-* [Linux网络 - 数据包的发送过程](https://segmentfault.com/a/1190000008926093)
+物理设备（如 eth）和虚拟设备（上篇提到的 veth 以及下文即将提到的 tap/tun）均可连接到 bridge 中，一个设备连接到 bridge 意味着：
 
-https://segmentfault.com/a/1190000009249039
-https://segmentfault.com/a/1190000009251098
-https://segmentfault.com/a/1190000009491002
+* 该设备配置其主（master）设备为该 bridge，该设备自身变成从设备 （slave）（brport）。
+* 换句话说。该设备变成了一根网线，Mac 地址变得没有意义。
+    * 发送到该设备的数据，不做任何逻辑判断，直接到达 bridge。
+    * bridge 发送该设备的数据，不做任何逻辑判断，直接到达该设备的另一端。
+* 也就是说，这个设备的另一端看到的是 bridge 的 Mac 地址。如下图所示：
+    * eth0 网线的另一端看到的是 br0 的 Mac 地址。
+    * veth1 看到的是 br0 的 Mac 地址。
 
-ip_forward与路由转发  https://blog.51cto.com/13683137989/1880744
+```
++----------------------------------------------------------------+
+|                                                                |
+|       +------------------------------------------------+       |
+|       |             Network Protocol Stack             |       |
+|       +------------------------------------------------+       |
+|                         ↑                           ↑          |
+|.........................|...........................|..........|
+|                         ↓                           ↓          |
+|        +------+     +--------+     +-------+    +-------+      |
+|        |      |     |Mac Addr|     |       |    |       |      |
+|        +------+     +--------+     +-------+    +-------+      |
+|        | eth0 |<--->|   br0  |<--->| veth0 |    | veth1 |      |
+|        +------+     +--------+     +-------+    +-------+      |
+|            ↑                           ↑            ↑          |
+|            |                           |            |          |
+|            |                           +------------+          |
+|            |                                                   |
++------------|---------------------------------------------------+
+             ↓
+     Physical Network
+```
 
-主要看 iptable（netfilter）、bridge、veth 原理。
+此外，当一个 bridge 连接了 1 个或多个从设备后，该 bridge 的 mac 地址将变成这些从设备的 mac 地址中的一个。
 
-实战按照 ip 命令（iproute2），c 语言库（https://man7.org/linux/man-pages/man7/netlink.7.html）， go 语言（github.com/vishvananda/netlink）库来操作这些设备。
+## 常见操作和命令
 
-https://morven.life/posts/networking-2-virtual-devices/
+在 Linux 中，有很多命令行工具可以操作 bridge，如：
 
-nat 端口转发和路由网关 https://blog.jmal.top/s/iptables-nat-port-forwarding-route-gateway
+* `iproute2` 包：`ip`、`bridge`。
+* `bridge-utils` 包：`brctl`（已废弃）。
+* [`netctl` 包](https://wiki.archlinux.org/title/Bridge_with_netctl)。
+* [systemd-networkd 包](https://wiki.archlinux.org/title/Systemd-networkd#Bridge_interface)。
 
-Linux 虚拟网络设备详解之 Bridge 网桥  https://www.cnblogs.com/bakari/p/10529575.html
-一文总结 Linux 虚拟网络设备 eth, tap/tun, veth-pair https://www.cnblogs.com/bakari/p/10494773.html
+本部分仅介绍 `iproute2` 包提供的命令。其他参见：[Network bridge](https://wiki.archlinux.org/title/Network_bridge)。
 
-简述linux路由表 https://yuerblog.cc/2019/11/18/%E7%AE%80%E8%BF%B0linux%E8%B7%AF%E7%94%B1%E8%A1%A8/
+下文描述的 bridge 名为 `br0`。
+
+### 创建并启动
+
+```bash
+sudo ip link add name br0 type bridge
+sudo ip link set br0 up
+```
+
+### 连接/断开其他设备
+
+```bash
+# 连接
+ip link set 设备名 master br0
+# 断开
+ip link set 设备名 nomaster
+```
+
+### 查看连接设备
+
+```bash
+sudo bridge link
+```
+
+### 分配 IP
+
+```bash
+ip address add dev bridge_name 192.168.66.66/24
+```
+
+### 删除
+
+```bash
+ip link delete bridge_name type bridge
+```
+
+## Go API
+
+其 API 风格和 `ip` 命令类似，因此参考：[vishvananda/netlink docs](https://pkg.go.dev/github.com/vishvananda/netlink) ，调用对应函数即可实现。
+
+## 实验和说明
+
+### 实验设计
+
+假设，我们的 Linux 主机初始的网络，只有一个 enp0s9 物理网卡。其分配的 IP 为 `192.168.57.3/24`，如下图所示：
+
+```
++----------------------------------------------------------------+
+|                                                                |
+|       +------------------------------------------------+       |
+|       |             Network Protocol Stack             |       |
+|       +------------------------------------------------+       |
+|            ↑                                                   |
+|............|...................................................|
+|            ↓                                                   |
+|        +------+                                                |
+|        |.57.3 |                                                |
+|        +------+                                                |
+|        |enp0s9|                                                |
+|        +------+                                                |
+|            ↑                                                   |
+|            |                                                   |
+|            |                                                   |
+|            |                                                   |
++------------|---------------------------------------------------+
+             ↓
+     Physical Network
+```
+
+首先创建，名为 br0 的 bridge，名为 veth0/veth0peer、veth1/veth1peer 的两对 veth。
+
+并将物理网卡 enp0s9、veth0、veth1 连接到 br0 中。
+
+然后分配 IP：
+
+* 删除 enp0s9 的 IP。
+* veth0peer 配置 IP `192.168.57.4`。
+* veth1peer 配置 IP `192.168.57.5`。
+
+然后，然后观察 br0、veth0peer、veth1peer 的 Mac 地址，使用 ping 观察连通性。
+
+拓扑如下图所示：
+
+```
+
++-----------------------------------------------------------------------+
+|                                                                       |
+|       +------------------------------------------------+              |
+|       |             Network Protocol Stack             |              |
+|       +------------------------------------------------+              |
+|                                                     ↑                 |
+|.....................................................|.................|
+|                                                     ↓                 |
+|        +------+     +--------+     +-------+    +---------+           |
+|        |      |     |        |     |       |    |.57.4    |           |
+|        +------+     +--------+     +-------+    +---------+           |
+|        |enp0s9|<--->|   br0  |<--->| veth0 |    |veth0peer|    veth.. |
+|        +------+     +--------+     +-------+    +---------+           |
+|            ↑                           ↑            ↑                 |
+|            |                           |            |                 |
+|            |                           +------------+                 |
+|            |                                                          |
++------------|----------------------------------------------------------+
+             ↓
+     Physical Network
+```
+
+最后，为 br0 配置 IP 地址为 `192.168.57.3`。再次使用 ping 观察连通性。
+
+```
+
++-----------------------------------------------------------------------+
+|                                                                       |
+|       +------------------------------------------------+              |
+|       |             Network Protocol Stack             |              |
+|       +------------------------------------------------+              |
+|                         ↑                           ↑                 |
+|.........................|...........................|.................|
+|                         ↓                           ↓                 |
+|        +------+     +--------+     +-------+    +---------+           |
+|        |      |     | .57.3  |     |       |    |.57.4    |           |
+|        +------+     +--------+     +-------+    +---------+           |
+|        |enp0s9|<--->|   br0  |<--->| veth0 |    |veth0peer|    veth.. |
+|        +------+     +--------+     +-------+    +---------+           |
+|            ↑                           ↑            ↑                 |
+|            |                           |            |                 |
+|            |                           +------------+                 |
+|            |                                                          |
++------------|----------------------------------------------------------+
+             ↓
+     Physical Network
+```
+
+注意：如上拓扑仅仅为了介绍 Bridge 的特性。该模型，无法在生产环境使用（原因参见下文说明）。
+
+### 实验准备
+
+为待实验拟虚拟机（VirtualBox）添加一个新的网卡：
+
+* 新建一个网络界面：vboxnet1，地址 `192.168.57.1/24`。
+* 网卡 3：仅主机网络，界面名称 vboxnet1，启用混杂模式。
+* 启动虚拟机
+    * 修改 `/etc/network/interfaces` 添加
+
+        ```
+        auto enp0s9
+        iface enp0s9 inet dhcp
+        ```
+
+    * 应用网络配置 `sudo systemctl restart networking.service`
+
+### 注意事项
+
+* 物理网卡必须开启混杂模式 `sudo ip link set enp0s9 promisc on`（因为在虚拟机中进行实验，所以需要在虚拟机配置页面配置开启混杂模式，而不是通过命令），原因参见下文详细解释。
+* 由于 wifi 认证会校验 mac 地址，需要配置 mac 地址转换，参见 [wiki](https://wiki.archlinux.org/title/Network_bridge#Wireless_interface_on_a_bridge)。由于本例在虚拟机中实验，使用的并非主网卡，所以可以忽略这一块。
+* 由于网络设备绑定的 IP 地址是 Network Protocol Stack 的全局属性，因此按照[实验设计](#实验设计)最后一个网络拓扑中，在接收到外部 IP 的 ARP 请求时，Linux 会响应多个 arp，即（`.57.3`、`.57.4`、`.57.5`），参见：[Harping on ARP](https://lwn.net/Articles/45373/)。（这一点并不会造成实质的影响，如果 veth 被加入了独立的 Network Namespace 中，则不会响应多个）
+
+### bridge 不配置 IP
+
+操作过程
+
+```bash
+# TODO 
+```
+
+详细解释：
+
+### bridge 配置 IP
+
+TODO 操作过程
+
+TODO 说明问题和流程
+
+## Bridge 生产环境实例
+
+### 个人设备虚拟机
+
+### Docker Bridge 网络

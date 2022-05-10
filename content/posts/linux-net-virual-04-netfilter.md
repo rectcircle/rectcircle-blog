@@ -10,6 +10,10 @@ tags:
 
 ## netfilter 模块
 
+http://www.adminsehow.com/2011/09/iptables-packet-traverse-map/
+
+https://opengers.github.io/openstack/openstack-base-virtual-network-devices-bridge-and-vlan/
+
 * [Linux网络 - 数据包的接收过程](https://segmentfault.com/a/1190000008836467)
 * [Linux网络 - 数据包的发送过程](https://segmentfault.com/a/1190000008926093)
 
