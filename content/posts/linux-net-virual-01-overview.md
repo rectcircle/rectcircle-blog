@@ -160,4 +160,3 @@ Linux 网络设备可以分为物理网络设备和虚拟网络设备，这些�
 
 * 如果 socket 没有 bind 一个 ip，会使用路由表的 src 字段作为源 ip，参见：[ip-route-show-src-field](https://serverfault.com/questions/451601/ip-route-show-src-field)。
 * 路由表的操作，参见：[ip route 文档页](http://linux-ip.net/html/tools-ip-route.html)。
-  
