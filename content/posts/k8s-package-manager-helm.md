@@ -53,3 +53,14 @@ Helm 的核心，定义了一套渲染 Kubernetes 声明式配置文件模板的
 * 用户通过 `helm install` 命令进行一次部署，并通过 `--set-file` 和 `--set` 覆盖 Chart App 中的参数。
 * Helm CLI 通过 Go 模板引擎将 Values 和 Templates 进行渲染，得到 Kubernetes 配置。
 * 最后通过 Kubernetes API （类似于 kubectl apply） 将配置应用到 Kubernetes 集群中。
+
+## 场景
+
+### 动态依赖
+
+### 等待依赖就绪
+
+### 数据库初始化和迁移
+
+pre-install
+pre-upgrade
