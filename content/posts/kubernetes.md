@@ -9,6 +9,23 @@ tags:
   - 后端
 ---
 
+<!-- 
+TODO 本文件保留目录索引，内容迁移到一个新的系列文章中：
+
+使用者 / 维护者 两种角色
+
+* 系列概述
+* 单节点集群安装
+* 组件和集群管理工具 kubeadm
+* 抽象和标准对象（使用者）
+    * https://kubernetes.io/zh/docs/concepts/overview/working-with-objects/
+* 对象管理工具 kubectl（使用者）
+* Helm 包管理器（使用者）
+* API 和 SDK
+* 扩展接口
+
+-->
+
 > [官方文档](https://kubernetes.io/zh/docs/home/)
 
 ## 快速开始
