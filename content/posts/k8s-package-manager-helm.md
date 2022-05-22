@@ -58,7 +58,7 @@ Helm 的核心，定义了一套渲染 Kubernetes 声明式配置 的模板规�
 * Helm CLI 通过 Go 模板引擎将 Values 和 Templates 进行渲染，得到 Kubernetes 配置。
 * 最后通过 Kubernetes API （类似于 kubectl apply） 将配置应用到 Kubernetes 集群中。
 * Chart 在 Kubernetes 集群中的对应物被称为一个 Release。
-* 最后，将该 Release 的元信息记录到该 Release 所在 Namespace 的 Secret 对象中。
+* 最后，将该 Release 的元信息记录到该 Release 所在 Namespace 的 Secret 对象中（也支持其他存储后端，参见：[Helm 高级技术 - 存储后端](https://helm.sh/zh/docs/topics/advanced/#%E5%90%8E%E7%AB%AF%E5%AD%98%E5%82%A8)）。
 
 ## Helm CLI 安装
 
