@@ -8,6 +8,11 @@ tags:
   - linux
 ---
 
+TODO 两个实例：
+
+* VPN 实现
+* 虚拟机网络模拟
+
 ## tun/tap 虚拟设备
 
 https://www.kernel.org/doc/html/v5.8/networking/tuntap.html

@@ -1,5 +1,5 @@
 ---
-title: "Linux 网络虚拟化技术（四）netfilter 模块"
+title: "Linux 网络虚拟化技术（四）iptable"
 date: 2022-04-21T00:24:21+08:00
 draft: true
 toc: true
@@ -8,7 +8,15 @@ tags:
   - linux
 ---
 
-## netfilter 模块
+## iptable 概述和功能
+
+## iptable 和 netfilter
+
+## Go iptable SDK
+
+参考 ipv6nat
+
+## 实例：docker bridge 网络模拟实现
 
 http://www.adminsehow.com/2011/09/iptables-packet-traverse-map/
 
