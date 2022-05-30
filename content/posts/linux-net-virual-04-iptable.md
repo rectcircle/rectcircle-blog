@@ -14,6 +14,12 @@ tags:
 
 iptable 是一套针对 Linux 的，对 ipv4（ipv6 也存在对应的工具 ip6table） 数据包（流量）管理工具。在常见的 Linux 发行版均已预装，提供了如：包过滤、端口转发、NAT、流量审计等功能。
 
+## 准备
+
+```bash
+sudo apt install iptables
+```
+
 ## iptable 使用场景
 
 * 写一个简单 socket 程序用来测试。
@@ -28,6 +34,12 @@ iptable 是一套针对 Linux 的，对 ipv4（ipv6 也存在对应的工具 ip6
     * 特殊网站禁用访问
 
 ### 转发到本地端口（REDIRECT）
+
+istio/envoy 的原理之一
+
+本质上REDIRECT就是一个特殊的DNAT规则
+
+https://www.ichenfu.com/2019/04/09/istio-inbond-interception-and-linux-transparent-proxy/
 
 实现透明代理： https://comwrg.github.io/2018/11/17/v2ray-and-iptables-implement-global-proxy-under-linux/#V2Ray
 
