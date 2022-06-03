@@ -16,9 +16,135 @@ iptable 是一套针对 Linux 的，对 ipv4（ipv6 也存在对应的工具 ip6
 
 ## 准备
 
+确保系统已经安装 iptables。
+
 ```bash
 sudo apt install iptables
 ```
+
+## 测试程序
+
+使用 C 语言。编写与一个简单的 TCP Server 测试程序，监听在 1234 端口。
+
+该程序将，接收 TCP 请求，并响应一个字符串。该字符串包含如下信息：
+
+* 本次 TCP 请求的 Source IP、Source Port。
+* 本次 TCP 请求的 Destination IP、Destination Port。
+* 通过 `getsockopt` 配合 `SO_ORIGINAL_DST` 拿到的原始 Destination IP 和 Destination Port，如果报错将显示错误信息。
+
+响应完成后，将关闭该 TCP 连接。
+
+```cpp
+// 必须安装 iptables 否则会报错：getsockopt error: Protocol not available
+// 运行： gcc ./src/c/03-iptable/test-iptable-server.c && sudo ./a.out
+// 测试命令： nc localhost 1234
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdlib.h>
+#include <errno.h>
+
+#include<linux/netfilter_ipv4.h>
+
+#define BUFFER_SIZE 1024
+#define BACKLOG 5
+
+int main(int argc, char *argv[])
+{
+    int sfd = 0;
+    int cfd = 0;
+    int n = 0;
+    int port = 1234;
+    struct sockaddr_in server_addr;
+    sfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sfd < 0)
+    {
+        perror("socket error");
+        exit(-1);
+    }
+    memset(&server_addr, 0, sizeof(server_addr));
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    server_addr.sin_port = htons(port);
+    n = bind(sfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
+    if (n < 0)
+    {
+        perror("bind error");
+        exit(-1);
+    }
+    n = listen(sfd, BACKLOG);
+    if (n < 0)
+    {
+        perror("listen error");
+        exit(-1);
+    }
+    struct sockaddr_in source_addr;
+    memset(&source_addr, 0, sizeof(source_addr));
+    socklen_t client_addr_len;
+    client_addr_len = sizeof(source_addr);
+
+    struct sockaddr_in dest_addr;
+    memset(&dest_addr, 0, sizeof(dest_addr));
+    socklen_t dest_addr_len;
+    dest_addr_len = sizeof(dest_addr);
+
+    struct sockaddr_in original_dest_addr;
+    memset(&original_dest_addr, 0, sizeof(original_dest_addr));
+    socklen_t original_dest_addr_len;
+    original_dest_addr_len = sizeof(original_dest_addr);
+
+    while (1)
+    {
+        cfd = accept(sfd, (struct sockaddr *)&source_addr, &client_addr_len);
+        if (cfd < 0)
+        {
+            perror("accept error!");
+            exit(-1);
+        }
+
+        // 获取到的是接收到的数据包中的 dest ip 和 port
+        n = getsockname(cfd, (struct sockaddr *)&dest_addr, &dest_addr_len);
+        if (n < 0)
+        {
+            perror("getsockname error");
+            exit(-1);
+        }
+
+        // 获取到的是 nat 之前的原始的 dest ip 和 port
+        n = getsockopt(cfd, SOL_IP, SO_ORIGINAL_DST, &original_dest_addr, &original_dest_addr_len);
+        // 将信息发送给客户端
+        char send_buff[BUFFER_SIZE];
+        memset(send_buff, 0, sizeof(send_buff));
+        sprintf(send_buff, "source{ip: %s, port: %d};  dest{ip: %s, port: %d}; original dest{%s: %s, %s: %d}\n",
+                inet_ntoa(source_addr.sin_addr), ntohs(source_addr.sin_port),
+                inet_ntoa(dest_addr.sin_addr), ntohs(dest_addr.sin_port),
+                n < 0 ? "strerror" : "ip",
+                n < 0 ? strerror(errno) : inet_ntoa(original_dest_addr.sin_addr), // 如果上一步报错返回错误信息
+                n < 0 ? "errno" : "port",
+                n < 0 ? errno : ntohs(original_dest_addr.sin_port));
+        send(cfd, send_buff, strlen(send_buff), 0);
+        // 关闭 TCP 连接
+        close(cfd);
+    }
+}
+```
+
+通过 `gcc ./src/c/03-iptable/test-iptable-server.c && sudo ./a.out` 命令编译运行。
+
+通过 nc 命令访问该 server，可以看到该测试程序的返回打印出来：
+
+```
+source{ip: 127.0.0.1, port: 55958};  dest{ip: 127.0.0.1, port: 1234}; original dest{strerror: Protocol not available, errno: 92}
+```
+
+此时是正常访问，可以看出：
+
+* 源 IP Port 为 `127.0.0.1:55958`。
+* 目的 IP Port 为 `127.0.0.1:1234`。
+* 由于没有进行 NAT 所以无法获取原始目标 IP Port，所以返回 `Protocol not available` 错误信息。
 
 ## iptable 使用场景
 
@@ -34,6 +160,11 @@ sudo apt install iptables
     * 特殊网站禁用访问
 
 ### 转发到本地端口（REDIRECT）
+
+```
+sudo iptables -t nat -A PREROUTING -p tcp --dport 12345 -j REDIRECT --to-ports 1234
+sudo iptables -t nat -I OUTPUT -p tcp -o lo --dport 12345 -j REDIRECT --to-ports 1234 # 支持本地回环
+```
 
 istio/envoy 的原理之一
 
@@ -206,6 +337,7 @@ iptable 工具对其要实现的功能进行了抽象，产生了如下一些概
 如此一来，在默认链看来，规则被组织成了一个树形结构，如：
 
 ```
+
 INPUT
     规则 1
     规则 2
@@ -217,6 +349,7 @@ INPUT
             规则 ii
     自定义链 2
     规则 3
+
 ```
 
 上文提到的 RETURN，将会跳出该自定义链的后续匹配规则，返回上一次层的匹配规则。
