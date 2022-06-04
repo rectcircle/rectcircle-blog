@@ -22,6 +22,17 @@ iptable 是一套针对 Linux 的，对 ipv4（ipv6 也存在对应的工具 ip6
 sudo apt install iptables
 ```
 
+确保测试虚拟机的网络接口配置为（`ip addr show`）：
+
+* enp0s3 网卡1 - 选择 NAT
+* enp0s8 网卡2 - 选择 仅主机网络，IP 地址为 `192.168.56.3/24`，用于 SSH 连接
+* enp0s9 网卡3 - 选择 仅主机网络，IP 地址为 `192.168.57.3/24`，用于测试 iptables 规则。
+
+配置方式参见：
+
+* [容器核心技术（一） 实验环境准备 & Linux 概述](/posts/container-core-tech-1-experiment-preparation-and-linux-base/#实验环境准备)
+* [Linux 网络虚拟化技术（三）bridge 虚拟设备](/posts/linux-net-virual-03-bridge/#实验准备)
+
 ## 测试程序
 
 使用 C 语言。编写与一个简单的 TCP Server 测试程序，监听在 1234 端口。
@@ -134,7 +145,7 @@ int main(int argc, char *argv[])
 
 通过 `gcc ./src/c/03-iptable/test-iptable-server.c && sudo ./a.out` 命令编译运行。
 
-通过 nc 命令访问该 server，可以看到该测试程序的返回打印出来：
+通过 nc 命令访问该 server，`nc localhost 1234`，可以看到该测试程序的返回打印出来：
 
 ```
 source{ip: 127.0.0.1, port: 55958};  dest{ip: 127.0.0.1, port: 1234}; original dest{strerror: Protocol not available, errno: 92}
@@ -151,19 +162,128 @@ source{ip: 127.0.0.1, port: 55958};  dest{ip: 127.0.0.1, port: 1234}; original d
 * 写一个简单 socket 程序用来测试。
 * 重点画出，ip/tcp 包的内容变化。
 
+### 查看规则
+
+> 参考：[iptables详解（2）：iptables实际操作之规则查询](https://www.zsythink.net/archives/1493)
+
+```bash
+sudo iptables --line-numbers -t filter -nvL INPUT
+```
+
+* `-t filter` 查看 `filter` 表（不填写时默认为 `filter`）。表的概念参见下文：[iptable 概念 - 表](#表)。
+* `--line-numbers` 展示规则在该链中的序号，可以简写为 `--line`。
+* `-n` 不对 IP 地址进行名称反解，以提高性能。
+* `-v` 展示更多详细信息。
+* `-L` 列出规则。
+* `INPUT` 展示某个链的规则列表（不填写展示全部的链）。
+
+输出如下所示：
+
+```
+Chain INPUT (policy ACCEPT 1352 packets, 252K bytes)
+num   pkts bytes target     prot opt in     out     source               destination
+```
+
+* 第一行为下面表格的标题，展示当前列表是哪个链上的规则，括号里面的内容为该链的默认规则的流量细信息。
+    * `packets` 表示当前链（上例为 INPUT 链）默认策略匹配到的包的数量。
+    * `bytes` 表示当前链默认策略匹配到的所有包的大小总和（通过 `-x` 可以展示精确数字）。
+* 第二行为表格的表头，第三行开始为表格的内容。该表格的包含如下列：
+    * `num` 规则序号，从 1 开始，序号越小优先级越高。
+    * `pkts` 对应规则匹配到的报文的个数。
+    * `bytes` 对应匹配到的报文包的大小总和（通过 `-x` 可以展示精确数字）。
+    * `target` 规则对应的target，往往表示规则对应的动作，即规则匹配成功后需要采取的措施。
+    * `prot` 表示规则对应的协议，是否只针对某些协议应用此规则。
+    * `opt` 表示规则对应的选项。
+    * `in` 表示数据包由哪个接口(网卡)流入，即从哪个网卡来。
+    * `out` 表示数据包将由哪个接口(网卡)流出，即到哪个网卡去。
+    * `source` 表示规则对应的源头地址，可以是一个IP，也可以是一个网段。
+    * `destination` 表示规则对应的目标地址。可以是一个IP，也可以是一个网段。
+
 ### 包过滤（防火强）
 
-* 入网  https://www.cnblogs.com/ym123/p/4567180.html https://www.jmjc.tech/less/143
-    * 屏蔽源 IP
-    * DDos 攻击防护
-* 出网
-    * 特殊网站禁用访问
+> 参考：[iptables详解（3）：iptables规则管理](https://www.zsythink.net/archives/1517)
+
+#### 描述
+
+iptable 最核心的功能就是网络防火墙，网络防火墙的实现方式是按照配置的规则对 IP 数据包进行过滤，如果包符合规则，则允许通过，否则不允许通过。
+
+包过滤按照数据包的方向可以分为如下两类：
+
+* INPUT - 入流量数据包过滤，一般在如下场景中使用：
+    * 屏蔽指定源 IP 的数据包（封禁 DDos 攻击 IP）。
+    * 仅开放某些 IP 的某些特殊端口的访问（如 22 号 ssh 端口），而屏蔽其他 IP 的访问。
+* OUTPUT - 出流量数据包过滤，一般在如下场景中使用：
+    * 屏蔽某些特殊目的 IP 的访问（站点）。
+
+#### 示例说明
+
+添加一条屏蔽来自 192.168.57.1 的数据包的规则的命令如下：
+
+```bash
+sudo iptables -t filter -I INPUT -s 192.168.57.1 -j DROP
+```
+
+* `-t filter` 将规则写入 `filter` 表，表示该规则是一个包过滤类型的规则。表的概念参见下文：[iptable 概念 - 表](#表)。
+* `-I INPUIT` 将规则应用在 `INPUT` 链中，表示是一条入流量过滤规则，默认情况下将该规则添加到规则链的最上方（即优先级最高），如果想将该规则放在某个序号的位置该参数应该写为：`-I INPUT 1`（此处的 `1` 的取值范围为 `1 ~ MaxNumber+1`）。链的概念参见下文：[iptable 概念 - 链](#链)。
+* `-s 192.168.57.1` 表示该规则的匹配条件是：匹配源 IP 为 `192.168.57.1` 的数据包（在本实验中为宿主机）。其他可用的匹配条件，参见下文：[iptable 概念 - 规则](#规则)。
+* `-j DROP` 表示该规则匹配后的执行动作是：丢弃该数据包，发送者将会一直等待到超时。其他可用的执行动作，参见下文：[iptable 概念 - 规则](#规则)。
+
+通过 `sudo iptables --line -nvL INPUT` 命令，可以看到刚刚配置的规则：
+
+```
+Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
+num   pkts bytes target     prot opt in     out     source               destination         
+1        0     0 DROP       all  --  *      *       192.168.57.1         0.0.0.0/0
+```
+
+此时，在宿主机执行 `nc 192.168.57.3 1234`，发现长时间获得不到输出，将卡住。
+
+最后，通过如下命令可以删除规则：
+
+```bash
+# 方式 1：通过规则的序号删除（上一步的 num 值）
+sudo iptables -t filter -D INPUT 1
+# 方式 2：通过规则的匹配条件和动作删除（即将添加规则的 -I 更改为 -D）
+sudo iptables -t filter -D INPUT -s 192.168.57.1 -j DROP
+# 方式 3：清空某张表某条链上的全部规则
+sudo iptables -t filter -F INPUT
+# 方式 3：清空某张表的全部规则
+sudo iptables -t filter -F
+```
+
+此时，再在宿主机执行 `nc 192.168.57.3 1234`，将获得如下输出：
+
+```
+source{ip: 192.168.57.1, port: 50262};  dest{ip: 192.168.57.1, port: 1234}; original dest{strerror: Protocol not available, errno: 92}
+```
+
+#### 默认动作
+
+通过 `sudo iptables -nvL INPUT` 输出的 `policy ACCEPT` 部分的 `ACCEPT` 表示该链的默认动作为 `ACCEPT`：
+
+```
+Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
+ pkts bytes target     prot opt in     out     source               destination   
+```
+
+默认动作的执行表示在没有匹配项的规则时执行的动作，因此，通过默认动作可以配置某一个链是白名单还是黑名单：
+
+* `policy ACCEPT` 默认放行，即链规则为黑名单制。
+* `policy DROP` 默认丢弃，即链规则为白名单制。
+
+可以通过如下命令，修改某个链的默认动作：
+
+```bash
+sudp iptables -t filter -P INPUT DROP
+```
 
 ### 转发到本地端口（REDIRECT）
 
 ```
+
 sudo iptables -t nat -A PREROUTING -p tcp --dport 12345 -j REDIRECT --to-ports 1234
 sudo iptables -t nat -I OUTPUT -p tcp -o lo --dport 12345 -j REDIRECT --to-ports 1234 # 支持本地回环
+
 ```
 
 istio/envoy 的原理之一
@@ -364,7 +484,63 @@ INPUT
 
 https://www.cnblogs.com/ym123/p/4567125.html
 
-### 常用命令
+### 启动自动加载配置
+
+安装 iptables 开机自动加载服务 `iptables-persistent`：
+
+```bash
+sudo apt install iptables-persistent
+```
+
+在安装过程中，会询问是否将当先的规则保存下来，可以选择是。
+
+该服务（`sudo systemctl status iptables.service`）会在开机时自动加载如下 iptables 配置：
+
+* `/etc/iptables/rules.v4`
+* `/etc/iptables/rules.v6`
+
+如果想将当前的规则配置到开机自动加载的文件，可以通过如下命令实现：
+
+```bash
+sudo sh -c 'iptables-save > /etc/iptables/rules.v4'
+sudo sh -c 'ip6tables-save > /etc/iptables/rules.v6'
+```
+
+如果想手动从配置文件中加载配置，可以通过如下命令实现：
+
+```bash
+sudo iptables-restore < /etc/iptables/rules.v4
+sudo ip6tables-restore < /etc/iptables/rules.v6
+```
+
+### 增删改查
+
+```bash
+### 新增规则 ###
+# 方式 1：将规则添加到某个链的最上方（优先级最高、编号最小）
+sudo iptables -t 表名 -I 链名 规则的匹配条件 规则的动作
+# 方式 1：将规则添加到指定的编号位置（规则编号的取值范围为：1 ~ MaxNumber+1）
+sudo iptables -t 表名 -I INPUT 规则编号 规则的匹配条件 规则的动作
+
+### 查看规则 ###
+sudo iptables --line-numbers -t 表名 -nvL 链名
+
+### 删除规则 ###
+# 方式 1：通过规则的序号删除
+sudo iptables -t 表名 -D 链名 规则编号
+# 方式 2：通过规则的匹配条件和动作删除（即将添加规则的 -I 更改为 -D）
+sudo iptables -t 表名 -D 链名 规则的匹配条件 规则的动作
+# 方式 3：清空某张表某条链上的全部规则
+sudo iptables -t 表名 -F 链名
+# 方式 3：清空某张表的全部规则
+sudo iptables -t 表名 -F
+
+### 修改规则（覆盖更新） ###
+sudo iptables -t 表名 -R 链名 规则编号 规则的匹配条件 规则的动作  # 注意：规则的匹配条件和动作都不可省略
+
+### 修改某个链的默认动作 ### 
+sudp iptables -t 表名 -P 链名 动作
+```
 
 https://blog.51cto.com/wenzhongxiang/1265510
 

@@ -14,7 +14,7 @@ tags:
 
 ## 实验环境准备
 
-> 参考：[容器核心技术（一） 实验环境准备 & Linux 概述](posts/container-core-tech-1-experiment-preparation-and-linux-base/#实验环境准备)。
+> 参考：[容器核心技术（一） 实验环境准备 & Linux 概述](/posts/container-core-tech-1-experiment-preparation-and-linux-base/#实验环境准备)。
 
 安装相关外部命令。
 
