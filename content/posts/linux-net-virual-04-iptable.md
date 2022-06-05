@@ -347,16 +347,26 @@ sudo iptables -t nat -I OUTPUT -p tcp -o lo --dport 12345 -j REDIRECT --to-ports
     * 宿主机构造 TCP 数据包：`source{ip: 192.168.57.1, port: 60332}; dest{ip: 192.168.57.3, port: 12345}`。
     * 虚拟机内核 iptables PREROUTING 链：
         * 修改数据包为：`source{ip: 192.168.57.1, port: 60332}; dest{ip: 192.168.57.3, port: 1234}`。
-        * 记录该 TCP 连接的原始目标端口为： 12345。
+        * 更新 NAT 连接表（个人推测）：
+            * key: `source{ip: 192.168.57.1, port: 60332}`
+            * value:
+                * `dest{ip: 192.168.57.3, port: 1234}`
+                * `original dest{ip: 192.168.57.3, port: 12345}`
     * 用户测试程序：
         * `accept` 系统调用获取到： `source{ip: 192.168.57.1, port: 60332}`。
         * `getsockname` 系统调用获取到： `dest{ip: 192.168.57.3, port: 1234}`。
         * `getsockopt` 获取到 iptables 记录的原始目标地址：`original dest{ip: 192.168.57.3, port: 12345}`。
 * 响应
     * 用户测试程序，构造响应 TCP 数据包：`source{ip: 192.168.57.3, port: 1234}; dest{ip: 192.168.57.1, port: 60332}`。
-    * 虚拟机内核 iptables 处理：
+    * 虚拟机内核 iptables 处理（个人推测）：
+        * 根据 `dest{ip: 192.168.57.1, port: 60332}` 查找 NAT 连接表，获取原始目标地址。
         * 修改数据包为：`source{ip: 192.168.57.3, port: 12345}; dest{ip: 192.168.57.1, port: 60332}`。
     * 宿主机接收到响应并打印输出。
+
+可以看出 REDIRECT 和 自己在应用层实现一个端口转发服务效果看起来是类似的，但是 REDIRECT 有应用层端口无法提供的如下优点：
+
+* 性能更高：由于 iptables 在内核层实现，性能更高，整体上只需经过一次协议栈。而应用层实现服务需要至少经过两次协议栈。
+* 对应用透明：由于 iptables 的 REDIRECT 是在协议栈层面实现的，因此对应用来说，感知到的源地址就是真实的源地址；而应用层实现感知到的源地址是端口转发服务的源地址，导致源地址信息丢失。
 
 ### 出入流量劫持（REDIRECT）
 
@@ -654,6 +664,12 @@ https://blog.51cto.com/wenzhongxiang/1265510
 参考 ipv6nat
 
 ## 实例：docker bridge 网络模拟实现
+
+目标：
+
+* 可以访问外部网络
+* 互相之间可访问
+* 可以实现端口映射
 
 https://thiscute.world/posts/iptables-and-container-networks/#%E4%BA%8C%E5%AE%B9%E5%99%A8%E7%BD%91%E7%BB%9C%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86---iptables--bridge--veth
 
