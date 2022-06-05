@@ -128,10 +128,19 @@ int main(int argc, char *argv[])
         n = getsockopt(cfd, SOL_IP, SO_ORIGINAL_DST, &original_dest_addr, &original_dest_addr_len);
         // 将信息发送给客户端
         char send_buff[BUFFER_SIZE];
+
+        // 不能一次性调用 sprintf ，原因是 inet_ntoa 共享一个 cache。
+        // https://stackoverflow.com/questions/48799606/inet-ntoa-gives-the-same-result-when-called-with-two-different-addresses
         memset(send_buff, 0, sizeof(send_buff));
-        sprintf(send_buff, "source{ip: %s, port: %d};  dest{ip: %s, port: %d}; original dest{%s: %s, %s: %d}\n",
-                inet_ntoa(source_addr.sin_addr), ntohs(source_addr.sin_port),
-                inet_ntoa(dest_addr.sin_addr), ntohs(dest_addr.sin_port),
+        sprintf(send_buff, "source{ip: %s, port: %d}; ",
+                inet_ntoa(source_addr.sin_addr), ntohs(source_addr.sin_port));
+        send(cfd, send_buff, strlen(send_buff), 0);
+        memset(send_buff, 0, sizeof(send_buff));
+        sprintf(send_buff, "dest{ip: %s, port: %d}; ",
+                inet_ntoa(dest_addr.sin_addr), ntohs(dest_addr.sin_port));
+        send(cfd, send_buff, strlen(send_buff), 0);
+        memset(send_buff, 0, sizeof(send_buff));
+        sprintf(send_buff, "original dest{%s: %s, %s: %d}\n",
                 n < 0 ? "strerror" : "ip",
                 n < 0 ? strerror(errno) : inet_ntoa(original_dest_addr.sin_addr), // 如果上一步报错返回错误信息
                 n < 0 ? "errno" : "port",
@@ -148,7 +157,7 @@ int main(int argc, char *argv[])
 通过 nc 命令访问该 server，`nc localhost 1234`，可以看到该测试程序的返回打印出来：
 
 ```
-source{ip: 127.0.0.1, port: 55958};  dest{ip: 127.0.0.1, port: 1234}; original dest{strerror: Protocol not available, errno: 92}
+source{ip: 127.0.0.1, port: 55958}; dest{ip: 127.0.0.1, port: 1234}; original dest{strerror: Protocol not available, errno: 92}
 ```
 
 此时是正常访问，可以看出：
@@ -199,15 +208,15 @@ num   pkts bytes target     prot opt in     out     source               destina
     * `source` 表示规则对应的源头地址，可以是一个IP，也可以是一个网段。
     * `destination` 表示规则对应的目标地址。可以是一个IP，也可以是一个网段。
 
-### 包过滤（防火强）
+### 主机防火强
 
 > 参考：[iptables详解（3）：iptables规则管理](https://www.zsythink.net/archives/1517)
 
 #### 描述
 
-iptable 最核心的功能就是网络防火墙，网络防火墙的实现方式是按照配置的规则对 IP 数据包进行过滤，如果包符合规则，则允许通过，否则不允许通过。
+iptable 最核心的功能就是防火墙，防火墙的实现方式是按照配置的规则对 IP 数据包进行过滤，如果包符合规则，则允许通过，否则不允许通过。
 
-包过滤按照数据包的方向可以分为如下两类：
+主机防火箱指的是对该主机的出入流量的包过滤能力，在 iptable 中通过 `filter` 表实现，按照数据包的方向可以分为如下两类：
 
 * INPUT - 入流量数据包过滤，一般在如下场景中使用：
     * 屏蔽指定源 IP 的数据包（封禁 DDos 攻击 IP）。
@@ -254,10 +263,12 @@ sudo iptables -t filter -F
 此时，再在宿主机执行 `nc 192.168.57.3 1234`，将获得如下输出：
 
 ```
-source{ip: 192.168.57.1, port: 50262};  dest{ip: 192.168.57.1, port: 1234}; original dest{strerror: Protocol not available, errno: 92}
+source{ip: 192.168.57.1, port: 50262}; dest{ip: 192.168.57.3, port: 1234}; original dest{strerror: Protocol not available, errno: 92}
 ```
 
 #### 默认动作
+
+> 参考： [iptables详解（9）：iptables的黑白名单机制](https://www.zsythink.net/archives/1604)
 
 通过 `sudo iptables -nvL INPUT` 输出的 `policy ACCEPT` 部分的 `ACCEPT` 表示该链的默认动作为 `ACCEPT`：
 
@@ -274,39 +285,91 @@ Chain INPUT (policy ACCEPT 0 packets, 0 bytes)
 可以通过如下命令，修改某个链的默认动作：
 
 ```bash
-sudp iptables -t filter -P INPUT DROP
+sudo iptables -t filter -P INPUT DROP
+```
+
+### 网络防火箱
+
+> 参见： [iptables详解（11）：iptables之网络防火墙](https://www.zsythink.net/archives/1663)
+
+和主机防火墙不同，网络防火墙指的是位于一个网络（多台主机）的入口位置（网关/路由器），对包转发进行包过滤的能力。在 iptables 中可以通过 filter 表的 `FORWARD` 链实现。
+
+此外，网络防火强本事就是一个网关，因此需要开启 Linux 内核的 Forward 特性（`sysctl -w net.ipv4.ip_forward=1`），开启该特性后，该主机才会像路由器一样进行包转发。
+
+一个配置示例如下所示：
+
+```bash
+# 开启内核的 ip forward 特性
+cat /proc/sys/net/ipv4/ip_forward
+sysctl -w net.ipv4.ip_forward=1
+
+# 只允许网络内主机，访问网络外主机的 80 与 22 端口。
+iptables -A FORWARD -j REJECT
+iptables -I FORWARD -s 网段 -p tcp --dport 80 -j ACCEPT
+iptables -I FORWARD -d 网段 -p tcp --sport 80 -j ACCEPT
+iptables -I FORWARD -s 网段 -p tcp --dport 22 -j ACCEPT
+iptables -I FORWARD -d 网段 -p tcp --sport 22 -j ACCEPT
 ```
 
 ### 转发到本地端口（REDIRECT）
 
+将端口转发到另一个端口，比如将 12345 端口转发到本机的 1234 端口。
+
+```bash
+sudo iptables -t nat -I PREROUTING -p tcp --dport 12345 -j REDIRECT --to-ports 1234
+sudo iptables -t nat -I OUTPUT -p tcp -o lo --dport 12345 -j REDIRECT --to-ports 1234
 ```
 
-sudo iptables -t nat -A PREROUTING -p tcp --dport 12345 -j REDIRECT --to-ports 1234
-sudo iptables -t nat -I OUTPUT -p tcp -o lo --dport 12345 -j REDIRECT --to-ports 1234 # 支持本地回环
+* 第一行实现的是目标端口为 12345 的 外部 TCP 入流量将转发到本地的 1234 端口。
+* 第一行实现的是目标端口为 12345 的 loopback TCP 入流量将转发到本地的 1234 端口（参考：[iptables port redirect not working for localhost](https://serverfault.com/questions/211536/iptables-port-redirect-not-working-for-localhost)）。
 
-```
+在虚拟机上执行完成上述命令后：
 
-istio/envoy 的原理之一
+* 在虚拟机上执行 `nc localhost 12345` 输出如下：
 
-本质上REDIRECT就是一个特殊的DNAT规则
+    ```
+    source{ip: 127.0.0.1, port: 46246}; dest{ip: 127.0.0.1, port: 1234}; original dest{ip: 127.0.0.1, port: 12345}
+    ```
 
-https://www.ichenfu.com/2019/04/09/istio-inbond-interception-and-linux-transparent-proxy/
+* 在宿主机上执行 `nc 192.168.57.3 12345` 输出如下：
 
-实现透明代理： https://comwrg.github.io/2018/11/17/v2ray-and-iptables-implement-global-proxy-under-linux/#V2Ray
+    ```
+    source{ip: 192.168.57.1, port: 60332}; dest{ip: 192.168.57.3, port: 1234}; original dest{ip: 192.168.57.3, port: 12345}
+    ```
 
-https://xtls.github.io/document/level-2/transparent_proxy/transparent_proxy.html#%E9%A6%96%E5%85%88-%E6%88%91%E4%BB%AC%E5%85%88%E8%AF%95%E8%AF%95%E5%81%9A%E5%88%B0%E7%AC%AC%E4%B8%80%E9%98%B6%E6%AE%B5
+可以看出，客户端向 12345 端口发送数据时，服务端看到的 dest port 是经过转发的 1234。通过 `getsockopt` 可以从内核中获取到原始的 dest port 是 12345。
 
-需测试，原理 https://github.com/lazytiger/trojan-rs/blob/master/PRINCIPLE.md#tcp
+以宿主机 192.168.57.1 向虚拟机 192.168.57.3:12345 发送请求为例，流量过程如下所示：
 
-（不会修改包的目的地址，可以通过 `getsockopt` 中的 `SO_ORIGINAL_DST` 读到该包的目标地址。）
+* 请求
+    * 宿主机构造 TCP 数据包：`source{ip: 192.168.57.1, port: 60332}; dest{ip: 192.168.57.3, port: 12345}`。
+    * 虚拟机内核 iptables PREROUTING 链：
+        * 修改数据包为：`source{ip: 192.168.57.1, port: 60332}; dest{ip: 192.168.57.3, port: 1234}`。
+        * 记录该 TCP 连接的原始目标端口为： 12345。
+    * 用户测试程序：
+        * `accept` 系统调用获取到： `source{ip: 192.168.57.1, port: 60332}`。
+        * `getsockname` 系统调用获取到： `dest{ip: 192.168.57.3, port: 1234}`。
+        * `getsockopt` 获取到 iptables 记录的原始目标地址：`original dest{ip: 192.168.57.3, port: 12345}`。
+* 响应
+    * 用户测试程序，构造响应 TCP 数据包：`source{ip: 192.168.57.3, port: 1234}; dest{ip: 192.168.57.1, port: 60332}`。
+    * 虚拟机内核 iptables 处理：
+        * 修改数据包为：`source{ip: 192.168.57.3, port: 12345}; dest{ip: 192.168.57.1, port: 60332}`。
+    * 宿主机接收到响应并打印输出。
 
-[不支持来自 localhost 的请求](https://serverfault.com/questions/211536/iptables-port-redirect-not-working-for-localhost)
+### 出入流量劫持（REDIRECT）
 
-写个简单 tcp 测试程序，观察 source & dest ip port。
+利用 iptables 的 REDIRECT 可以实现对符合某些规则的出入站流量进行拦截。因此可以实现：
+
+* 将所有出流量进行拦截，转发到本地的一个代理入口端口，该代理入口会解析目标 IP Port，将流量通过隧道从代理服务器侧发出，从而实现透明代理。参考：[v2ray - Dokodemo-door](https://www.v2ray.com/chapter_02/protocols/dokodemo.html)。
+* 对所有的出入站流量进行拦截，转到到本地的 proxy 中，从而实现 service mesh。参考： [Service Mesh中的 iptables 流量劫持](http://rui0.cn/archives/1619) 、 [Istio 中的 Sidecar 注入、透明流量劫持及流量路由过程详解](https://jimmysong.io/blog/sidecar-injection-iptables-and-traffic-routing/#iptables-%E6%B5%81%E9%87%8F%E5%8A%AB%E6%8C%81%E8%BF%87%E7%A8%8B%E8%AF%A6%E8%A7%A3) 、 [Istio的流量劫持和Linux下透明代理实现](https://www.ichenfu.com/2019/04/09/istio-inbond-interception-and-linux-transparent-proxy/)。
 
 ### 转发到任意 IP 端口（DNAT）
 
-和 REDIRECT 区别：dest ip 变了。
+本质上REDIRECT就是一个特殊的DNAT规则
+
+https://unix.stackexchange.com/questions/570194/redirect-external-request-to-localhost-with-iptables
+
+和 REDIRECT 区别：dest ip 变了（这不对）。
 
 https://www.cnblogs.com/dongzhiquan/p/11427461.html
 
@@ -318,6 +381,8 @@ https://www.cnblogs.com/dongzhiquan/p/11427461.html
 
 测试是否可以实现公网 ip 的代理。
 
+Docker 端口暴露原理。
+
 写个简单 tcp 测试程序，观察 source & dest ip port。
 
 ### 网络地址转换（SNAT/MASQUERADE）
@@ -326,10 +391,9 @@ https://yeasy.gitbook.io/docker_practice/advanced_network/port_mapping
 
 仅简单介绍，实战放在 最后 docker 实例中。
 
-### 其他特性
+### 访问日志
 
-* 访问日志
-* 流量统计
+参见：[iptables详解（12）：iptables动作总结之一](https://www.zsythink.net/archives/1684)
 
 ## iptable 原理
 
@@ -397,11 +461,14 @@ iptable 工具对其要实现的功能进行了抽象，产生了如下一些概
         * `-m tcp -m multiport --sports 22,36,80,8000:8999` 多个 TCP 源端口之一的
         * `-m tcp -m multiport --dports 22,36,80,8000:8999` 多个 TCP 目标端口之一的
         * 以上的 udp 都存在
+        * `-m tcp --tcp-flags SYN,ACK,FIN,RST,URG,PSH SYN,ACK` 用于匹配报文的tcp头的标志位，更多参见：[iptables详解（6）：iptables扩展匹配条件之 'tcp-flags'](https://www.zsythink.net/archives/1578)
+        * `-m icmp --icmp-type 8/0` 匹配 icmp 报文 type = 8，code = 0 的报文，更多参见：[iptables详解（7）：iptables扩展之udp扩展与icmp扩展](https://www.zsythink.net/archives/1588)。
         * `-m iprange --src-range 192.168.1.127-192.168.1.146 --dst-range xxx` iprange 扩展模块，匹配一段范围 ip。
         * `-m string --algo bm --string "xxxx"` string扩展模块，可以指定要匹配的字符串，如果报文中包含对应的字符串，则符合匹配条件。
         * `-m time --timestart 09:00:00 --timestop 18:00:00` time扩展模块，根据时间段区匹配报文，如果报文到达的时间在指定的时间范围以内，则符合匹配条件。
         * `-m connlimit --connlimit-above 2` 限制每个IP地址同时链接到server端的链接数量，如果不用指定IP，其默认就是针对每个客户端IP，即对单IP的并发连接数限制。
         * `-m limit` limit模块，定义报文到达速率进行限制。
+        * `-m state --state RELATED,ESTABLISHED` 匹配所有已经建立了连接的数据包（表示只允许主机访问外部，不允许外部访问主机），更多参见：[iptables详解（8）：iptables扩展模块之state扩展](https://www.zsythink.net/archives/1597)。
 * 动作（Target）：满足该规则的数据包，需要对该数据包做那些事情。
     * 基础动作（参见：[iptables动作总结之一](https://www.zsythink.net/archives/1684) | [iptables动作总结之二](https://www.zsythink.net/archives/1764)）
         * ACCEPT，接受数据包，进入后续流程，该规则后面的规则不会继续检测。
@@ -474,6 +541,23 @@ INPUT
 
 上文提到的 RETURN，将会跳出该自定义链的后续匹配规则，返回上一次层的匹配规则。
 
+自定义链的常见操作示例如下：
+
+```bash
+# 新增自定义链
+sudo iptables -t filter -N MY_CHAIN
+# 给自定义链添加规则
+sudo iptables -t filter -I MY_CHAIN -s 192.168.57.1 -j DROP
+# 在某个链中引用自定义链（和添加规则类似）
+sudo iptables -t filter -I INPUT -j MY_CHAIN
+# 取消某个自定义链的引用
+sudo iptables -t filter -D INPUT -j MY_CHAIN
+# 删除自定义链（保证引用数为 0 并且不包含任何规则的）
+sudo iptables -X MY_CHAIN
+# 重命名自定义链
+iptables -E MY_CHAIN MY_CHAIN2
+```
+
 ### 整体流程
 
 ![iptable process](/image/iptable-process.svg)
@@ -519,7 +603,9 @@ sudo ip6tables-restore < /etc/iptables/rules.v6
 ### 新增规则 ###
 # 方式 1：将规则添加到某个链的最上方（优先级最高、编号最小）
 sudo iptables -t 表名 -I 链名 规则的匹配条件 规则的动作
-# 方式 1：将规则添加到指定的编号位置（规则编号的取值范围为：1 ~ MaxNumber+1）
+# 方式 2：将规则添加到某个链的最下方（优先级最低、编号最大）
+sudo iptables -t 表名 -A 链名 规则的匹配条件 规则的动作
+# 方式 3：将规则添加到指定的编号位置（规则编号的取值范围为：1 ~ MaxNumber+1）
 sudo iptables -t 表名 -I INPUT 规则编号 规则的匹配条件 规则的动作
 
 ### 查看规则 ###
@@ -540,6 +626,20 @@ sudo iptables -t 表名 -R 链名 规则编号 规则的匹配条件 规则的�
 
 ### 修改某个链的默认动作 ### 
 sudp iptables -t 表名 -P 链名 动作
+
+### 自定义链相关 ###
+# 新增自定义链
+sudo iptables -t 表名 -N 自定义链名
+# 给自定义链添加规则
+sudo iptables -t 表名 -I 自定义链名 规则的匹配条件 规则的动作
+# 在某个链中引用自定义链
+sudo iptables -t 表名 -I 链名 -j 自定义链名
+# 取消某个自定义链的引用
+sudo iptables -t 表名 -D 链名 -j 自定义链名
+# 删除自定义链（保证引用数为 0 并且不包含任何规则的）
+sudo iptables -X 自定义链名
+# 重命名自定义链
+iptables -E 自定义链名 新自定义链名
 ```
 
 https://blog.51cto.com/wenzhongxiang/1265510
