@@ -290,7 +290,7 @@ sudo iptables -t filter -P INPUT DROP
 
 ### 网络防火箱
 
-> 参见： [iptables详解（11）：iptables之网络防火墙](https://www.zsythink.net/archives/1663)
+> 参考： [iptables详解（11）：iptables之网络防火墙](https://www.zsythink.net/archives/1663)
 
 和主机防火墙不同，网络防火墙指的是位于一个网络（多台主机）的入口位置（网关/路由器），对包转发进行包过滤的能力。在 iptables 中可以通过 filter 表的 `FORWARD` 链实现。
 
@@ -312,6 +312,8 @@ iptables -I FORWARD -d 网段 -p tcp --sport 22 -j ACCEPT
 ```
 
 ### 转发到本地端口（REDIRECT）
+
+> 参考：[iptables详解（13）：iptables动作总结之二](https://www.zsythink.net/archives/1764)
 
 将端口转发到另一个端口，比如将 12345 端口转发到本机的 1234 端口。
 
@@ -358,6 +360,9 @@ sudo iptables -t nat -I OUTPUT -p tcp -o lo --dport 12345 -j REDIRECT --to-ports
 
 ### 出入流量劫持（REDIRECT）
 
+> 参考：[v2ray - Dokodemo-door](https://www.v2ray.com/chapter_02/protocols/dokodemo.html)。
+* 对所有的出入站流量进行拦截，转到到本地的 proxy 中，从而实现 service mesh。参考： [Service Mesh中的 iptables 流量劫持](http://rui0.cn/archives/1619) 、 [Istio 中的 Sidecar 注入、透明流量劫持及流量路由过程详解](https://jimmysong.io/blog/sidecar-injection-iptables-and-traffic-routing/#iptables-%E6%B5%81%E9%87%8F%E5%8A%AB%E6%8C%81%E8%BF%87%E7%A8%8B%E8%AF%A6%E8%A7%A3) 、 [Istio的流量劫持和Linux下透明代理实现](https://www.ichenfu.com/2019/04/09/istio-inbond-interception-and-linux-transparent-proxy/)
+
 利用 iptables 的 REDIRECT 可以实现对符合某些规则的出入站流量进行拦截。因此可以实现：
 
 * 将所有出流量进行拦截，转发到本地的一个代理入口端口，该代理入口会解析目标 IP Port，将流量通过隧道从代理服务器侧发出，从而实现透明代理。参考：[v2ray - Dokodemo-door](https://www.v2ray.com/chapter_02/protocols/dokodemo.html)。
@@ -393,7 +398,7 @@ https://yeasy.gitbook.io/docker_practice/advanced_network/port_mapping
 
 ### 访问日志
 
-参见：[iptables详解（12）：iptables动作总结之一](https://www.zsythink.net/archives/1684)
+参考：[iptables详解（12）：iptables动作总结之一](https://www.zsythink.net/archives/1684)
 
 ## iptable 原理
 
