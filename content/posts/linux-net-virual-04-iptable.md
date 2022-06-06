@@ -311,7 +311,7 @@ iptables -I FORWARD -s 网段 -p tcp --dport 22 -j ACCEPT
 iptables -I FORWARD -d 网段 -p tcp --sport 22 -j ACCEPT
 ```
 
-### 转发到本地端口（REDIRECT）
+### 转发到本地某端口（REDIRECT）
 
 > 参考：[iptables详解（13）：iptables动作总结之二](https://www.zsythink.net/archives/1764)
 
@@ -323,7 +323,7 @@ sudo iptables -t nat -I OUTPUT -p tcp -o lo --dport 12345 -j REDIRECT --to-ports
 ```
 
 * 第一行实现的是目标端口为 12345 的 外部 TCP 入流量将转发到本地的 1234 端口。
-* 第一行实现的是目标端口为 12345 的 loopback TCP 入流量将转发到本地的 1234 端口（参考：[iptables port redirect not working for localhost](https://serverfault.com/questions/211536/iptables-port-redirect-not-working-for-localhost)）。
+* 第二行实现的是目标端口为 12345 的 loopback TCP 入流量将转发到本地的 1234 端口（参考：[iptables port redirect not working for localhost](https://serverfault.com/questions/211536/iptables-port-redirect-not-working-for-localhost)）。
 
 在虚拟机上执行完成上述命令后：
 
@@ -363,10 +363,37 @@ sudo iptables -t nat -I OUTPUT -p tcp -o lo --dport 12345 -j REDIRECT --to-ports
         * 修改数据包为：`source{ip: 192.168.57.3, port: 12345}; dest{ip: 192.168.57.1, port: 60332}`。
     * 宿主机接收到响应并打印输出。
 
-可以看出 REDIRECT 和 自己在应用层实现一个端口转发服务效果看起来是类似的，但是 REDIRECT 有应用层端口无法提供的如下优点：
+上述流程如下图所示：
+
+```
+          sip: 192.168.57.1, sport: 60332                          sip: 192.168.57.1, sport: 60332
+                            +------------+                                           +------------+
+          dip: 192.168.57.3,|dport: 12345|                         dip: 192.168.57.3,|dport: 1234 |
+                            +------------+                                           +------------+
+        ---------------------------------------> NAT (REDIRECT)  --------------------------------------->
+Client                                                                                                      Server
+        <--------------------------------------- NAT (REDIRECT)  <---------------------------------------
+                            +------------+                                           +------------+
+          sip: 192.168.57.3,|sport: 12345|                         sip: 192.168.57.3,|sport: 1234 |
+                            +------------+                                           +------------+
+          dip: 192.168.57.1, dport: 60332                          dip: 192.168.57.1, dport: 60332
+```
+
+从流量图可以看出，在一次请求/响应过程中（DNAT 也类似，后文将不再赘述）：
+* 虽然 REDIRECT 只是在 `PREROUTING` 配置的动作，从而导致，在请求过程中修改了数据包的 dest port。
+* 但是 iptables 会自动的在响应过程中将 source port 复原回来。
+
+从上述说明可以看出 REDIRECT 和 自己在应用层实现一个端口转发服务效果看起来是类似的，但是 REDIRECT 有应用层端口无法提供的如下优点：
 
 * 性能更高：由于 iptables 在内核层实现，性能更高，整体上只需经过一次协议栈。而应用层实现服务需要至少经过两次协议栈。
 * 对应用透明：由于 iptables 的 REDIRECT 是在协议栈层面实现的，因此对应用来说，感知到的源地址就是真实的源地址；而应用层实现感知到的源地址是端口转发服务的源地址，导致源地址信息丢失。
+
+最后，执行如下命令，删除规则，恢复现场：
+
+```bash
+sudo iptables -t nat -D PREROUTING -p tcp --dport 12345 -j REDIRECT --to-ports 1234
+sudo iptables -t nat -D OUTPUT -p tcp -o lo --dport 12345 -j REDIRECT --to-ports 1234
+```
 
 ### 出入流量劫持（REDIRECT）
 
@@ -378,15 +405,73 @@ sudo iptables -t nat -I OUTPUT -p tcp -o lo --dport 12345 -j REDIRECT --to-ports
 * 将所有出流量进行拦截，转发到本地的一个代理入口端口，该代理入口会解析目标 IP Port，将流量通过隧道从代理服务器侧发出，从而实现透明代理。参考：[v2ray - Dokodemo-door](https://www.v2ray.com/chapter_02/protocols/dokodemo.html)。
 * 对所有的出入站流量进行拦截，转到到本地的 proxy 中，从而实现 service mesh。参考： [Service Mesh中的 iptables 流量劫持](http://rui0.cn/archives/1619) 、 [Istio 中的 Sidecar 注入、透明流量劫持及流量路由过程详解](https://jimmysong.io/blog/sidecar-injection-iptables-and-traffic-routing/#iptables-%E6%B5%81%E9%87%8F%E5%8A%AB%E6%8C%81%E8%BF%87%E7%A8%8B%E8%AF%A6%E8%A7%A3) 、 [Istio的流量劫持和Linux下透明代理实现](https://www.ichenfu.com/2019/04/09/istio-inbond-interception-and-linux-transparent-proxy/)。
 
-### 转发到任意 IP 端口（DNAT）
+### 转发到本地某端口（DNAT）
 
-本质上REDIRECT就是一个特殊的DNAT规则
+> 参考：[iptables详解（13）：iptables动作总结之二](https://www.zsythink.net/archives/1764)
 
-https://unix.stackexchange.com/questions/570194/redirect-external-request-to-localhost-with-iptables
+将端口转发到另一个端口，比如将 12345 端口转发到本机的 1234 端口。
 
-和 REDIRECT 区别：dest ip 变了（这不对）。
+```bash
+sudo iptables -t nat -I PREROUTING -p tcp --dport 12346 -j DNAT --to-destination 127.0.0.1:1234
+sudo sysctl -w net.ipv4.conf.enp0s9.route_localnet=1
+sudo iptables -t nat -I OUTPUT -p tcp -o lo --dport 12346 -j DNAT --to-destination 127.0.0.1:1234
+# sysctl -w net.ipv4.ip_forward=1
+```
 
-https://www.cnblogs.com/dongzhiquan/p/11427461.html
+* 第一行实现的是目标端口为 12346 的 外部 TCP 入流量将转发到本地的 1234 端口。
+* 第二行：因为第一行会将请求到 12346 的数据包的 dest ip 修改为 127.0.0.1，而默认情况下 Linux 协议栈会丢弃所有不是从 lo 接口的接收到的目标 IP 是 127.0.0.1 的数据包。因此，此处通过 `net.ipv4.conf.enp0s9.route_localnet=1` 开启 `enp0s9` 可以接受目标 IP 是 127.0.0.1 的数据包（参考： [redirect external request to localhost with iptables](https://unix.stackexchange.com/questions/570194/redirect-external-request-to-localhost-with-iptables)）。
+* 第三行实现的是目标端口为 12346 的 loopback TCP 入流量将转发到本地的 1234 端口（参考：[iptables port redirect not working for localhost](https://serverfault.com/questions/211536/iptables-port-redirect-not-working-for-localhost)）。
+* 最后一行：如果 `--to-destination` 指向的是其他主机的 ip，则需要通过该命令开启 forward 特性。
+
+在虚拟机上执行完成上述命令后：
+
+* 在虚拟机上执行 `nc localhost 12346` 输出如下：
+
+    ```
+    source{ip: 127.0.0.1, port: 57626}; dest{ip: 127.0.0.1, port: 1234}; original dest{ip: 127.0.0.1, port: 12346}
+    ```
+
+* 在宿主机上执行 `nc 192.168.57.3 12346` 输出如下：
+
+    ```
+    source{ip: 192.168.57.1, port: 58624}; dest{ip: 127.0.0.1, port: 1234}; original dest{ip: 192.168.57.3, port: 12346}
+    ```
+
+`nc 192.168.57.3 12346` 的过程如下图所示：
+
+```
+          sip: 192.168.57.1, sport: 60332                          sip: 192.168.57.1, sport: 60332
+         +-------------------------------+                        +-------------------------------+
+         |dip: 192.168.57.3, dport: 12346|                        |dip: 127.0.0.1,    dport: 1234 |
+         +-------------------------------+                        +-------------------------------+
+        ---------------------------------------> NAT (DNAT)  --------------------------------------->
+Client                                                                                                      Server
+        <--------------------------------------- NAT (DNAT)  <---------------------------------------
+         +-------------------------------+                        +-------------------------------+
+         |sip: 192.168.57.3, sport: 12346|                        |sip: 127.0.0.1,    sport: 1234 |
+         +-------------------------------+                        +-------------------------------+
+          dip: 192.168.57.1, dport: 60332                          dip: 192.168.57.1, dport: 60332
+```
+
+可以看出，通过 DNAT 可以实现和 REDIRECT 一样的效果，但是和 REDIRECT 相比：**DNAT 除了修改了数据包的 port 还修改了 ip**。
+
+最后，执行如下命令，删除规则，恢复现场：
+
+```bash
+sudo iptables -t nat -D PREROUTING -p tcp --dport 12346 -j DNAT --to-destination 127.0.0.1:1234
+sudo sysctl -w net.ipv4.conf.enp0s9.route_localnet=0
+sudo iptables -t nat -D OUTPUT -p tcp -o lo --dport 12346 -j DNAT --to-destination 127.0.0.1:1234
+```
+
+注意：转发到本地某端口仅仅为了展示 DNAT 对数据包的修改情况，如果真的需要转发到本地某端口，应该直接使用：[转发到本地某端口（REDIRECT）](#转发到本地某端口redirect)（DNAT 需要配置网卡 `route_localnet` 很不优雅）
+
+### 网络地址转换（SNAT/MASQUERADE）
+
+https://yeasy.gitbook.io/docker_practice/advanced_network/port_mapping
+
+仅简单介绍，实战放在 最后 docker 实例中。
+
+### 转发到内网IP某端口（DNAT&SNAT）
 
 和 LVS 对别
 和 Nginx 对比。
@@ -400,11 +485,13 @@ Docker 端口暴露原理。
 
 写个简单 tcp 测试程序，观察 source & dest ip port。
 
-### 网络地址转换（SNAT/MASQUERADE）
+### 转发到公网IP某端口（DNAT&SNAT）
 
-https://yeasy.gitbook.io/docker_practice/advanced_network/port_mapping
-
-仅简单介绍，实战放在 最后 docker 实例中。
+```
+# 转发到公网 IP 端口
+# sudo iptables -t nat -I PREROUTING -p tcp --dport 12347 -j DNAT --to-destination 123.151.137.18:80
+# sudo iptables -t nat -I POSTROUTING -p tcp -s 192.168.57.0/24 -d 123.151.137.18 -j SNAT --to-source 10.0.2.15
+```
 
 ### 访问日志
 
@@ -456,6 +543,8 @@ iptable 工具对其要实现的功能进行了抽象，产生了如下一些概
 数据包经过这些注入点的流程如下：
 
 ![iptable chain](/image/iptable-chain.svg)
+
+**注意：** localhost （127.0.0.1 / loopback） 的数据包只会经过 IPNUT 和 OUTPUT 链，不会经过 PREROUTING、FORWARD、POSTROUTING 链。
 
 #### 规则
 
