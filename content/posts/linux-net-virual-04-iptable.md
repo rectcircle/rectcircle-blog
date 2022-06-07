@@ -1,5 +1,5 @@
 ---
-title: "Linux 网络虚拟化技术（四）iptable"
+title: "Linux 网络虚拟化技术（四）iptables"
 date: 2022-04-21T00:24:21+08:00
 draft: true
 toc: true
@@ -8,11 +8,11 @@ tags:
   - linux
 ---
 
-> 参考：[zsythink iptable 系列博客](https://www.zsythink.net/archives/category/%e8%bf%90%e7%bb%b4%e7%9b%b8%e5%85%b3/iptables/) | [iptable manual](https://linux.die.net/man/8/iptables)
+> 参考：[zsythink iptables 系列博客](https://www.zsythink.net/archives/category/%e8%bf%90%e7%bb%b4%e7%9b%b8%e5%85%b3/iptables/) | [iptables manual](https://linux.die.net/man/8/iptables)
 
-## iptable 简述
+## iptables 简述
 
-iptable 是一套针对 Linux 的，对 ipv4（ipv6 也存在对应的工具 ip6table） 数据包（流量）管理工具。在常见的 Linux 发行版均已预装，提供了如：包过滤、端口转发、NAT、流量审计等功能。
+iptables 是一套针对 Linux 的，对 ipv4（ipv6 也存在对应的工具 ip6table） 数据包（流量）管理工具。在常见的 Linux 发行版均已预装，提供了如：包过滤、端口转发、NAT、流量审计等功能。
 
 ## 准备
 
@@ -24,7 +24,7 @@ sudo apt install iptables
 
 确保测试虚拟机的网络接口配置为（`ip addr show`）：
 
-* enp0s3 网卡1 - 选择 NAT
+* enp0s3 网卡1 - 选择 NAT，IP 地址为 `10.0.2.15/24`（不固定），用于访问公网。
 * enp0s8 网卡2 - 选择 仅主机网络，IP 地址为 `192.168.56.3/24`，用于 SSH 连接
 * enp0s9 网卡3 - 选择 仅主机网络，IP 地址为 `192.168.57.3/24`，用于测试 iptables 规则。
 
@@ -415,7 +415,7 @@ sudo iptables -t nat -D OUTPUT -p tcp -o lo --dport 12345 -j REDIRECT --to-ports
 sudo iptables -t nat -I PREROUTING -p tcp --dport 12346 -j DNAT --to-destination 127.0.0.1:1234
 sudo sysctl -w net.ipv4.conf.enp0s9.route_localnet=1
 sudo iptables -t nat -I OUTPUT -p tcp -o lo --dport 12346 -j DNAT --to-destination 127.0.0.1:1234
-# sysctl -w net.ipv4.ip_forward=1
+# sudo sysctl -w net.ipv4.ip_forward=1
 ```
 
 * 第一行实现的是目标端口为 12346 的 外部 TCP 入流量将转发到本地的 1234 端口。
@@ -465,11 +465,62 @@ sudo iptables -t nat -D OUTPUT -p tcp -o lo --dport 12346 -j DNAT --to-destinati
 
 注意：转发到本地某端口仅仅为了展示 DNAT 对数据包的修改情况，如果真的需要转发到本地某端口，应该直接使用：[转发到本地某端口（REDIRECT）](#转发到本地某端口redirect)（DNAT 需要配置网卡 `route_localnet` 很不优雅）
 
-### 网络地址转换（SNAT/MASQUERADE）
+### 源网络地址转换（SNAT/MASQUERADE）
 
-https://yeasy.gitbook.io/docker_practice/advanced_network/port_mapping
+在从上文（[准备](#准备)） 可以看到，实验用的虚拟机有三张网卡：
 
-仅简单介绍，实战放在 最后 docker 实例中。
+* enp0s3 网卡1 - 选择 NAT，IP 地址为 `10.0.2.15/24`（不固定），用于访问公网。
+* enp0s8 网卡2 - 选择 仅主机网络，IP 地址为 `192.168.56.3/24`，用于 SSH 连接
+* enp0s9 网卡3 - 选择 仅主机网络，IP 地址为 `192.168.57.3/24`，用于测试 iptables 规则。
+
+为了方便演示，现在通过如下命令为 `enp0s9` 网卡添加一个 E 类地址（保留为研究测试使用的 IP 地址） `240.0.0.3/24`：
+
+```bash
+sudo ip addr add 240.0.0.3/24 dev enp0s9
+```
+
+因此在虚拟机中，访问公网地址时，默认会通过 `enp0s3` 出去，源地址会被设置为 `10.0.2.15`（通过 `sudo tcpdump -e -n -i enp0s3` 观察）。比如执行 `curl qq.com` 将正常返回 html 文本。
+
+此时手动指定源 IP 为 `240.0.0.3`， 比如执行 `curl --dns-interface enp0s3 --interface 240.0.0.3 qq.com` 将永远得不到返回。
+
+此时，通过 iptables 的 SNAT 或者 MASQUERADE 动作可以实现，源 IP 为 `240.0.0.3`也可以访问公网。
+
+```bash
+sudo iptables -t nat -I POSTROUTING -p tcp -s 240.0.0.3/24 ! -d 240.0.0.3/24 -j SNAT --to-source 10.0.2.15
+# sudo  iptables -t nat -I POSTROUTING -p tcp -s 240.0.0.3/24 ! -d 240.0.0.3/24 -o enp0s3 -j MASQUERADE
+# sudo sysctl -w net.ipv4.ip_forward=1
+```
+
+* 第一行为：满足 IP 是 `240.0.0.3/24` 目标 IP 不是 `240.0.0.3/24` 的 TCP 数据包，将修改其源 IP 为 `10.0.2.15`。
+* 第二行为：本例的另一种写法，满足 IP 是 `240.0.0.3/24` 目标 IP 不是 `240.0.0.3/24` 的 TCP 数据包，将修改其源 IP 为 enp0s3 绑定的 IP 地址（即 `10.0.2.15`）。
+* 第三行为：本例中不需要，因为数据包来自本机。
+
+此时再执行 `curl --dns-interface enp0s3 --interface enp0s9 qq.com`，将正常返回 html 文本。
+
+SNAT 整个流程（通过 `sudo tcpdump -e -n -i enp0s3` 可以观察到修改后的数据包）：
+
+```
+         +-------------------------------+                       +-------------------------------+
+         |sip: 240.0.0.3,    sport: 54321|                       |sip: 10.0.2.15,    sport: 49254|
+         +-------------------------------+                       +-------------------------------+
+          dip: qq.com addr,  dport: 80                            dip: qq.com addr,  dport: 80 
+        ---------------------------------------> NAT (SNAT)  --------------------------------------->
+Client                                                                                                      Server
+        <--------------------------------------- NAT (SNAT)  <---------------------------------------
+          sip: qq.com addr,  sport: 80                             sip: qq.com addr,  sport: 80 
+         +-------------------------------+                        +-------------------------------+
+         |dip: 240.0.0.3,    dport: 54321|                        |dip: 10.0.2.15,    dport: 49254|
+         +-------------------------------+                        +-------------------------------+
+```
+
+最后，执行如下命令恢复现场：
+
+```
+sudo ip addr delete 240.0.0.3/24 dev enp0s9
+sudo iptables -t nat -D POSTROUTING -p tcp -s 240.0.0.3/24 ! -d 240.0.0.3/24 -j SNAT --to-source 10.0.2.15
+# sudo  iptables -t nat -D POSTROUTING -p tcp -s 240.0.0.3/24 ! -d 240.0.0.3/24 -o enp0s3 -j MASQUERADE
+# sudo sysctl -w net.ipv4.ip_forward=0
+```
 
 ### 转发到内网IP某端口（DNAT&SNAT）
 
@@ -481,7 +532,7 @@ https://yeasy.gitbook.io/docker_practice/advanced_network/port_mapping
 
 测试是否可以实现公网 ip 的代理。
 
-Docker 端口暴露原理。
+Docker 端口暴露原理：https://yeasy.gitbook.io/docker_practice/advanced_network/port_mapping
 
 写个简单 tcp 测试程序，观察 source & dest ip port。
 
@@ -787,3 +838,5 @@ Linux 虚拟网络设备详解之 Bridge 网桥  https://www.cnblogs.com/bakari/
 一文总结 Linux 虚拟网络设备 eth, tap/tun, veth-pair https://www.cnblogs.com/bakari/p/10494773.html
 
 简述linux路由表 https://yuerblog.cc/2019/11/18/%E7%AE%80%E8%BF%B0linux%E8%B7%AF%E7%94%B1%E8%A1%A8/
+
+<!-- TODO: iptable -> iptables, xtables-legacy vs xtables-nft-multi https://upload.wikimedia.org/wikipedia/commons/3/37/Netfilter-packet-flow.svg -->
