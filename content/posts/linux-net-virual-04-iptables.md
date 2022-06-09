@@ -47,7 +47,7 @@ sudo apt install iptables
 
 ```cpp
 // 必须安装 iptables 否则会报错：getsockopt error: Protocol not available
-// 运行： gcc ./src/c/03-iptable/test-iptable-server.c && sudo ./a.out
+// 运行： gcc ./src/c/03-iptables/test-iptables-server.c && sudo ./a.out
 // 测试命令： nc localhost 1234
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
 }
 ```
 
-通过 `gcc ./src/c/03-iptable/test-iptable-server.c && sudo ./a.out` 命令编译运行。
+通过 `gcc ./src/c/03-iptables/test-iptables-server.c && sudo ./a.out` 命令编译运行。
 
 通过 nc 命令访问该 server，`nc localhost 1234`，可以看到该测试程序的返回打印出来：
 
@@ -166,7 +166,7 @@ source{ip: 127.0.0.1, port: 55958}; dest{ip: 127.0.0.1, port: 1234}; original de
 * 目的 IP Port 为 `127.0.0.1:1234`。
 * 由于没有进行 NAT 所以无法获取原始目标 IP Port，所以返回 `Protocol not available` 错误信息。
 
-## iptable 使用场景
+## iptables 使用场景
 
 * 写一个简单 socket 程序用来测试。
 * 重点画出，ip/tcp 包的内容变化。
@@ -179,7 +179,7 @@ source{ip: 127.0.0.1, port: 55958}; dest{ip: 127.0.0.1, port: 1234}; original de
 sudo iptables --line-numbers -t filter -nvL INPUT
 ```
 
-* `-t filter` 查看 `filter` 表（不填写时默认为 `filter`）。表的概念参见下文：[iptable 概念 - 表](#表)。
+* `-t filter` 查看 `filter` 表（不填写时默认为 `filter`）。表的概念参见下文：[iptables 概念 - 表](#表)。
 * `--line-numbers` 展示规则在该链中的序号，可以简写为 `--line`。
 * `-n` 不对 IP 地址进行名称反解，以提高性能。
 * `-v` 展示更多详细信息。
@@ -214,9 +214,9 @@ num   pkts bytes target     prot opt in     out     source               destina
 
 #### 描述
 
-iptable 最核心的功能就是防火墙，防火墙的实现方式是按照配置的规则对 IP 数据包进行过滤，如果包符合规则，则允许通过，否则不允许通过。
+iptables 最核心的功能就是防火墙，防火墙的实现方式是按照配置的规则对 IP 数据包进行过滤，如果包符合规则，则允许通过，否则不允许通过。
 
-主机防火箱指的是对该主机的出入流量的包过滤能力，在 iptable 中通过 `filter` 表实现，按照数据包的方向可以分为如下两类：
+主机防火箱指的是对该主机的出入流量的包过滤能力，在 iptables 中通过 `filter` 表实现，按照数据包的方向可以分为如下两类：
 
 * INPUT - 入流量数据包过滤，一般在如下场景中使用：
     * 屏蔽指定源 IP 的数据包（封禁 DDos 攻击 IP）。
@@ -232,10 +232,10 @@ iptable 最核心的功能就是防火墙，防火墙的实现方式是按照配
 sudo iptables -t filter -I INPUT -s 192.168.57.1 -j DROP
 ```
 
-* `-t filter` 将规则写入 `filter` 表，表示该规则是一个包过滤类型的规则。表的概念参见下文：[iptable 概念 - 表](#表)。
-* `-I INPUIT` 将规则应用在 `INPUT` 链中，表示是一条入流量过滤规则，默认情况下将该规则添加到规则链的最上方（即优先级最高），如果想将该规则放在某个序号的位置该参数应该写为：`-I INPUT 1`（此处的 `1` 的取值范围为 `1 ~ MaxNumber+1`）。链的概念参见下文：[iptable 概念 - 链](#链)。
-* `-s 192.168.57.1` 表示该规则的匹配条件是：匹配源 IP 为 `192.168.57.1` 的数据包（在本实验中为宿主机）。其他可用的匹配条件，参见下文：[iptable 概念 - 规则](#规则)。
-* `-j DROP` 表示该规则匹配后的执行动作是：丢弃该数据包，发送者将会一直等待到超时。其他可用的执行动作，参见下文：[iptable 概念 - 规则](#规则)。
+* `-t filter` 将规则写入 `filter` 表，表示该规则是一个包过滤类型的规则。表的概念参见下文：[iptables 概念 - 表](#表)。
+* `-I INPUIT` 将规则应用在 `INPUT` 链中，表示是一条入流量过滤规则，默认情况下将该规则添加到规则链的最上方（即优先级最高），如果想将该规则放在某个序号的位置该参数应该写为：`-I INPUT 1`（此处的 `1` 的取值范围为 `1 ~ MaxNumber+1`）。链的概念参见下文：[iptables 概念 - 链](#链)。
+* `-s 192.168.57.1` 表示该规则的匹配条件是：匹配源 IP 为 `192.168.57.1` 的数据包（在本实验中为宿主机）。其他可用的匹配条件，参见下文：[iptables 概念 - 规则](#规则)。
+* `-j DROP` 表示该规则匹配后的执行动作是：丢弃该数据包，发送者将会一直等待到超时。其他可用的执行动作，参见下文：[iptables 概念 - 规则](#规则)。
 
 通过 `sudo iptables --line -nvL INPUT` 命令，可以看到刚刚配置的规则：
 
@@ -676,7 +676,7 @@ sudo iptables -I INPUT -p TCP --dport 22 -j LOG
     * 在 A 看来：A <-> B'
     * 在 B 看来：A <-> B
 
-## iptable 原理
+## iptables 原理
 
 ### netfilter 框架
 
@@ -686,32 +686,32 @@ Linux 在内核层面实现 TCP/IP 协议栈，因此应用开发者只需要感
 
 因此 Linux 提供了 netfilter 框架，该框架定义了一套编程接口，允许实现该接口的程序（下文称为 Netfilter 程序）在 TCP/IP 协议栈的流程中注入自定义的逻辑（Hook）。
 
-而 iptable 就是一套基于 netfilter 框架实现的程序，实现了管理员常用的防火墙和 NAT 等能力。（除了 iptable 之外，还有 [LVS](http://www.linuxvirtualserver.org/) 负载均衡器等）
+而 iptables 就是一套基于 netfilter 框架实现的程序，实现了管理员常用的防火墙和 NAT 等能力。（除了 iptables 之外，还有 [LVS](http://www.linuxvirtualserver.org/) 负载均衡器等）
 
-和其他领域一样，通用的标准/接口是为了服务与某些特定现实需求的，因此 netfilter 的诞生实际上就是为起初的 iptable 提供服务的。iptable 和 netfilter 是用一个项目组下的项目。
+和其他领域一样，通用的标准/接口是为了服务与某些特定现实需求的，因此 netfilter 的诞生实际上就是为起初的 iptables 提供服务的。iptables 和 netfilter 是用一个项目组下的项目。
 
 更多参见： [netfilter.org](https://www.netfilter.org/)。
 
-### iptable 架构
+### iptables 架构
 
-iptable 的由两个部分组成：
+iptables 的由两个部分组成：
 
-* 用户态空间提供的 iptable 命令行程序。
+* 用户态空间提供的 iptables 命令行程序。
 * 注册在内核中 netfilter 钩子上的内核模块。
 
-可以看出 iptable 功能是在内核态实现的（原生的）。因此其性能优于逻辑实现在用户态的相关网络应用。
+可以看出 iptables 功能是在内核态实现的（原生的）。因此其性能优于逻辑实现在用户态的相关网络应用。
 
-### iptable 概念
+### iptables 概念
 
 > 参考： [iptables概念](https://www.zsythink.net/archives/1199)
 
-netfilter 的是内核提供的通用编程接口，iptable 是基于通用编程接口实现的具有特定功能的工具。
+netfilter 的是内核提供的通用编程接口，iptables 是基于通用编程接口实现的具有特定功能的工具。
 
-iptable 工具对其要实现的功能进行了抽象，产生了如下一些概念。如果理解了这些概念，可以更好的使用 iptable。
+iptables 工具对其要实现的功能进行了抽象，产生了如下一些概念。如果理解了这些概念，可以更好的使用 iptables。
 
 #### 链
 
-上文提到了，netfilter 提供的是在 TCP/IP 协议栈的流程中注入自定义的逻辑的能力。netfilter 在整个 TCP/IP 协议栈的流程中，提供了多个注入点（Hook），在 iptable 中，这些注入点称为链（Chain）。iptable 提供了 5 种链，分别是：
+上文提到了，netfilter 提供的是在 TCP/IP 协议栈的流程中注入自定义的逻辑的能力。netfilter 在整个 TCP/IP 协议栈的流程中，提供了多个注入点（Hook），在 iptables 中，这些注入点称为链（Chain）。iptables 提供了 5 种链，分别是：
 
 * PREROUTING （Pre Routing 路由前）
 * INPUT （输入）
@@ -721,13 +721,13 @@ iptable 工具对其要实现的功能进行了抽象，产生了如下一些概
 
 数据包经过这些注入点的流程如下：
 
-![iptable chain](/image/iptable-chain.svg)
+![iptables chain](/image/iptables-chain.svg)
 
 **注意：** localhost （127.0.0.1 / loopback） 的数据包只会经过 IPNUT 和 OUTPUT 链，不会经过 PREROUTING、FORWARD、POSTROUTING 链。
 
 #### 规则
 
-有了链（注入点）概念后，iptable 定义在这个注入上，每个 ip 数据包，满足什么样的条件后，做什么事情。此处的，满足什么样的条件后，做什么事情就是一条规则。
+有了链（注入点）概念后，iptables 定义在这个注入上，每个 ip 数据包，满足什么样的条件后，做什么事情。此处的，满足什么样的条件后，做什么事情就是一条规则。
 
 因此，一条规则有如下三个核心属性：
 
@@ -769,7 +769,7 @@ iptable 工具对其要实现的功能进行了抽象，产生了如下一些概
 
 #### 表
 
-有了链和规则概念 iptable 就可以支撑 iptable 的功能了，但是多数场景都需要多个链上的规则共同配合才能实现。因此 iptable 按照场景定义几张表。
+有了链和规则概念 iptables 就可以支撑 iptables 的功能了，但是多数场景都需要多个链上的规则共同配合才能实现。因此 iptables 按照场景定义几张表。
 
 * `filter` 表： 实现过滤功能，防火墙。对应内核模块为 `iptables_filter`。
 * `nat` 表：network address translation，网络地址转换。对应内核模块为 `iptable_nat`。
@@ -800,7 +800,7 @@ iptable 工具对其要实现的功能进行了抽象，产生了如下一些概
 
 很多时候，实现某个需求时，需要在某个链中配置配置多条规则，如果直接将规则添加到指定链中，会造成管理复杂的问题。
 
-因此 iptable 提供了自定义链的能力，自定义链是一组规则的集合。通过自定义链可以一次性的启用/停用/删除这些规则。
+因此 iptables 提供了自定义链的能力，自定义链是一组规则的集合。通过自定义链可以一次性的启用/停用/删除这些规则。
 
 自定义链如果想要工作，最终要和一个默认链关联（被引用），同样一个自定义链也可以和其他自定义链关联。
 
@@ -843,44 +843,11 @@ iptables -E MY_CHAIN MY_CHAIN2
 
 ### 整体流程
 
-![iptable process](/image/iptable-process.svg)
+![iptables process](/image/iptables-process.svg)
 
-## iptable 命令详解
+## iptables 命令
 
-### 命令行样式
-
-https://www.cnblogs.com/ym123/p/4567125.html
-
-### 启动自动加载配置
-
-安装 iptables 开机自动加载服务 `iptables-persistent`：
-
-```bash
-sudo apt install iptables-persistent
-```
-
-在安装过程中，会询问是否将当先的规则保存下来，可以选择是。
-
-该服务（`sudo systemctl status iptables.service`）会在开机时自动加载如下 iptables 配置：
-
-* `/etc/iptables/rules.v4`
-* `/etc/iptables/rules.v6`
-
-如果想将当前的规则配置到开机自动加载的文件，可以通过如下命令实现：
-
-```bash
-sudo sh -c 'iptables-save > /etc/iptables/rules.v4'
-sudo sh -c 'ip6tables-save > /etc/iptables/rules.v6'
-```
-
-如果想手动从配置文件中加载配置，可以通过如下命令实现：
-
-```bash
-sudo iptables-restore < /etc/iptables/rules.v4
-sudo ip6tables-restore < /etc/iptables/rules.v6
-```
-
-### 增删改查
+> 参见： [iptables(8) — Linux manual page](https://man7.org/linux/man-pages/man8/iptables.8.html)
 
 ```bash
 ### 新增规则 ###
@@ -925,13 +892,42 @@ sudo iptables -X 自定义链名
 iptables -E 自定义链名 新自定义链名
 ```
 
-https://blog.51cto.com/wenzhongxiang/1265510
+## 启动自动加载规则
 
-## Go iptable SDK
+安装 iptables 开机自动加载服务 `iptables-persistent`：
+
+```bash
+sudo apt install iptables-persistent
+```
+
+在安装过程中，会询问是否将当先的规则保存下来，可以选择是。
+
+该服务（`sudo systemctl status iptables.service`）会在开机时自动加载如下 iptables 配置：
+
+* `/etc/iptables/rules.v4`
+* `/etc/iptables/rules.v6`
+
+如果想将当前的规则配置到开机自动加载的文件，可以通过如下命令实现：
+
+```bash
+sudo sh -c 'iptables-save > /etc/iptables/rules.v4'
+sudo sh -c 'ip6tables-save > /etc/iptables/rules.v6'
+```
+
+如果想手动从配置文件中加载配置，可以通过如下命令实现：
+
+```bash
+sudo iptables-restore < /etc/iptables/rules.v4
+sudo ip6tables-restore < /etc/iptables/rules.v6
+```
+
+## Go iptables SDK
 
 参考 ipv6nat
 
 ## 实例：docker bridge 网络模拟实现
+
+https://blog.51cto.com/wenzhongxiang/1265510
 
 目标：
 
@@ -954,7 +950,7 @@ https://segmentfault.com/a/1190000009491002
 
 ip_forward与路由转发  https://blog.51cto.com/13683137989/1880744
 
-主要看 iptable（netfilter）、bridge、veth 原理。
+主要看 iptables（netfilter）、bridge、veth 原理。
 
 实战按照 ip 命令（iproute2），c 语言库（https://man7.org/linux/man-pages/man7/netlink.7.html）， go 语言（github.com/vishvananda/netlink）库来操作这些设备。
 
@@ -967,4 +963,4 @@ Linux 虚拟网络设备详解之 Bridge 网桥  https://www.cnblogs.com/bakari/
 
 简述linux路由表 https://yuerblog.cc/2019/11/18/%E7%AE%80%E8%BF%B0linux%E8%B7%AF%E7%94%B1%E8%A1%A8/
 
-<!-- TODO: iptable -> iptables, xtables-legacy vs xtables-nft-multi https://upload.wikimedia.org/wikipedia/commons/3/37/Netfilter-packet-flow.svg -->
+<!-- TODO:  xtables-legacy vs xtables-nft-multi https://upload.wikimedia.org/wikipedia/commons/3/37/Netfilter-packet-flow.svg -->
