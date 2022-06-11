@@ -647,7 +647,7 @@ sudo iptables -I INPUT -p TCP --dport 22 -j LOG
 
 注意和其他动作不同，LOG 行为不会终止后续规则的执行，也不会对数据包做任何修改。
 
-## 总结
+### 总结
 
 本部分主要介绍了，包过滤、 NAT 和数据包日志三个 iptables 的特性。
 
@@ -892,7 +892,7 @@ sudo iptables -X 自定义链名
 iptables -E 自定义链名 新自定义链名
 ```
 
-## 启动自动加载规则
+## 系统启动自动加载规则
 
 安装 iptables 开机自动加载服务 `iptables-persistent`：
 
@@ -923,9 +923,95 @@ sudo ip6tables-restore < /etc/iptables/rules.v6
 
 ## Go iptables SDK
 
-参考 ipv6nat
+Go 没有看到比较稳定的 iptables 的 SDK，通过阅读 Docker 源码可以了解到，目前 Go 上如果想使用 iptables 的方式就是直接调用 iptables 命令，参见：[Docker 源码](https://github.com/moby/moby/blob/master/libnetwork/iptables/iptables.go)。
 
 ## 实例：docker bridge 网络模拟实现
+
+Docker 的默认网络是通过 bridge、veth、network namespace 和 iptables 技术实现的。
+
+在本系列的前几篇文章，已经介绍了 veth 和 bridge 设备，本文介绍了 iptables 技术。
+
+基于对这些技术，本节将模拟实现 docker 默认网络模型。（关于 network namespace 会在容器化技术详细讲解）。
+
+### Docker 默认网络模型分析
+
+整个网络拓扑如下图所示：
+
+![image](/image/docker-bridge-models.svg)
+
+对照上图可以看出，Docker 默认网络提供了如下能力（和上图序号对应）：
+
+1. 同一个网络下的每个容器都会分配一个同一网段的 IP 地址（定义为容器 IP）。
+2. 处于同一个网络的容器之间可以相互通过容器 IP 通信。
+3. 容器内进程可以访问宿主机 IP。
+4. 宿主机进程可以通过容器 IP 和任意容器通信。
+5. 容器内进程可以访问宿主机可以路由到的所有 IP。
+6. 宿主机外部的 IP （包括宿主机所在网段的其他 IP）**无法访问** 该宿主机上的容器 IP（未暴露的端口）。
+7. 宿主机外部的 IP 只能访问到容器显式声明暴露的 TCP/UDP 端口。
+
+### 内核参数配置
+
+Docker 网络模型依赖 ip forward 特性，需通过如下命令开启（永久生效需修改 `/etc/sysctl.conf` 配置文件）。
+
+```bash
+sudo sysctl -w net.ipv4.ip_forward=1
+```
+
+### Docker 安装
+
+在 Docker 安装阶段完成，Docker deamon 第一次启动后，对做如下事项：
+
+* 创建一个名为 docker0 的 bridge 设备，并分配一个 ip。
+* 配置一个 MASQUERADE iptables 规则。
+
+#### 创建 bridge
+
+本例中，bridge 名为 demodocker0：
+
+```bash
+# 创建 bridge、分配 ip、启动
+sudo ip link add demodocker0 type bridge
+sudo ip addr add dev demodocker0 172.16.0.1/16
+```
+
+#### 配置 iptables MASQUERADE 规则
+
+```bash
+# 创建 MASQUERADE iptables 规则：source ip 是容器 IP 的且 output 的 interface 不是 bridge 其他容器的任意协议的数据包，将修改修改 Source IP 和 Source Port，已实现网络模型的 5（访问外部网络）。
+sudo  iptables -t nat -I POSTROUTING -s 172.16.0.1/16 ! -o demodocker0  -j MASQUERADE
+```
+
+### 容器启动准备
+
+#### 创建两对 veth
+
+#### 创建两个 network namespace
+
+#### 连接 veth 到 bridge
+
+#### 连接 veth 到 network namespace
+
+#### 暴露端口（配置 iptables DNAT 规则）
+
+https://github.com/moby/moby/issues/12632
+
+### 测试网络
+
+#### 1. 观察 ip 分配情况
+
+#### 2. 两个 network namepspace 间互相通讯
+
+#### 3. network namepspace 访问宿主机 ip
+
+#### 4. 宿主机访问 network namepspace ip
+
+#### 5. network namepspace 访问外部网络
+
+#### 6. 宿主机外部的 IP 无法访问未暴露的端口
+
+#### 7. 宿主机外部的 IP 访问暴露的端口
+
+https://blog.csdn.net/u013694670/article/details/104101740
 
 https://blog.51cto.com/wenzhongxiang/1265510
 
