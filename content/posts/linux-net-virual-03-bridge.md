@@ -1,6 +1,6 @@
 ---
 title: "Linux 网络虚拟化技术（三）bridge 虚拟设备"
-date: 2022-05-20T00:24:21+08:00
+date: 2022-05-15T00:24:21+08:00
 draft: false
 toc: true
 comments: true
