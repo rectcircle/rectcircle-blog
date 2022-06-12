@@ -18,3 +18,4 @@ TODO 两个实例：
 https://www.kernel.org/doc/html/v5.8/networking/tuntap.html
 https://en.wikipedia.org/wiki/TUN/TAP
 Linux虚拟网络设备之tun/tap https://segmentfault.com/a/1190000009249039
+一文总结 Linux 虚拟网络设备 eth, tap/tun, veth-pair https://www.cnblogs.com/bakari/p/10494773.html

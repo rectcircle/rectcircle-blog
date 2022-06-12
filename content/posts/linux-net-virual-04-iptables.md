@@ -1,7 +1,7 @@
 ---
 title: "Linux 网络虚拟化技术（四）iptables"
-date: 2022-04-21T00:24:21+08:00
-draft: true
+date: 2022-06-13T00:40:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -701,6 +701,11 @@ iptables 的由两个部分组成：
 
 可以看出 iptables 功能是在内核态实现的（原生的）。因此其性能优于逻辑实现在用户态的相关网络应用。
 
+iptables 命令行工具有两种方式可以和内核通讯：
+
+* [xtables-legacy](https://man7.org/linux/man-pages/man8/xtables-legacy.8.html) 通过 `getsockopt/setsockopt` 系统调用和内核模块通讯。
+* [xtables-nft-multi](https://manpages.debian.org/testing/iptables/xtables-nft-multi.8.en.html) （又称 [xtables-nft](https://man7.org/linux/man-pages/man8/xtables-nft.8.html)） 通过 `nftables` 内核 api 和内核模块通讯，并集成了 arptables、 ebtables 等一些了工具。
+
 ### iptables 概念
 
 > 参考： [iptables概念](https://www.zsythink.net/archives/1199)
@@ -843,7 +848,13 @@ iptables -E MY_CHAIN MY_CHAIN2
 
 ### 整体流程
 
+简易版
+
 ![iptables process](/image/iptables-process.svg)
+
+官方版
+
+![Netfilter-packet-flow.svg](https://upload.wikimedia.org/wikipedia/commons/3/37/Netfilter-packet-flow.svg)
 
 ## iptables 命令
 
@@ -949,7 +960,9 @@ Docker 的默认网络是通过 bridge、veth、network namespace 和 iptables �
 6. 宿主机外部的 IP （包括宿主机所在网段的其他 IP）**无法访问** 该宿主机上的容器 IP（未暴露的端口）。
 7. 宿主机外部的 IP 只能访问到容器显式声明暴露的 TCP/UDP 端口。
 
-### 内核参数配置
+### Docker 网络行为模拟
+
+#### 内核参数配置
 
 Docker 网络模型依赖 ip forward 特性，需通过如下命令开启（永久生效需修改 `/etc/sysctl.conf` 配置文件）。
 
@@ -957,96 +970,149 @@ Docker 网络模型依赖 ip forward 特性，需通过如下命令开启（永�
 sudo sysctl -w net.ipv4.ip_forward=1
 ```
 
-### Docker 安装
+注意：Docker 自身不会主动修改该配置。也就是说，如果 Docker 出现端口转发外部网路无法访问的情况，可以检查该配置项。
+
+#### Docker 安装
 
 在 Docker 安装阶段完成，Docker deamon 第一次启动后，对做如下事项：
 
-* 创建一个名为 docker0 的 bridge 设备，并分配一个 ip。
+* 创建一个名为 docker0 的 bridge 设备，分配一个 ip，并启动该 bridge。
 * 配置一个 MASQUERADE iptables 规则。
+* 配置一个 在 nat 表的 PREROUTING 链上配置一个 return 规则。
 
-#### 创建 bridge
-
-本例中，bridge 名为 demodocker0：
+本例中，bridge 名为 demodocker0，并分配了 `172.16.0.1/16` 网段。
 
 ```bash
-# 创建 bridge、分配 ip、启动
+# 创建 bridge、分配 ip 并 启动设备
 sudo ip link add demodocker0 type bridge
 sudo ip addr add dev demodocker0 172.16.0.1/16
+sudo ip link set demodocker0 up
+
+# 创建 MASQUERADE iptables 规则：source ip 是容器 IP 的且 output 的 interface 不是 bridge 其他容器的任意协议的数据包，将修改修改 Source IP 和 Source Port，已实现网络模型的 5（访问外部网络）。
+sudo iptables -t nat -A POSTROUTING -s 172.16.0.1/16 ! -o demodocker0  -j MASQUERADE
+
+# 配置一个 在 nat 表的 PREROUTING 链上配置一个 return 规则：来自容器的数据包都不走后续的 DNAT。
+sudo iptables -t nat -A PREROUTING -i demodocker0 -j RETURN
 ```
 
-#### 配置 iptables MASQUERADE 规则
+#### 容器启动准备
+
+在执行 `docker run` 创建一个重启时，如果使用的是默认网路，Docker 会做如下关于网络相关的准备：
+
+* 创建 veth ，将一端的 veth 连接到 bridge 上，并启动这一端的 veth。
+* 创建 network workspace ，并将另一端的 veth 加入到 network namespace 中。
+* 在 network namespace 中分配 ip，配置默认路由，并启动这一端的 veth，同时启动 lo 设备。
+* 添加暴露端口的 iptables DNAT 规则
+
+本例中，将假设 docker 创建了两个容器，即对应创建两对 veth、分配两个 ip、创建两个 network namespace。并且容器 0 暴露 8080 端口到宿主机的 18080，容器 1 暴露 8081 端口到宿主机的 18081。
 
 ```bash
-# 创建 MASQUERADE iptables 规则：source ip 是容器 IP 的且 output 的 interface 不是 bridge 其他容器的任意协议的数据包，将修改修改 Source IP 和 Source Port，已实现网络模型的 5（访问外部网络）。
-sudo  iptables -t nat -I POSTROUTING -s 172.16.0.1/16 ! -o demodocker0  -j MASQUERADE
+# 创建 veth ，将一端的 veth 连接到 bridge 上，并启动这一端的 veth。
+sudo ip link add veth0 type veth peer name veth0peer
+sudo ip link add veth1 type veth peer name veth1peer
+sudo ip link set dev veth0peer master demodocker0
+sudo ip link set dev veth1peer master demodocker0
+sudo ip link set veth0peer up
+sudo ip link set veth1peer up
+
+# 创建 network workspace ，并将另一端的 veth 加入到 network namespace 中，分配 ip，并配置默认路由，并启动这一端的 veth。
+sudo ip netns add ns0
+sudo ip netns add ns1
+sudo ip link set veth0 netns ns0
+sudo ip link set veth1 netns ns1
+# 注意 
+sudo ip netns exec ns0 ip addr add dev veth0 172.16.0.2/16
+sudo ip netns exec ns1 ip addr add dev veth1 172.16.0.3/16
+sudo ip netns exec ns0 ip route add default via 172.16.0.1
+sudo ip netns exec ns1 ip route add default via 172.16.0.1
+sudo ip netns exec ns0 ip link set veth0 up
+sudo ip netns exec ns1 ip link set veth1 up
+sudo ip netns exec ns0 ip link set lo up
+sudo ip netns exec ns1 ip link set lo up
+
+
+# 添加暴露端口的 iptables DNAT 规则
+sudo iptables -t nat -A PREROUTING -p tcp --dport 18080 -j DNAT --to-destination 172.16.0.2:8080
+sudo iptables -t nat -A PREROUTING -p tcp --dport 18081 -j DNAT --to-destination 172.16.0.3:8081
 ```
 
-### 容器启动准备
-
-#### 创建两对 veth
-
-#### 创建两个 network namespace
-
-#### 连接 veth 到 bridge
-
-#### 连接 veth 到 network namespace
-
-#### 暴露端口（配置 iptables DNAT 规则）
-
-https://github.com/moby/moby/issues/12632
+真正的 Docker 还会为暴露的端口创建一些其他的 POSTROUTING，但是应该没有实际用处，参见： [github docker issue](https://github.com/moby/moby/issues/12632)。
 
 ### 测试网络
 
-#### 1. 观察 ip 分配情况
+#### 0. 测试准备
+
+在 ns0 network namespace 中，8080 端口启动一个 TCP Server。
+
+```bash
+# 安装 nc
+sudo apt update && sudo apt install -y netcat
+# nohup nc -lv 8080 >/dev/null 2>&1 &
+sudo ip netns exec ns0 nc -lvk 8080
+```
+
+以下命令再另一个 shell 中执行。
+
+#### 1. 观察 ip 和路由情况
+
+```bash
+sudo ip netns exec ns1 ip addr show
+sudo ip netns exec ns1 ip route show
+# ping 自己
+sudo ip netns exec ns1 ping -c 4 127.0.0.1
+sudo ip netns exec ns1 ping -c 4 172.16.0.2
+```
 
 #### 2. 两个 network namepspace 间互相通讯
 
+```bash
+sudo ip netns exec ns1 ping -c 4 172.16.0.1
+```
+
 #### 3. network namepspace 访问宿主机 ip
+
+```bash
+sudo ip netns exec ns1 ping -c 4 192.168.57.3
+```
 
 #### 4. 宿主机访问 network namepspace ip
 
+```bash
+ping -c 4 172.16.0.2
+```
+
 #### 5. network namepspace 访问外部网络
+
+```
+sudo ip netns exec ns1 ping -c 4 qq.com
+```
 
 #### 6. 宿主机外部的 IP 无法访问未暴露的端口
 
+在宿主机（192.168.57.1）执行：
+
+```bash
+ping 172.16.0.2
+```
+
 #### 7. 宿主机外部的 IP 访问暴露的端口
 
-https://blog.csdn.net/u013694670/article/details/104101740
+在宿主机（192.168.57.1）执行：
 
-https://blog.51cto.com/wenzhongxiang/1265510
+```
+echo hello | nc 192.168.57.3 18080 
+```
 
-目标：
+观察：[0、准备测试](#0-测试准备) 的 shell 将可以看到输出：`hello`。
 
-* 可以访问外部网络
-* 互相之间可访问
-* 可以实现端口映射
+### 清理现场
 
-https://thiscute.world/posts/iptables-and-container-networks/#%E4%BA%8C%E5%AE%B9%E5%99%A8%E7%BD%91%E7%BB%9C%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86---iptables--bridge--veth
-
-http://www.adminsehow.com/2011/09/iptables-packet-traverse-map/
-
-https://opengers.github.io/openstack/openstack-base-virtual-network-devices-bridge-and-vlan/
-
-* [Linux网络 - 数据包的接收过程](https://segmentfault.com/a/1190000008836467)
-* [Linux网络 - 数据包的发送过程](https://segmentfault.com/a/1190000008926093)
-
-https://segmentfault.com/a/1190000009249039
-https://segmentfault.com/a/1190000009251098
-https://segmentfault.com/a/1190000009491002
-
-ip_forward与路由转发  https://blog.51cto.com/13683137989/1880744
-
-主要看 iptables（netfilter）、bridge、veth 原理。
-
-实战按照 ip 命令（iproute2），c 语言库（https://man7.org/linux/man-pages/man7/netlink.7.html）， go 语言（github.com/vishvananda/netlink）库来操作这些设备。
-
-https://morven.life/posts/networking-2-virtual-devices/
-
-nat 端口转发和路由网关 https://blog.jmal.top/s/iptables-nat-port-forwarding-route-gateway
-
-Linux 虚拟网络设备详解之 Bridge 网桥  https://www.cnblogs.com/bakari/p/10529575.html
-一文总结 Linux 虚拟网络设备 eth, tap/tun, veth-pair https://www.cnblogs.com/bakari/p/10494773.html
-
-简述linux路由表 https://yuerblog.cc/2019/11/18/%E7%AE%80%E8%BF%B0linux%E8%B7%AF%E7%94%B1%E8%A1%A8/
-
-<!-- TODO:  xtables-legacy vs xtables-nft-multi https://upload.wikimedia.org/wikipedia/commons/3/37/Netfilter-packet-flow.svg -->
+```bash
+# 终止所有 network namespace 的进程
+# 清理 iptables
+sudo iptables -t nat -F
+# 删除 bridge、veth、network namespace
+sudo ip netns delete ns0  # veth 会一并删除
+sudo ip netns delete ns1  # veth 会一并删除
+sudo ip link delete demodocker0
+```
