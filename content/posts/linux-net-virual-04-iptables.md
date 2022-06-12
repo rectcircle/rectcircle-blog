@@ -1023,10 +1023,10 @@ sudo ip link set veth1 netns ns1
 # 注意 
 sudo ip netns exec ns0 ip addr add dev veth0 172.16.0.2/16
 sudo ip netns exec ns1 ip addr add dev veth1 172.16.0.3/16
-sudo ip netns exec ns0 ip route add default via 172.16.0.1
-sudo ip netns exec ns1 ip route add default via 172.16.0.1
 sudo ip netns exec ns0 ip link set veth0 up
 sudo ip netns exec ns1 ip link set veth1 up
+sudo ip netns exec ns0 ip route add default via 172.16.0.1
+sudo ip netns exec ns1 ip route add default via 172.16.0.1
 sudo ip netns exec ns0 ip link set lo up
 sudo ip netns exec ns1 ip link set lo up
 
@@ -1100,7 +1100,7 @@ ping 172.16.0.2
 在宿主机（192.168.57.1）执行：
 
 ```
-echo hello | nc 192.168.57.3 18080 
+echo hello | nc 192.168.57.3 18080
 ```
 
 观察：[0、准备测试](#0-测试准备) 的 shell 将可以看到输出：`hello`。
@@ -1115,4 +1115,6 @@ sudo iptables -t nat -F
 sudo ip netns delete ns0  # veth 会一并删除
 sudo ip netns delete ns1  # veth 会一并删除
 sudo ip link delete demodocker0
+# 恢复内核参数
+sudo sysctl -w net.ipv4.ip_forward=0
 ```
