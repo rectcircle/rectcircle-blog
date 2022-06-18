@@ -59,7 +59,7 @@ TUN (network TUNnel) / TAP (network TAP) 是 Linux 提供的的两种虚拟网�
          Physical Network
 ```
 
-简而言之，tun/tap 提供了一种在用户态进程，对数据包进行自定义处理的机制，是 Tunnel/VPN 应用的技术重要基石之一。
+简而言之，tun/tap 提供了一种在用户态进程，对数据包进行自定义处理的机制。一般用来实现 Tunnel/VPN。
 
 tun 和 tap 两种设备的唯一区别在于数据包类型上：
 
@@ -127,7 +127,7 @@ https://www.junmajinlong.com/virtual/network/data_flow_about_openvpn/
 
 https://paper.seebug.org/1648/#0x00
 
-## Linux IP Tunnel
+## Linux Tunnel
 
 https://morven.life/posts/networking-3-ipip/
 https://cloud.tencent.com/developer/article/1432489
@@ -137,6 +137,10 @@ https://www.wangan.com/p/7fygfgeb64839363#1.PPTP%E5%8D%8F%E8%AE%AE
 https://zh.m.wikipedia.org/zh-hans/IP%E9%9A%A7%E9%81%93
 
 Tunnel 和 VPN 的区别：https://learningnetwork.cisco.com/s/question/0D53i00000Kt2skCAB/vpn-vs-tunneling
+
+Tunnel 概念更广泛， VPN 也是一种 Tunnel。
+
+（vxlan 也是一种基于隧道的技术）
 
 ## 常见的 VPN 协议
 
