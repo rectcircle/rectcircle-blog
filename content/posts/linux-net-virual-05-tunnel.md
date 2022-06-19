@@ -85,6 +85,12 @@ int ioctl(fd, SIOCSIFNETMASK, struct *ifreq ifr);
 sudo ip tuntap add dev tun-sample mode tun
 ```
 
+### Go 语言 SDK
+
+github 有一个 star 为 `1.5k` 的 tun/tap 的第三方库 [`songgao/water`](https://github.com/songgao/water)。该库屏蔽了 tun/tap 在不同操作系统的差异。
+
+上述库仅仅是 syscall 的简单封装，通过 Go 标准库的 syscall 包，同时参考上述项目源码，也可以很容易的 tun/tap。
+
 ### 实验和说明
 
 > 参考： [Linux虚拟网络设备之tun/tap](https://segmentfault.com/a/1190000009249039) | [Universal TUN/TAP device driver](https://www.kernel.org/doc/html/v5.8/networking/tuntap.html)
@@ -268,45 +274,69 @@ Read 84 bytes from tun/tap device
 
 ### 实现简单的 vpn
 
-https://en.wikipedia.org/wiki/TUN/TAP
-Linux虚拟网络设备之tun/tap https://segmentfault.com/a/1190000009249039
-一文总结 Linux 虚拟网络设备 eth, tap/tun, veth-pair https://www.cnblogs.com/bakari/p/10494773.html
-https://github.com/ICKelin/article/issues/9
-https://blog.csdn.net/mrpre/article/details/113105456
-
-go 版本 https://github.com/songgao/water
-
 #### VPN 简介
 
-虚拟专用网络
+VPN (Virtual private network, 虚拟私有网络, 虚拟专用网络)，严谨定义参见： [wiki](https://en.wikipedia.org/wiki/Virtual_private_network)。
 
-* 虚拟（区别于普通内网，是一个虚拟的内网而不是物理意义上的内网）
-* 专用网络（内网）
+从技术层面看，VPN 的落脚点是 Private Network，即私有网络。在 IP 协议中，对应的是 Private Network 地址：
 
-强调安全性
+* IPv4: `10.0.0.0/8`、`172.16.0.0/12`、`192.168.0.0/24`。
+* IPv6: `fd00::/8`。
 
-#### 实现点对点连接
+Virtual 要解决的是，在地理上，跨越地域，来搭建一个逻辑上 Private Network。比如某个组织，中国和美国有两个机房，我们希望这两个机房，可以通过私有网络地址可以相互访问，就像在同一个机房一样，此外，在任何一个地方的 PC 设备都可以安全的连入该私有网络，就像在这个机房一样的访问私有网络。
 
-#### client 访问整个内网
+因为 VPN 解决的是跨地域的私有网络搭建。因此两个区域的流量需要通过一个或多个链路进行连通，这个链路被称为 Tunnel （隧道），这是 VPN 技术的核心之一。在现实中，这个 Tunnel 都是基于广域网（俗称公网/互联网）实现的。
 
-#### 访问内网和互联网
+由于 VPN 的跨地域流量是通过公网实现的，因此安全性是最重要的指标，而 VPN 协议主要就是来解决流量安全传输问题而诞生的，这部分参见下文：[常见的 VPN 协议](#常见的-vpn-协议)。
 
-渐进过程：
+#### sampletun 简单分析
 
-* 点对点 vpn https://github.com/gregnietsky/simpletun （两端链路）
-* 访问整个内网
-    * https://paper.seebug.org/1648/#0x04 （必须部署到网关上）
-* 通过接入点访问整个内网和互联网
-    * 方案 1：通过 iptables 和 SNAT 和 MASQUERADE tun 和 iptables https://www.cnblogs.com/blumia/p/Make-a-simple-udp-tunnel-program.html 和 https://github.com/BLumia/udptun
-    * 方案 2：通过 raw socket 一种可能性 http://www.ccs.neu.edu/home/noubir/Courses/CS4700-5700/S12.old/problems/PS5.pdf
+[marywangran/simpletun](https://github.com/marywangran/simpletun) 是一个比较好的用来学习 tun 用法的开源项目。
 
-https://github.com/marywangran/simpletun
+TODO 仅看 tun 部分的代码。
 
-https://backreference.org/2010/03/26/tuntap-interface-tutorial/
+https://paper.seebug.org/1648/#0x03
 
-https://www.junmajinlong.com/virtual/network/data_flow_about_openvpn/
+```cpp
 
-https://paper.seebug.org/1648/#0x00
+```
+
+在同一台机器上实验。
+
+#### 基于路由表的 VPN 的简单规划
+
+通过 tun 和配置路由表规划一个简单 VPN（网段为 `172.16.0.0/16`）网络，规划如下：
+
+* `172.16.0.0/24` 作为分配给 VPN Tunnel 的网段。
+* `172.16.1.0/24` 分配给机房 A（位于北京），其中网关（路由器） `172.16.1.1` 拥有公网 IP `192.168.57.2` （仅做示例）。
+* `172.16.2.0/24` 分配给机房 B（位于广州），其中网关（路由器） `172.16.2.1` 拥有公网 IP `192.168.57.3` （仅做示例）。
+
+![image](/image/sample-vpn-route-table.svg)
+
+整体上来看，VPN Server 是一个由软件实现的路由器（3 层），因此 VPN Server 中也有一张特殊的路由表。该路由表的核心字段为：
+
+* key: 目标 IP 网段
+* value: 对应的 VPN Server 的 公网 IP 和 UDP Port 以及可选的 UDP Connect。
+
+基于此方案，机房之间会形成一个网状的 UDP Tunnel。此外，上图没有画出的是，需要一个中心化存储来存储网段规划信息和 VPN Server IP Port 信息。
+
+以上是一种简化的画法，其实 VPN Server 可以和网关分离，位于独立的设备中，只要配置好路由表，都可以正常工作。
+
+#### 基于 iptables 的 VPN 的简单规划
+
+假设只有一个机房，需求上也只有雇员 PC 单向访问该机房的需求，此时可以通过 iptables 来实现 VPN Server，相关假设如下：
+
+* 内网网段为 `172.16.1.0/24`
+* 采用本方案，VPN Client 和 VPN Server 的网段不能和内网网段重合，假设为 `192.168.60.0/24`。
+* VPN Server 拥有独立的公网 IP，假设为 `192.168.57.2`。
+
+![image](/image/sample-vpn-iptables.svg)
+
+上图可以看出，该方式可以支持 Client 全部流量通过 VPN Server 转发。
+
+#### 额外说明
+
+以上是作者根据路由表 / iptables 等计算机网络相关知识做的推演。是否可能，未在实际生产环境测试过，请勿直接使用在生产环境。建议直接使用企业级或开源的 VPN 应用。
 
 ## Linux Tunnel
 
