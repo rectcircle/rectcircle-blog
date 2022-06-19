@@ -20,7 +20,7 @@ TUN (network TUNnel) / TAP (network TAP) 是 Linux 提供的的两种虚拟网�
 
 一般情况下，用户态进程在读取到数据后，会通过一个 TCP/UDP socket 将数据发送到远端主机，远端主机接收到数据库在将数据转发到目标，这样在本机和远端主机之间通过 tun/tap 和 socket 建立了一个隧道。
 
-下图是一个 VPN Client 侧的网络拓扑：
+下图是一个 VPN Client 侧的网络拓扑（来自： [Linux虚拟网络设备之tun/tap](https://segmentfault.com/a/1190000009249039)）：
 
 ```
 +----------------------------------------------------------------+
