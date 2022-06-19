@@ -1,7 +1,7 @@
 ---
 title: "Linux 网络虚拟化技术（五）隧道技术"
-date: 2022-04-21T00:24:21+08:00
-draft: true
+date: 2022-06-19T23:11:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -289,19 +289,135 @@ Virtual 要解决的是，在地理上，跨越地域，来搭建一个逻辑上
 
 由于 VPN 的跨地域流量是通过公网实现的，因此安全性是最重要的指标，而 VPN 协议主要就是来解决流量安全传输问题而诞生的，这部分参见下文：[常见的 VPN 协议](#常见的-vpn-协议)。
 
-#### sampletun 简单分析
+#### sampletun 流程分析
 
 [marywangran/simpletun](https://github.com/marywangran/simpletun) 是一个比较好的用来学习 tun 用法的开源项目。
 
-TODO 仅看 tun 部分的代码。
-
-https://paper.seebug.org/1648/#0x03
-
-```cpp
+该软件的用法为帮助信息如下所示：
 
 ```
+Usage:
+simpletun -i <ifacename> [-s|-c <serverIP>] [-p <port>] [-u|-a] [-d]
+simpletun -h
 
-在同一台机器上实验。
+-i <ifacename>: 绑定的网络接口名
+-s: 以 server 模式运行
+-c <serverIP>: 以 client 模式运行，并执行 server ip
+-p <port>: 指定 server 绑定的端口默认是 55555
+-u|-a: 使用 TUN (-u, 默认) 或 TAP (-a)
+-d: 打印 debug 信息
+-h: 打印这个帮助信息文本
+```
+
+该软件同时包含 client 和 server，client 和 server 之间会建立一个 tcp 连接，用来进行数据包转发。
+
+需要注意的是：该软件 server 端只接收一个 client 的连接，也就是说只能服务一个 client。也就是说，该项目提供的是一对一的 tunnel。
+
+该软件的整体流程如下所示：
+
+| 步骤 | client | server |
+|-----|--------|-----------|
+| `getopt` | 解析命令行参数 | 同 Client |
+| `tun_alloc` | 打开一个与 tun/tap 绑定的文件描述符 `tap_fd`，和[上文](#实验和说明)一致 | 同 Client |
+| `socket` | 创建一个 TCP socket 对象 `sock_fd` | 同 Client |
+| tunnel over tcp | 通过 `connect` 连接到 server 的 TCP socket 中, 该文件描述符为 `net_fd`  | `bind` 端口，`listen`，并 `accept` 等待 client 的 TCP 连接请求，该 client 的连接对应的文件描述符为 `net_fd` |
+| io copy | `tap_fd` 和 `net_fd` 文件描述符数据拷贝（细节参见下文） | 同 client
+
+在数据拷贝过程中，假设从 `tap_fd` 读取到的数据为 `data`，则发送到 `net_fd` 的数据将为 `len(data)` (1 字节) + `data`。
+
+同理，从 `net_fd` 中读取数据发送到 `tap_fd`， 则先读取第一个字节的 `len(data)`，然后再读取剩余的 `data`。
+
+#### sampletun 简单体验
+
+实验规划和准备如下：
+
+* 虚拟机 1：外部 IP 地址为 `192.168.57.3`，作为 Server，分配的虚拟地址为 `172.16.1.1/24`
+* 虚拟机 2：外部 IP 地址为 `192.168.57.4`，作为 Client，分配的虚拟地址为 `172.16.1.2/24`
+* 虚拟机 1 准备参见：[Linux 网络虚拟化技术（一）概览 - 实验环境准备](/posts/linux-net-virual-01-overview/#实验环境准备)
+* 虚拟机 2 从虚拟机 1 复制，并配置静态 IP。
+
+    ```
+    # /etc/network/interfaces
+    auto enp0s8
+    iface enp0s8 inet static
+    address 192.168.56.4/24
+    gateway 192.168.56.1
+
+    auto enp0s9
+    iface enp0s9 inet static
+    address 192.168.57.4/24
+    gateway 192.168.57.1
+    ```
+
+执行如下命令准备测试
+
+```bash
+# 虚拟机 1 作为服务端
+sudo ip tuntap add dev tun-server mode tun
+sudo ip addr add 172.16.1.1/24 dev tun-server
+sudo ip link set tun-server up
+gcc ./src/c/05-tun-tap/simpletun.c && sudo ./a.out -d -i tun-server -s
+
+
+# 虚拟机 2 作为客户端
+sudo ip tuntap add dev tun-client mode tun
+sudo ip addr add 172.16.1.2/24 dev tun-client
+sudo ip link set tun-client up
+gcc ./src/c/05-tun-tap/simpletun.c && sudo ./a.out -d -i tun-client -c 192.168.57.3
+```
+
+在虚拟机 2 上执行 `ping 172.16.1.1` 可以正常输出响应。
+
+```bash
+# ping 172.16.1.1  # 虚拟机 2
+PING 172.16.1.1 (172.16.1.1) 56(84) bytes of data.
+64 bytes from 172.16.1.1: icmp_seq=1 ttl=64 time=2.19 ms
+64 bytes from 172.16.1.1: icmp_seq=2 ttl=64 time=1.01 ms
+64 bytes from 172.16.1.1: icmp_seq=3 ttl=64 time=1.86 ms
+64 bytes from 172.16.1.1: icmp_seq=4 ttl=64 time=44.8 ms
+64 bytes from 172.16.1.1: icmp_seq=5 ttl=64 time=1.49 ms
+# ...
+
+# gcc ./src/c/05-tun-tap/simpletun.c && sudo ./a.out -d -i tun-client -c 192.168.57.3  # 虚拟机 2
+# ...
+TAP2NET 17: Read 84 bytes from the tap interface
+TAP2NET 17: Written 84 bytes to the network
+NET2TAP 17: Read 84 bytes from the network
+NET2TAP 17: Written 84 bytes to the tap interface
+TAP2NET 18: Read 84 bytes from the tap interface
+TAP2NET 18: Written 84 bytes to the network
+NET2TAP 18: Read 84 bytes from the network
+NET2TAP 18: Written 84 bytes to the tap interface
+NET2TAP 19: Read 48 bytes from the network
+NET2TAP 19: Written 48 bytes to the tap interface
+TAP2NET 19: Read 48 bytes from the tap interface
+TAP2NET 19: Written 48 bytes to the network
+# ...
+
+# gcc ./src/c/05-tun-tap/simpletun.c && sudo ./a.out -d -i tun-server -s  # 虚拟机 1
+# ...
+NET2TAP 17: Written 84 bytes to the tap interface
+TAP2NET 17: Read 84 bytes from the tap interface
+TAP2NET 17: Written 84 bytes to the network
+NET2TAP 18: Read 84 bytes from the network
+NET2TAP 18: Written 84 bytes to the tap interface
+TAP2NET 18: Read 84 bytes from the tap interface
+TAP2NET 18: Written 84 bytes to the network
+TAP2NET 19: Read 48 bytes from the tap interface
+TAP2NET 19: Written 48 bytes to the network
+NET2TAP 19: Read 48 bytes from the network
+NET2TAP 19: Written 48 bytes to the tap interface
+# ...
+```
+
+最后恢复现场：
+
+```bash
+# 虚拟机 1
+sudo ip link delete tun-server
+# 虚拟机 2
+sudo ip link delete tun-client
+```
 
 #### 基于路由表的 VPN 的简单规划
 
@@ -336,34 +452,23 @@ https://paper.seebug.org/1648/#0x03
 
 #### 额外说明
 
-以上是作者根据路由表 / iptables 等计算机网络相关知识做的推演。是否可能，未在实际生产环境测试过，请勿直接使用在生产环境。建议直接使用企业级或开源的 VPN 应用。
+以上是作者根据路由表 / iptables 等计算机网络相关知识做的推演。是否可能，未在实际生产环境测试过，请勿直接使用在生产环境。如需搭建 VPN，建议直接使用企业级或开源的 VPN 应用。
+
+### tun/tap 其他应用场景
+
+tun/tap 除了在 VPN 场景使用之外。也是 qemu-kvm 虚拟化技术中，网络虚拟化的基石。
+
+基本原理是：虚拟机中进程对物理网卡的读写，在宿主机看来，是对 tap/tun 设备的读写。从而实现了虚拟机网络的虚拟化。更多参见：[云计算底层技术-虚拟网络设备(tun/tap,veth)](https://opengers.github.io/openstack/openstack-base-virtual-network-devices-tuntap-veth/)。
 
 ## Linux Tunnel
 
-https://morven.life/posts/networking-3-ipip/
-https://cloud.tencent.com/developer/article/1432489
-https://www.361way.com/linux-tunnel/5199.html
-https://sites.google.com/site/emmoblin/linux-network-1/linux-zhongip-sui-dao
-https://www.wangan.com/p/7fygfgeb64839363#1.PPTP%E5%8D%8F%E8%AE%AE
-https://zh.m.wikipedia.org/zh-hans/IP%E9%9A%A7%E9%81%93
+上文介绍的 tun/tap 是在应用层实现自定义 tunnel 的方式，除了这种方式外， Linux 原生支持一些标准的 Tunnel 实现（内核态实现，通过 `ip tunnel help` 可以查看支持的协议）。例如 ipip，参见：[揭秘 IPIP 隧道](https://morven.life/posts/networking-3-ipip/)。
 
-Tunnel 和 VPN 的区别：https://learningnetwork.cisco.com/s/question/0D53i00000Kt2skCAB/vpn-vs-tunneling
-
-Tunnel 概念更广泛， VPN 也是一种 Tunnel。
-
-（vxlan 也是一种基于隧道的技术）
+关于 Tunnel 和 VPN 的关系，可以说 VPN 是 Tunnel 的一个应用场景，或者说 VPN 是 基于 Tunnel 实现的，即： `VPN = 加密协议 + Tunnel`，参见：[问答](https://learningnetwork.cisco.com/s/question/0D53i00000Kt2skCAB/vpn-vs-tunneling)。
 
 ## 常见的 VPN 协议
 
-TODO  VPN 和 TUN/TCP
+从上文可以看到 VPN 协议主要解决的是 Tunnel 加密的问题，关于主流的 VPN 协议的可以阅读：
 
-https://proprivacy.com/vpn/guides/vpn-encryption-the-complete-guide#preliminaries
-https://www.cisco.com/c/zh_cn/support/docs/smb/routers/cisco-rv-series-small-business-routers/1399-tz-best-practices-vpn.html
-
-OpenVPN
-OpenConnect （anyconnect 协议）
-
-TODO 两个实例：
-
-* VPN 实现
-* 虚拟机网络模拟
+* [OpenVPN vs IKEv2 vs PPTP vs L2TP/IPSec vs SSTP - Ultimate Guide to VPN Encryption](https://proprivacy.com/vpn/guides/vpn-encryption-the-complete-guide#preliminaries)
+* [思科业务VPN概述和最佳实践](https://www.cisco.com/c/zh_cn/support/docs/smb/routers/cisco-rv-series-small-business-routers/1399-tz-best-practices-vpn.html)
