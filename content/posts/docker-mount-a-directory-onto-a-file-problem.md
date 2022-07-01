@@ -73,10 +73,10 @@ map[
 
 ## 解决办法
 
-网络上针对该问题的解决办法都要求删除该容器，这在某些场景是不可接收的，既然知道了上述原理，解决办法就很简单：手动删除 `<容器文件系统存储>/diff/` 中挂载点文件/目录，然后启动容器即可。
+网络上针对该问题的解决办法都要求删除该容器，这在某些场景是不可接受的，既然知道了上述原理，解决办法就很简单：手动删除 `<容器文件系统存储>/diff/` 中挂载点文件/目录，然后启动容器即可。
 
 ```bash
-rm -rf /data00/docker/overlay2/8e0704ed4c38d54469fc7ed205e538b8fabc7227b2d28e8f41ad2dc471f3062d/diff/abc
+rm -rf /data00/docker/overlay2/$(docker inspect test-mount-error -f '{{.GraphDriver.Data.UpperDir}}')/abc
 docker start test-mount-error
 # docker rm -f test-mount-error && rm -rf /test # 实验完成后清理现场
 ```
