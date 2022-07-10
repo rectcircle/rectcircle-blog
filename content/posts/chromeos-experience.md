@@ -21,7 +21,7 @@ tags:
 
 对于这三个要求，ChromeOS，都可以比较完美的支持：
 
-* ChromeOS 是后发的桌面级操作系统，它的 UI 是现代化的。在诞生之处，ChromeOS 目标是可以在廉价的设备上流畅运行，因此流畅度没有问题。最后，ChromeOS 内核基于 Linux，且系统相对封闭，因此稳定性没有问题。
+* ChromeOS 是后发的桌面级操作系统，它的 UI 是现代化的。在诞生之处，ChromeOS 目标是可以在廉价的设备上流畅运行，因此流畅度没有问题。最后，ChromeOS 内核基于 Linux，且系统相对封闭，在专用设备上稳定性应该有所保证。
 * ChromeOS 系统层面，通过虚拟机技术，提供了具有独立内核的 Linux 子系统。
 * ChromeOS 就是对 Chrome 浏览器的操作系统化的产品，浏览器的体验毋庸置疑。
 * ChromeOS 可以在 Linux 子系统中安装 Linux GUI 程序，因此可以直接安装如 VSCode、Jetbrains 等 IDE，开发者软件生态丰富。
@@ -397,3 +397,5 @@ fn_on.sh
 * （可选）配置开机自启，在 ChromeOS Shell 中：
     * 开机自启配置文件 `/etc/init/xxx.conf`。
     * 通过 initctl 启动服务。
+
+本部分介绍的是手动编译和安装软件到 ChromeOS 所在的 Linux 环境。但是开源届，有一个对 ChromeOS 所在的 Linux 环境进行包管理的命令行工具 [craw](https://chromebrew.github.io/)。通过该工具可以直接在 ChromeOS 所在 Linux 环境安装各种软件包。
