@@ -68,11 +68,55 @@ Chromium 版本为（进入系统后查看）： 96.0.4664.208
 
 稍等片刻，即可安装完成。安装完成后可以直接在启动器 Linux 应用中看到图标。点击即可打开。
 
+### 配置中文和字体
+
+> 参考：[安装 Android 应用、配置 Linux 环境：FydeOS 进阶使用教程](https://sspai.com/post/56234)
+
+首先是设置时区，在终端中输入：
+
+```bash
+sudo dpkg-reconfigure tzdata
+# 选择亚洲 (Asia), 上海 (Shanghai)
+```
+
+安装中文字体：
+
+```bash
+sudo apt install fonts-wqy-microhei fonts-wqy-zenhei
+```
+
+配置字符集为 `zh_CN.uft8`：
+
+```bash
+sudo dpkg-reconfigure locales
+```
+
+字符集配置完成完成后需重启生效：
+
+```bash
+sudo reboot
+```
+
+### 安装可视化包管理器
+
+> 参考：[ChromeOS Linux setup](https://chromeos.dev/en/linux/setup#visual-package-management)
+
+```bash
+sudo apt install -y gnome-software gnome-packagekit && \
+sudo apt update
+```
+
 ### 安装中文输入法
 
 Linux 子系统中是无法使用 ChromeOS 的输入法的，因此需要在 Linux 子系统中安装中文输入法。
 
-具体步骤参见：[FydeOS 知识库](https://fydeos.com/help/knowledge-base/linux-subsystem/chinese-ime-in-linux-subsystem)。
+具体步骤参见：[FydeOS 知识库](https://fydeos.com/help/knowledge-base/linux-subsystem/chinese-ime-in-linux-subsystem) 。
+
+注意：
+
+* 上文做 3.1 之前，需要先执行 fcitx 命令。
+* 可以选择安装搜狗输入法：https://shurufa.sogou.com/linux 下载下来，然后在 Linux 子系统中通过 `sudo dpkg -i xxx.deb` 来安装
+* 可以选择安装 Google 拼音输入法，在 Linux 子系统中通过 `sudo apt install fcitx-googlepinyin` 来安装（需重启才能配置）。
 
 ### VPN 和 网络代理
 
