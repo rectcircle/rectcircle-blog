@@ -59,12 +59,14 @@ Chromium 版本为（进入系统后查看）： 96.0.4664.208
 
 ## 开发环境搭建
 
+本小结，介绍如何使用 ChromeOS 的 Linux 子系统，搭建一个可用的软件开发环境。
+
 首先，在设置 -> 高级 -> 开发者 -> Linux 开发环境 中启用 Linux 开发环境。
 
 ### 安装 IDE (以 VSCode 为例)
 
 * 打开 [VSCode 下载页面](https://code.visualstudio.com/#alt-downloads)，下载 .deb 包。
-* 打开 文件，我的文件 -> 下载内容，右击 通过 Linux 安装。
+* 打开 ChromeOS 自带额文件 App，我的文件 -> 下载内容，右击 通过 Linux 安装。
 
 稍等片刻，即可安装完成。安装完成后可以直接在启动器 Linux 应用中看到图标。点击即可打开。
 
@@ -286,7 +288,7 @@ ARC 相关技术可以阅读博客：[Chrome OS上的Android系统](https://paul
 
 既封闭又开放。
 
-* 封闭指的是：虽然基于 Linux 内核，但是没有暴露 Linux 内核 API，也没有提供专用的系统级 API。而是 GUI 应用完全基于 Web API 仅能优先的使用操作系统资源。这保证流畅性和稳定性。
+* 封闭指的是：虽然基于 Linux 内核，但是没有暴露 Linux 内核 API，也没有提供专用的系统级 API。而是 GUI 应用完全基于 Web API 仅能有限的使用操作系统资源。这保证流畅性和稳定性。
 * 开放指的是：
     * 通过 Android App 可以运行 Android App: Android 运行时和 ChromeOS 共用内核，通过 Linux 容器化技术（无虚拟化损失），可以兼顾性能和一定的安全性。
     * 通过 Linux 子系统可以运行 Linux App（包括 GUI）: Linux 子系统是面向开发者的，采用虚拟化技术，损失的一点性能，满足了对开发者对灵活性的要求（拥有完整的内核权限），同时保证了 ChromeOS 的稳定性和安全性。
