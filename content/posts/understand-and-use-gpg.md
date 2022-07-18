@@ -20,9 +20,7 @@ tags:
 
 随着信息革命的不断深化，加密算法在工业界也逐步落地，上面提到的 ssl/tls 就是一种应用场景。
 
-ssl/tls 面向的是是个人和组织间安全通讯的标准，即 C/S 架构。
-
-GPG (GunPG) 提供的是一套基于加密算法实现的一套标准的安全工具包，该工具实现了 [IETF OpenPGP 标准](https://datatracker.ietf.org/wg/openpgp/documents/)。
+ssl/tls 面向的是是个人和组织间安全通讯的标准，即 C/S 架构。而 GPG (GunPG) 提供的是一套基于加密算法实现的一套标准的安全工具包，该工具实现了 [IETF OpenPGP 标准](https://datatracker.ietf.org/wg/openpgp/documents/)。
 
 该工具主要提供了如下两个核心能力：
 
@@ -54,7 +52,7 @@ brew install gpg
 
 > 参考：[简明 GPG 概念](https://zhuanlan.zhihu.com/p/137801979)
 
-Key 管理是 GPG 的核心功能，在 GPG Key 不能理解为非对称加密的 Private Key 或 Public Key 或 Key Pair。而是 GPG 的概念，由如下信息组成：
+Key 管理是 GPG 的核心功能，GPG Key 不能简单的理解为非对称加密的 Private Key / Public Key / Key Pair。GPG Key 由如下信息组成：
 
 * Key ID: 该 GPG Key 的唯一标识，值为主公钥的指纹，支持多种格式(Fingerprint, Long key ID, Short key ID)，更多参见：[What is a OpenPGP/GnuPG key ID?](https://superuser.com/questions/769452/what-is-a-openpgp-gnupg-key-id)。
 * UID: 1 个或多个，每个 UID 由 name、email、comment 组成，email 和 comment 可以为空。
@@ -65,8 +63,8 @@ Key 管理是 GPG 的核心功能，在 GPG Key 不能理解为非对称加密�
 
     | 类型   | 全名          | 缩写 | 用途 (Usage) | 说明 |
     | ------ | ------------- | ---- | ------------ | ---- |
-    | 主私钥 | Secret Key    | sec  | SC           | 每个 GPG Key 有且只有一个 主私钥 |
-    | 主公钥 | Public Key    | pub  | SC           | 每个 GPG Key 有且只有一个 主公钥 |
+    | 主私钥 | Secret Key    | sec  | SC           | 每个 GPG Key 有且只有一个 主私钥，可以选择一种或多种 Usage |
+    | 主公钥 | Public Key    | pub  | SC           | 每个 GPG Key 有且只有一个 主公钥，可以选择一种或多种 Usage |
     | 子私钥 | Secret Subkey | ssb  | S/A/E        | 每个 GOG Key 可以有多个子私钥，每个子私钥可以选择一种或多种 Usage |
     | 子公钥 | Public Subkey | sub  | S/A/E        | 每个 GOG Key 可以有多个子公钥，每个子公钥可以选择一种或多种 Usage  |
 
@@ -76,7 +74,7 @@ Key 管理是 GPG 的核心功能，在 GPG Key 不能理解为非对称加密�
 
     | 缩写 | 全名 | 用途 |
     | --- | --- | --- |
-    | C | Certificating | 认证，如子密钥或证书，类似根证书的作用。 |
+    | C | Certificating | 管理证书，如添加/删除/吊销子密钥/UID，修改过期时间。 |
     | S | Signing | 签名，如文件数字签名、邮件签名、Git 提交。 |
     | A | Authenticating | 身份验证，如登录。 |
     | E | Encrypting | 加密，如文件和文本。 |
@@ -86,15 +84,15 @@ Key 管理是 GPG 的核心功能，在 GPG Key 不能理解为非对称加密�
         * 添加、更改或吊销密钥关联的身份（UID）
         * 添加或更改本身或其他子密钥的到期时间
         * 为了网络信任目的为其它密钥签名
-
-* 在非对称加密中的的公钥，公钥是需要公开发布的。同样的 GPG Public Key 也需要公开发布，但 GPG Public Key 由如下内容组成：
-    * 主公钥和所有子公钥的集合。
-    * 有效期和吊销信息。
-    * 当期那 GPG Key 的所有 UID。
-* GPG Public Key 会使用 GPG 的主秘钥进行签名，以防止公钥被篡改。
-* 删除和吊销 GPG Public Key 中的 Sub Key 和 UID。
-    * 删除，针对已公开的 GPG Public Key，如果其他人已经加载了这个 GPG Public Key。则这个删除将不会生效（原因是：GPG 在更新一个 GPG Public Key 是合并操作，因此删除是无效的），如果没有公开过，则删除生效。
-    * 吊销。标记 GPG Public Key 中 Public Subkey / UID，将添加一个“吊销”标记，这样如果其他人已经加载了这个 GPG Public Key，只要更新了，就会知道该 Public Subkey / UID 不可用了（参考： [GPG应用指南](https://zhuanlan.zhihu.com/p/21267738)）。
+* GPG Public Key 说明如下：
+    * 在非对称加密中的的公钥，公钥是需要公开发布的。同样的 GPG Public Key 也需要公开发布，但 GPG Public Key 由如下内容组成：
+        * 主公钥和所有子公钥的。
+        * 有效期和吊销信息。
+        * 所有 UID 信息。
+    * GPG Public Key 会使用 GPG 的主秘钥进行签名，以防止公钥被篡改。
+    * 删除和吊销 GPG Public Key 中的 Sub Key 和 UID。
+        * 删除，针对已公开的 GPG Public Key，如果其他人已经加载了这个 GPG Public Key。则这个删除将不会生效（原因是：GPG 在更新一个 GPG Public Key 是合并操作，因此删除是无效的），如果没有公开过，则删除生效。
+        * 吊销。标记 GPG Public Key 中 Public Subkey / UID，将添加一个“吊销”标记，这样如果其他人已经加载了这个 GPG Public Key，只要更新了，就会知道该 Public Subkey / UID 不可用了（参考： [GPG应用指南](https://zhuanlan.zhihu.com/p/21267738)）。
 
 #### 生成 Primary Key
 
@@ -154,7 +152,7 @@ ssb   rsa4096/D50B14322C993EBE 2022-07-17 [E]
 
 可以看出，上文生成 Primary Key 的命令生成了：
 
-* 主公钥(pub)和主私钥(sec): 用于加密和认证 (SC)
+* 主公钥(pub)和主私钥(sec): 用于签名和管理证书 (SC)
 * 子公钥(sub)和子私钥(ssb)：用于加密 (E)
 
 #### 更新 UID
@@ -265,14 +263,14 @@ gpg --output all-subkey.pri --armor --export-secret-subkeys 89F61268D036DF3C3BA9
 ```bash
 # 删除私钥（交互式的选择删除那些秘钥）
 gpg --delete-secret-keys UID 或 子秘钥 KeyID 或 主密钥 KeyID
-# 删除公钥 (如果存在对应个私钥，需先删除；如果该公钥对应的私钥没有主私钥，只有子私钥，该操作也会直接删除对应的子私钥，因此可能会导致子秘钥丢失你)
+# 删除公钥 (如果存在对应个私钥，需先删除；如果该公钥对应的私钥没有主私钥，只有子私钥，该操作也会直接删除对应的子私钥，因此可能会导致子秘钥丢失)
 gpg --delete-keys UID 或 子秘钥 KeyID 或 主密钥 KeyID
 ```
 
 #### 导入
 
 ```bash
-gpg --import 上文导出的文件
+gpg --import 导出的文件
 ```
 
 #### 公布 PGG Public Key
@@ -342,7 +340,7 @@ gpg --verify input.txt.asc input.txt
 
 ### 邮件加密
 
-目前，主流电子邮件提供商，已经开启了全量的 SSL 加密，因此 GPG 在电子邮件场景的进行加密显得有些上古了，再次不多阐述了。
+目前，主流电子邮件提供商，已经开启了全量的 SSL 加密，因此 GPG 在电子邮件场景的进行加密显得有些上古了，在此不多阐述了。
 
 ## 最佳实践
 
@@ -356,9 +354,9 @@ gpg --verify input.txt.asc input.txt
 这种做法，是符合 GPG 的最佳实践的。但是，在现实中，这种做法可能存在一定的风险。
 
 * 隐私风险，GPG Public Key 是公开的，所有人都可以都可以从 GPG Public Key 中获取到 UID 列表，且不可撤销。
-* 法律风险，从该公司离职了，要怎么做呢？吊销公司 UID，吊销公司用的 Public Key？
+* 法律风险，从该公司离职了，要怎么做呢？吊销公司 UID，吊销公司用的 SubKey？
 
-因此，建议拆分成两个 Key，公司和个人的 GPG Key 分离。公司的 GPG Key 仅用于公司相关场景。个人的 GPG Key 仅用于个人相关场景。
+因此，建议拆分成两个 Key，公司和个人的 GPG Key 分离。公司的 GPG Key 仅用于公司相关场景。个人的 GPG Key 仅用于个人非商业相关场景。
 
 ### Sub Key 规划
 
@@ -391,7 +389,7 @@ ssb   rsa4096/CA45E598414ADA5F 2022-07-17 [A]
 
 在上文 [生成 Primary Key](#生成-primary-key) 中可以看到，其命令生成了一个吊销证书的文件。
 
-上文可以看到，在 Primary Key 未丢失的情况下，可以使用 Primary Key 直接吊销 SubKey 和 UID。
+上文可以看到，在 Primary Key 未丢失的情况下，可以使用 Primary Key 吊销某个 SubKey 和 UID。
 
 但是 GPG 提供了一种额外的安全机制，可以通过一个称为吊销证书的文件，来实现在 Primary Key 丢失的情况下，吊销整个 Public Key。
 
@@ -405,9 +403,9 @@ ssb   rsa4096/CA45E598414ADA5F 2022-07-17 [A]
 
 #### 主密钥子秘钥备份
 
-为了安全性，在完成 SubKey 的生成后，应该将 Primary Key 导出到安全的外部设备，如加密的 U 盘，云盘、私有 github 仓库等个人认为安全的地方。
+为了安全性，在完成 SubKey 的生成后，应该将 Primary Key 导出到安全的外部设备，如加密的 U 盘、云盘、私有 github 仓库等个人认为安全的地方。
 
-Subkey 也需要备份，但是其安全等级低于 Primary Key。如果一个用于解密邮件的 SubKey 丢失了，可以用 Primary Key 直接吊销 SubKey，重新生成即可，不会造成不可挽回的后果。
+Subkey 也需要备份，但是其安全等级相对来说低于 Primary Key。因为如果一个用于解密邮件的 SubKey 丢失了，可以用 Primary Key 直接吊销 SubKey，重新生成。
 
 但是用于加密文件的 SubKey 丢失后果还是很严重的，将导致加密后的文件永远无法打开了。因此，SubKey 也至少备份一份。
 
