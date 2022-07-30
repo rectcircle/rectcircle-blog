@@ -43,13 +43,13 @@ tags:
 
 ### 具体流程
 
-从按照时序上来说，包含：建立暴露边缘服务的长连接 和 访问边缘服务两个流程。
+从按照时序上来说，需要访问边缘服务，需要先建立暴露边缘服务的长连接，在访问边缘服务两个流程。
 
 #### 建立暴露边缘服务的长连接
 
 1. Exposer Client
     1. 读取配置（可能从本地配置文件或者相关服务），获取需要暴露的服务的元数据（设备 ID、服务 ID、协议类型、端口）。
-    2. 为每个服务和 Exposer Server 的 Expose 端点，建立 Websocket 连接，并将服务的元数据通过 Header 传递给 Exposer Server（对应下文的 2.2）。
+    2. 为每个服务与 Exposer Server 的 Expose 端点，建立 Websocket 连接，并将服务的元数据通过 Header 传递给 Exposer Server（对应下文的 2.2）。
     3. 使用该 Websocket 连接，创建一个多路复用器 Server，记录当前多路复用器 Server 和服务元信息的映射关系，并 Accept 等待连接。
 2. Exposer Server 集群（Expose 端点）
     1. 等待来自 Exposer Client 的 Websocket 的连接。
@@ -85,7 +85,7 @@ Expose Client 和 Expose Server 需要建立一个长连接。主流的可以选
 
 本方案选择 Websocket 的原因是普适性更强、开发成本更低。
 
-* Websocket 可以服用目前 Web 后端领域的沉淀很久的基础设施，如 Nginx。
+* Websocket 可以复用目前 Web 后端领域的沉淀很久的基础设施，如 Nginx。
 * Websocket 可以在握手阶段传递设备 ID 和服务 ID 等元信息，减少开发成本。
 
 当然如果追求极致的性能，也可以选择 TCP 或 QUIC，自己实现一套握手协议即可。
@@ -98,9 +98,7 @@ Expose Client 和 Expose Server 需要建立一个长连接。主流的可以选
 
 以 golang 的 [hashicorp/yamux](https://github.com/hashicorp/yamux) 为例，底层连接即：任意实现 net.Conn 接口的类型，如 TCP 连接等。
 
-特别说明的是，多路复用器的 Server 和 Client 不需要和底层连接的 Server 和 Client 对应。
-
-从上文可以看到：
+特别说明的是，多路复用器的 Server 和 Client 不需要和底层连接的 Server 和 Client 对应，从上文可以看到：
 
 * 在 Exposer Client 中，多路复用器的底层连接是一个 Websocket 的 Client 侧连接，但是建立的是多路复用器的 Server。
 * 在 Exposer Server 中，多路复用器的底层连接是一个 Websocket 的 Server 侧连接，但是建立的是多路复用器的 Client。
