@@ -12,7 +12,7 @@ tags:
 
 本文主要介绍：
 
-* Go 标准库 [testing](https://pkg.go.dev/testing@go1.18) 包 和 go test 命令。
+* Go 标准库 [testing](https://pkg.go.dev/testing@go1.18) 包 和 go test [命令](https://pkg.go.dev/cmd/go@go1.18)。
 * Go 官方维护的库 [Mock](https://github.com/golang/mock)。
 * Go 社区最主流的测试库 [Testify](https://github.com/stretchr/testify#mock-package)。
 
