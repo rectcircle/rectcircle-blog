@@ -2658,6 +2658,8 @@ module-aware mode 开启的情况如下
 
 #### go test
 
+> 详见：[Go Test 详解](/posts/go-test#go-test命令)
+
 基本用法
 
 ```bash
@@ -2832,6 +2834,8 @@ https://blog.jbowen.dev/2019/09/the-magic-of-go-comments/
 ### 6、元编程之代码生成
 
 ### 7、编写测试
+
+> 详见：[Go Test 详解](/posts/go-test#go-标准库-testing-包-和-go-test-命令)
 
 * 需要测试的文件为 `main.go`
 * 在源文件所在目录创建 `main_test.go` 文件
