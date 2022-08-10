@@ -657,7 +657,7 @@ ok      github.com/rectcircle/go-test-demo/01-testing/b 1.698s
     * `-exec xprog` 使用 xprog 运行测试二进制文件，详见：`go help run`。
     * `-i` 略，已废弃。
 
-## Go 官方维护的 Mock 库 
+## Go 官方维护的 Mock 库
 
 ### 示例场景
 
@@ -944,29 +944,29 @@ mockgen 有两种操作模式: source 和 reflect。
 * source 模式性能高，生成速度快。
 * source 模式生成的代码可以保留参数名信息，有利于编写桩代码。
 * source 模式的缺点：
-	* 从 [issue](https://github.com/golang/mock/issues) 来看，有挺多问题的。
-	* 无法指定生成某个接口，-source 中如果包含多个接口，都会被生成。
+    * 从 [issue](https://github.com/golang/mock/issues) 来看，有挺多问题的。
+    * 无法指定生成某个接口，-source 中如果包含多个接口，都会被生成。
 
 ### [golang/mock](https://github.com/golang/mock) API
 
 * `MockXxx.EXPECT()` 返回 MockXxxRecorder 类型指针。
 * `MockXxxRecorder.方法名(...)`
-	* 参数为 nil、精确值 或者 [`gomock.Matcher`](https://pkg.go.dev/github.com/golang/mock@v1.6.0/gomock#Matcher)  参数匹配与断言，如果被测函数调用时，没有匹配到，将失败。
-		* `All` 匹配所有条件
-		* `AssignableToTypeOf` 匹配类型
-		* `Eq` 精确值
-		* `InAnyOrder` 任意顺序的集合
-		* `Len` 数组长度
-		* `Nil` 为 nil
-		* `Not` 不为某个值
-		* 修改失败 Got 和 Want 是的输出格式，参见： [README](https://github.com/golang/mock#modifying-failure-messages)
-	* 返回值为 [`*gomock.Call`](https://pkg.go.dev/github.com/golang/mock@v1.6.0/gomock#Call) 声明函数被调用时的一些行为或者断言。
-		* `After` 期望调用顺序。
-		* `AnyTimes`、`Times`、`MaxTimes`、`MinTimes` 期望调用的次数的值、最大值、最小值、等。
-		* `Return` 定义返回值。
-		* `Do`、`DoAndReturn` 被调用时，执行函数并返回。
-		* `SetArg` 修改函数调用的参数，应该发生在之后。
-		* 通过源码可知，如果 `Return`、`DoAndReturn` 被调用了多次，则函数的返回值一最后一个的返回值为准。
+    * 参数为 nil、精确值 或者 [`gomock.Matcher`](https://pkg.go.dev/github.com/golang/mock@v1.6.0/gomock#Matcher)  参数匹配与断言，如果被测函数调用时，没有匹配到，将失败。
+        * `All` 匹配所有条件
+        * `AssignableToTypeOf` 匹配类型
+        * `Eq` 精确值
+        * `InAnyOrder` 任意顺序的集合
+        * `Len` 数组长度
+        * `Nil` 为 nil
+        * `Not` 不为某个值
+        * 修改失败 Got 和 Want 是的输出格式，参见： [README](https://github.com/golang/mock#modifying-failure-messages)
+    * 返回值为 [`*gomock.Call`](https://pkg.go.dev/github.com/golang/mock@v1.6.0/gomock#Call) 声明函数被调用时的一些行为或者断言。
+        * `After` 期望调用顺序。
+        * `AnyTimes`、`Times`、`MaxTimes`、`MinTimes` 期望调用的次数的值、最大值、最小值、等。
+        * `Return` 定义返回值。
+        * `Do`、`DoAndReturn` 被调用时，执行函数并返回。
+        * `SetArg` 修改函数调用的参数，应该发生在之后。
+        * 通过源码可知，如果 `Return`、`DoAndReturn` 被调用了多次，则函数的返回值一最后一个的返回值为准。
 
 ## Go 社区最主流的测试库 Testify
 
