@@ -13,7 +13,7 @@ tags:
 本文主要介绍：
 
 * Go 标准库 [testing](https://pkg.go.dev/testing@go1.18) 包 和 go test [命令](https://pkg.go.dev/cmd/go@go1.18)。
-* Go 官方维护的库 [Mock](https://github.com/golang/mock)。
+* Go 官方维护的 [Mock](https://github.com/golang/mock) 库。
 * Go 社区最主流的测试库 [Testify](https://github.com/stretchr/testify#mock-package)。
 
 本文使用的 Go 版本为 1.18，示例代码位于 [rectcircle/go-test-demo](https://github.com/rectcircle/go-test-demo)。
@@ -657,14 +657,316 @@ ok      github.com/rectcircle/go-test-demo/01-testing/b 1.698s
     * `-exec xprog` 使用 xprog 运行测试二进制文件，详见：`go help run`。
     * `-i` 略，已废弃。
 
-## Go 官方维护的库 Mock
+## Go 官方维护的 Mock 库 
 
-TODO
+### 示例场景
 
-Mock 的能力
+假设我们在开发一个博客后端的 article 模块，包含如下两层：
 
-* 给被测函数的依赖提供一个模拟的实现，以便被测函数可以在不需要实际的复杂依赖的情况运行（如模拟数据库）。
-* 从被测函数的依赖函数的角度，进行断言。即断言被测函数依赖的函数，期望传递那些参数？被调用多少次？等。
+* service 业务逻，会调用 repository 层的函数，及 repository 是 service 的依赖。
+* repository 数据操纵层，对数据库等外部数据存储的操作的封装。
+
+模型和接口声明： `02-mock/domain/`
+
+```go
+// article.go
+package domain
+
+type Article struct {
+	ID      int64
+	Author  string
+	Title   string
+	Tags    []string
+	Content string
+}
+
+type ArticleRepository interface {
+	FindByID(id int64) (*Article, error)
+	Create(*Article) (int64, error)
+}
+
+type ArticleService interface {
+	Publish(author string, title string, tags []string, content string) (*Article, error)
+	Get(id int64) (*Article, error)
+}
+
+// error.go
+package domain
+
+import "errors"
+
+var (
+	ErrRecordNotFound   = errors.New("record not found")
+)
+```
+
+service 的实现：`02-mock/article/service.go`
+
+```go
+package article
+
+import "github.com/rectcircle/go-test-demo/02-mock/domain"
+
+type service struct {
+	repository domain.ArticleRepository
+}
+
+func NewService(r domain.ArticleRepository) (domain.ArticleService, error) {
+	return &service{
+		repository: r,
+	}, nil
+}
+
+func (s *service) Get(id int64) (*domain.Article, error) {
+	return s.repository.FindByID(id)
+}
+
+func (s *service) Publish(author string, title string, tags []string, content string) (*domain.Article, error) {
+	id, err := s.repository.Create(&domain.Article{
+		ID:      0,
+		Author:  author,
+		Title:   title,
+		Tags:    tags,
+		Content: content,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return s.Get(id)
+}
+
+```
+
+### 为什么需要 Mock
+
+此时，假设想要编写测试用例，测试 service 层的函数，如果使用 repository 的实现的话，我们为每次测试，需要准备一个测试数据库，并编写 sql 将准备数据。这样做有如下问题：
+
+* 数据库等外部依赖安装复杂，成本高，数据准备麻烦。
+* 假设 service 调用外部函数，没有测试环境，或者无法做到无状态，此时 service 的测试就无法进行。
+* 对 service 的测试必须依赖 repository 就绪才能进行，而 repository 的开发可能由其他人员负责，存在依赖关系。
+
+针对这种情况，我们就需要 Mock（模拟） 待测函数的依赖。
+
+### Mock 的前提条件
+
+首先对待测函数的测试不能修改待测函数。这就要求，需要 Mock 的待测函数必须是可插拔的。
+
+在上面的例子中，在 Go 语言中，这就要求 repository 必须是一个接口而不能是一个具体的类型。此时我们就可以写一个 repository 的 Mock 实现，在测试时准备阶段，使用 Mock 对象构造 service，然后就可以编写测试 case 了。
+
+### Mock 库的核心能力
+
+当然，可以手动编写一个 repository 接口的 Mock 实现，但是会存在如下问题：针对每一个 service 的 case，都需要定义一个 Mock 实现，在测时覆盖率足够高的情况下，Mock 的数量会非常多，这会产生大量的样板代码。
+
+因此，为了消除样板代码，可以抽象出一个 Mock 工具库，该工具有如下能力：
+
+* 根据接口生成且仅生成一个 Mock 实现的代码。
+* 可以通过编程的方式，定制这个接口 Mock 实现的每个函数在什么样的参数下返回什么样的结果（打桩）。
+* 可以通过编程的方式，断言这个接口 Mock 实现的每个函数在会调用多少次，是否会被调用。从被测函数的依赖函数的角度，测试被测函数的行为是否符合预期（打桩）。
+
+[golang/mock](https://github.com/golang/mock) 就实现了如上能力。
+
+### 使用 [golang/mock](https://github.com/golang/mock) 示例
+
+#### 安装代码生成器
+
+```
+go install github.com/golang/mock/mockgen@v1.6.0
+```
+
+#### 生成 Mock 代码
+
+通过 `go:generate` 注释，快速生成代码。
+
+在 `02-mock/domain/article.go` 添加如下注释：
+
+```
+//go:generate mockgen -destination=./mock/mock_article_repository.go -package=mock github.com/rectcircle/go-test-demo/02-mock/domain ArticleRepository
+```
+
+执行 `mkdir -p 02-mock/domain/mock &&  go generate ./...` 生成代码。
+
+代码将生成到 `02-mock/domain/mock/mock_article_repository.go` 文件中。
+
+#### 编写测试 Case
+
+`02-mock/article/service_test.go`
+
+```go
+package article
+
+import (
+	"reflect"
+	"testing"
+
+	"github.com/golang/mock/gomock"
+	"github.com/rectcircle/go-test-demo/02-mock/domain"
+	"github.com/rectcircle/go-test-demo/02-mock/domain/mock"
+)
+
+func Test_service_Get(t *testing.T) {
+	want := domain.Article{
+		ID:      1,
+		Author:  "author",
+		Title:   "title",
+		Tags:    []string{"go"},
+		Content: "content",
+	}
+
+	// 准备 Mock 控制器。
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	// 构造一个 Mock 的 ArticleRepository 接口的实现 m。
+	//   该实现的代码由 mockgen 命令生成
+	//   该实现的 mock 的函数的返回值通过 m.EXPECT() 方法构造
+	m := mock.NewMockArticleRepository(ctrl)
+	// 声明，使用 1 调用 m.FindByID 时，返回 want。
+	m.EXPECT().FindByID(gomock.Eq(int64(1))).Return(&want, nil)
+	// 声明，使用非 1 调用 m.FindByID 时，返回 没有发现错误。
+	m.EXPECT().FindByID(gomock.Not(int64(1))).Return(nil, domain.ErrRecordNotFound)
+
+	// 构造待测实例，将 mock 对象 m 传递给该实例
+	s, _ := NewService(m)
+	// 执行测试
+	t.Run("success", func(t *testing.T) {
+		got, err := s.Get(1)
+		if err != nil {
+			t.Fatalf("s.Get(1) err want nil, got %s", err)
+		}
+		if reflect.DeepEqual(got, want) {
+			t.Fatalf("s.Get(1) want %+v, got %+v", want, got)
+		}
+	})
+	t.Run("notFound", func(t *testing.T) {
+		_, err := s.Get(2)
+		if err == nil {
+			t.Fatalf("s.Get(2) err want %s, got nil", domain.ErrRecordNotFound)
+		}
+	})
+}
+
+func Test_service_Publish(t *testing.T) {
+	want := domain.Article{
+		ID:      1,
+		Author:  "author",
+		Title:   "title",
+		Tags:    []string{"go"},
+		Content: "content",
+	}
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	m := mock.NewMockArticleRepository(ctrl)
+	data := map[int64]domain.Article{}
+	id := int64(1)
+	m.EXPECT().FindByID(gomock.Any()).DoAndReturn(func(id int64) (*domain.Article, error) {
+		if a, ok := data[id]; ok {
+			return &a, nil
+		} else {
+			return nil, domain.ErrRecordNotFound
+		}
+	})
+	m.EXPECT().Create(gomock.Any()).DoAndReturn(func(a *domain.Article) (int64, error) {
+		a.ID = id
+		id += 1
+		data[a.ID] = *a
+		return a.ID, nil
+	})
+
+	s, _ := NewService(m)
+	t.Run("success", func(t *testing.T) {
+		got, err := s.Publish(want.Author, want.Title, want.Tags, want.Content)
+		if err != nil {
+			t.Fatalf("s.Publish(1) err want nil, got %s", err)
+		}
+		want.ID = got.ID
+		if reflect.DeepEqual(got, want) {
+			t.Fatalf("s.Publish(1) want %+v, got %+v", want, got)
+		}
+	})
+}
+```
+
+* `ctrl := gomock.NewController(t)` 用来实现：从被测函数的依赖函数的角度，测试被测函数的行为是否符合预期，也就是说如果 `m` 中的方法被调用次数和被调用的参数不符合 `m.EXPECT()` 的声明，`ctrl` 将调用 `t` 的相关方法，标记本测试失败。
+* `m.EXPECT()` 返回一个配置对象，可以配置：某个方法期望调用的参数列表、返回值、调用次数等（打桩）。
+* 以上准备完成后，编写 Case 即可。
+
+### [golang/mock](https://github.com/golang/mock) 命令行说明
+
+```
+mockgen 有两种操作模式: source 和 reflect。
+
+当使用 -source 标识时，启用 source 模式，该模式通过源代码文件来生成接口的 mock 实现。
+-imports 和 -aux_files 可以在 Source 模式下使用。
+示例：
+        mockgen -source=foo.go [other options]
+
+
+当传递两个非标示的参数时，启用 reflect 模式，该模式通过反射理解接口来生成接口的 mock 实现。
+这两个参数分别是：导入路径和通过逗号分隔符号列表。
+示例：
+        mockgen database/sql/driver Conn,Driver
+
+  -aux_files string
+        (source 模式) 逗号分隔的 pkg=path 表示 auxiliary Go 源代码文件（每太理解，可以看：https://github.com/golang/mock/issues/181）。
+  -build_flags string
+        (reflect 模式) 额外的 go build 参数。
+  -copyright_file string
+        Copyright 文件将添加到生成的文件头。
+  -debug_parser
+        只打印解析器结果。
+  -destination string
+        输出到的文件；默认输出到 stdout。
+  -exec_only string
+        (reflect 模式) 如果设置，执行这个反射程序源码文件（参见：-prog_only）。
+  -imports string
+        (source 模式) 逗号分隔的 name=path 表示要使用的显式导入（不理解）。
+  -mock_names string
+        逗号分隔的 interfaceName=mockName 表示生成的结构体名。默认为 'Mock'+ 接口名。
+  -package string
+        生成代码的包名；默认为 'mock_' + 当前包名。
+  -prog_only
+        (reflect 模式) 只生成反射程序源码；把它写入 stdout 并退出。
+  -self_package string
+        The full package import path for the generated code. The purpose of this flag is to prevent import cycles in the generated code by trying to include its own package. This can happen if the mock's package is set to one of its inputs (usually the main one) and the output is stdio so mockgen cannot detect the final output package. Setting this flag will then tell mockgen which import to exclude.（不理解）
+  -source string
+        (source 模式) 输入的 Go 源代码文件；启用 source 模式。
+  -version
+        打印版本。
+  -write_package_comment
+        如果为 true，则写入包文档注释 (godoc)。 （默认为 true）。
+```
+
+* source 模式：利用 Go 标准库的 `"go/parser"`。
+* 反射模式：先生成一个 main 函数源码，然后编译运行这个函数。这个函数会通过反射获取到接口的信息，并生成代码。
+
+这里推荐优先使用 source 模式，如果有问题，可以回退到反射模式：
+
+* source 模式性能高，生成速度快。
+* source 模式生成的代码可以保留参数名信息，有利于编写桩代码。
+* source 模式的缺点：
+	* 从 [issue](https://github.com/golang/mock/issues) 来看，有挺多问题的。
+	* 无法指定生成某个接口，-source 中如果包含多个接口，都会被生成。
+
+### [golang/mock](https://github.com/golang/mock) API
+
+* `MockXxx.EXPECT()` 返回 MockXxxRecorder 类型指针。
+* `MockXxxRecorder.方法名(...)`
+	* 参数为 nil、精确值 或者 [`gomock.Matcher`](https://pkg.go.dev/github.com/golang/mock@v1.6.0/gomock#Matcher)  参数匹配与断言，如果被测函数调用时，没有匹配到，将失败。
+		* `All` 匹配所有条件
+		* `AssignableToTypeOf` 匹配类型
+		* `Eq` 精确值
+		* `InAnyOrder` 任意顺序的集合
+		* `Len` 数组长度
+		* `Nil` 为 nil
+		* `Not` 不为某个值
+		* 修改失败 Got 和 Want 是的输出格式，参见： [README](https://github.com/golang/mock#modifying-failure-messages)
+	* 返回值为 [`*gomock.Call`](https://pkg.go.dev/github.com/golang/mock@v1.6.0/gomock#Call) 声明函数被调用时的一些行为或者断言。
+		* `After` 期望调用顺序。
+		* `AnyTimes`、`Times`、`MaxTimes`、`MinTimes` 期望调用的次数的值、最大值、最小值、等。
+		* `Return` 定义返回值。
+		* `Do`、`DoAndReturn` 被调用时，执行函数并返回。
+		* `SetArg` 修改函数调用的参数，应该发生在之后。
+		* 通过源码可知，如果 `Return`、`DoAndReturn` 被调用了多次，则函数的返回值一最后一个的返回值为准。
 
 ## Go 社区最主流的测试库 Testify
 
