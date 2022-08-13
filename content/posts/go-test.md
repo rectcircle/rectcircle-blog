@@ -659,6 +659,8 @@ ok      github.com/rectcircle/go-test-demo/01-testing/b 1.698s
 
 ## Go 官方维护的 Mock 库
 
+> 版本：[v1.6.0](https://pkg.go.dev/github.com/mock/mockgen@v1.6.0)
+
 ### 示例场景
 
 假设我们在开发一个博客后端的 article 模块，包含如下两层：
@@ -968,6 +970,119 @@ mockgen 有两种操作模式: source 和 reflect。
         * `SetArg` 修改函数调用的参数，应该发生在之后。
         * 通过源码可知，如果 `Return`、`DoAndReturn` 被调用了多次，则函数的返回值一最后一个的返回值为准。
 
-## Go 社区最主流的测试库 Testify
+## Go 社区主流的测试库 Testify
 
-TODO
+> 版本：[v1.8.0](https://pkg.go.dev/github.com/stretchr/testify@v1.8.0)
+
+Testify 是 Go 社区主流的测试工具集。包含如下特性：
+
+* 易用的断言
+* Mock
+* 测试套件接口和函数
+
+### assert 包
+
+`03-testify/assert_test.go`
+
+```go
+package testifydemo_test
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestSomething(t *testing.T) {
+	// 相等断言
+	assert.Equal(t, 123, 123, "they should be equal")
+
+	// 不等断言
+	assert.NotEqual(t, 123, 456, "they should not be equal")
+
+	// nil 断言
+	assert.Nil(t, nil)
+
+	// 非 nil 断言
+	got2 := "Something"
+	if assert.NotNil(t, got2) {
+		// 现在 got2 不是 nil
+		// 可以安全地进行进一步的断言而不会导致任何错误
+		assert.Equal(t, "Something", got2)
+	}
+}
+```
+
+stretchr/testify 的 [assert 包](https://pkg.go.dev/github.com/stretchr/testify@v1.8.0/assert)，提供了一系列函数，封装了常见的断言逻辑，当断言失败时，这些函数会友好的打印出失败的原因，代码行数等辅助信息。如 `assert.Equal(t, 123, 124, "they should be equal")` 输出如下：
+
+```
+=== RUN   TestSomething
+    /Users/xxx/Workspace/personal/go-test-demo/03-testify/assert_test.go:11:
+        	Error Trace:	/Users/xxx/Workspace/personal/go-test-demo/03-testify/assert_test.go:11
+        	Error:      	Not equal:
+        	            	expected: 123
+        	            	actual  : 124
+        	Test:       	TestSomething
+        	Messages:   	they should be equal
+```
+
+导出的断言函数如下：
+
+| 函数 | 说明 |
+|------|-----|
+| `func ObjectsAreEqual(expected, actual interface{}) bool ` | 不要使用，这不是一个断言函数，参见：[issue](https://github.com/stretchr/testify/issues/1180) |
+| `func ObjectsAreEqualValues(expected, actual interface{}) bool` | 不要使用，这不是一个断言函数，参见：[issue](https://github.com/stretchr/testify/issues/1180) |
+| `func FailNow(t TestingT, failureMessage string, msgAndArgs ...interface{}) bool` | 友好的打印失败信息，标记失败并退出当前协程，一般不需要直接使用 |
+| `func Fail(t TestingT, failureMessage string, msgAndArgs ...interface{}) bool` | 友好的打印失败信息，标记失败，一般不需要直接使用 | 
+| `func Implements(t TestingT, interfaceObject interface{}, object interface{}, msgAndArgs ...interface{}) bool` | 断言 `object` 是否实现了 `interfaceObject` 接口，如 `assert.Implements(t, (*MyInterface)(nil), new(MyObject))` |
+| `func IsType(t TestingT, expectedType interface{}, object interface{}, msgAndArgs ...interface{}) bool ` | 断言 `object` 的类型和 `expectedType` 的类型是否相同 |
+| `func Equal(t TestingT, expected, actual interface{}, msgAndArgs ...interface{}) bool` | 断言值是否相同，指针变量相等性是根据引用值的相等性确定的，函数类型总是失败，如 `assert.Equal(t, 123, 123)` |
+| `func NotEqual(t TestingT, expected, actual interface{}, msgAndArgs ...interface{}) bool` | 参见：`Equal` |
+| `func Same(t TestingT, expected, actual interface{}, msgAndArgs ...interface{}) bool` | 断言两个指针的类型相同，且指针地址相同 |
+| `func NotSame(t TestingT, expected, actual interface{}, msgAndArgs ...interface{}) bool` | 参见：`Same` |
+| `func EqualValues(t TestingT, expected, actual interface{}, msgAndArgs ...interface{}) bool ` | 断言相等，或可转换为相同类型且相等，如 `assert.EqualValues(t, uint32(123), int32(123))` 返回 true |
+| `func NotEqualValues(t TestingT, expected, actual interface{}, msgAndArgs ...interface{}) bool` | 参见：`EqualValues` |
+| `func Exactly(t TestingT, expected, actual interface{}, msgAndArgs ...interface{}) bool` | 断言值和类型都相同（精确相等），如 `assert.Exactly(t, int32(123), int64(123))` 返回 false |
+| `func Nil(t TestingT, object interface{}, msgAndArgs ...interface{}) bool` | 断言对象是否为 nil |
+| `func NotNil(t TestingT, object interface{}, msgAndArgs ...interface{}) bool` | 参见：`Nil` |
+| `func Empty(t TestingT, object interface{}, msgAndArgs ...interface{}) bool` | 断言是 emtpy，例如 nil, "", false, 0 或者 len == 0 的切片或 chan 都是 empty |
+| `func NotEmpty(t TestingT, object interface{}, msgAndArgs ...interface{}) bool` | 参见：`Empty` |
+| `func Len(t TestingT, object interface{}, length int, msgAndArgs ...interface{}) bool` | 断言指定的对象具有特定的长度。 如果对象是无法 `len()` 的会失败，如 `assert.Len(t, mySlice, 3)` |
+| `func True(t TestingT, value bool, msgAndArgs ...interface{}) bool` | 断言对象是否为 true |
+| `func False(t TestingT, value bool, msgAndArgs ...interface{}) bool` | 断言对象是否为 false |
+| `func Contains(t TestingT, s, contains interface{}, msgAndArgs ...interface{}) bool` | a) 断言字符串是否包含一个子串，如 `assert.Contains(t, "Hello World", "World")`；b) list(array, slice...) 是否包含一个元素，如 `assert.Contains(t, ["Hello", "World"], "World")`，c) map 是否包含一个元素 `assert.Contains(t, {"Hello": "World"}, "Hello")` |
+| `func NotContains(t TestingT, s, contains interface{}, msgAndArgs ...interface{}) bool` | 参见：`Contains` |
+| `func Subset(t TestingT, list, subset interface{}, msgAndArgs ...interface{}) (ok bool)` | 断言 subset 是否是 list(array, slice...) 的子集 |
+| `func NotSubset(t TestingT, list, subset interface{}, msgAndArgs ...interface{}) (ok bool)` | 参见：`Subset` |
+| `func ElementsMatch(t TestingT, listA, listB interface{}, msgAndArgs ...interface{}) (ok bool)` | 断言两个 list (array, slice...) 的元素是否完全相同（忽略顺序）， 如 `assert.ElementsMatch(t, [1, 3, 2, 3], [1, 3, 3, 2])` 为 true |
+| `func Panics(t TestingT, f PanicTestFunc, msgAndArgs ...interface{}) bool` | 断言 f 函数是否 panic（原理是 f 通过 `recover()` 接收） |
+| `func NotPanics(t TestingT, f PanicTestFunc, msgAndArgs ...interface{}) bool ` | 参见：`Panics` |
+| `func PanicsWithValue(t TestingT, expected interface{}, f PanicTestFunc, msgAndArgs ...interface{}) bool` | 断言 f 函数是否发生 panic 且 painc 接收的值和 excepted 相同 (`==`)，如：`assert.PanicsWithValue(t, "crazy error", func(){ GoCrazy() })` |
+| `func PanicsWithError(t TestingT, errString string, f PanicTestFunc, msgAndArgs ...interface{}) bool` | 断言 f 函数是否发生 panic 且 panic 接收的值为 error 且 `error.Error()` 的值和 errString 想通，如：`assert.PanicsWithError(t, "crazy error", func(){ GoCrazy() })` |
+| `func WithinDuration(t TestingT, expected, actual time.Time, delta time.Duration, msgAndArgs ...interface{}) bool` |断言这两个时间相差时间是否在 delta 内，如 `assert.WithinDuration(t, time.Now(), time.Now(), 10*time.Second)` |
+| `func WithinRange(t TestingT, actual, start, end time.Time, msgAndArgs ...interface{}) bool` | 断言 actual 是否在 start 和 end 之间（包括）， 如 `assert.WithinRange(t, time.Now(), time.Now().Add(-time.Second), time.Now().Add(time.Second))` |
+| `func InDelta(t TestingT, expected, actual interface{}, delta float64, msgAndArgs ...interface{}) bool` | 断言这两个数字的差值的 delta 范围内，如 `assert.InDelta(t, math.Pi, 22/7.0, 0.01)` |
+| `func InDeltaSlice(t TestingT, expected, actual interface{}, delta float64, msgAndArgs ...interface{}) bool` | 和 `InDelta` 类似，断言 expected, actual 切片的对应的两个数字元素的的差值在 delta 内  |
+| `func InDeltaMapValues(t TestingT, expected, actual interface{}, delta float64, msgAndArgs ...interface{}) bool` | 和 `InDelta` 类似，断言 expected, actual Map 的对应的两个数字元素的的差值在 delta 内 |
+| `func InEpsilon(t TestingT, expected, actual interface{}, epsilon float64, msgAndArgs ...interface{}) bool` | 断言 `(abs(expected - actual) / abc(expected)) <= epsilon` |
+| `func InEpsilonSlice(t TestingT, expected, actual interface{}, epsilon float64, msgAndArgs ...interface{}) bool` | 和 `InEpsilon` 类似，断言 expected, actual 切片的对应的两个数字元素满足 `InEpsilon` |
+| `func InEpsilonSlice(t TestingT, expected, actual interface{}, epsilon float64, msgAndArgs ...interface{}) bool` | 和 `InEpsilon` 类似，断言 expected, actual 切片的对应的两个数字元素满足 `InEpsilon` |
+| `func Error(t TestingT, err error, msgAndArgs ...interface{}) bool` | 断言 err 是否不为 nil |
+| `func NoError(t TestingT, err error, msgAndArgs ...interface{}) bool` | 参见：`NoError` |
+| `func EqualError(t TestingT, theError error, errString string, msgAndArgs ...interface{}) bool` | 断言 `theError.Error()` 和 errorString 是否相等 |
+| `func ErrorContains(t TestingT, theError error, contains string, msgAndArgs ...interface{}) bool` | 断言 `theError.Error()` 是否包含 `contains` 是否相等 |
+| `func Regexp(t TestingT, rx interface{}, str interface{}, msgAndArgs ...interface{}) bool` | 断言字符串是否和正则表达式匹配，如 `assert.Regexp(t, regexp.MustCompile("start"), "it's starting")`、`assert.Regexp(t, "start...$", "it's not starting")` |
+| `func NotRegexp(t TestingT, rx interface{}, str interface{}, msgAndArgs ...interface{}) bool` | 参见： `Regexp` |
+| `func Zero(t TestingT, i interface{}, msgAndArgs ...interface{}) bool` | 断言 i 是否是零值 |
+| `func NotZero(t TestingT, i interface{}, msgAndArgs ...interface{}) bool` | 参见：`Zero` |
+| `func FileExists(t TestingT, path string, msgAndArgs ...interface{}) bool` | 断言文件是否存在，如果是目录将失败 |
+| `func NoFileExists(t TestingT, path string, msgAndArgs ...interface{}) bool` | 参见： `FileExists` |
+| `func DirExists(t TestingT, path string, msgAndArgs ...interface{}) bool` | 断言目录是否存在 |
+| `func NoDirExists(t TestingT, path string, msgAndArgs ...interface{}) bool` | 参见： `DirExists` |
+| `func JSONEq(t TestingT, expected string, actual string, msgAndArgs ...interface{}) bool` | 断言两个 JSON 字符窜是否相等，如 ```assert.JSONEq(t, `{"hello": "world", "foo": "bar"}`, `{"foo": "bar", "hello": "world"}`)``` |
+| `func YAMLEq(t TestingT, expected string, actual string, msgAndArgs ...interface{}) bool` | 断言两个 YAML 字符窜是否相等 |
+| `func Eventually(t TestingT, condition func() bool, waitFor time.Duration, tick time.Duration, msgAndArgs ...interface{}) bool` |  该函数每经过 tick 时间，调用一次 `condition` 函数，如果在 `waitFor` 时间内返回 true 则断言成功，如 `assert.Eventually(t, func() bool { return true; }, time.Second, 10*time.Millisecond)` |
+| `func Never(t TestingT, condition func() bool, waitFor time.Duration, tick time.Duration, msgAndArgs ...interface{}) bool` | 参见： `Eventually`，即在 `waitFor` 间内 condition 没有返回 true |
+| `func ErrorIs(t TestingT, err, target error, msgAndArgs ...interface{}) bool` | 通过 `errors.Is` 进行断言 |
+| `func NotErrorIs(t TestingT, err, target error, msgAndArgs ...interface{}) bool` | 参见：`ErrorIs` |
+| `func ErrorAs(t TestingT, err error, target interface{}, msgAndArgs ...interface{})` | 通过 `errors.As` 进行断言 |
