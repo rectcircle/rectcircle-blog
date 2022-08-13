@@ -968,7 +968,7 @@ mockgen 有两种操作模式: source 和 reflect。
         * `Return` 定义返回值。
         * `Do`、`DoAndReturn` 被调用时，执行函数并返回。
         * `SetArg` 修改函数调用的参数，应该发生在之后。
-        * 通过源码可知，如果 `Return`、`DoAndReturn` 被调用了多次，则函数的返回值一最后一个的返回值为准。
+        * 通过源码可知，如果 `Return`、`DoAndReturn` 被调用了多次，则函数的返回值以最后一个的返回值为准。
 
 ## Go 社区主流的测试库 Testify
 
@@ -982,7 +982,7 @@ Testify 是 Go 社区主流的测试工具集。包含如下特性：
 
 ### assert 包
 
-`03-testify/assert_test.go`
+提供了移动的断言函数，示例 `03-testify/assert_test.go` 如下：
 
 ```go
 package testifydemo_test
@@ -1033,7 +1033,7 @@ stretchr/testify 的 [assert 包](https://pkg.go.dev/github.com/stretchr/testify
 | `func ObjectsAreEqual(expected, actual interface{}) bool ` | 不要使用，这不是一个断言函数，参见：[issue](https://github.com/stretchr/testify/issues/1180) |
 | `func ObjectsAreEqualValues(expected, actual interface{}) bool` | 不要使用，这不是一个断言函数，参见：[issue](https://github.com/stretchr/testify/issues/1180) |
 | `func FailNow(t TestingT, failureMessage string, msgAndArgs ...interface{}) bool` | 友好的打印失败信息，标记失败并退出当前协程，一般不需要直接使用 |
-| `func Fail(t TestingT, failureMessage string, msgAndArgs ...interface{}) bool` | 友好的打印失败信息，标记失败，一般不需要直接使用 | 
+| `func Fail(t TestingT, failureMessage string, msgAndArgs ...interface{}) bool` | 友好的打印失败信息，标记失败，一般不需要直接使用 |
 | `func Implements(t TestingT, interfaceObject interface{}, object interface{}, msgAndArgs ...interface{}) bool` | 断言 `object` 是否实现了 `interfaceObject` 接口，如 `assert.Implements(t, (*MyInterface)(nil), new(MyObject))` |
 | `func IsType(t TestingT, expectedType interface{}, object interface{}, msgAndArgs ...interface{}) bool ` | 断言 `object` 的类型和 `expectedType` 的类型是否相同 |
 | `func Equal(t TestingT, expected, actual interface{}, msgAndArgs ...interface{}) bool` | 断言值是否相同，指针变量相等性是根据引用值的相等性确定的，函数类型总是失败，如 `assert.Equal(t, 123, 123)` |
@@ -1086,3 +1086,151 @@ stretchr/testify 的 [assert 包](https://pkg.go.dev/github.com/stretchr/testify
 | `func ErrorIs(t TestingT, err, target error, msgAndArgs ...interface{}) bool` | 通过 `errors.Is` 进行断言 |
 | `func NotErrorIs(t TestingT, err, target error, msgAndArgs ...interface{}) bool` | 参见：`ErrorIs` |
 | `func ErrorAs(t TestingT, err error, target interface{}, msgAndArgs ...interface{})` | 通过 `errors.As` 进行断言 |
+
+### require 包
+
+类似于 [assert 包](https://pkg.go.dev/github.com/stretchr/testify@v1.8.0/assert) ，不同点在于 [require](https://pkg.go.dev/github.com/stretchr/testify@v1.8.0/require) 包会在断言失败后立即退出。
+
+### mock 包
+
+能力和上文提到的 [golang/mock](https://github.com/golang/mock) 类似，在此不多介绍了。建议直接使用 golang/mock。
+
+### suite 包
+
+提供了类似面向对象语言的测试套件（如 junit），主流的 IDE （如 VSCode [Go 扩展](https://github.com/golang/vscode-go/blob/master/CHANGELOG.md#0684---29th-june-2018)）对该包提供了原生的支持。
+
+示例 `03-testify/suite_test.go` 如下：
+
+```go
+package testifydemo_test
+
+// Basic imports
+import (
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/suite"
+)
+
+// 定义测试套件结构体，嵌入一个 suite.Suite，该结构体包含一个 T() 方法可以返回原生的 *testing.T
+type ExampleTestSuite struct {
+	suite.Suite
+}
+
+// 运行套件内所有测试函数前，执行且只执行一次该函数。
+func (suite *ExampleTestSuite) SetupSuite() {
+	fmt.Println("+++SetupSuite+++")
+}
+
+// 运行套件内所有测试函数后，执行且只执行一次该函数。
+func (suite *ExampleTestSuite) TearDownSuite() {
+	fmt.Println("+++TearDownSuite+++")
+}
+
+// 运行套件内的每个测试前，都会执行一次该函数。
+func (suite *ExampleTestSuite) SetupTest() {
+	fmt.Println("+++SetupTest+++")
+}
+
+// 运行套件内的每个测试后，都会执行一次该函数。
+func (suite *ExampleTestSuite) TearDownTest() {
+	fmt.Println("+++TearDownTest+++")
+}
+
+// 运行套件内的每个测试前，都会执行一次该函数。
+func (suite *ExampleTestSuite) BeforeTest(suiteName, testName string) {
+	fmt.Printf("+++BeforeTest(suiteName=%s, testName=%s)+++\n", suiteName, testName)
+}
+
+// 运行套件内的每个测试后，都会执行一次该函数。
+func (suite *ExampleTestSuite) AfterTest(suiteName, testName string) {
+	fmt.Printf("+++AfterTest(suiteName=%s, testName=%s)+++\n", suiteName, testName)
+}
+
+// 运行套件内所有测试函数后，执行且只执行一次该函数，可以获取执行结果（起止时间、是否通过）相关信息。
+func (suite *ExampleTestSuite) HandleStats(suiteName string, stats *suite.SuiteInformation) {
+	fmt.Printf("+++HandleStats(suiteName=%s, stats=%+v)+++\n", suiteName, stats)
+}
+
+// 测试套件内，所有以 Test 开头的方法都会作为测试运行
+func (suite *ExampleTestSuite) TestExample1() {
+	fmt.Println("+++TestExample1+++")
+	assert.True(suite.T(), true)
+}
+
+// 测试套件内，所有以 Test 开头的方法都会作为测试运行
+// 注意：可以使用 suite.Suite 导出的断言函数，以方便测试
+func (suite *ExampleTestSuite) TestExample2() {
+	fmt.Println("+++TestExample1+++")
+	suite.True(true)
+}
+
+// 为了让 go test 运行这个套件，我们需要创建一个正常的测试函数并将套件的指针传递给 suite.Run 函数
+func TestExampleTestSuite(t *testing.T) {
+	suite.Run(t, new(ExampleTestSuite))
+}
+```
+
+使用 `go test -run ^TestExampleTestSuite$ github.com/rectcircle/go-test-demo/03-testify -v -testify.m ^TestExample1$` 命令可以运行该测试内的某个具体测试（通过 `-testify.m` 指定）。
+
+使用 `go test -run ^TestExampleTestSuite$ github.com/rectcircle/go-test-demo/03-testify -v` 命令，可以运行该套件的所有测试，输出如下：
+
+```
+=== RUN   TestExampleTestSuite
++++SetupSuite+++
+=== RUN   TestExampleTestSuite/TestExample1
++++SetupTest+++
++++BeforeTest(suiteName=ExampleTestSuite, testName=TestExample1)+++
++++TestExample1+++
++++AfterTest(suiteName=ExampleTestSuite, testName=TestExample1)+++
++++TearDownTest+++
+=== RUN   TestExampleTestSuite/TestExample2
++++SetupTest+++
++++BeforeTest(suiteName=ExampleTestSuite, testName=TestExample2)+++
++++TestExample1+++
++++AfterTest(suiteName=ExampleTestSuite, testName=TestExample2)+++
++++TearDownTest+++
++++TearDownSuite+++
++++HandleStats(suiteName=ExampleTestSuite, stats=&{Start:2022-08-14 00:30:45.337556 +0800 CST m=+0.003622966 End:2022-08-14 00:30:45.338018 +0800 CST m=+0.004085457 TestStats:map[TestExample1:0xc000262140 TestExample2:0xc000262190]})+++
+--- PASS: TestExampleTestSuite (0.00s)
+    --- PASS: TestExampleTestSuite/TestExample1 (0.00s)
+    --- PASS: TestExampleTestSuite/TestExample2 (0.00s)
+PASS
+ok      github.com/rectcircle/go-test-demo/03-testify   1.193s
+```
+
+通过如上示例可以看出：
+
+* 生命周期函数以及生命周期为（定义在：[suite/interfaces.go](https://github.com/stretchr/testify/blob/master/suite/interfaces.go)）：
+
+	```
+	启动测试套件
+		|
+		v
+	SetupSuite
+		|
+		v
+	 SetupTest       ---+
+	 	|               |
+		v               |
+	 BeforeTest      ---+
+	    |               |
+		v               |
+	  TestXxx        ---+-->  每个测试仅按此循序执行
+	  	|               |
+		v               |
+	 AfterTest       ---+
+		|               |
+		v               |
+	TearDownTest     ---+
+		|
+		v
+	TearDownSuite
+		|
+		v
+	HandleStats
+	```
+
+* go test 通过 `-testify.m` 可以实现只测试某个测试函数。
+* suite.Suite 也导出了一系列断言函数 `suite.Xxx(...)`，等价于  `assert.Xxx(suite.T(), ...)`
