@@ -20,7 +20,7 @@ tags:
 
 ## Go 标准库 testing 包 和 `go test` 命令
 
-Go 通过标准库的 testing 包和 Go 命令行工具 test 相关命令，在语言层面，提供了一整套全面的测试工具器。
+Go 通过标准库的 testing 包和 Go 命令行工具 test 相关命令，在语言层面，提供了一整套全面的测试机制。
 
 本小结主要介绍如何使用 testing 包编写各种类型的测试函数。
 
