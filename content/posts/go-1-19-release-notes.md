@@ -13,7 +13,7 @@ tags:
 * 更新 [内存模型文档](https://go.dev/ref/mem)，是其更易读。阅读改文章，可以避免一些并发内存访问不当，导致的非预期问题。
 * [sync/atomic](https://pkg.go.dev/sync/atomic#pkg-types) 新增了一些易用的类型，如 `atomic.Int64` 等。
 * [文档注释](https://go.dev/doc/comment)，终于支持链接、列表，以及明确的标题语法。
-* 软内存限制，通过 [`runtime/debug.SetMemoryLimit`](/pkg/runtime/debug/#SetMemoryLimit) 和 [`GOMEMLIMIT`](/pkg/runtime/#hdr-Environment_Variables) 环境变量配置。在某些不期望内存占用过多，期望提早 GC 以及释放内存给 OS 的场景可以使用。
+* 软内存限制，通过 [`runtime/debug.SetMemoryLimit`](/pkg/runtime/debug/#SetMemoryLimit) 或 [`GOMEMLIMIT`](/pkg/runtime/#hdr-Environment_Variables) 环境变量配置。在某些不期望内存占用过多，期望提早 GC 以及释放内存给 OS 的场景可以使用。
 
 ## 语言层面改变
 
@@ -110,7 +110,7 @@ Go 只提供[顺序一致](https://en.wikipedia.org/wiki/Sequential_consistency)
 
 ## 运行时
 
-* 通过 [`runtime/debug.SetMemoryLimit`](/pkg/runtime/debug/#SetMemoryLimit) 和 [`GOMEMLIMIT`](/pkg/runtime/#hdr-Environment_Variables) 环境变量，可以配置软内存限制(soft memory limit)。Go 运行时会尽力维持内存消耗小于该限制，此功能不保证：
+* 通过 [`runtime/debug.SetMemoryLimit`](/pkg/runtime/debug/#SetMemoryLimit) 或 [`GOMEMLIMIT`](/pkg/runtime/#hdr-Environment_Variables) 环境变量，可以配置软内存限制(soft memory limit)。Go 运行时会尽力维持内存消耗小于该限制，此功能不保证：
     * 过小的内存限制不会遵守，约几十m以下，参见：[issue](https://go.dev/issue/52433)。
     * 不能 100% 消除 OOM。
 
