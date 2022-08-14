@@ -113,6 +113,9 @@ Go 只提供[顺序一致](https://en.wikipedia.org/wiki/Sequential_consistency)
 * 通过 [`runtime/debug.SetMemoryLimit`](/pkg/runtime/debug/#SetMemoryLimit) 和 [`GOMEMLIMIT`](/pkg/runtime/#hdr-Environment_Variables) 环境变量，可以配置软内存限制(soft memory limit)。Go 运行时会尽力维持内存消耗小于该限制，此功能不保证：
     * 过小的内存限制不会遵守，约几十m以下，参见：[issue](https://go.dev/issue/52433)。
     * 不能 100% 消除 OOM。
+
+    更多参见：[A Guide to the Go Garbage Collector](https://go.dev/doc/gc-guide#Memory_limit)
+
 * import os 会自动增加 可打开的最大文件描述符数量 到 hard limits，参见：[issue](https://github.com/golang/go/issues/46279)。
 * 除非 `GOTRACEBACK=system` 或 `crash`，否则不可恢复的致命错误（例如并发写 map 或解锁未锁定的 mutex）现在打印更简单的堆栈，不包括运行时元数据。无论 GOTRACEBACK 的值如何，运行时内部的致命错误回溯始终包含完整的元数据。
 * 在 ARM64 上添加了对调试器注入函数调用的支持，使用户能够在使用经过更新以利用此功能的调试器时，在交互式调试会话中从其二进制文件调用函数（[dlv 已支持](https://github.com/go-delve/delve/blob/master/CHANGELOG.md#190-2022-07-06)）。
