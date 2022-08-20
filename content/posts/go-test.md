@@ -665,7 +665,7 @@ ok      github.com/rectcircle/go-test-demo/01-testing/b 1.698s
 
 假设我们在开发一个博客后端的 article 模块，包含如下两层：
 
-* service 业务逻，会调用 repository 层的函数，及 repository 是 service 的依赖。
+* service 业务逻辑，会调用 repository 层的函数，及 repository 是 service 的依赖。
 * repository 数据操纵层，对数据库等外部数据存储的操作的封装。
 
 模型和接口声明： `02-mock/domain/`
