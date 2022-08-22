@@ -614,7 +614,7 @@ spec:
     matchLabels:
       app: consul-server
   serviceName: "consul-server"
-  replicas: 3
+  replicas: 3  # TODO: 节点数目根据情况而定
   template:
     metadata:
       labels:
@@ -626,36 +626,13 @@ spec:
         args:
           - "agent"
           - "-server"
-          - "-bootstrap-expect=3"
+          - "-bootstrap-expect=3"  # TODO: 节点数目根据情况而定
           # https://kubernetes.io/zh-cn/docs/concepts/workloads/controllers/statefulset/#stable-network-id
           # url 为 $podName-{0..N-1}.$(serviceName).$(namespace).svc.cluster.local
           - "-retry-join=consul-server-0.consul-server.consul.svc.cluster.local"
           - "-retry-join=consul-server-1.consul-server.consul.svc.cluster.local"
           - "-retry-join=consul-server-2.consul-server.consul.svc.cluster.local"  # TODO: 节点数目根据情况而定
           # TODO: 其他参数根据自身情况修改
-        ports:
-        - name: http
-          containerPort: 8500
-        - name: dns-udp
-          protocol: "UDP"
-          containerPort: 8600
-        - name: dns-tcp
-          protocol: "TCP"
-          containerPort: 8600
-        - name: server
-          containerPort: 8300
-        - name: serflan-tcp
-          protocol: "TCP"
-          containerPort: 8301
-        - name: serflan-udp
-          protocol: "UDP"
-          containerPort: 8301
-        - name: serfwan-tcp
-          protocol: "TCP"
-          containerPort: 8302
-        - name: serfwan-udp
-          protocol: "UDP"
-          containerPort: 8302
         volumeMounts:
           - name: consul-server-data
             mountPath: /consul/data
@@ -670,6 +647,7 @@ spec:
         requests:
           storage: 5Gi                      # TODO: 根据自身情况修改
 ---
+# DaemonSet: consul-client
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -684,6 +662,13 @@ spec:
       labels:
         name: consul-client
     spec:
+      initContainers:
+      - name: init-mount
+        image: "consul:1.13.1"
+        command: ['/bin/sh', '-c', 'chown -R consul:consul /var/run/consul/socket']
+        volumeMounts:
+        - name: consul-client-socket
+          mountPath: /var/run/consul/socket
       containers:
       - name: consul-client
         image: "consul:1.13.1"
@@ -701,7 +686,7 @@ spec:
         - name: consul-client-data
           mountPath: /consul/data
         - name: consul-client-socket
-          mountPath: /var/run/consul
+          mountPath: /var/run/consul/socket
       volumes:
       - name: consul-client-data
         hostPath:
@@ -713,9 +698,9 @@ spec:
           type: DirectoryOrCreate
 ```
 
-通过 `TODO` 将 `consul-client` 的 8500 端口进行端口转发，并打开 WebUI `http://localhost:8500`，观察集群情况。
+通过 `kubectl port-forward pods/consul-client-4mtdb 8500:8500 -n consul` 将 `consul-client` 的 8500 端口进行端口转发，并打开 WebUI `http://localhost:8500`，观察集群情况。
 
-执行 `kubectl create -f test-consul-pod.yaml && kubectl exec -it busybox sh`，其中 `test-consul-pod.yaml` 内容如下：
+执行 `kubectl create -f test-consul-pod.yaml` 创建测试 pod，其中 `test-consul-pod.yaml` 内容如下：
 
 ```yaml
 apiVersion: v1
@@ -724,32 +709,56 @@ metadata:
   name: busybox
   namespace: default
 spec:
+  volumes:
+  - name: consul-client-socket
+    hostPath:
+      path: /var/run/consul/socket
   containers:
   - name: busybox
     image: busybox:1.28.4
-    command:
-      - sleep
-      - "100000000"
+    command: [ "sleep", "100000000"]
     imagePullPolicy: IfNotPresent
+    env:
+    - name: CONSUL_HTTP_ADDR
+      value: unix:///var/run/consul/socket/http.sock
+    volumeMounts:
+    - name: consul-client-socket
+      mountPath: /var/run/consul/socket
   restartPolicy: Always
 ```
 
-注册测试服务 `TODO`，并通过 WebUI 观察。
+启动测试服务：
 
-deamonset & statefulset
+```bash
+kubectl exec -it busybox -- /bin/sh
+while true; do echo -e "HTTP/1.1 200 OK\n\ntest-service-1 (instance1): $(date)" | nc -l -p 9000; if [ $? -ne 0 ]; then break; fi; done
+```
 
-CONSUL_HTTP_ADDR
+注册测试服务：
 
-https://www.consul.io/commands#consul_http_addr
+```bash
+kubectl exec -it busybox -- /bin/sh
+ip addr
+# 将如下的 127.0.0.1 替换为 ip addr 的输出
+curl  \
+    --request PUT \
+    --unix-socket ${CONSUL_HTTP_ADDR#*//} \
+    --data '
+        {
+            "ID": "test-service-1-instance-1",
+            "Name": "test-service-1",
+            "Address": "127.0.0.1",
+            "Port": 9000,
+            "Check": {
+                "HTTP": "http://127.0.0.1:9000",
+                "Interval": "10s"
+            }
+        }
+    ' \
+    http://localhost:8500/v1/agent/service/register
+```
 
-https://wqblogs.com/2021/01/27/k8s%E9%83%A8%E7%BD%B2conusl/
-https://1335402049.github.io/2021/02/01/Kubernetes%E9%83%A8%E7%BD%B2Consul%E9%9B%86%E7%BE%A4/
-https://www.cnblogs.com/tylerzhou/p/11161634.html
-https://zhangguanzhang.github.io/2019/10/24/deployment-consul-in-k8s/
-
-https://blog.baeke.info/2020/05/05/getting-started-with-consul-on-kubernetes/ (HotsIP)
-
-https://learn.hashicorp.com/tutorials/consul/kubernetes-reference-architecture
+通过 WebUI 观察：http://localhost:8500/ui/dc1/services 。
 
 ### 多数据中心
 
