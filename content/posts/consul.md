@@ -398,7 +398,7 @@ consul agent 的配置可以通过 [命令行参数](https://www.consul.io/docs/
 
 需要特别说明的是，Consul 所有 Agent 节点必须是相互可通的同一内网。
 
-简单起见，使用 Docker 容器模拟这 5 台机器。
+简单起见，使用 Docker 容器模拟这 5 台机器（参见：[官方镜像说明](https://learn.hashicorp.com/tutorials/consul/docker-container-agents)，配置文件内容可以通过 `CONSUL_LOCAL_CONFIG` 配置）。
 
 #### 创建网络
 
@@ -520,6 +520,36 @@ docker rm -f consul-client-1 consul-client-2 consul-server-1 consul-server-2 con
 ```
 
 ### 云原生部署
+
+在官方的将 Consul 部署到 Kubernetes 的文档中，重点介绍的是 Service Mesh 相关的教程。
+
+本部分，不会介绍 Service Mesh 相关的内容，而介绍如何在 Kubernetes 部署一套仅提供服务发现注册中心能力的 Consul 集群。可能的规划如下：
+
+* 使用 Kubernetes StatefulSet 部署具有 3 个 Consul Server Agent 的 Consul 集群。
+* 该 Consul 集群的 Client 的部署有如下两种选择：
+    * (推荐) 使用 Kubernetes DaemonSet 为 Kubernete 集群的每个节点，部署 Consul Client Agent。
+    * 如果没有 Kubernetes 集群 DaemonSet 的权限，则可以使用 Kubernetes StatefulSet 部署一个 Consul Client Agent 集群，并通过 Kubernetes 的 Service 提供服务。
+* 需要使用 Consul 服务注册和发现能力的 Pod，针对如上 Consul 集群 Client 的部署方式的不用有不同的使用方式：
+    * DaemonSet：
+        * （推荐）挂载宿主机的文件（Consul Client Agent 的配置文件添加 `addresses { http = "0.0.0.0 unix:///var/run/consul/http.sock"}`）。
+            * 挂载宿主机 `/var/run/consul`  目录
+            * 导出环境变量 `CONSUL_HTTP_ADDR=unix:///var/run/consul/http.sock`
+        * 使用 host ip。
+
+            ```yaml
+                    env:
+                    - name: HOST_IP
+                    valueFrom:
+                        fieldRef:
+                        apiVersion: v1
+                        fieldPath: status.hostIP
+                    - name: CONSUL_HTTP_ADDR
+                    value: http://$(HOST_IP):8500
+            ```
+
+    * StatefulSet + Service：导出环境变量 `CONSUL_HTTP_ADDR=http://$ConsulClientAgentService.$Namespace.svc.cluster.local`。
+
+本部分示例选择：以 DaemonSet 的方式部署 Consul Client Agent，通过挂载宿主机文件 unix daemon socket 文件的方式给其他 pod 提供服务。
 
 deamonset & statefulset
 
