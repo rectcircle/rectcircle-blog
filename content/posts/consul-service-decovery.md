@@ -1,5 +1,5 @@
 ---
-title: "Consul 详解"
+title: "Consul 服务发现"
 date: 2022-08-18T18:35:09+08:00
 draft: true
 toc: true
@@ -16,7 +16,12 @@ Consul 被官方定义为多网络工具，提供功能齐全的服务网格解�
 
 最早 Consul 的就是一个高可用的服务注册和发现的注册中心，近些年来，Consul 引入了服务网格（service mesh）。从其官方网站来开，官方希望 Consul 可以提供一整套服务网格的解决方案。
 
+本文，主要介绍 Consul 服务发现相关的特性的基本使用以及安装和部署。其他关于 kv 存储、服务网格，本文暂不涉及。
+
+<!--
 本文将，先从最小化安装和使用 Consul 开始（[快速开始](#快速开始)）；然后从如何部署运维 ([安装和部署](#安装和部署))、如何使用 ([核心特性](#核心特性))，两个角度详细介绍 Consul。
+
+-->
 
 ## 快速开始
 
@@ -82,7 +87,7 @@ consul agent -dev -node machine
 
 #### 注册服务
 
-> 参见： [Service - Agent HTTP API](https://www.consul.io/api-docs/agent/service#register-service)
+> 更多参见： [Service - Agent HTTP API - 注册服务](https://www.consul.io/api-docs/agent/service#register-service)
 
 ```bash
 # 注册第 1 个服务的第 1 个实例
@@ -521,7 +526,7 @@ docker rm -f consul-client-1 consul-client-2 consul-server-1 consul-server-2 con
 
 ### 云原生部署
 
-在官方的将 Consul 部署到 Kubernetes 的文档中，重点介绍的是 Service Mesh 相关的教程。
+在官方的将 [Consul 部署到 Kubernetes](https://www.consul.io/docs/k8s) 的文档中，重点介绍的是 Service Mesh 相关的教程。
 
 本部分，不会介绍 Service Mesh 相关的内容，而介绍如何在 Kubernetes 部署一套仅提供服务发现注册中心能力的 Consul 集群。可能的规划如下：
 
@@ -760,6 +765,8 @@ curl  \
 
 通过 WebUI 观察：http://localhost:8500/ui/dc1/services 。
 
+<!-- 
+
 ### 多数据中心
 
 ## 核心特性
@@ -777,6 +784,8 @@ https://discuss.hashicorp.com/t/what-is-the-different-between-catalog-service-an
 ### 健康检查
 
 ### 服务网格
+
+-->
 
 ## 参考
 
