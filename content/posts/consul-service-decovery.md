@@ -331,7 +331,7 @@ curl --request PUT http://127.0.0.1:8500/v1/agent/service/deregister/test-servic
 
 ### 架构和说明
 
-> [What is Consul?](https://learn.hashicorp.com/tutorials/consul/get-started?in=consul/getting-started) | [部署架构](https://learn.hashicorp.com/tutorials/consul/reference-architecture?in=consul/production-deploy)
+> 参考： [What is Consul?](https://learn.hashicorp.com/tutorials/consul/get-started?in=consul/getting-started) | [部署架构](https://learn.hashicorp.com/tutorials/consul/reference-architecture?in=consul/production-deploy)
 
 Consul 是一个分布式系统，在 Consul 的概念中，一个 Consul 集群被称为数据中心 (datacenter)。
 
@@ -383,6 +383,7 @@ Consul Agent 会暴露很多个服务地址，可以分为两类 Client 和 Clus
 consul agent 的配置可以通过 [命令行参数](https://www.consul.io/docs/agent/config/cli-flags) (`consul agent --help`) 和 [配置文件](https://www.consul.io/docs/agent/config/config-files)。本部分仅介绍部分常用的命令行参数：
 
 | 参数 | 默认值 | 说明 |
+|-----|-------|------|
 | [`-datacenter=<value>`](https://www.consul.io/docs/agent/config/cli-flags#_datacenter)  | dc1 | 同一个集群的数据中心名应该是一致的 |
 | [`-server`](https://www.consul.io/docs/agent/config/cli-flags#_server)  |  |  agent 模式是否为 server |
 | [`-bootstrap-expect=<value>`](https://www.consul.io/docs/agent/config/cli-flags#_bootstrap_expect)  |  | server 模式有效，当 server agent 达到该数值后，集群开始引导启动，需要注意的是，这个集群中所有 server agent 的该参数的值必须一致 |
@@ -533,10 +534,10 @@ docker rm -f consul-client-1 consul-client-2 consul-server-1 consul-server-2 con
 * 使用 Kubernetes StatefulSet 部署具有 3~5 个 Consul Server Agent 的 Consul 集群。
 * 该 Consul 集群的 Client 的部署有如下两种选择：
     * (推荐) 使用 Kubernetes DaemonSet 为 Kubernete 集群的每个节点，部署 Consul Client Agent。
-    * 如果没有 Kubernetes 集群 DaemonSet 的权限，则可以使用 Kubernetes StatefulSet 部署一个 Consul Client Agent 集群，并通过 Kubernetes 的 Service 提供服务。
-* 需要使用 Consul 服务注册和发现能力的 Pod，针对如上 Consul 集群 Client 的部署方式的不用有不同的使用方式：
+    * 如果没有 Kubernetes 集群 DaemonSet 的权限，则可以使用 Kubernetes StatefulSet 部署一个 Consul Client Agent 集群，并通过 Kubernetes 的 Service (type=Cluster) 提供服务。
+* 需要使用 Consul 服务注册和发现能力的 Pod，针对如上 Consul 集群 Client 的部署方式的不同，有不同的使用方式：
     * DaemonSet：
-        * （推荐）挂载宿主机的文件（Consul Client Agent 的配置文件添加 `addresses { http = "0.0.0.0 unix:///var/run/consul/http.sock"}`）。
+        * （推荐）挂载宿主机的文件（Consul Client Agent 的配置文件添加 `addresses { http = "0.0.0.0 unix:///var/run/consul/socket/http.sock"}`）。
             * 挂载宿主机 `/var/run/consul/socket`  目录
             * 导出环境变量 `CONSUL_HTTP_ADDR=unix:///var/run/consul/socket/http.sock`
         * 使用 host ip。
@@ -544,15 +545,15 @@ docker rm -f consul-client-1 consul-client-2 consul-server-1 consul-server-2 con
             ```yaml
                     env:
                     - name: HOST_IP
-                    valueFrom:
+                      valueFrom:
                         fieldRef:
                         apiVersion: v1
                         fieldPath: status.hostIP
                     - name: CONSUL_HTTP_ADDR
-                    value: http://$(HOST_IP):8500
+                      value: http://$(HOST_IP):8500
             ```
 
-    * StatefulSet + Service：导出环境变量 `CONSUL_HTTP_ADDR=http://$ConsulClientAgentService.$Namespace.svc.cluster.local`。
+    * StatefulSet + Service (type=Cluster)：导出环境变量 `CONSUL_HTTP_ADDR=http://$ConsulClientAgentService.$Namespace.svc.cluster.local`。
 
 本部分示例选择：以 DaemonSet 的方式部署 Consul Client Agent，通过挂载宿主机文件 unix daemon socket 文件的方式给其他 pod 提供服务。
 
