@@ -525,15 +525,15 @@ docker rm -f consul-client-1 consul-client-2 consul-server-1 consul-server-2 con
 
 本部分，不会介绍 Service Mesh 相关的内容，而介绍如何在 Kubernetes 部署一套仅提供服务发现注册中心能力的 Consul 集群。可能的规划如下：
 
-* 使用 Kubernetes StatefulSet 部署具有 3 个 Consul Server Agent 的 Consul 集群。
+* 使用 Kubernetes StatefulSet 部署具有 3~5 个 Consul Server Agent 的 Consul 集群。
 * 该 Consul 集群的 Client 的部署有如下两种选择：
     * (推荐) 使用 Kubernetes DaemonSet 为 Kubernete 集群的每个节点，部署 Consul Client Agent。
     * 如果没有 Kubernetes 集群 DaemonSet 的权限，则可以使用 Kubernetes StatefulSet 部署一个 Consul Client Agent 集群，并通过 Kubernetes 的 Service 提供服务。
 * 需要使用 Consul 服务注册和发现能力的 Pod，针对如上 Consul 集群 Client 的部署方式的不用有不同的使用方式：
     * DaemonSet：
         * （推荐）挂载宿主机的文件（Consul Client Agent 的配置文件添加 `addresses { http = "0.0.0.0 unix:///var/run/consul/http.sock"}`）。
-            * 挂载宿主机 `/var/run/consul`  目录
-            * 导出环境变量 `CONSUL_HTTP_ADDR=unix:///var/run/consul/http.sock`
+            * 挂载宿主机 `/var/run/consul/socket`  目录
+            * 导出环境变量 `CONSUL_HTTP_ADDR=unix:///var/run/consul/socket/http.sock`
         * 使用 host ip。
 
             ```yaml
@@ -551,13 +551,196 @@ docker rm -f consul-client-1 consul-client-2 consul-server-1 consul-server-2 con
 
 本部分示例选择：以 DaemonSet 的方式部署 Consul Client Agent，通过挂载宿主机文件 unix daemon socket 文件的方式给其他 pod 提供服务。
 
+执行 `kubectl apply -f consul.yaml`，其中 `consul.yaml` 内容如下：
+
+```yaml
+# Namespace: consul
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: consul
+---
+# Headless Service: consul-server
+# 为 StatefulSet 的 consul-server 准备
+apiVersion: v1
+kind: Service
+metadata:
+  name: consul-server
+  namespace: consul
+spec:
+  clusterIP: None
+  selector:
+    app: consul-server
+  ports:
+    - name: http
+      port: 8500
+      targetPort: 8500
+    - name: dns-udp
+      protocol: "UDP"
+      port: 8600
+      targetPort: 8600
+    - name: dns-tcp
+      protocol: "TCP"
+      port: 8600
+      targetPort: 8600
+    - name: server
+      port: 8300
+      targetPort: 8300
+    - name: serflan-tcp
+      protocol: "TCP"
+      port: 8301
+      targetPort: 8301
+    - name: serflan-udp
+      protocol: "UDP"
+      port: 8301
+      targetPort: 8301
+    - name: serfwan-tcp
+      protocol: "TCP"
+      port: 8302
+      targetPort: 8302
+    - name: serfwan-udp
+      protocol: "UDP"
+      port: 8302
+      targetPort: 8302
+---
+# StatefulSet: consul-server
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: consul-server
+  namespace: consul
+spec:
+  selector:
+    matchLabels:
+      app: consul-server
+  serviceName: "consul-server"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: consul-server
+    spec:
+      containers:
+      - name: consul-server
+        image: "consul:1.13.1"
+        args:
+          - "agent"
+          - "-server"
+          - "-bootstrap-expect=3"
+          # https://kubernetes.io/zh-cn/docs/concepts/workloads/controllers/statefulset/#stable-network-id
+          # url 为 $podName-{0..N-1}.$(serviceName).$(namespace).svc.cluster.local
+          - "-retry-join=consul-server-0.consul-server.consul.svc.cluster.local"
+          - "-retry-join=consul-server-1.consul-server.consul.svc.cluster.local"
+          - "-retry-join=consul-server-2.consul-server.consul.svc.cluster.local"  # TODO: 节点数目根据情况而定
+          # TODO: 其他参数根据自身情况修改
+        ports:
+        - name: http
+          containerPort: 8500
+        - name: dns-udp
+          protocol: "UDP"
+          containerPort: 8600
+        - name: dns-tcp
+          protocol: "TCP"
+          containerPort: 8600
+        - name: server
+          containerPort: 8300
+        - name: serflan-tcp
+          protocol: "TCP"
+          containerPort: 8301
+        - name: serflan-udp
+          protocol: "UDP"
+          containerPort: 8301
+        - name: serfwan-tcp
+          protocol: "TCP"
+          containerPort: 8302
+        - name: serfwan-udp
+          protocol: "UDP"
+          containerPort: 8302
+        volumeMounts:
+          - name: consul-server-data
+            mountPath: /consul/data
+  volumeClaimTemplates:
+  - metadata:
+      name: consul-server-data
+      namespace: consul
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "my-storage-class"  # TODO: 根据自身情况修改
+      resources:
+        requests:
+          storage: 5Gi                      # TODO: 根据自身情况修改
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: consul-client
+  namespace: consul
+spec:
+  selector:
+    matchLabels:
+      name: consul-client
+  template:
+    metadata:
+      labels:
+        name: consul-client
+    spec:
+      containers:
+      - name: consul-client
+        image: "consul:1.13.1"
+        args:
+          - "agent"
+          - "-retry-join=consul-server-0.consul-server.consul.svc.cluster.local"
+          - "-retry-join=consul-server-1.consul-server.consul.svc.cluster.local"
+          - "-retry-join=consul-server-2.consul-server.consul.svc.cluster.local"
+          # TODO: 其他参数根据自身情况修改
+          - "-ui"
+        env:
+        - name: CONSUL_LOCAL_CONFIG
+          value: '{ "addresses": { "http": "0.0.0.0 unix:///var/run/consul/socket/http.sock" } }'
+        volumeMounts:
+        - name: consul-client-data
+          mountPath: /consul/data
+        - name: consul-client-socket
+          mountPath: /var/run/consul
+      volumes:
+      - name: consul-client-data
+        hostPath:
+          path: /var/run/consul/data
+          type: DirectoryOrCreate
+      - name: consul-client-socket
+        hostPath:
+          path: /var/run/consul/socket
+          type: DirectoryOrCreate
+```
+
+通过 `TODO` 将 `consul-client` 的 8500 端口进行端口转发，并打开 WebUI `http://localhost:8500`，观察集群情况。
+
+执行 `kubectl create -f test-consul-pod.yaml && kubectl exec -it busybox sh`，其中 `test-consul-pod.yaml` 内容如下：
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox
+  namespace: default
+spec:
+  containers:
+  - name: busybox
+    image: busybox:1.28.4
+    command:
+      - sleep
+      - "100000000"
+    imagePullPolicy: IfNotPresent
+  restartPolicy: Always
+```
+
+注册测试服务 `TODO`，并通过 WebUI 观察。
+
 deamonset & statefulset
 
 CONSUL_HTTP_ADDR
 
 https://www.consul.io/commands#consul_http_addr
-
-https://stackoverflow.com/questions/64770593/hashicorp-consul-agent-client-access
 
 https://wqblogs.com/2021/01/27/k8s%E9%83%A8%E7%BD%B2conusl/
 https://1335402049.github.io/2021/02/01/Kubernetes%E9%83%A8%E7%BD%B2Consul%E9%9B%86%E7%BE%A4/
