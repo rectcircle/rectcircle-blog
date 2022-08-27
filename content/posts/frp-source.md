@@ -10,7 +10,7 @@ tags:
 
 ## frp 介绍
 
-frp 是一套通用的，基于 CS 架构的内网穿透软件。软件分为两个部分：client (frpc) 和 server (frps)。
+frp 是一套通用的，基于 C/S 架构的内网穿透软件。软件分为两个部分：client (frpc) 和 server (frps)。
 
 该软件的基本使用流程：
 
@@ -18,7 +18,7 @@ frp 是一套通用的，基于 CS 架构的内网穿透软件。软件分为两
 * 暴露端口：然后在需要暴露端口内网的设备上（本地主机），运行 frpc，并通过配置文件指定指定：
     * 要暴露的本地主机的本地端口；
     * 要暴露端口映射到的远端主机的远端端口；
-* 访问端口：在任意一台设备，通过，远端主机公网 IP 和 暴露到远端端口即可访问到本地主机上的本地端口。
+* 访问端口：在任意一台设备，通过远端主机公网 IP 和 暴露到远端端口即可访问到本地主机上的本地端口。
 
 更详细的使用教程参见：[官方文档](https://gofrp.org/docs/)。
 
@@ -30,7 +30,7 @@ frp 是一套通用的，基于 CS 架构的内网穿透软件。软件分为两
 
 （图片来源 [github](https://github.com/fatedier/frp/tree/v0.44.0#architecture)）
 
-解读：该图主要描述的是访问端口的流量情况，用户流量经过部署在具有公网 ip 的主机上的 frps 中转，发送到位于任意内网主机上的 frpc，frpc 再将流量转发到内网主机上的端口。
+该图主要描述的是访问端口的流量情况，用户流量经过部署在具有公网 ip 的主机上的 frps 中转，发送到位于任意内网主机上的 frpc，frpc 再将流量转发到内网主机上的端口。
 
 下文，从 frps 的源码，本部分仅介绍暴露和访问 tcp 端口的流程，忽略鉴权和插件等细节。
 
@@ -49,12 +49,12 @@ frp 是一套通用的，基于 CS 架构的内网穿透软件。软件分为两
 
 ### tcp_mux
 
-当 frpc 启动后，会建立和 frps 建立一个连接。此时 [`svr.HandleListener`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/service.go#L382) Accept 会返回 `net.Conn`，并会启动一个协程来处理请求，处理流程分为两种情况：
+当 frpc 启动后，在需要暴露端口时，会建立和 frps 建立一个连接。此时 [`svr.HandleListener`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/service.go#L382) Accept 会返回 `net.Conn`，并会启动一个协程来处理请求，处理流程分为两种情况：
 
 * `common.tcp_mux` 配置如果为 true （[默认](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/pkg/config/server.go#L133)），该 `net.Conn` 将会通过 `yamux` 进行建立一个 **Server** 侧的 `yamux.Session`，并等待客户端的在该 Session 建立逻辑连接，`yamux.Session` 获取到 `net.Conn`  后，会启动一个协程调用 `svr.handleConnection` 进行处理。
 * `common.tcp_mux` 配置如果为 false，该 `net.Conn` 会直接调用 `svr.handleConnection` 进行处理。
 
-说明：这里很关键，如果 `tcp_mux` 位 true， frpc 和 frps 间每个暴露的端口，只建立一个物理连接。访问该端口的所有的逻辑连接的流量都在该物理连接上利用 `yamux` 多路复用起进行传输，也就是说，在操作系统层面，只能看到一个连接 TCP 连接。否则，每个请求 frpc 和 frps 之间会都会建立一个 tcp 连接。
+说明：这里很关键，如果 `tcp_mux` 位 true， frpc 和 frps 间每个暴露的端口，只建立一个 tcp 连接，访问该端口的所有的逻辑连接的流量都在该物理连接上利用 `yamux` 多路复用起在该 tcp 连接上进行传输。也就是说，在操作系统层面，只能看到一个连接 TCP 连接。否则，每个请求 frpc 和 frps 之间会都会建立一个 tcp 连接。
 
 ### 连接类型
 
@@ -71,7 +71,7 @@ frp 是一套通用的，基于 CS 架构的内网穿透软件。软件分为两
 针对 `msg.Login` 控制连接，会进入 [`svr.RegisterControl`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/service.go#L436) 进行处理，主要流程为：
 
 * 进行权限校验
-* 构造并启动一个控制器 [`ctl.Start`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/control.go#L189)。
+* 构造并启动一个控制器 [`ctl.Start`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/control.go#L189)：
     * 回复 frpc 登录成功。
     * 通过该控制连接给 frpc 发送命令，让 frpc 建立多个工作连接（即工作连接池）。
     * 启动 `ctl.manager` 协程，该协程会读取 frpc 通过该控制连接发送给 frps 的一些消息，并处理，细节参见下文。
@@ -87,14 +87,14 @@ frp 是一套通用的，基于 CS 架构的内网穿透软件。软件分为两
 建立 proxy 的 [`ctl.RegisterProxy`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/control.go#L501) 主要流程如下：
 
 * `proxy.NewProxy` 初始化一个 Proxy 对象，以 TCP 为例，将构造一个 [`proxy.TCPProxy`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/proxy/tcp.go#L25) 对象（其中核心参数为 [`ctl.GetWorkConn`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/control.go#L231)，后文有介绍）。
-* 然后调用 `pxy.Run()` 以 [`proxy.TCPProxy`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/proxy/tcp.go#L32) 为例：会在 frps 所在主机上监听一个 TCP 端口，并启动一个协程该协程会连接到该端口的 TCP 连接。这个端口就是提供给用户访问的端口，处理逻辑参见：[访问端口](#访问端口).
+* 然后调用 `pxy.Run()` ，以 [`proxy.TCPProxy`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/proxy/tcp.go#L32) 为例：会在 frps 所在主机上监听一个 TCP 端口，并启动一个协程，该协程会 Accept 连接到该端口的 TCP 连接。这个端口就是提供给用户访问的端口，处理逻辑参见：[访问 frps 暴露的端口](#访问-frps-暴露的端口).
 
 ### 工作连接
 
 针对 `msg.NewWorkConn` 控制连接，会进入 [`svr.RegisterWorkConn`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/control.go#L208) 进行处理，主要流程为：
 
 * 将该工作连接发送给 `ctl.workConnCh` 通道。
-* `ctl.WorkConnCh` 通道的接受处理函数位于 [`ctl.GetWorkConn`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/control.go#L231)，细节参见：[访问端口](#访问端口)。
+* `ctl.WorkConnCh` 通道的接受处理函数位于 [`ctl.GetWorkConn`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/control.go#L231)，细节参见：[访问 frps 暴露的端口](#访问-frps-暴露的端口)。
 
 ## 访问 frps 暴露的端口
 
@@ -104,8 +104,8 @@ frp 是一套通用的，基于 CS 架构的内网穿透软件。软件分为两
 
 * 调用 [`pxy.GetWorkConnFromPool`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/proxy/proxy.go#L96) 函数，获取一条和 frpc 之间的[工作连接](#工作连接)。上文可以得知，该函数的实现位于 [`ctl.GetWorkConn`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/control.go#L231)。
     * 从 `ctl.WorkConnCh` 获取 [工作连接](#工作连接) 该连接是由 [`svr.RegisterWorkConn`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/control.go#L208) 发送的。
-        * 如果能获取到，返回该工作连接。
-        * 否则通过[控制连接](#控制连接)，让 frpc 建立一条 [工作连接](#工作连接)（默认需 10 秒钟内建立成功，配置项为 `common.user_conn_timeout`）。
+        * 如果能获取到，返回该工作连接（说明连接池中存在可用的连接）。
+        * 否则通过[控制连接](#控制连接)，让 frpc 建立一条 [工作连接](#工作连接)（默认需 10 秒钟内建立成功，配置项为 `common.user_conn_timeout`，超时将失败）。
     * 调用 [`frpIo.Join`](https://github.com/fatedier/golib/blob/dev/io/io.go) 相互拷贝两个连接，完成流量从 frps 转发到 frpc。
 
 frpc 创建好[工作连接](#工作连接)后，会调用 [HandleTCPWorkConnection](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/client/proxy/proxy.go#L720) 函数，最终使用 `net.Dial` 打开一个访问 127.0.0.1 对应本地端口的本地连接。并调用 [`frpIo.Join`](https://github.com/fatedier/golib/blob/dev/io/io.go) 进行[工作连接](#工作连接)和该本地连接的进行相互拷贝。
@@ -119,13 +119,15 @@ frpc 创建好[工作连接](#工作连接)后，会调用 [HandleTCPWorkConnect
 上图介绍了一个 tcp 端口暴露到公网以及访问的主要流程，需要注意的是：
 
 * 忽略鉴权和插件相关细节。
-* 忽略个连接池相关部分。
-* `2.3` 多条工作连接表示，在存在并发访问时，可能会创建多条工作连接，但一个请求只会用到一个工作连接。
-* 如果开启了 `tcp_mux`（默认），控制连接和工作连接可能在物理上就是一条 TCP 连接，但逻辑上还是有这些连接的。
+* 假设没有启用连接池的场景。
+* `2.3` 多条工作连接强调的是存在并发访问时，会创建多条工作连接，但：
+    * 每个 `2.2 请求建立工作连接` 只会建立一个连接。
+    * 一个请求只会用到一个工作连接。
+* 如果开启了 `tcp_mux`（默认），上图控制连接和工作连接都是跑在 yamux 封装的一条 TCP 连接。
 
 ## 其他说明
 
 * Go 的 io.Copy 只会单向拷贝，在双向拷贝的场景可以参考：[`frpIo.Join`](https://github.com/fatedier/golib/blob/dev/io/io.go)。
 * `tcp_mux` 是多路复用，具体细节参见 [hashicorp/yamux](https://github.com/hashicorp/yamux) 实现。
 * `tcp_mux` 可能存在无法跑满带宽的问题，具体参见：[issue](https://github.com/fatedier/frp/issues/2987)。
-* 如何想把 websocket 连接作为 net.Conn 处理，建议使用 [`golang.org/x/net/websocket`](https://pkg.go.dev/golang.org/x/net/websocket) 库，而非 [github.com/gorilla/websocket](https://pkg.go.dev/github.com/gorilla/websocket)。
+* 如何想把 websocket 连接作为原生的 `net.Conn` 处理，建议使用 [`golang.org/x/net/websocket`](https://pkg.go.dev/golang.org/x/net/websocket) 库，而非 [github.com/gorilla/websocket](https://pkg.go.dev/github.com/gorilla/websocket)。
