@@ -98,7 +98,7 @@ frp 是一套通用的，基于 C/S 架构的内网穿透软件。软件分为�
 
 ## 访问 frps 暴露的端口
 
-上文 [连接处理](#连接处理) 介绍了 frpc 和 frps 之间进行暴露端口的流程。本部分将介绍，端口暴露到 frps 的主机后，用户访问该端口的流程（以 TCP 为例）。
+上文 [连接处理](#frps-连接处理) 介绍了 frpc 和 frps 之间进行暴露端口的流程。本部分将介绍，端口暴露到 frps 的主机后，用户访问该端口的流程（以 TCP 为例）。
 
 如上文提到，这个端口的处理函数函数位于： [`pxy.startListenHandler`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/proxy/proxy.go#L151) 当用户建立连接后，会调用：[`HandleUserTCPConnection`](https://github.com/fatedier/frp/blob/8888610d8339bb26bbfe788d4e8edfd6b3dc9ad6/server/proxy/proxy.go#L252) 进行处理：
 
