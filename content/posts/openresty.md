@@ -54,12 +54,14 @@ brew install openresty/brew/openresty
 * /usr/bin/openresty 对应 /usr/local/bin/openresty
 * /lib/systemd/system/openresty.service 对应 /usr/local/Cellar/openresty/x.y.z/homebrew.mxcl.openresty.plist
 
+需要特别注意的是，默认的配置文件位于：`/usr/local/etc/openresty/nginx.conf` （Linux 为 `/etc/openresty/nginx.conf`）。
+
 ### 运行
 
 手动启动
 
 ```bash
-sudo openresty -g 'daemon off; master_process on;'
+sudo openresty -g 'daemon off; master_process on;' # 可以通过 -c 指定 nginx 配置文件
 ```
 
 Mac(brew) 开机自启
@@ -115,7 +117,7 @@ http {
 sudo openresty -s reload
 ```
 
-执行 `curl http://127.0.0.1:8080`，输出如下：
+执行 `curl http://127.0.0.1`，输出如下：
 
 ```html
 <p>hello, world</p>
