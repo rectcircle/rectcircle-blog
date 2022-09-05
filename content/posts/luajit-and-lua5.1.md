@@ -8,6 +8,8 @@ tags:
   - untagged
 ---
 
+https://github.com/rectcircle/lua-learn
+
 https://techsingular.net/2015/03/22/%E4%B8%8D%E7%94%A8-lisp-%E5%AD%A6-lisp/
 
 * 语法
@@ -192,3 +194,4 @@ MyPrint ... 变长参数    a       a       b
 * [LuaJIT 官方安装手册](http://luajit.org/install.html)。
 * [Lua 5.1 参考手册（中文翻译）](https://www.codingnow.com/2000/download/lua_manual.html)
 * [Lua 5.1 Reference Manual](https://www.lua.org/manual/5.1/)
+* [OpenResty最佳实践 - Lua 入门](https://moonbingbing.gitbooks.io/openresty-best-practices/content/lua/main.html)
