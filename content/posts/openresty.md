@@ -127,8 +127,6 @@ sudo openresty -s reload
 <p>hello, world</p>
 ```
 
-## 包管理 opm
-
 ## 示例
 
 ### 基于 Redis 动态路由
@@ -336,6 +334,8 @@ echo "HGETALL my-service" | redis-cli
 
 ### 支持动态更新的一致性 hash 负载均衡
 
+<!-- TODO 添加 dns 支持 -->
+
 假设一个后端服务集群有多台实例，并使用 OpenResty (Nginx) 作为网关。该服务由一个特性，如果某一类请求能打到同一台实例，这项性能最优。此时可以通过 OpenResty 来实现这类要求的基本思路为：
 
 * 这些后端服务会注册到某注册中心 (本例中为 redis)。
@@ -398,12 +398,12 @@ http {
     upstream myService {
         server 0.0.0.1;   # 一个无效的地址作为占位符
         balancer_by_lua_block {
-            # 调用一致性 hash 算法选取一个实例
-            # 参见: https://github.com/openresty/lua-resty-balancer#find
+            -- 调用一致性 hash 算法选取一个实例
+            -- 参见: https://github.com/openresty/lua-resty-balancer#find
             local chash_up = package.loaded.my_chash_up
             local host = chash_up:find(ngx.var.arg_key)
-            # 调用 OpenResty 的 balancer 相关能力，设置一个目标 host
-            # 参见: https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/balancer.md
+            -- 调用 OpenResty 的 balancer 相关能力，设置一个目标 host
+            -- 参见: https://github.com/openresty/lua-resty-core/blob/master/lib/ngx/balancer.md
             local b = require "ngx.balancer"
             assert(b.set_current_peer(host))
         }
@@ -412,7 +412,6 @@ http {
     server {
         listen 80;
         location / {
-            set $target '';
             access_by_lua_block {
                 local resty_chash = require "resty.chash"
 
@@ -480,7 +479,7 @@ sudo openresty -s reload
 假设我们一个服务名为 my-service，包含两个实例 `127.0.0.1:8001` 和 `127.0.0.1:8002`，通过 redis-cli 注册这两个实例。
 
 ```bash
-echo "HMSET my-service '127.0.0.1:8001' '1' '127.0.0.1:8002' '1'" | redis-cli
+echo "del my-service\nHMSET my-service '127.0.0.1:8001' '1' '127.0.0.1:8002' '1'" | redis-cli
 echo "HGETALL my-service" | redis-cli
 ```
 
