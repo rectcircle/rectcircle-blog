@@ -1,7 +1,7 @@
 ---
-title: "Openresty"
+title: "Openresty 使用"
 date: 2022-09-02T20:35:35+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
@@ -9,6 +9,12 @@ tags:
 ---
 
 ## 简介
+
+按照官方的介绍： OpenResty 是一个基于 Nginx 与 Lua 的高性能 Web 平台，其内部集成了大量精良的 Lua 库、第三方模块以及大多数的依赖项。用于方便地搭建能够处理超高并发、扩展性极高的动态 Web 应用、Web 服务和动态网关。
+
+简单来讲， OpenResty = Nginx + LuaJIT + OpenResty Lua 内置模块 + 第三方 Lua 模块。首次安装好的 OpenResty 包含 Nginx + LuaJIT + OpenResty Lua 内置模块。如果官方的模块无法满足需求，可以自己实现或者安装第三方 Lua 模块，以实现更高自由度的扩展和定制。
+
+关于 Lua 参见：[LuaJIT 和 Lua 5.1](/posts/luajit-and-lua5.1/)
 
 ## 快速开始
 
@@ -128,6 +134,8 @@ sudo openresty -s reload
 ```
 
 ## 示例
+
+> 以下示例仅供参考，未在生产环境验证。
 
 ### 基于 Redis 动态路由
 
@@ -329,12 +337,13 @@ echo "HGETALL my-service" | redis-cli
 
 说明：
 
-* 本例中直接使用了底层的 [openresty/lua-resty-redis](https://github.com/openresty/lua-resty-redis)，而没有使用 [openresty/redis2-nginx-module](https://github.com/openresty/redis2-nginx-module)
-* [balancer_by_lua_block](https://github.com/openresty/lua-nginx-module#balancer_by_lua_block) 不支持非阻塞 socket，因此不能使用，更多参见：[issue](https://github.com/openresty/lua-resty-redis/issues/119)。
+* 本例中直接使用了底层的 [openresty/lua-resty-redis](https://github.com/openresty/lua-resty-redis)，而没有使用 [openresty/redis2-nginx-module](https://github.com/openresty/redis2-nginx-module)。
+* 如果想使用 Nginx Upstream 相关的重试能力，进行如下优化：
+    * 在 `access_by_lua_block`，如果有返回的是 host 不是 ip，还需要在此进行手动的 DNS（如 [Kong/lua-resty-dns-client](https://github.com/Kong/lua-resty-dns-client) 库），最后，将结果记录到 `ngx.ctx` 中。
+    * 在 updstream 中通过 [balancer_by_lua_block](https://github.com/openresty/lua-nginx-module#balancer_by_lua_block) ，来设置 upstream。需要注意的是，对 Redis 的请求涉及到了 socket 请求，无法在 `balancer_by_lua_block` 中使用，更多参见：[issue](https://github.com/openresty/lua-resty-redis/issues/119)。
+    * 具体参见下一个例子。
 
 ### 支持动态更新的一致性 hash 负载均衡
-
-<!-- TODO 添加 dns 支持 -->
 
 假设一个后端服务集群有多台实例，并使用 OpenResty (Nginx) 作为网关。该服务由一个特性，如果某一类请求能打到同一台实例，这项性能最优。此时可以通过 OpenResty 来实现这类要求的基本思路为：
 
@@ -493,5 +502,4 @@ echo "HGETALL my-service" | redis-cli
     * 希望可以动态的感知实例的变化，每次请求都执行一次服务发现。
     * `init_by_lua_block` 和 `balancer_by_lua_block` 无法调用 redis 相关函数，参见：[issue](https://github.com/openresty/lua-resty-redis/issues/119)。
 * 本例忽略了对 redis 的压力，忽略了 Nginx 错误重试相关机制。
-
-## OpenResty 原理探索
+* Redis 如果返回的是 Host 而不是 IP，则还需要进行手动 DNS，如 [Kong/lua-resty-dns-client](https://github.com/Kong/lua-resty-dns-client) 库，Kong/lua-resty-dns-client 库是由 `luarocks` 管理，因此需要为 OpenResty 安装 luarocks（具体，参见：[博客](https://segmentfault.com/a/1190000008658146)）。
