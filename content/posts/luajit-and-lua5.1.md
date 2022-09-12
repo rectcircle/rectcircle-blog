@@ -211,7 +211,7 @@ print(type(Add), Add)
 -- function        function: 0x010564a058
 ```
 
-更多关于 function 的详细介绍，参见下文。
+更多关于 function 的详细介绍，参见[下文](#函数)。
 
 #### userdata
 
@@ -337,7 +337,7 @@ print(A, b, c)
 
 关于 Lua 变量，需要注意的是：
 
-* Lua 的全局变量的作用域是整个程序，也就是说假如在一个函数中定一个了全局变量，在调用后，该变量在函数外面仍能够访问到。
+* Lua 的全局变量的作用域是整个程序，也就是说，假如在一个函数中定一个了全局变量，在调用后，该变量在函数外面仍能够访问到。
 
     ```lua
     function F1()
@@ -345,7 +345,7 @@ print(A, b, c)
     end
     F1()
     print(D1)
-        -- 1
+    -- 1
     ```
 
 * Lua 的局部变量的表现和其他语言类似，脱离作用域后，将不存在。
@@ -476,13 +476,368 @@ end
 -- for-it  b       2
 ```
 
-### 函数和方法
+### 函数
+
+#### 函数定义
+
+在 Lua 中，函数也是一种数据类型，因此也分全局和局部函数。
+
+```lua
+function GlobalAdd1(a, b) -- 全局函数（方式 1）
+    return a + b
+end
+GlobalAdd2 = function(a, b) -- 全局函数（方式 2）
+    return a + b
+end
+
+local function localAdd1(a, b) -- 局部函数（方式 1）
+    return a + b
+end
+local localAdd2;
+localAdd2 = function(a, b) -- 局部函数（方式 2）
+    return a + b
+end
+
+print('add', GlobalAdd1(1, 1), GlobalAdd2(1, 1), localAdd1(1, 1), localAdd2(1, 1))
+
+-- add     2       2       2       2
+```
+
+#### 定义到 table 中
+
+```lua
+local t1 = { name = "abc" }
+function t1.PrintName1() -- 方式 1
+    print("print t1.name 1", t1.name)
+end
+t1.PrintName2 = function() -- 方式 2
+    print("print t1.name 2", t1.name)
+end
+
+t1.PrintName1()
+t1.PrintName2()
+
+-- print t1.name 1 abc
+-- print t1.name 2 abc
+```
+
+#### 函数返回值
+
+Lua 函数支持返回 0 到多个返回值。
+
+```lua
+local nilReturn = (function() return end)()
+print("nil return", nilReturn)
+
+function r() return 1, 2, 3 end
+
+local rr1 = r()
+print('返回多个值, 接收 1 个', rr1)
+local rr1, rr2 = r()
+print('返回多个值, 接收 2 个', rr1, rr2)
+local rr1, rr2, rr3 = r()
+print('返回多个值, 接收 3 个', rr1, rr2, rr3)
+
+-- nil return      nil
+-- 返回多个值, 接收 1 个   1
+-- 返回多个值, 接收 2 个   1       2
+-- 返回多个值, 接收 3 个   1       2       3
+```
+
+#### 函数参数
+
+Lua 函数参数在调用时：
+
+* 如果传递的参数少于函数声明的数目，则填充 nil。
+* 如果传递的参数多余函数声明的数目，多余的将被忽略。
+* 如果将一个函数的调用作为函数参数，且这个函数有多个返回值。
+    * 如果函数调用作为函数的最后一个参数，则所有返回值都会作为参数都会传递。
+    * 如果函数调用不是作为函数的最后一个参数，则之后将第一个返回值作为参数传递。
+
+```lua
+function r() return 1, 2, 3 end
+function f(a, b, c) print('f(a, b, c) params:', a, b, c) end
+
+f(3, 4)
+f(3, 4, 5)
+f(3, 4, 5, 6)
+f(r())
+f(r(), 10)
+f(10, r())
+
+-- f(a, b, c) params:      3       4       nil
+-- f(a, b, c) params:      3       4       5
+-- f(a, b, c) params:      3       4       5
+-- f(a, b, c) params:      1       2       3
+-- f(a, b, c) params:      1       10      nil
+-- f(a, b, c) params:      10      1       2
+```
+
+Lua 支持可变参数 `...`。
+
+* 在函数形参列表的最后可以通过 `...` 声明可变参数。
+* 可以通过 `{...}` 将可变参数转换为一个 table (数组)。
+* 可以通过 `unpack` 函数，将一个 table (数组) 作为可变参数进行传递。
+* `...` 可以直接传递给其他函数的可变参数。
+
+```lua
+function r() return 1, 2, 3 end
+function g(a, b, ...) print('params a, b, {...}, ... :', a, b, {...}, ...) end
+
+g(3)
+g(3, 4)
+g(3, 4, 5, 8)
+g(5, r())
+g(unpack({ 'a', 'b', 'c', 'd' }))
+-- params a, b, {...}, ... :       3       nil     table: 0x0102227130
+-- params a, b, {...}, ... :       3       4       table: 0x010221ebe8
+-- params a, b, {...}, ... :       3       4       table: 0x010221ec80     5       8
+-- params a, b, {...}, ... :       5       1       table: 0x01022274e8     2       3
+-- params a, b, {...}, ... :       a       b       table: 0x01022275f0     c       d
+```
+
+#### 方法
+
+调用或定义 table 的一个函数时，可以使用 `:` 语法糖，以实现类似其他语言方法的能力：
+
+* 定义时使用 `:`，则可以在函数体里面隐含一个 `self` 变量，指向调用者。
+* 调用时使用 `:`，则会将调用对象作为参数传递到函数的第一个参数的位置。
+
+```lua
+local t2 = { total = 0 }
+function t2:Add1(a) -- 语法糖，隐含一个 self 变量，等价于下方 t2
+    self.total = self.total + a
+end
+function t2.Add2(self, a)
+    self.total = self.total + a
+end
+
+t2:Add1(1) -- 语法糖，隐含一个 self 变量传递
+t2.Add1(t2, 1)
+t2:Add2(1) -- 语法糖，隐含一个 self 变量传递
+t2.Add2(t2, 1)
+print('t2.total = ', t2.total)
+-- t2.total =      4
+```
+
+### 错误处理
+
+#### 产生错误
+
+通过 assert 或者 error 函数可以产生一个错误。如果没有捕捉的话，错误会中断整个程序的执行。
+
+```lua
+assert(1 == 1, '断言函数的消息, 如果第一个参数是 false, 则触发 error')
+-- error (message [, level]) -- 抛出异常
+```
+
+#### 捕获错误
+
+通过 pcall 和 xpcall 可以捕捉错误。
+
+```lua
+print('pcall has error', pcall(function() error("my error") end))
+print('pcall success', pcall(function() return 1 end))
+print('xpcall success', pcall(function() return 1 end, function(err) print(err) end))
+print('xpcall 1', xpcall(function() error("my error") end, function(err) print(err) end))
+print('xpcall 2', xpcall(function() error("my error") end, function(err) print(err) return err end))
+-- pcall has error false   hello.lua:1: my error
+-- pcall success   true    1
+-- xpcall success  true    1
+-- hello.lua:4: my error
+-- xpcall 1        false   nil
+-- hello.lua:5: my error
+-- xpcall 2        false   hello.lua:5: my error
+```
 
 ### 协程
 
+#### 创建协程
+
+通过 `coroutine.wrap` 和 `coroutine.create` 可以创建一个协程。
+
+```lua
+local cof1 = coroutine.wrap(function()
+    print('coroutine.wrap called')
+end)
+
+local co1 = coroutine.create(function()
+    print('coroutine.create called')
+end)
+```
+
+#### 启动协程
+
+通过 `coroutine.wrap` 创建的协程，可以通过函数调用的方式启动。
+
+通过 `coroutine.create` 创建的协程，可以通过 `coroutine.resume` 方式启动。
+
+```lua
+cof1('cof1')
+coroutine.resume(co1, 'co1')
+-- coroutine.wrap called   cof1
+-- coroutine.create called co1
+```
+
+#### 协程 yield 和 返回值
+
+* 在协程内部，可以通过 `coroutine.yield` 函数：
+    * 暂停该协程的执行。
+    * 对该协程 `coroutine.resume` 的调用将返回，第一个返回值是 bool，表示协程是否没有发生错误。
+        * 如果第一个返回值为 false，则第二个返回值为错误信息。
+        * 如果第一个返回值为 true，第二个极其之后的返回值，是 `coroutine.yield` 函数传递的内容。
+* 当协程函数返回后， 对该协程 `coroutine.resume` 的调用将返回，返回内容似乎协程函数的返回值。
+* 对协程调用 `coroutine.resume` 时：
+    * 如果协程没有启动过，`coroutine.resume` 的参数将作为协程函数的参数进行传递。
+    * 如果协程启动过，并通过 `coroutine.yield` 暂停执行，`coroutine.resume` 的参数将作为 `coroutine.yield` 的返回值返回。
+
+```lua
+local co2 = coroutine.create(function(a, msg)
+    print('[co2] a, msg: ', a, msg)
+    local a3, msg3 = coroutine.yield(2, 'coroutine.yield 被调用')
+    print('[co2] a3, msg3: ', a3, msg3)
+    return 4, '返回'
+end)
+
+local ok2, a2, msg2 = coroutine.resume(co2, 1, 'coroutine.resume 第一次调用')
+print('[main] ok2, a2, msg2: ', ok2, a2, msg2)
+local ok4, a4, msg4 = coroutine.resume(co2, 3, 'coroutine.resume 第二次调用')
+print('[main] ok4, a4, msg4: ', ok4, a4, msg4)
+-- [co2] a, msg:   1       coroutine.resume 第一次调用
+-- [main] ok2, a2, msg2:   true    2       coroutine.yield 被调用
+-- [co2] a3, msg3:         3       coroutine.resume 第二次调用
+-- [main] ok4, a4, msg4:   true    4       返回
+```
+
+#### 其他协程函数
+
+* `coroutine.status(thread)` 获取给定协程对象的状态， dead, running, suspend, normal。
+* `coroutine.running()` 获取当前函数所在协程对象，main 协程将返回 nil。
+
 ### 元表
 
+在 Lua 中，8 种数据类型值的各种操作，如 + - * / . [] 等，都是通过一种称为 metatable 的机制实现的。
+
+* 除了 userdata、table 类型外，其他每种类型的所有值，都共享一套内建的 metatable。
+* userdata 和 table，每个对象（实例），都可以配置绑定一个自定义的 metatable。
+* 只有 table 的 metatable 可以 Lua 代码更改，其他只能通过 C 语言修改。即通过 `function setmetatable(table: table, metatable?: table) -> table` 函数，可以设置一个 table 的元表。
+    * table 参数，要自定义元表的 table 类型的值。
+    * metatable 要给 table 绑定的元表，如果为 nil 表示清楚元表。
+    * 返回 table 参数。
+
+通过给 table 自定义 metatable ，可以实现类似 Python 、C++ 的运算符重载特性。
+
+一个复数的例子如下所示：
+
+```lua
+function NewComplex(r, i)
+    local o = { r = r, i = i }
+    function o:print()
+        print(r .. "+" .. i .. "i")
+    end
+
+    setmetatable(o, {
+        __add = function(a, b)
+            return NewComplex(a.r + b.r, a.i + b.i)
+        end
+    })
+    return o
+end
+
+local a = NewComplex(1, 2)
+local b = NewComplex(3, 4)
+local c = a + b
+c.print()
+-- 4+6i
+```
+
+元表如果包含key `__metatable`，则表示：
+
+* 如果某个 table 一旦绑定该元表，则不再允许通过 `setmetatable` 修改，如果修改，抛出错误。
+* 通过 `getmetatable` 获取到的值为 `__metatable` 对应的 value。
+
+
+```lua
+D = {}
+setmetatable(D, {})
+setmetatable(D, { __metatable = "not allow change metatable" }) 
+-- setmetatable(d, {})  -- 将报错
+print(getmetatable(D)) -- 获取 metatable 只会返回 __metatable 的值。
+-- not allow change metatable
+```
+
+上文介绍了元表 key `__add` 对应的是 `+` 运算符，Lua 中的所有运算符都有对应的 key，如 `.` 对应 `__index`，需要注意的是元表的 value 不一定是函数，也可能是其他类型，比如 `__index` 可以是函数也可以是 table。详细说明参见：[官方手册](https://www.lua.org/manual/5.1/manual.html#2.8)。
+
+最后，元表除了可以实现运算符重载外，还可以对 table 的垃圾回收进行配置，更多参见：[官方手册](https://www.lua.org/manual/5.1/manual.html#2.10)。
+
 ### env
+
+回顾一下上文的[变量](#变量)章节。 Lua 的变量，分为全局变量和局部变量。其中全局变量一旦被定义，则在后续的所有代码中，都可以通过该变量名直接访问。
+
+实际上，在 Lua 中，全局变量（也包括全局函数标准库）实际上是存储在一个被称为 env 的 table 中的，全局变量名为该表的 key。每个函数都会和一张 env 表绑定。
+
+* Lua 入口脚本可以理解为一个函数，Lua 解释器会在执行脚本前，创建一张 env 表，并和入口脚本绑定，这个 env 表中包含了标准库中的各种函数如 `print` 等，需要特别说明的是，这个 env 表中包含一个 `_G` 指向 env 表自身。
+* 当在入口脚本定义一个函数时，Lua 会该函数的 env 设置为函数定义所在位置的函数绑定 env 表，也就是说当前函数和待调用函数共用一张 env 表。这就是为什么全局函数在函数中定义后，在函数调用结束后，任然可以访问的原因。
+* 在函数中，可以通过 `getfenv` 获取当前函数绑定的 env 表，可以通过 `setfenv` 给当前函数设置一张新的 env 表。
+
+描述调用一个全局函数的过程（以 `print("hello")` 为例）：
+
+* 获取到当前函数绑定的 env 表，假设这个表为 `E`，后续操作等价于 `E.print("hello")`，即触发 `gettable_event` 的行为。
+* 查找 `E` 中是否存在 key `print`，如果存在则直接返回并调用函数。否则继续执行后续流程。
+* 获取 `E` 的 metatable 判断是否存在 key `__index`，如果存在
+    * 如果是 table 类型，则对该 table 继续触发 `gettable_event` 行为。
+    * 如果是函数类型，则返回 `__index(E, 'print')`。
+
+```lua
+function F1()
+    E3 = 3
+end
+
+function Ef()
+    print("C", C)
+    -- 第一个参数和 getfenv 类似，第二个参数为要设置的表
+    -- 可以通过 setmetatable 继承上层环境，形成类似链表的结构
+    local newEnv = {}
+    setmetatable(newEnv, { __index = getfenv(1) })
+    setfenv(1, newEnv)
+    E1 = 1 -- E1 不会逃逸到全局环境中了
+    print("C", C) -- 会查找旧的环境
+    print("getfenv", getfenv) -- 会递归的查找 _G
+    F1()  -- F1 定义在顶层，所以 env 仍然是全局 env，所以在外层仍然存在
+    function F2() -- 该函数定义在 newEnv ，所以 env 是 newEnv
+        E4 = 4
+    end
+    F2()
+    -- 环境表不设置 _G 的，则找不到全局变量和函数
+    setfenv(1, { print = print })
+    print("C", C) -- 可以看出已经找不到上层定义的 C 函数了。
+    print("getfenv", getfenv) -- 可以看出已经找不到 getfenv 全局函数了。
+    E2 = 2 -- E1 不会逃逸到全局环境中了
+end
+
+Ef()
+print('E1', E1)
+print('E2', E2)
+print('E3', E3)
+print('E4', E4)
+
+-- C       nil
+-- C       nil
+-- getfenv function: builtin#10
+-- C       nil
+-- getfenv nil
+-- E1      nil
+-- E2      nil
+-- E3      3
+-- E4      nil
+```
+
+最后，需要特别说明的是：
+
+* 从函数视角看，每个函数都会绑定一个 env 表。
+* 函数默认 env 表的确定，发生在函数定义阶段，而非调用阶段。
+* 通过 `setfenv(f: integer|fun(), table: table) -> function` 可以手动设置一个函数的 env 表。第一个参数为要配置的函数，可以函数或者数字，1 表示当前函数，2 表示调用当前函数的函数，以此类推。
+* 同样的通过 `getfenv(f?: integer|fun()) -> table` 可以获取当前函数的 env 表。
 
 ### 模块
 
