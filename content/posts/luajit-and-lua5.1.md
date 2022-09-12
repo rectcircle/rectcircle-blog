@@ -762,7 +762,6 @@ c.print()
 * 如果某个 table 一旦绑定该元表，则不再允许通过 `setmetatable` 修改，如果修改，抛出错误。
 * 通过 `getmetatable` 获取到的值为 `__metatable` 对应的 value。
 
-
 ```lua
 D = {}
 setmetatable(D, {})
@@ -907,11 +906,10 @@ end
 
 #### 导入模块
 
-通过 `function require(modname: string) -> ...` 函数可以导入一个模块。 
+通过 `function require(modname: string) -> ...` 函数可以导入一个模块。
 
 * 参数为模块名，影响代码文件的搜索过程，参见下文。
 * 返回值为模块代码的 `return` 语句的内容。
-
 
 ```lua
 local mymod2 = require('08-module-declare.2')
@@ -1033,8 +1031,6 @@ print(s1:get_circumference())   --output: 6
 
 * [抵制使用 module() 定义模块](https://moonbingbing.gitbooks.io/openresty-best-practices/content/lua/not_use_module.html)
 * [module 是邪恶的](https://moonbingbing.gitbooks.io/openresty-best-practices/content/lua/module_is_evil.html)
-
-
 
 ## 参考
 
