@@ -839,9 +839,97 @@ print('E4', E4)
 * 通过 `setfenv(f: integer|fun(), table: table) -> function` 可以手动设置一个函数的 env 表。第一个参数为要配置的函数，可以函数或者数字，1 表示当前函数，2 表示调用当前函数的函数，以此类推。
 * 同样的通过 `getfenv(f?: integer|fun()) -> table` 可以获取当前函数的 env 表。
 
-### 模块
+### 模块和包
 
-### 注意事项总结
+上文介绍的都是单个 Lua 脚本文件，Lua 也提供了模块和包相关能力，可以通过目录和文件来组织代码。
+
+Lua 模块支持 C 语言编写的动态链接库和 Lua 脚本，本文仅介绍 Lua 脚本。
+
+#### 动态执行代码
+
+再介绍模块和包之前，先介绍 Lua 动态执行代码相关的能力。
+
+Lua 是动态的解释型语言，因此也提供了在运行时执行，内容为 lua 代码的字符串或者文件的能力。
+
+* `function dofile(filename?: string) -> ...any` 将执行 filename 文件的内容，并获取返回值。
+* `function load(chunk: string|function, chunkname?: string, mode?: "b"|"bt"|"t", env?: table) -> function?, 2. error_message: string?` 加载一个代码块。如果 chunk 是一个字符串，代码块指这个字符串。 如果 chunk 是一个函数， load 不断地调用它获取代码块的片断。 每次对 chunk 的调用都必须返回一个字符串紧紧连接在上次调用的返回串之后。 当返回空串、nil、或是不返回值时，都表示代码块结束。最终，代码不会执行，而是封住到函数里面返回。
+* `function loadstring(text: string, chunkname?: string) -> function?, error_message: string?` 将字符串作为 lua 代码到一个函数里面。
+* `function loadfile(filename?: string, mode?: "b"|"bt"|"t", env?: table) -> function?, error_message: string?` 和 load 类似。
+
+#### 模块定义
+
+在 Lua 中，一个模块就是一个 lua 代码文件，可以通过如下方式导出函数或变量：
+
+* 通过 `return` 导出。
+* 全局变量 （不推荐）。
+
+`08-module-declare/2.lua` 通过 return 导出变量。
+
+```lua
+local module = {}
+
+-- 导出的函数
+function module.PrintModule()
+    print('my module 2')
+end
+
+-- 导出模块
+return module
+```
+
+`08-module-declare/4_1.lua` 通过全局变量导出（方式 1），注意如果没有 `package.seeall`，将无法使用标准库相关函数，如 `print`。
+
+```lua
+module("mymod4_1", package.seeall) -- 等价于： 08-module-declare/4_2.lua
+
+function PrintModule()
+    print('my module 4_1')
+end
+```
+
+`08-module-declare/4_2.lua` 通过全局变量导出（方式 2）。
+
+```lua
+mymod4_2 = {}
+setmetatable(mymod4_2, {__index=getfenv(1)})
+setfenv(1, mymod4_2)
+
+function PrintModule()
+    print('my module 4_2')
+end
+```
+
+#### 导入模块
+
+通过 `function require(modname: string) -> ...` 函数可以导入一个模块。 
+
+* 参数为模块名，影响代码文件的搜索过程，参见下文。
+* 返回值为模块代码的 `return` 语句的内容。
+
+
+```lua
+local mymod2 = require('08-module-declare.2')
+mymod2.PrintModule()
+require('08-module-declare.4_1')
+mymod4_1.PrintModule()
+require('08-module-declare.4_2')
+mymod4_2.PrintModule()
+-- my module 2
+-- my module 4_1
+-- my module 4_2
+```
+
+`require` 的执行过程如下所示：
+
+* 依次调用 `package.loaders` 数组中的模块加载器函数（声明和 `require` 函数一致），默认情况包含 4 个加载函数。
+    * 第 1 个加载器会从 `package.preload` 表中查找
+    * 第 2 个加载器会从从 `package.path` 中查找对应的 lua 文件。
+        * 如 `package.path = ./?.lua;/usr/local/share/luajit-2.1.0-beta3/?.lua;/usr/local/share/lua/5.1/?.lua;/usr/local/share/lua/5.1/?/init.lua`。
+        * 此时，会将 require 参数的 `.` 替换为 `/` 然后替换 package.path 参数中的 ?，到对应的文件中去加载模块。
+    * 第 3 个加载器会从 `package.cpath` 中查找对应的 C 动态库。并调用 `luaopen_` + 模块名最后一个 - 的后面的字符串并将 . 替换为 _（如 `a.v1-b.c` -> `luaopen_b_c`）。
+    * 第 4 个加载器，如 `a.b.c` 模块，会搜索 `a` 库，并调用 `luaopen_a_b_c` 函数。
+* 加载完成后，结果记录将到 `package.loaded[modname]` 中，下次再次 `require` 将直接从这个变量中取。
+* 如果 reqire 找不到，将抛出错误。
 
 ## 标准库
 
