@@ -1,29 +1,20 @@
 ---
 title: "LuaJIT 和 Lua 5.1"
 date: 2022-09-02T18:46:13+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
   - untagged
 ---
 
-https://github.com/rectcircle/lua-learn
-
-https://techsingular.net/2015/03/22/%E4%B8%8D%E7%94%A8-lisp-%E5%AD%A6-lisp/
-
-* 语法
-* 模型 (表)
-    * 栈
-    * 环境
-    * 元表
-* 标准库
-
 ## 概述
 
 Lua 在众多领域使用广泛，如游戏等。本文主要面向学习和使用 OpenResty 开发者。因此本文介绍的 Lua 版本是 OpenResty 使用的 Lua 解释器，是兼容 Lua 5.1 语法 LuaJIT。
 
 此外需要注意的是 OpenResty 使用的是其自己维护的 LuaJIT 的[分支](https://github.com/openresty/luajit2/tree/v2.1-agentzh) （总体来看，在特性上：`OpenResty LuaJIT 分支 > LuaJIT > Lua 5.1`）。
+
+示例代码参见 github： [rectcircle/lua-learn](https://github.com/rectcircle/lua-learn)
 
 ## 开发环境搭建
 
@@ -75,11 +66,13 @@ print('hello')
 * 方式 1：命令行执行 `luajit hello.lua`。
 * 方式 2：VSCode 调试，按 `F5`。
 
-## 特性
+## 语言特性
 
 ### 定位
 
 Lua 是一个语法简单的，被定位为嵌入到 C 语言中，作为动态配置、数据处理等业务场景的脚本语言。
+
+本部分仅介绍 Lua 语言自身的部分，不介绍 C 和 Lua 的交互。
 
 ### 注释
 
@@ -307,6 +300,15 @@ print(type(1 .. "2")) -- 自动转为字符串
 -- string
 ```
 
+当然，也可以手动进行转换
+
+```lua
+print(type(tonumber('1')))
+print(type(tostring(1)))
+-- number
+-- string
+```
+
 #### `#` 运算符
 
 可用于获取
@@ -369,6 +371,8 @@ print(A, b, c)
         -- number  1
     -- string  string
     ```
+
+* Lua 的同一个名字的局部变量可以定义多次，后面定义的会隐藏前面定义的。
 
 ### 流程控制
 
@@ -579,21 +583,23 @@ Lua 支持可变参数 `...`。
 * 可以通过 `{...}` 将可变参数转换为一个 table (数组)。
 * 可以通过 `unpack` 函数，将一个 table (数组) 作为可变参数进行传递。
 * `...` 可以直接传递给其他函数的可变参数。
+* 通过 `select` 函数可以获取可变参数的长度或者截取从 index 开始到之后的可变参数。
 
 ```lua
 function r() return 1, 2, 3 end
-function g(a, b, ...) print('params a, b, {...}, ... :', a, b, {...}, ...) end
+
+function g(a, b, ...) print('params a, b, {...}, select(#, ...), #{select(2, ...)}, ... :', a, b, { ... }, select('#', ...), #{select(2, ...)}, ...) end
 
 g(3)
 g(3, 4)
 g(3, 4, 5, 8)
 g(5, r())
-g(unpack({ 'a', 'b', 'c', 'd' }))
--- params a, b, {...}, ... :       3       nil     table: 0x0102227130
--- params a, b, {...}, ... :       3       4       table: 0x010221ebe8
--- params a, b, {...}, ... :       3       4       table: 0x010221ec80     5       8
--- params a, b, {...}, ... :       5       1       table: 0x01022274e8     2       3
--- params a, b, {...}, ... :       a       b       table: 0x01022275f0     c       d
+g(unpack({ 'a', 'b', 'c', 'd', 'e' }))
+-- params a, b, {...}, select(#, ...), #{select(2, ...)}, ... :    3       nil     table: 0x010818d160     0       0
+-- params a, b, {...}, select(#, ...), #{select(2, ...)}, ... :    3       4       table: 0x010818d6f8     0       0
+-- params a, b, {...}, select(#, ...), #{select(2, ...)}, ... :    3       4       table: 0x010818d518     2       1       5       8
+-- params a, b, {...}, select(#, ...), #{select(2, ...)}, ... :    5       1       table: 0x0108184c80     2       1       2       3
+-- params a, b, {...}, select(#, ...), #{select(2, ...)}, ... :    a       b       table: 0x01081854f8     3       2       c       d       e
 ```
 
 #### 方法
@@ -933,7 +939,102 @@ mymod4_2.PrintModule()
 
 ## 标准库
 
-## 最佳实践
+标准库也是 Lua 语言的一部分，上文提到的函数实际上都是标准库的一部分，更多关于标准库的详解，参见：[官方手册](https://www.lua.org/manual/5.1/manual.html#5)。
+
+## 高级用法
+
+### 面相对象风格
+
+Lua 原生没有提供面向对象的能力，但是可以通过元表实现类似的效果，一个示例如下：
+
+```lua
+-- 通过 table 和 metatable 实现面向对象
+
+-- 类、抽象父类、子类、单继承、实例化。
+
+-- 抽象父类
+Shape = { type='none' }
+function Shape:new(type) -- 父类构造函数
+    local o = {type=type}
+    setmetatable(o, { __index = Shape })
+    return o
+end
+function Shape:print() -- 父类方法
+    print("type: ", self.type , "area:", self:getArea())
+end
+function Shape:getArea() -- 待子类实现的方法
+    error('no impl')
+end
+
+-- 子类
+Rectangle = { length = 0, breadth = 0 }
+setmetatable(Rectangle, { __index = Shape }) -- 继承父类
+function Rectangle:new(length, breadth) -- 子类构造函数
+    local o = Shape:new('Rectangle')
+    o.length = length
+    o.breadth = breadth
+    setmetatable(o, { __index = Rectangle })
+    return o
+end
+function Rectangle:getArea() -- 子类实现父类方法 getArea
+    return self.length * self.breadth
+end
+function Rectangle:diagonal()  -- 子类自己的方法
+    return (self.length^2 + self.breadth^2)^(0.5)
+end
+function Rectangle:print() -- 子类覆写方法 print
+    print('length: ', self.length, 'breadth: ', self.breadth)
+    Shape.print(self) -- 子类调用父类的方法
+    print('and diagonal: ', self:diagonal())
+end
+
+-- 实例化
+local r = Rectangle:new(3, 4)
+r:print()
+```
+
+### 推荐的模块写法
+
+定义模块
+
+```lua
+-- square.lua 长方形模块
+local _M = {}           -- 局部的变量
+_M._VERSION = '1.0'     -- 模块版本
+
+local mt = { __index = _M }
+
+function _M.new(self, width, height)
+    return setmetatable({ width=width, height=height }, mt)
+end
+
+function _M.get_square(self)
+    return self.width * self.height
+end
+
+function _M.get_circumference(self)
+    return (self.width + self.height) * 2
+end
+
+return _M
+```
+
+导入模块
+
+```lua
+local square = require "square"
+
+local s1 = square:new(1, 2)
+print(s1:get_square())          --output: 2
+print(s1:get_circumference())   --output: 6
+```
+
+更多参见：
+
+* [抵制使用 module() 定义模块](https://moonbingbing.gitbooks.io/openresty-best-practices/content/lua/not_use_module.html)
+* [module 是邪恶的](https://moonbingbing.gitbooks.io/openresty-best-practices/content/lua/module_is_evil.html)
+
+
 
 ## 参考
 
