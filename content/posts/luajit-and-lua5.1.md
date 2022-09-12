@@ -372,6 +372,110 @@ print(A, b, c)
 
 ### 流程控制
 
+#### if elseif else
+
+```lua
+function IfNumber(i)
+    if i > 0 then
+        print('>0')
+    elseif i < 0 then  -- 可选
+        print('<0')
+    else               -- 可选
+        print('==0')
+    end
+end
+IfNumber(1)
+IfNumber(0)
+IfNumber(-1)
+-- >0
+-- ==0
+-- <0
+```
+
+#### while 和 until
+
+```lua
+local i = 0
+while i < 10 do
+    if i == 5 then
+        break
+    end
+    print('while', i)
+    i = i + 1
+end
+
+i = 0
+repeat
+    print('until', i)
+    i = i + 1
+until i >= 5
+
+-- while   0
+-- while   1
+-- while   2
+-- while   3
+-- while   4
+-- until   0
+-- until   1
+-- until   2
+-- until   3
+-- until   4
+```
+
+需要特别说明的是，Lua 不支持 continue。
+
+#### for
+
+数字循环 `for i = start, end, step do ... end`。
+
+```lua
+for i = 1, 3, 1 do  -- 起始(包括), 结束(包括), 步长(可以省略, 默认为 1)
+    print('for-num', i)
+end
+-- for-num 1
+-- for-num 2
+-- for-num 3
+```
+
+table (数组) 通过 `ipairs` 函数返回的迭代器进行遍历。
+
+```lua
+for k, v in ipairs({ "one", "two", "three" }) do
+    print('for-it', k, v)
+end
+-- for-it  1       one
+-- for-it  2       two
+-- for-it  3       three
+```
+
+以上等价于：
+
+```lua
+do
+    local f, s, var = ipairs({ "one", "two", "three" })
+    while true do
+        local k, v = f(s, var)
+        var = k
+        if var == nil then break end
+        print('for-mock', k, v)
+    end
+end
+-- for-mock        1       one
+-- for-mock        2       two
+-- for-mock        3       three
+```
+
+table (map) 通过 `pairs` 函数返回的迭代器进行遍历。
+
+```lua
+for k, v in pairs({a=1, b=2, c=3}) do
+    print('for-it', k, v)
+end
+-- for-it  c       3
+-- for-it  a       1
+-- for-it  b       2
+```
+
 ### 函数和方法
 
 ### 协程
@@ -381,6 +485,8 @@ print(A, b, c)
 ### env
 
 ### 模块
+
+### 注意事项总结
 
 ## 标准库
 
