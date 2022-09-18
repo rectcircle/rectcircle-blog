@@ -12,7 +12,7 @@ tags:
 
 ## 背景知识
 
-Linux 网络话题非常庞大，在阅读 Network Namespace 之前，建议阅读 Linux 网络虚拟化技术系列文章：
+Linux 网络话题非常庞大，在阅读 Network Namespace 之前，建议阅读 Linux 网络相关的系列文章：
 
 * [通过和 IPv4 对比，学习 IPv6](https://www.rectcircle.cn/posts/learn-ipv6-by-ipv4-diff/)
 * [通过 Linux API 学习网络协议栈（一）概览](/posts/learn-net-proto-stack-by-linux-api-1-overview/)
@@ -59,7 +59,7 @@ Linux 网络话题非常庞大，在阅读 Network Namespace 之前，建议阅�
 * 父进程通过 clone 系统调用一个子进程，并绑定一个新的 Network Namespace。
 * 父进程通过 netlink api 创建一对 veth，并配置在父进程 Network Namespace 这一端的 ip、子网 等。
 * 父进程通过 netlink api 将 veth 的一端加入到新的 Network Namespace
-* 父进程通过 setns 系统调用，进入 Network Namespace，设置 加入新的 Network Namespace 的这一端 veth 的 ip、子网、gateway等。
+* 父进程通过 setns 系统调用，进入 Network Namespace。通过 netlink api 设置加入新的 Network Namespace 的这一端 veth 的 ip、子网、gateway等。
 
 ### 源码
 
