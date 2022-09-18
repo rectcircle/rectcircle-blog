@@ -617,3 +617,8 @@ int main()
     waitpid(exec_shell(after_scripts), NULL, 0);
 }
 ```
+
+## 参考
+
+* [ip-link(8) — Linux manual page](https://man7.org/linux/man-pages/man8/ip-link.8.html)
+* [veth(4) — Linux manual page](https://man7.org/linux/man-pages/man4/veth.4.html)

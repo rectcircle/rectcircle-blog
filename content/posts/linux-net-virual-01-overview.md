@@ -120,6 +120,12 @@ attribute 支持任意级别的嵌套，比如一个请求包含属性 a1, b1。
 
 如果想使用 C 语言编写 Linux 网络虚拟化相关程序，可以直接使用 [libnl 库](https://www.infradead.org/~tgr/libnl/)，而不是直接使用 netlink socket 这么底层的 API。
 
+参考：
+
+* [ip(8) — Linux manual page](https://man7.org/linux/man-pages/man8/ip.8.html)
+* [获取网卡列表的几种方式](https://www.hyuuhit.com/2018/04/05/network-device-list/#rtnetlink)
+* [Linux netlink socket 内核通信](http://www.hyuuhit.com/2018/08/22/netlink/)
+
 ## 网络设备概述
 
 Linux 网络设备可以分为物理网络设备和虚拟网络设备，这些网络设备可以通过：`ip addr show` 可以查看。

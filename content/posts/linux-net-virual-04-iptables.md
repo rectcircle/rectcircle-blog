@@ -1118,3 +1118,10 @@ sudo ip link delete demodocker0
 # 恢复内核参数
 sudo sysctl -w net.ipv4.ip_forward=0
 ```
+
+## 其他参考
+
+* [手撕Linux网络——Linux虚拟网络设备与netfilter框架汇总](https://zhuanlan.zhihu.com/p/223038075)
+* [云计算底层技术-netfilter框架研究](https://opengers.github.io/openstack/openstack-base-netfilter-framework-overview/#bridge%E4%B8%8Enetfilter)
+* [ip-netns(8) — Linux manual page](https://man7.org/linux/man-pages/man8/ip-netns.8.html)
+* [Linux network namespace 简单解读](http://www.hyuuhit.com/2019/03/23/netns/)
