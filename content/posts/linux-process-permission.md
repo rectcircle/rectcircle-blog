@@ -168,7 +168,7 @@ S  G  T r w x r w x r w x
 * 第 11 位 `S`，为设置用户 ID 位。
 * 第 10 位 `G`，为设置组 ID 位。
 
-当一个可执行文件属性，设置用户 ID 为被设置，当改程序被加载时（exec 系统调用），该进程的 euid 将被设置为这个文件的所有者（设置组 ID 为同理）。
+当一个可执行文件属性，设置用户 ID 为被设置，当改程序被加载时（[execve](https://man7.org/linux/man-pages/man2/execve.2.html) 系统调用），该进程的 euid 将被设置为这个文件的所有者（设置组 ID 为同理）。
 
 因此，当我们想让一个可执行文件可以以其他用户的身份运行时，则可以：
 
@@ -238,12 +238,119 @@ ruid: 1000, euid: 1001, suid: 1001
 
 总结：
 
-* 当可执行文件的开启了设置用户 id 位后，执行该文件后 （exec），该进程的 euid 和 suid 将被设置为该文件的 owner。
+* 当可执行文件的开启了设置用户 id 位后，执行该文件后 （execve），该进程的 euid 和 suid 将被设置为该文件的 owner。
 * 如果当前进程的 euid 是 root，则 setuid 会设置所有的 ruid、euid 和 suid。
 * 如果当前进程的 euid 不是 root，则 setuid 只会设置 euid，且这个 euid 的可选值只能是 ruid 或 suid，也就是说，一个由开启了设置用户 id 位的可执行文件启动的进程，这个进程 euid 可以在 ruid 和 suid 之间来回切换。
 
 ## 进程的能力
 
-主要强调非文件系统的其他系统调用的权限
-root 权限
-普通用户的权限。
+> [capabilities(7) — Linux manual page](https://man7.org/linux/man-pages/man7/capabilities.7.html)
+
+### 概述
+
+另一方面，某些系统调用是很危险的，只有系统的管理员才能调用。而上述的进程身份，主要解决了进程对文件系统操作的权限控制，并不能解决该问题。
+
+针对这个问题，在 Linux 中，我们熟悉的解决办法是：将系统调用分为两类，普通系统调用和特权系统调用，普通用户的进程只能调用普通系统调用，root 用户的进程才能调用特权系统调用。
+
+但是，这种划分太过简单粗暴，不符合最小权限原则。比如某个进程，只需要某一个特权系统调用（如 Nginx 只需要一个绑定 80 端口特权系统调用），但是我们不得不以 root 权限运行这个成，给这个进程调用全部特权系统调用的权限。
+
+为了解决这个问题，Linux 将特权系统调用进一步进行分类，划分为了 41 中能力（capabilities）（截止 Linux 5.13）。
+
+和上文 进程的身份 的设置用户 ID 位类似，Linux 从两个方面提供了对一个进程有权的能力（capabilities）进行设置：
+
+* 从文件系统角度，对于可执行文件，通过文件系统的扩展属性 `security.capability` 声明该可执行文件需要的特权能力列表（通过 [`setxattr(2)` 系统调用](https://man7.org/linux/man-pages/man2/setxattr.2.html) 或 [`setcap(8)` 命令](https://man7.org/linux/man-pages/man8/setcap.8.html) 可以进行设置），可以通过 [`getcap(8) 命令`](https://man7.org/linux/man-pages/man8/getcap.8.html) 可以查看一个可执行文件的特权能力列表（如：`sudo getcap $(which ping)` 和 `sudo getcap -r / 2>/dev/null`）。最终可执行过文件的这些配置，会在 [execve](https://man7.org/linux/man-pages/man2/execve.2.html) 系统调用执行阶段，根据一定规则应用到进程中。
+* 从进程角度，可以通过相关系统调用来主动配置该进程的特权能力列表：[`capset(2) 系统调用`](https://man7.org/linux/man-pages/man2/capset.2.html) 、 [`capget(2) 系统调用`](https://man7.org/linux/man-pages/man2/capget.2.html)、[`cap_get_proc(3)` 系列库函数](https://man7.org/linux/man-pages/man3/cap_get_proc.3.html)、[prctl(2) 系统调用](https://man7.org/linux/man-pages/man2/prctl.2.html)。
+
+通过如上的手段可以做到：
+
+* 限制 root 用户进程的权限，让 root 用户进程按需使用权限。
+* 让普通用户进程拥有部分特权，可以调用某些特权系统调用。
+
+目前目前最大的应用场景是：（Docker）容器进程权限限制。下文将介绍该场景的实现示例。
+
+Linux 进程 capabilities 的细节还是非常多的，本文不会全部涉及，想了解详细的细节，参见： [capabilities](https://man7.org/linux/man-pages/man7/capabilities.7.html)
+
+### 进程和可执行文件 capabilities 相关属性
+
+在 Linux 进程的 capabilities 由多种 capabilities 集合和标志位决定。
+
+进程有如下五个与 capabilities 相关的属性：
+
+* `P(permitted)` 类型为 capabilities 集合。控制 `capset` 系统调用可以的 `P(effective)` 或 `P(inheritable)` 的项目。
+* `P(effective)` 类型为 capabilities 集合。进程在进行特权系统调用时，会依据该属性进行检查。
+* `P(inheritable)` 类型为 capabilities 集合。控制接受哪些可执行文件配置的 `F(inheritable)`。
+* `P(bounding)` 类型为 capabilities 集合。控制接受哪些可执行文件配置的 `F(permitted)`。
+* `P(ambient)` 类型为 capabilities 集合，Linux 4.3 新增。
+
+可执行文件有三个与 capabilities 相关的属性：
+
+* `F(permitted)` 类型为 capabilities 集合。声明该程序需要的能力。
+* `F(inheritable)` 类型为 capabilities 集合。声明该要从父进程继承的能力。
+* `F(effective)` 类型为标志位。声明自动的将当前进程 `P(effective)` 设置为其计算出的 `P(permitted)`（不是父进程的）。
+
+如上进程的相关 capabilities 的属性在在如下场景会发生变化：
+
+* `setuid(2)` 和 `setresuid(2)` 系统调用被调用。
+    * 如果 ruid、euid、suid 有一个是 0，被修改后这个值都是非 0，则 `P(permitted)`, `P(effective)`, `P(ambient)` 都将被清除。
+    * 如果 euid 从 0 变为 非 0，则 `P(effective)` 将被清空。
+    * 如果 euid 从非 0 变为 0，则 `P(effective)` 将被设置为 `P(effective)`。
+* 通过 `capset(2)` 系统调用，通过编程的方式修改。
+* `execve(2)` 系统调用执行后，可以用公式来表示，下文中 P 表示 execve 之前，P' 表示 execve 之后，F 表示可执行文件的属性。可以分为两种情况：
+    * 一般情况：
+
+        ```
+        P'(ambient)     = (file is privileged) ? 0 : P(ambient)
+
+        P'(permitted)   = (P(inheritable) & F(inheritable)) |
+                            (F(permitted) & P(bounding)) | P'(ambient)
+
+        P'(effective)   = F(effective) ? P'(permitted) : P'(ambient)
+
+        P'(inheritable) = P(inheritable)    [i.e., unchanged]
+
+        P'(bounding)    = P(bounding)       [i.e., unchanged]
+        ```
+
+        file is privileged 表示如下情况之一的：
+
+        * 这个可执行文件有配置 capabilities 相关属性。
+        * 这个可执行文件的 set-user-ID 或 set-group-ID 启用。
+    * 兼容 UNIX 规范情况，即当前进程的 euid 为 0 （当前进程为 root 或，可执行文件的 owner 为 root 且启用了设置用户 ID 位（参见上文））:
+
+        ```
+        P'(permitted)   = P(inheritable) | P(bounding)
+
+        P'(effective)   = P'(permitted)
+        ```
+
+        只有如上两个属性和一般情况不同，其他属性和一般情况相同。
+
+        该场景具体实例：
+
+        * root 进程 fork-exec 了新的进程。
+        * 类似于 `sudo` 的命令执行。
+
+TODO ，观察 `sudo cat /proc/$$/status | grep Cap`：
+
+* 1 号进程的能力列表
+* 其他 root 进程的能力列表
+* 普通用户进程的能力列表
+
+## 实例：容器进程权限限制
+
+TODO 原理：
+
+* root 权限，fork 进程。
+* root 权限，子进程执行一系列初始化。
+* root 权限，子进程调用 capset 清除危险的能力，默认情况只开启。
+* 可选，通过 setuid 等命令，切换到普通用户/组/附属组。
+
+https://gohalo.me/post/linux-capabilities-introduce.html
+https://waynerv.com/posts/container-fundamentals-permission-control-using-capabilities/#%E5%AE%B9%E5%99%A8%E8%BF%90%E8%A1%8C%E6%97%B6%E6%B7%BB%E5%8A%A0-capabilities
+https://icloudnative.io/posts/linux-capabilities-why-they-exist-and-how-they-work/#%E6%96%87%E4%BB%B6%E7%9A%84-capabilities
+https://icloudnative.io/posts/linux-capabilities-in-practice-1/
+https://icloudnative.io/posts/linux-capabilities-in-practice-2/#5-%E5%AE%B9%E5%99%A8%E4%B8%8E-capabilities
+https://hustcat.github.io/docker-config-capabilities/
+https://zhuanlan.zhihu.com/p/457319278
+
+https://man7.org/linux/man-pages/man3/libcap.3.html
