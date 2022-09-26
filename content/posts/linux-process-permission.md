@@ -330,20 +330,61 @@ Linux 进程 capabilities 的细节还是非常多的，本文不会全部涉及
         * root 进程 fork-exec 了新的进程。
         * 类似于 `sudo` 的命令执行。
 
-TODO ，观察 `sudo cat /proc/$$/status | grep Cap`：
+通过 `cat /proc/1/status | grep Cap` 和 `sudo -u root sh -c 'cat /proc/$$/status | grep Cap'`， 观察 1 号进程和普通 root 进程的 capabilities 相关属性：
 
-* 1 号进程的能力列表
-* 其他 root 进程的能力列表
-* 普通用户进程的能力列表
+```
+CapInh: 0000000000000000
+CapPrm: 000001ffffffffff
+CapEff: 000001ffffffffff
+CapBnd: 000001ffffffffff
+CapAmb: 0000000000000000
+```
+
+通过 `sudo -u nobody sh -c 'cat /proc/$$/status | grep Cap'`， 观察普通用户进程的 capabilities 相关属性：
+
+```bash
+CapInh: 0000000000000000
+CapPrm: 0000000000000000
+CapEff: 0000000000000000
+CapBnd: 000001ffffffffff
+CapAmb: 0000000000000000
+```
+
+通过如上输出，可以看出：
+
+* root 进程的 `P(permitted)`、`P(bounding)`、`P(effective)` 均为拥有全部能力。
+* 普通进程，`P(bounding)` 拥有全部能力，其他均为 0。
+* 在 sudo 时，按照如上公式，确实做到了普通进程在 execve 后，变成了 root。
 
 ## 实例：容器进程权限限制
 
-TODO 原理：
+按照如上类似的命令，观察 docker 容器按照默认方式启动容器，其 1 号进程的 capabilities 相关属性：
+
+* root 权限 `docker run --user=root -it busybox sh -c 'cat /proc/1/status | grep Cap'`
+
+    ```
+    CapInh:	00000000a80425fb
+    CapPrm:	00000000a80425fb
+    CapEff:	00000000a80425fb
+    CapBnd:	00000000a80425fb
+    CapAmb:	0000000000000000
+    ```
+
+* 非 root 权限 `docker run --user=nobody -it busybox sh -c 'cat /proc/1/status | grep Cap'`
+
+    ```
+    CapInh:	00000000a80425fb
+    CapPrm:	0000000000000000
+    CapEff:	0000000000000000
+    CapBnd:	00000000a80425fb
+    CapAmb:	0000000000000000
+    ```
+
+根据上文内容可以推测出 docker 启动容器进程过程中，关于 capabilities 的相关配置：
 
 * root 权限，fork 进程。
-* root 权限，子进程执行一系列初始化。
-* root 权限，子进程调用 capset 清除危险的能力，默认情况只开启。
-* 可选，通过 setuid 等命令，切换到普通用户/组/附属组。
+* root 权限，子进程调用 capset 系统调用，清除危险的能力，默认情况只开启部分必要的不危险的权限。
+* 如果启动的用户不是 root，通过 setuid 等命令，切换到普通用户/组/附属组。
 
 https://gohalo.me/post/linux-capabilities-introduce.html
 https://waynerv.com/posts/container-fundamentals-permission-control-using-capabilities/#%E5%AE%B9%E5%99%A8%E8%BF%90%E8%A1%8C%E6%97%B6%E6%B7%BB%E5%8A%A0-capabilities
