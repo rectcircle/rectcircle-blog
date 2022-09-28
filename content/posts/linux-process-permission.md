@@ -359,7 +359,7 @@ CapAmb: 0000000000000000
 * 普通进程，`P(bounding)` 拥有全部能力，其他均为 0。
 * 在 sudo 时，按照如上公式，确实做到了普通进程在 execve 后，变成了 root。
 
-## 相关编程接口和命令行工具
+### 相关编程接口和命令行工具
 
 * 系统调用：Linux glibc 并没有提供对 cap 的封装，需要使用 `syscall` 调用，更多参考：[capget(2) 和 capset(2)](https://man7.org/linux/man-pages/man2/capset.2.html)。
 * C 语言函数库：参见 [libcap(3)](https://man7.org/linux/man-pages/man3/libcap.3.html)，默认没有安装，可通过 `sudo apt-get install libcap-dev` 安装，源码参见：[git](https://git.kernel.org/pub/scm/libs/libcap/libcap.git/tree/)。
