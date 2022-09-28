@@ -1,7 +1,7 @@
 ---
 title: "Linux 进程权限"
 date: 2022-09-24T19:25:59+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
@@ -148,7 +148,6 @@ supplementary group ids: 24, 25, 29, 30, 44, 46, 109, 112, 1000
 ### 从普通进程创建 root 进程
 
 上文可以看出 Linux 定义了多种 uid，ruid、euid、suid，上文场景这几个值都是一样的。在本场景中，可以看出 Linux 定义这些 uid 的用意。
-
 
 通过进程身份的继承、root 进程创建普通进程，可以满足绝大多数对进程身份的设置。但是某些场景并不能满足。如：
 
@@ -330,7 +329,7 @@ Linux 进程 capabilities 的细节还是非常多的，本文不会全部涉及
         * root 进程 fork-exec 了新的进程。
         * 类似于 `sudo` 的命令执行。
 
-通过 `cat /proc/1/status | grep Cap` 和 `sudo -u root sh -c 'cat /proc/$$/status | grep Cap'`， 观察 1 号进程和普通 root 进程的 capabilities 相关属性：
+通过 `cat /proc/1/status | grep Cap` 和 `sudo -u root sh -c 'cat /proc/$$/status | grep Cap'`， 观察 1 号进程和普通 root 进程的 capabilities 相关属性（可以通过 `sudo capsh --decode=00000000a80425fb` 解码、`sudo apt-get install libcap2-bin`）：
 
 ```
 CapInh: 0000000000000000
@@ -356,6 +355,13 @@ CapAmb: 0000000000000000
 * 普通进程，`P(bounding)` 拥有全部能力，其他均为 0。
 * 在 sudo 时，按照如上公式，确实做到了普通进程在 execve 后，变成了 root。
 
+## 相关编程接口和命令行工具
+
+* 系统调用：Linux glibc 并没有提供对 cap 的封装，需要使用 `syscall` 调用，更多参考：[capget(2) 和 capset(2)](https://man7.org/linux/man-pages/man2/capset.2.html)。
+* C 语言函数库：参见 [libcap(3)](https://man7.org/linux/man-pages/man3/libcap.3.html)，默认没有安装，可通过 `sudo apt-get install libcap-dev` 安装，源码参见：[git](https://git.kernel.org/pub/scm/libs/libcap/libcap.git/tree/)。
+* Go 语言函数库： [syndtr/gocapability](https://github.com/syndtr/gocapability)，[runc](https://github.com/opencontainers/runc) 使用的库。
+* 命令工具：[capsh](https://man7.org/linux/man-pages/man1/capsh.1.html) 等，可通过 `sudo apt-get install libcap2-bin` 安装。
+
 ## 实例：容器进程权限限制
 
 按照如上类似的命令，观察 docker 容器按照默认方式启动容器，其 1 号进程的 capabilities 相关属性：
@@ -380,18 +386,110 @@ CapAmb: 0000000000000000
     CapAmb:	0000000000000000
     ```
 
+结合 [docker 源码](https://github.com/moby/moby/blob/master/oci/caps/defaults.go#L6-L19)可以看出，docker 的进程开放了如下能力：
+
+```go
+func DefaultCapabilities() []string {
+	return []string{
+		"CAP_CHOWN",
+		"CAP_DAC_OVERRIDE",
+		"CAP_FSETID",
+		"CAP_FOWNER",
+		"CAP_MKNOD",
+		"CAP_NET_RAW",
+		"CAP_SETGID",
+		"CAP_SETUID",
+		"CAP_SETFCAP",
+		"CAP_SETPCAP",
+		"CAP_NET_BIND_SERVICE",
+		"CAP_SYS_CHROOT",
+		"CAP_KILL",
+		"CAP_AUDIT_WRITE",
+	}
+}
+```
+
 根据上文内容可以推测出 docker 启动容器进程过程中，关于 capabilities 的相关配置：
 
 * root 权限，fork 进程。
 * root 权限，子进程调用 capset 系统调用，清除危险的能力，默认情况只开启部分必要的不危险的权限。
 * 如果启动的用户不是 root，通过 setuid 等命令，切换到普通用户/组/附属组。
 
-https://gohalo.me/post/linux-capabilities-introduce.html
-https://waynerv.com/posts/container-fundamentals-permission-control-using-capabilities/#%E5%AE%B9%E5%99%A8%E8%BF%90%E8%A1%8C%E6%97%B6%E6%B7%BB%E5%8A%A0-capabilities
-https://icloudnative.io/posts/linux-capabilities-why-they-exist-and-how-they-work/#%E6%96%87%E4%BB%B6%E7%9A%84-capabilities
-https://icloudnative.io/posts/linux-capabilities-in-practice-1/
-https://icloudnative.io/posts/linux-capabilities-in-practice-2/#5-%E5%AE%B9%E5%99%A8%E4%B8%8E-capabilities
-https://hustcat.github.io/docker-config-capabilities/
-https://zhuanlan.zhihu.com/p/457319278
+go 语言模拟上述后面两个步骤，如下所示：
 
-https://man7.org/linux/man-pages/man3/libcap.3.html
+```go
+package main
+
+import (
+	"fmt"
+	"syscall"
+
+	"github.com/syndtr/gocapability/capability"
+)
+
+func main() {
+	fmt.Printf("the kernal support %d caps: ", len(capability.List()))
+	for _, c := range capability.List() {
+		fmt.Printf("%s, ", c)
+	}
+	fmt.Println()
+
+	caps, err := capability.NewPid2(0)
+	if err != nil {
+		panic(err)
+	}
+	err = caps.Load()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("the origin root proc caps: ", caps.String())
+	// 设置当前进程的 caps
+	caps.Clear(capability.EFFECTIVE | capability.PERMITTED | capability.BOUNDING | capability.INHERITABLE | capability.AMBIENT)
+	caps.Set(capability.EFFECTIVE|capability.PERMITTED|capability.BOUNDING|capability.INHERITABLE,
+		capability.CAP_CHOWN,
+		capability.CAP_DAC_OVERRIDE,
+		capability.CAP_FSETID,
+		capability.CAP_FOWNER,
+		capability.CAP_MKNOD,
+		capability.CAP_NET_RAW,
+		capability.CAP_SETGID,
+		capability.CAP_SETUID,
+		capability.CAP_SETFCAP,
+		capability.CAP_SETPCAP,
+		capability.CAP_NET_BIND_SERVICE,
+		capability.CAP_SYS_CHROOT,
+		capability.CAP_KILL,
+		capability.CAP_AUDIT_WRITE,
+	)
+	err = caps.Apply(capability.EFFECTIVE | capability.PERMITTED | capability.BOUNDING | capability.INHERITABLE | capability.AMBIENT)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("the root proc new caps: ", caps.String())
+	// 切换到普通用户
+	syscall.Setuid(1000)
+	err = caps.Load() // 重新加载
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("the nonroot proc new caps: ", caps.String())
+}
+```
+
+编译并执行 `sudo go run ./05-mock-docker-cap/`，输出如下
+
+```
+the kernal support 41 caps: chown, dac_override, dac_read_search, fowner, fsetid, kill, setgid, setuid, setpcap, linux_immutable, net_bind_service, net_broadcast, net_admin, net_raw, ipc_lock, ipc_owner, sys_module, sys_rawio, sys_chroot, sys_ptrace, sys_pacct, sys_admin, sys_boot, sys_nice, sys_resource, sys_time, sys_tty_config, mknod, lease, audit_write, audit_control, setfcap, mac_override, mac_admin, syslog, wake_alarm, block_suspend, audit_read, perfmon, bpf, checkpoint_restore, 
+the origin root proc caps:  { effective="full" permitted="full" inheritable="empty" bounding="full" }
+the root proc new caps:  { effective="chown, dac_override, fowner, fsetid, kill, setgid, setuid, setpcap, net_bind_service, net_raw, sys_chroot, mknod, audit_write, setfcap" permitted="chown, dac_override, fowner, fsetid, kill, setgid, setuid, setpcap, net_bind_service, net_raw, sys_chroot, mknod, audit_write, setfcap" inheritable="chown, dac_override, fowner, fsetid, kill, setgid, setuid, setpcap, net_bind_service, net_raw, sys_chroot, mknod, audit_write, setfcap" bounding="chown, dac_override, fowner, fsetid, kill, setgid, setuid, setpcap, net_bind_service, net_raw, sys_chroot, mknod, audit_write, setfcap" }
+the nonroot proc new caps:  { effective="empty" permitted="empty" inheritable="chown, dac_override, fowner, fsetid, kill, setgid, setuid, setpcap, net_bind_service, net_raw, sys_chroot, mknod, audit_write, setfcap" bounding="chown, dac_override, fowner, fsetid, kill, setgid, setuid, setpcap, net_bind_service, net_raw, sys_chroot, mknod, audit_write, setfcap" }
+```
+
+## 参考
+
+* [Unix 环境高级编程中文第三版（APUE）](http://www.apuebook.com/)，4.4 设置用户 ID 和设置组 ID，8.11 更改用户 ID 和更改组 ID。
+* [Linux Capabilites 机制详细介绍](https://gohalo.me/post/linux-capabilities-introduce.html) 该文有 C 语言的示例程序。
+* [Linux Capabilities 入门教程：概念篇](https://icloudnative.io/posts/linux-capabilities-why-they-exist-and-how-they-work/)。
+* [Linux Capabilities 入门教程：基础实战篇](https://icloudnative.io/posts/linux-capabilities-in-practice-1/)。
+* [Linux Capabilities 入门教程：进阶实战篇](https://icloudnative.io/posts/linux-capabilities-in-practice-2/)。
+* [Docker解析：配置与权限管理](https://hustcat.github.io/docker-config-capabilities/)。
