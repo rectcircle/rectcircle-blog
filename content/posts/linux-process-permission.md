@@ -8,6 +8,10 @@ tags:
   - untagged
 ---
 
+## 实验代码
+
+github: [rectcircle/learn-linux-process-permission](https://github.com/rectcircle/learn-linux-process-permission)。
+
 ## 进程的身份
 
 > [credentials(7) — Linux manual page](https://man7.org/linux/man-pages/man7/credentials.7.html)
