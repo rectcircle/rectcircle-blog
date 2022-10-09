@@ -255,14 +255,14 @@ ruid: 1000, euid: 1001, suid: 1001
 
 针对这个问题，在 Linux 中，我们熟悉的解决办法是：将系统调用分为两类，普通系统调用和特权系统调用，普通用户的进程只能调用普通系统调用，root 用户的进程才能调用特权系统调用。
 
-但是，这种划分太过简单粗暴，不符合最小权限原则。比如某个进程，只需要某一个特权系统调用（如 Nginx 只需要一个绑定 80 端口特权系统调用），但是我们不得不以 root 权限运行这个成，给这个进程调用全部特权系统调用的权限。
+但是，这种划分太过简单粗暴，不符合最小权限原则。比如某个进程，只需要某一个特权系统调用（如 Nginx 只需要一个绑定 80 端口特权系统调用），但是我们不得不以 root 权限运行这个程序，给这个进程调用全部特权系统调用的权限。
 
 为了解决这个问题，Linux 将特权系统调用进一步进行分类，划分为了 41 中能力（capabilities）（截止 Linux 5.13）。
 
 和上文 进程的身份 的设置用户 ID 位类似，Linux 从两个方面提供了对一个进程有权的能力（capabilities）进行设置：
 
 * 从文件系统角度，对于可执行文件，通过文件系统的扩展属性 `security.capability` 声明该可执行文件需要的特权能力列表（通过 [`setxattr(2)` 系统调用](https://man7.org/linux/man-pages/man2/setxattr.2.html) 或 [`setcap(8)` 命令](https://man7.org/linux/man-pages/man8/setcap.8.html) 可以进行设置），可以通过 [`getcap(8) 命令`](https://man7.org/linux/man-pages/man8/getcap.8.html) 可以查看一个可执行文件的特权能力列表（如：`sudo getcap $(which ping)` 和 `sudo getcap -r / 2>/dev/null`）。最终可执行过文件的这些配置，会在 [execve](https://man7.org/linux/man-pages/man2/execve.2.html) 系统调用执行阶段，根据一定规则应用到进程中。
-* 从进程角度，可以通过相关系统调用来主动配置该进程的特权能力列表：[`capset(2) 系统调用`](https://man7.org/linux/man-pages/man2/capset.2.html) 、 [`capget(2) 系统调用`](https://man7.org/linux/man-pages/man2/capget.2.html)、[`cap_get_proc(3)` 系列库函数](https://man7.org/linux/man-pages/man3/cap_get_proc.3.html)、[prctl(2) 系统调用](https://man7.org/linux/man-pages/man2/prctl.2.html)。
+* 从进程角度，可以通过相关系统调用来主动配置该进程的特权能力列表：[`capset(2)` 系统调用](https://man7.org/linux/man-pages/man2/capset.2.html) 、 [`capget(2)` 系统调用](https://man7.org/linux/man-pages/man2/capget.2.html)、[`cap_get_proc(3)` 系列库函数](https://man7.org/linux/man-pages/man3/cap_get_proc.3.html)、[`prctl(2)` 系统调用](https://man7.org/linux/man-pages/man2/prctl.2.html)。
 
 通过如上的手段可以做到：
 
@@ -296,7 +296,7 @@ Linux 进程 capabilities 的细节还是非常多的，本文不会全部涉及
 * `setuid(2)` 和 `setresuid(2)` 系统调用被调用。
     * 如果 ruid、euid、suid 有一个是 0，被修改后这个值都是非 0，则 `P(permitted)`, `P(effective)`, `P(ambient)` 都将被清除。
     * 如果 euid 从 0 变为 非 0，则 `P(effective)` 将被清空。
-    * 如果 euid 从非 0 变为 0，则 `P(effective)` 将被设置为 `P(effective)`。
+    * 如果 euid 从非 0 变为 0，则 `P(effective)` 将被设置为 `P(permitted)`。
 * 通过 `capset(2)` 系统调用，通过编程的方式修改。
 * `execve(2)` 系统调用执行后，可以用公式来表示，下文中 P 表示 execve 之前，P' 表示 execve 之后，F 表示可执行文件的属性。可以分为两种情况：
     * 一般情况：
@@ -390,7 +390,7 @@ CapAmb: 0000000000000000
     CapAmb:	0000000000000000
     ```
 
-结合 [docker 源码](https://github.com/moby/moby/blob/master/oci/caps/defaults.go#L6-L19)可以看出，docker 的进程开放了如下能力：
+结合 [docker 源码](https://github.com/moby/moby/blob/master/oci/caps/defaults.go#L6-L19)可以看出，docker 容器的进程开放了如下能力：
 
 ```go
 func DefaultCapabilities() []string {
@@ -419,7 +419,7 @@ func DefaultCapabilities() []string {
 * root 权限，子进程调用 capset 系统调用，清除危险的能力，默认情况只开启部分必要的不危险的权限。
 * 如果启动的用户不是 root，通过 setuid 等命令，切换到普通用户/组/附属组。
 
-go 语言模拟上述后面两个步骤，如下所示：
+下文，使用 go 语言模拟上述后面两个步骤：
 
 ```go
 package main
