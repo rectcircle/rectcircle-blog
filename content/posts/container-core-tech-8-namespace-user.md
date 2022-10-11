@@ -28,7 +28,9 @@ User Namespace 实现了对进程权限的隔离，其特点如下所示：
     * 另一个 User Namespace 进程是否拥有某 User Namespace 的 Capabilities：
         * 如果一个进程在该 User Namespace 中拥有的 Capabilities，则同样拥有子孙 User Namespace 对应的 Capabilities （比如初始 User Namespace 的 root 进程同样拥有其他所有 User Namespace 的所有 Capabilities）。
         * 父 User Namespace 中创建该子 User Namespace 的有效用户 ID，会被设置为该子 User Namespace 的所有者，因此父 User Namespace 中具有同样有效用户 ID 的进程将具有该子 User Namespace 的全部的 Capabilities。
-* TODO 和其他 Namespace 的关系：
+* 和其他 Namespace 的关系：
+    * 其他 Namespace 会和其创建时的 User Namespace 关联（所有者），这意味着，拥有该 User Namespace 对应的 Capabilities 的进程就有权限操纵这些其他 Namespace 的资源。
+    * 在使用 [`clone(2) 系统调用`](https://man7.org/linux/man-pages/man2/clone.2.html) 或 [`unshare(2) 系统调用`](https://man7.org/linux/man-pages/man2/unshare.2.html)  创建其他 Namespace 时，如果有 `CLONE_NEWUSER` 标志，则内核会先创建出 User Namespace，然后再创建其他的 Namespace。然后，这些其他的 Namespace 和这个刚刚创建的 User Namespace 关联。
 * 非初始 User Namespace 进程的说明和限制：
     * 有些系统调用操作的资源并没有对应的 Namespace 进行隔离，因此只能在初始 User Namespace 中可以调用如：
         * 更改系统时间 （`CAP_SYS_TIME`）
@@ -47,24 +49,6 @@ User Namespace 实现了对进程权限的隔离，其特点如下所示：
     * 当一个非初始 User Namespace 关联了一个 PID Namespace 时，该进程拥有 `CAP_SYS_ADMIN`，自 Linux 3.8 起，将允许 mount /proc 文件系统。
     * 注意，mount 基于块的文件系统时，只允许拥有 `CAP_SYS_ADMIN` 的初始 User Namespace 操作。
 * TODO 父子 User Namespace 身份 ID 映射
-
-### 能力 (Capabilities)
-
-已完成，更新到上面
-
-### User Namespace 嵌套
-
-已完成，更新到上面
-
-### 非初始 User Namespace 能力的限制
-
-已完成，更新到上面
-
-### User Namespace 和其他 Namespace 的关系
-
-其他的 Namespace 基本上都是相互独立的。而 User Namespace 不同，其他的 Namespace 在内核中，会关联一个 User Namespace。进程在调用相关系统调用时，内核会先检查 User Namespace 是否匹配，然后再检查进程 Capabilities。
-
-### 父子 User Namespace 映射
 
 ## 实验
 
