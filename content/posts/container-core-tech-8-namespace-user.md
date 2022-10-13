@@ -22,7 +22,7 @@ User Namespace 实现了对进程权限的隔离，其特点如下所示：
 * 创建： 使用 `CLONE_NEWUSER` 标志调用 [`clone(2) 系统调用`](https://man7.org/linux/man-pages/man2/clone.2.html) 会创建一个新的 User Namespace （当然 [`unshare(2) 系统调用`](https://man7.org/linux/man-pages/man2/unshare.2.html) 也可以，在此不多赘述）。指的特别说明的是，和其他 Namespace 不同，创建 User Namespace 不需要任何特权（换句话说，任意的用户的进程都可以创建一个新的 User Namespace），该 User Namespace 和其创建时所在 User Namespace 构成父子关系。
 * 和 Capabilities 关系：
     * Capabilities 是按 User Namespace 隔离的。
-    * 新创建 User Namespace 的进程拥有当前内核所定义的全部的 Capabilities （具体而言，`cat /proc/新创建User Namespace的进程ID/status | grep Cap` 得到的输出是和 `cat /proc/1/status | grep Cap` 一样，其 `CapEff` 都是 `000001ffffffffff` TODO 待定，但至少 CapBnd 一定是全部的没问题）。
+    * 新创建 User Namespace 的进程拥有当前内核所定义的全部的 Capabilities （具体而言，`cat /proc/新创建User Namespace的进程ID/status | grep Cap` 得到的输出是和 `cat /proc/1/status | grep Cap` 一样，其 `CapEff`、`CapPrm`、`CapBnd` 都是 `000001ffffffffff`）（需要特别注意的是，必须在执行 `execve(2)` 系统调用之前。由于 `unshare 命令` 会在创建名字空间后，执行了 execve，因此 `unshare` 命令创建的 shell 中执行 `cat /proc/$$/status | grep Cap`，看到只有 `CapBnd` 是 `000001ffffffffff`，其他均为 0）。
     * 只有拥有该 User Namespace 的 `CAP_SYS_ADMIN` 能力才能通过 [`setns(2) 系统调用`](https://man7.org/linux/man-pages/man2/setns.2.html) 加入该 User Namespace，加入后该进程将拥有当前内核所定义的全部的 Capabilities。
     * 在一个 User Namespace 中，[`execve(2) 系统调用`](https://man7.org/linux/man-pages/man2/execve.2.html) 会重新计算 Capabilities，参见：[Linux 进程权限](/posts/linux-process-permission/)。
     * 另一个 User Namespace 进程是否拥有某 User Namespace 的 Capabilities：
