@@ -1,7 +1,7 @@
 ---
 title: "容器核心技术（八） User Namespace"
-date: 2022-09-19T00:01:00+08:00
-draft: true
+date: 2022-10-15T00:15:42+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -66,10 +66,11 @@ User Namespace 实现了对进程权限的隔离，其特点如下所示：
             * 如果是该 User Namespace 的进程写入，要求创建该 User Namespace 时的父进程必须有的 `CAP_SETFCAP` capability。
             * 如果是该 User Namespace 的父 User Namespace 的进程写入，要求该父进程必须有的 `CAP_SETFCAP` capability。
         * 以下两个 case 需要特别说明：
-            * 当写入进程有父 User Namespace 的 `CAP_SETUID` (`CAP_SETGID`) capability 时，则没有其他限制。
-            * 否则，存在如下限制：
+            * 当写入进程有父 User Namespace 的 `CAP_SETUID` (`CAP_SETGID`) capability 时，则没有其他限制（按照如上规则。此情况，只有父进程写入常见场景才满足）。
+            * 否则，存在如下限制（子进程写入场景）：
                 * 写入进程和创建该 User Namespace 的父进程有相同 effective user ID （EUID），且写入的内容必须包含一个映射到父进程的 EUID 的行。
                 * 写入在 gid_map 之前，必须通过写入 `"deny"` 到 `/proc/[pid]/setgroups` 文件，来禁用 [`setgroups(2)`](https://man7.org/linux/man-pages/man2/setgroups.2.html) 系统调用。
+        * 综上所述，推荐的模式是，父进程创建完 User Namespace 后，在父进程中写入 id map，然后通过进程通讯技术（如 pipe）通知位于新的 User Namespace 中的子进程。
     * 初始 User Namespace 没有父 User Namespace，但为了一致 `cat /proc/1/uid_map` 返回 `0          0 4294967295` （`4294967295 = 2^32-1`，`2^32` 即 `-1` 不被映射，原因是在一些系统调用中表示无用户）
     * `/proc/[pid]/setgroups`
         * 通过写入 `"deny"` 到 `/proc/[pid]/setgroups` 来禁用 [`setgroups(2)`](https://man7.org/linux/man-pages/man2/setgroups.2.html) 系统调用 （加入自：Linux 3.19，解决安全问题）。
@@ -95,32 +96,416 @@ User Namespace 实现了对进程权限的隔离，其特点如下所示：
 
 ### 实验设计
 
-当前进程可以通过 `chown` 修改父级成家目录文件的所有者。?
+* 测试程序逻辑如下：
+    * 进程 A：测试程序所在的进程为进程 A。
+        * 观察自己的 Capabilities。
+        * 创建一个测试文件 testFile。
+        * 使用 `SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWNS` 标志，通过 `clone(2)` 系统调用创建一个进程 B。
+        * 写入 `0 0 4294967295` 到进程 B 的 `uid_map` 和 `gid_map`，并通过 pipe 通知进程 B。
+        * 等待进程 B 退出。
+        * 删除测试文件 testFile。
+    * 进程 B 引导阶段：即在执行 exec 之前。
+        * 等待进程 B 写入 `uid_map` 和 `gid_map` 的完成通知。
+        * 观察自己的 Capabilities。
+        * 尝试通过 chown(2) 系统调用，修改 testFile 文件的 Owner。
+        * 重新挂载 `/proc`。
+        * 通过 `execve(2) 系统调用` 在进程 B 执行一段 shell 测试程序：
+            * 观察自己的 Capabilities。
+            * 观察自己身份。
+            * 执行 `ps -ef`
+            * 观察 `~` 和 `/` 目录。
+            * 修改并查看测试文件 testFile 文件。
+            * 通过 `sudo chown` 修改 testFile 文件的 owner
+* 编译后，通过 `sudo setcap CAP_SETUID,CAP_SETGID,CAP_SETFCAP,CAP_DAC_OVERRIDE+ep a.out` 给程序添加相关 Caps。
+* 使用普通用户（拥有免密 sudo 权限）执行如上测试程序。
 
-### Go 源码
+### C 源码
 
-### 输出分析
+由于 `execve(2) 系统调用` 会改变进程的 Capabilities，因此测试程序只能用 C 语言编写。
 
-## 总结
+```c
+// sudo apt install -y libcap2-bin
+// gcc src/c/01-namespace/06-user/main.c && sudo setcap CAP_SETUID,CAP_SETGID,CAP_SETFCAP,CAP_DAC_OVERRIDE+ep a.out  && ./a.out
+// sudo getcap a.out
 
-### Linux User Namespace 关系图
+#define _GNU_SOURCE	     // Required for enabling clone(2)
+#include <sys/wait.h>    // For waitpid(2)
+#include <sys/mount.h>   // For mount(2)
+#include <sys/mman.h>    // For mmap(2)
 
-进程是核心，User Namespace 之间、User Namespace 和 其他 Namespace、User Namespace 和 Caps、User Namespace 和 UserID、User Namespace 和 文件系统。
+#include <sched.h>	   // For clone(2)
+#include <stdio.h>	   // For perror(3), printf(3), perror(3)
+#include <unistd.h>    // For execv(3), sleep(3), read(2)
+#include <stdlib.h>	   // For exit(3), system(3), free(3), realloc(3)
+#include <errno.h>	   // For errno(3), strerror(3)
+#include <string.h>	   // For strtok(3)
+#include <fcntl.h>     // For open(2)
 
-### Linux 系统调用权限校验流程
+#define errExit(msg)    do { perror(msg); exit(EXIT_FAILURE); \
+							   } while (0)
 
-通过对 Linux 进程的用户身份、Capabilities 以及 User Namespace 的了解。
+#define STACK_SIZE (1024 * 1024)
 
-可以看出，Linux 内核判断某进程对某个系统调用是否有权限的逻辑如下所示：
+char *testFileName = "testFile";
 
-## 应用场景
+// https://stackoverflow.com/a/44894946
+/* Size of each input chunk to be
+   read and allocate for. */
+
+#define  READALL_CHUNK  4096
+#define  READALL_OK          0  /* Success */
+#define  READALL_INVALID    -1  /* Invalid parameters */
+#define  READALL_ERROR      -2  /* Stream error */
+#define  READALL_TOOMUCH    -3  /* Too much input */
+#define  READALL_NOMEM      -4  /* Out of memory */
+
+/* This function returns one of the READALL_ constants above.
+   If the return value is zero == READALL_OK, then:
+	 (*dataptr) points to a dynamically allocated buffer, with
+	 (*sizeptr) chars read from the file.
+	 The buffer is allocated for one extra char, which is NUL,
+	 and automatically appended after the data.
+   Initial values of (*dataptr) and (*sizeptr) are ignored.
+*/
+int readall(FILE *in, char **dataptr, size_t *sizeptr)
+{
+	char  *data = NULL, *temp;
+	size_t size = 0;
+	size_t used = 0;
+	size_t n;
+
+	/* None of the parameters can be NULL. */
+	if (in == NULL || dataptr == NULL || sizeptr == NULL)
+		return READALL_INVALID;
+
+	/* A read error already occurred? */
+	if (ferror(in))
+		return READALL_ERROR;
+
+	while (1) {
+
+		if (used + READALL_CHUNK + 1 > size) {
+			size = used + READALL_CHUNK + 1;
+
+			/* Overflow check. Some ANSI C compilers
+			   may optimize this away, though. */
+			if (size <= used) {
+				free(data);
+				return READALL_TOOMUCH;
+			}
+
+			temp = realloc(data, size);
+			if (temp == NULL) {
+				free(data);
+				return READALL_NOMEM;
+			}
+			data = temp;
+		}
+
+		n = fread(data + used, 1, READALL_CHUNK, in);
+		if (n == 0)
+			break;
+
+		used += n;
+	}
+
+	if (ferror(in)) {
+		free(data);
+		return READALL_ERROR;
+	}
+
+	temp = realloc(data, used + 1);
+	if (temp == NULL) {
+		free(data);
+		return READALL_NOMEM;
+	}
+	data = temp;
+	data[used] = '\0';
+
+	*dataptr = data;
+	*sizeptr = used;
+
+	return READALL_OK;
+}
+
+
+
+void print_caps() {
+	FILE *f = fopen("/proc/self/status", "r");
+	if (f == NULL)
+		errExit("fopen");
+	char *buf;
+	size_t len;
+	if (readall(f, &buf, &len) != READALL_OK)
+		errExit("readall");
+	fclose(f);
+
+	char *delimiter = "\r\n";
+	char *line = strtok(buf, delimiter);
+	while (line != NULL) {
+		char *pre = "Cap";
+		if (strncmp(pre, line, strlen(pre)) == 0)
+			printf("%s\n", line);
+		line = strtok(NULL, delimiter);
+	}
+}
+
+static void
+update_map(char *mapping, char *map_file)
+{
+	int fd, j;
+	size_t map_len = map_len = strlen(mapping);
+
+	fd = open(map_file, O_RDWR);
+	if (fd == -1)
+	{
+		fprintf(stderr, "open %s: %s\n", map_file, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	if (write(fd, mapping, map_len) != map_len)
+	{
+		fprintf(stderr, "write %s: %s\n", map_file, strerror(errno));
+		exit(EXIT_FAILURE);
+	}
+	close(fd);
+}
+
+struct child_args {
+	int pipe_fd[2]; /* Pipe used to synchronize parent and child */
+};
+
+char *const test_scripts[] = {
+	"/bin/bash",
+	"-c",
+	"echo '>>>' 01.当前进程ID && echo $$ && echo \
+	&& echo '>>>' 02.查看当前进程 Caps && cat /proc/self/status | grep Cap && echo \
+	&& echo '>>>' 03.当前进程身份 && id && echo \
+	&& echo '>>>' 04.执行 ps -ef && ps -ef && echo \
+	&& echo '>>>' 05.执行 ls -al / && ls -al / && echo \
+	&& echo '>>>' 06.执行 ls -al && ls -al && echo \
+	&& echo '>>>' 07.执行 ls -al && ls -al && echo \
+	&& echo '>>>' 08.写入 abc 到 testFile 并查看 && echo 'abc' > testFile && cat testFile && echo \
+	&& echo '>>>' 09.sudo 更改 testFile owner 为 root && sudo chown root:root testFile && ls -al testFile && echo \
+	",
+	NULL};
+
+int new_namespace_func(void *args) {
+	struct child_args *typedArgs = (struct child_args *)args;
+
+	char ch;
+	close(typedArgs->pipe_fd[1]);
+	if (read(typedArgs->pipe_fd[0], &ch, 1) != 0) {
+        fprintf(stderr, "Failure in child: read from pipe returned != 0\n");
+        exit(EXIT_FAILURE);
+    }
+
+	printf("时序 05: 打印进程 B 的 Caps、 进程 ID 和 用户 ID\n");
+	print_caps();
+	printf("pid: %d\n", getpid());
+	printf("uid: %d\n", getuid());
+	printf("\n");
+
+	printf("时序 06: 尝试更改测试文件 owner\n");
+	if (chown(testFileName, 0, 0) < 0)
+		errExit("chown-root");
+	if (chown(testFileName, getuid(), getuid()) < 0)
+		errExit("chown-uid");
+	printf("成功\n\n");
+
+	printf("时序 07: 重新挂载 /proc\n\n");
+	if (mount(NULL, "/", NULL, MS_SLAVE | MS_REC, NULL) == -1) // 阻止挂载事件传播到其他 Mount Namespace
+		errExit("mount-MS_SLAVE");
+	if (mount("proc", "/proc", "proc", 0, NULL) == -1)
+		errExit("mount-proc");
+
+	printf("时序 08: 执行测试脚本\n");
+	execv(test_scripts[0], test_scripts);
+
+	return 0;
+}
+
+int main(int argc, char *argv[]) {
+
+	printf("时序 01: 打印进程 A 的 Caps 和 进程 ID\n");
+	print_caps();
+	printf("pid: %d\n", getpid());
+	printf("\n");
+
+	printf("时序 02: 创建一个测试文件\n\n");
+	int f = open(testFileName, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (f < 0)
+		errExit("open-testFile");
+
+	printf("时序 03: 创建一个新进程 B，这个进程位于新的 User、Mount、PID Namespace\n");
+	struct child_args args;
+	if ( pipe(args.pipe_fd) == -1)
+		errExit("pipe");
+	void *child_stack = mmap(NULL, STACK_SIZE,
+							 PROT_READ | PROT_WRITE,
+							 MAP_PRIVATE | MAP_ANONYMOUS | MAP_STACK,
+							 -1, 0);
+	if (child_stack == MAP_FAILED)
+		errExit("mmap");
+	pid_t pid = clone(new_namespace_func, child_stack + STACK_SIZE, SIGCHLD | CLONE_NEWUSER | CLONE_NEWPID | CLONE_NEWNS, &args);
+	if (pid < 0)
+		errExit("clone");
+	printf("pid: %d\n\n", getpid());
+
+	printf("时序 04: 配置子进程的 id map\n\n");
+
+	char map_path[128];
+	sprintf(map_path, "/proc/%d/uid_map", pid);
+	update_map("0 0 4294967295", map_path);
+	sprintf(map_path, "/proc/%d/gid_map", pid);
+	update_map("0 0 4294967295", map_path);
+	close(args.pipe_fd[1]);
+
+	if (waitpid(pid, NULL, 0) < 0)
+		errExit("pid");
+	printf("时序 09: 子进程 B 退出，并清理现场\n\n");
+	unlink(testFileName);
+	return 0;
+}
+```
+
+### 实验输出
+
+```
+时序 01: 打印进程 A 的 Caps 和 进程 ID
+CapInh: 0000000000000000
+CapPrm: 00000000800000c2
+CapEff: 00000000800000c2
+CapBnd: 000001ffffffffff
+CapAmb: 0000000000000000
+pid: 17255
+
+时序 02: 创建一个测试文件
+
+时序 03: 创建一个新进程 B，这个进程位于新的 User、Mount、PID Namespace
+pid: 17255
+
+时序 04: 配置子进程的 id map
+
+时序 05: 打印进程 B 的 Caps、 进程 ID 和 用户 ID
+CapInh: 0000000000000000
+CapPrm: 000001ffffffffff
+CapEff: 000001ffffffffff
+CapBnd: 000001ffffffffff
+CapAmb: 0000000000000000
+pid: 1
+uid: 1000
+
+时序 06: 尝试更改测试文件 owner
+成功
+
+时序 07: 重新挂载 /proc
+
+时序 08: 执行测试脚本
+>>> 01.当前进程ID
+1
+
+>>> 02.查看当前进程 Caps
+CapInh: 0000000000000000
+CapPrm: 0000000000000000
+CapEff: 0000000000000000
+CapBnd: 000001ffffffffff
+CapAmb: 0000000000000000
+
+>>> 03.当前进程身份
+用户id=1000(rectcircle) 组id=1000(rectcircle) 组=1000(rectcircle),24(cdrom),25(floppy),29(audio),30(dip),44(video),46(plugdev),109(netdev),112(bluetooth)
+
+>>> 04.执行 ps -ef
+UID          PID    PPID  C STIME TTY          TIME CMD
+rectcir+       1       0  0 15:12 pts/4    00:00:00 /bin/bash -c echo '>>>' 01.当前进程ID
+rectcir+       5       1  0 15:12 pts/4    00:00:00 ps -ef
+
+>>> 05.执行 ls -al /
+总用量 68
+drwxr-xr-x  18 root root  4096  2月 13  2022 .
+drwxr-xr-x  18 root root  4096  2月 13  2022 ..
+lrwxrwxrwx   1 root root     7  2月 13  2022 bin -> usr/bin
+drwxr-xr-x   3 root root  4096  2月 13  2022 boot
+drwxr-xr-x  17 root root  3140 10月 13 19:49 dev
+drwxr-xr-x  79 root root  4096 10月 15 11:36 etc
+drwxr-xr-x   3 root root  4096  2月 13  2022 home
+lrwxrwxrwx   1 root root    31  2月 13  2022 initrd.img -> boot/initrd.img-5.10.0-11-amd64
+lrwxrwxrwx   1 root root    31  2月 13  2022 initrd.img.old -> boot/initrd.img-5.10.0-10-amd64
+lrwxrwxrwx   1 root root     7  2月 13  2022 lib -> usr/lib
+lrwxrwxrwx   1 root root     9  2月 13  2022 lib32 -> usr/lib32
+lrwxrwxrwx   1 root root     9  2月 13  2022 lib64 -> usr/lib64
+lrwxrwxrwx   1 root root    10  2月 13  2022 libx32 -> usr/libx32
+drwx------   2 root root 16384  2月 13  2022 lost+found
+drwxr-xr-x   3 root root  4096  2月 13  2022 media
+drwxr-xr-x   2 root root  4096  2月 13  2022 mnt
+drwxr-xr-x   2 root root  4096  2月 13  2022 opt
+dr-xr-xr-x 155 root root     0 10月 15 15:12 proc
+drwx------   5 root root  4096  9月 18 23:23 root
+drwxr-xr-x  17 root root   580 10月 15 00:01 run
+lrwxrwxrwx   1 root root     8  2月 13  2022 sbin -> usr/sbin
+drwxr-xr-x   2 root root  4096  2月 13  2022 srv
+dr-xr-xr-x  13 root root     0 10月 13 19:49 sys
+drwxrwxrwt  14 root root  4096 10月 15 15:12 tmp
+drwxr-xr-x  14 root root  4096  2月 13  2022 usr
+drwxr-xr-x  12 root root  4096  3月 15  2022 var
+lrwxrwxrwx   1 root root    28  2月 13  2022 vmlinuz -> boot/vmlinuz-5.10.0-11-amd64
+lrwxrwxrwx   1 root root    28  2月 13  2022 vmlinuz.old -> boot/vmlinuz-5.10.0-10-amd64
+
+>>> 06.执行 ls -al
+总用量 60
+drwxr-xr-x  5 rectcircle rectcircle 12288 10月 15 15:12 .
+drwxr-xr-x 14 rectcircle rectcircle  4096 10月 15 15:00 ..
+-rwxr-xr-x  1 rectcircle rectcircle 18520 10月 15 15:12 a.out
+drwxr-xr-x  6 rectcircle rectcircle  4096  3月  8  2022 data
+-rw-r--r--  1 rectcircle rectcircle   259  9月 18 23:18 go.mod
+-rw-r--r--  1 rectcircle rectcircle   843  9月 18 23:18 go.sum
+-rw-r--r--  1 rectcircle rectcircle   192  2月 23  2022 README.md
+drwxr-xr-x  5 rectcircle rectcircle  4096  2月 27  2022 src
+-rw-r--r--  1 rectcircle rectcircle     0 10月 15 15:12 testFile
+drwxr-xr-x  2 rectcircle rectcircle  4096 10月 13 21:46 .vscode
+
+>>> 07.执行 ls -al
+总用量 60
+drwxr-xr-x  5 rectcircle rectcircle 12288 10月 15 15:12 .
+drwxr-xr-x 14 rectcircle rectcircle  4096 10月 15 15:00 ..
+-rwxr-xr-x  1 rectcircle rectcircle 18520 10月 15 15:12 a.out
+drwxr-xr-x  6 rectcircle rectcircle  4096  3月  8  2022 data
+-rw-r--r--  1 rectcircle rectcircle   259  9月 18 23:18 go.mod
+-rw-r--r--  1 rectcircle rectcircle   843  9月 18 23:18 go.sum
+-rw-r--r--  1 rectcircle rectcircle   192  2月 23  2022 README.md
+drwxr-xr-x  5 rectcircle rectcircle  4096  2月 27  2022 src
+-rw-r--r--  1 rectcircle rectcircle     0 10月 15 15:12 testFile
+drwxr-xr-x  2 rectcircle rectcircle  4096 10月 13 21:46 .vscode
+
+>>> 08.写入 abc 到 testFile 并查看
+abc
+
+>>> 09.sudo 更改 testFile owner 为 root
+-rw-r--r-- 1 root root 4 10月 15 15:12 testFile
+
+时序 09: 子进程 B 退出，并清理现场
+
+```
+
+### 实验总结
+
+* 该程序只需要 `CAP_SETUID,CAP_SETGID,CAP_SETFCAP,CAP_DAC_OVERRIDE` 这四个权限，从文章 [Linux 进程权限](/posts/linux-process-permission/#实例：容器进程权限限制) 可以得知，docker 默认是有这四个权限的，因此这个程序可以在 Docker 容器中执行。
+* 改程序实现了，在 Linux 中创建一个子进程，这个子进程完全看不到其他子进程的，且该进程拥有的权限和父进程完全一致。
+
+## Rootless
+
+默认情况下 Docker 和 k8s 并没有使用 User Namespace。
+
+在容器技术中，rootless 容器才会使用 User Namespace （如： [Docker rootless 模式](https://docs.docker.com.zh.xy2401.com/engine/security/rootless/)），其整体实现原理类似上述过程。
+
+目前 Rootless 容器在网络和 OverlayFS 上存在一定的限制。
+
+更多关于 rootless 容器，参见： https://rootlesscontaine.rs/ 。
 
 ## 参考
 
-https://www.junmajinlong.com/virtual/namespace/user_namespace/
-
-rootless
-
-* https://rootlesscontaine.rs/
-* https://docs.docker.com/engine/security/rootless/
-* https://developer.aliyun.com/article/700923
+* [user_namespaces(7) — Linux manual page](https://man7.org/linux/man-pages/man7/user_namespaces.7.html)
+* [实验源码参考：userns_child_exec.c](https://lwn.net/Articles/539940/)
+* [User Namespace 子进程写入 id map 文件的例子：Linux namespace 简介 part 6 - USER](https://blog.lucode.net/linux/intro-Linux-namespace-6.html)
+* [包含一系列 lwn.net 示例：Namespaces in operation part 5: User namespaces](https://www.361shipin.com/blog/1554013022308007936)
+* [rootless container](https://rootlesscontaine.rs/)
+* [docker rootless](https://docs.docker.com/engine/security/rootless/)
