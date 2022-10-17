@@ -110,14 +110,3 @@ Linux 的文档非常丰富，且组织良好。通过 [man 站点](https://man7
     * `clone` 系统调用本身并不接受一个函数指针作为参数，其真实声明类似于，`long clone(unsigned long flags, void *child_stack, void *ptid, void *ctid, struct pt_regs *regs);`，参见：[stackoverflow](https://stackoverflow.com/a/18904917)。
     * 在 Linux 5.3 之后，[`clone` 函数](https://man7.org/linux/man-pages/man2/clone.2.html#VERSIONS) 开始使用 clone3 系统调用
     * 编写跨 Unix 平台程序时，不建议使用。
-
-## Linux 文件系统
-
-关于 Linux 的文件系统，众所周知的有：一切皆文件的理念，以及 ext2，ext4 这些文件系统。
-
-从设计角度来看，Linux 文件系统的遵循插件化/面向接口的原则，Linux 定义了两套接口：
-
-* 面向 Linux 使用者的，一切皆文件的，文件/目录树操作的系统调用。比如：打开文件 `open`，查看路径状态 `stat` 等
-* 面向 Linux 开发者的，VFS （Virtual File System，虚拟文件系统）。上面提到的 ext2、ext4 以及网络文件系统 ceph、联合文件系统 overlay2 等都是 VFS 的一种实现。在实现上，开发者只需要实现有限几个函数，并编译成一个 Linux 模块，并插入到内核中即可为 Linux 添加一种新的 VFS 的实现。简单的实现参见：[博客 1](https://blog.csdn.net/qq_35536179/article/details/109013447) | [博客 2](https://blog.csdn.net/dog250/article/details/100099936)
-
-此外 Linux 还提供了 `mount 系统调用`，来将 VFS 和目录树节点绑定。

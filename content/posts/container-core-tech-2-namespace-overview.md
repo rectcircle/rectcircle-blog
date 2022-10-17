@@ -41,7 +41,7 @@ Namespace 在 Linux 中是进程的属性和进程组紧密相关：一个进程
 * 创建：通过 [`unshare(2) 系统调用`](https://man7.org/linux/man-pages/man2/unshare.2.html)为**当前进程**创建新的 Namespace（PID Namespace 是个例外，参见后续文章）
 * 查看：通过 [`ioctl_ns(2) 系统调用`](https://man7.org/linux/man-pages/man2/ioctl_ns.2.html)来查看命名空间的关系（主要是 user namespace 和 pid namespace）
 
-除了系统调用外，Linux 也提供了响应的命令来创建、加入 Namespace：
+除了系统调用外，Linux 也提供了相应的命令来创建、加入 Namespace：
 
 * 创建：通过 [`unshare(1) 命令`](https://man7.org/linux/man-pages/man1/unshare.1.html)启动一个进程，然后再为该进程，创建新的 Namespace（PID Namespace 是个例外，参见后续文章），该命令的实现为：先调用 [`unshare(2) 系统调用`](https://man7.org/linux/man-pages/man2/unshare.2.html)，然后 **`exec`** 执行命令
 * 加入：通过 [`nsenter(1) 命令`](https://man7.org/linux/man-pages/man1/nsenter.1.html)启动一个进程，然后再将该进程，加入一个 Namespace（PID Namespace 是个例外，参见后续文章），该命令的实现为：先调用 [`setns(2) 系统调用`](https://man7.org/linux/man-pages/man2/unshare.2.html)，然后 **`fork-exec`** 执行命令
