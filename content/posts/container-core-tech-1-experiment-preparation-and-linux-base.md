@@ -41,7 +41,7 @@ tags:
     echo 'auto enpo0s8' >> /etc/network/interfaces
     echo 'iface enpo0s8 inet dhcp' >> /etc/network/interfaces
     systemctl restart networking
-    if a # 查看 IP 是 192.168.56.xxx
+    ip a # 查看 IP 是 192.168.56.xxx
     ```
 
 * 宿主机执行 `ssh 普通用户名@192.168.56.xxx` 输入密码登录
