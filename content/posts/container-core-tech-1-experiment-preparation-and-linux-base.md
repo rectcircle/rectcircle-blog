@@ -1,5 +1,5 @@
 ---
-title: "容器核心技术（一） 实验环境准备 & Linux 概述"
+title: "容器核心技术（一）概述 & 实验环境准备 & 基础概念"
 date: 2022-02-11T20:17:40+08:00
 draft: false
 toc: true
@@ -7,6 +7,12 @@ comments: true
 tags:
   - 云原生
 ---
+
+## 概述
+
+本系列主要介绍的是：容器化技术涉及的 Linux 系统调用，如 Namespace、网络设备、cgroup 等。
+
+主要参考： [man7.org](https://man7.org/) 站点、[《自己动手写 Docker》](https://weread.qq.com/web/bookDetail/a8932240721e42b5a89f479)、[《UNIX环境高级编程（第3版）》](http://www.apuebook.com/) 以及部分 Docker 文档和源码。
 
 ## 实验环境准备
 
@@ -90,23 +96,3 @@ Linux 是一个操作系统平台，其在应用层提供了多种能力，从�
 * [unshare 命令](https://man7.org/linux/man-pages/man1/unshare.1.html)
 
 Linux 的文档非常丰富，且组织良好。通过 [man 站点](https://man7.org/linux/man-pages/index.html)可以查看最权威详实的文档。
-
-## Linux 创建进程
-
-在 Linux 中，创建进程众所周知的就是 `fork` 函数。实际上，创建进程的库函数有：
-
-* [`fork` 函数](https://man7.org/linux/man-pages/man2/fork.2.html)：通过复制当前进程的方式，创建一个新进程，返回新进程的进程 ID，父进程返回 0。[注意](https://man7.org/linux/man-pages/man2/fork.2.html#NOTES)：
-    * 页表会进行全量复制，内存写时复制。
-    * Linux kernel 2.3.3 之前，fork 是一个系统调用包装
-    * Linux kernel 2.3.3 之后，fork 只是一个 glibc 的库函数，最终调用 `clone` 系统调用（使用 `SIGCHLD` 标志）
-* [`vfork` 函数](https://man7.org/linux/man-pages/man2/vfork.2.html)：类似于 `fork` 性能略优于 `fork`，不会复制页表。编写跨 Unix 平台程序时，不建议使用。[注意](https://man7.org/linux/man-pages/man2/vfork.2.html)：
-    * 不会复制页表，因此新进程不应该修改内存而是直接调用 `exec` 相关函数
-    * 在 Linux 中 `vfork` 不是一个系统调用，只是一个 glibc 的库函数，最终调用 `clone` 系统调用（使用 `CLONE_VM | CLONE_VFORK | SIGCHLD` 标志）
-* [`clone` 函数](https://man7.org/linux/man-pages/man2/clone.2.html)：创建一个新进程（线程），与 `fork` 和 `vfork` 相比：
-    * 可以更精确的控制，哪些执行上下文在之间共享，可以做到 `fork`、`vfork`、`pthread_create` 类似的效果
-    * 可以控制进程的**Namespace**（容器的核心技术）
-    需要注意的是：
-    * [`clone` 函数](https://man7.org/linux/man-pages/man2/clone.2.html) 是一个 glibc 函数，其也是 `clone` 系统调用的封装。
-    * `clone` 系统调用本身并不接受一个函数指针作为参数，其真实声明类似于，`long clone(unsigned long flags, void *child_stack, void *ptid, void *ctid, struct pt_regs *regs);`，参见：[stackoverflow](https://stackoverflow.com/a/18904917)。
-    * 在 Linux 5.3 之后，[`clone` 函数](https://man7.org/linux/man-pages/man2/clone.2.html#VERSIONS) 开始使用 clone3 系统调用
-    * 编写跨 Unix 平台程序时，不建议使用。

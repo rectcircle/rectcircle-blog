@@ -32,6 +32,28 @@ tags:
 | Cgroup | CLONE_NEWCGROUP | [cgroup_namespaces(7)](https://man7.org/linux/man-pages/man7/cgroup_namespaces.7.html) | Kernel 4.6, 2016 |  Cgroup 命名空间，类似 chroot，隔离 cgroup 层次结构，子命名空间看到的根 cgroup 结构实际上是父命名空间的一个子树。|
 | Time | CLONE_NEWTIME | [time_namespaces(7)](https://man7.org/linux/man-pages/man7/time_namespaces.7.html) | Kernel 5.6, 2020 | 系统时间命名空间，与 UTS 命名空间类似，允许不同的进程看到不同的系统时间。|
 
+## Linux 创建进程
+
+在 Linux 中，创建进程众所周知的就是 `fork` 函数。实际上，创建进程的库函数有：
+
+* [`fork` 函数](https://man7.org/linux/man-pages/man2/fork.2.html)：通过复制当前进程的方式，创建一个新进程，返回新进程的进程 ID，父进程返回 0。[注意](https://man7.org/linux/man-pages/man2/fork.2.html#NOTES)：
+    * 页表会进行全量复制，内存写时复制。
+    * Linux kernel 2.3.3 之前，fork 是一个系统调用包装
+    * Linux kernel 2.3.3 之后，fork 只是一个 glibc 的库函数，最终调用 `clone` 系统调用（使用 `SIGCHLD` 标志）
+* [`vfork` 函数](https://man7.org/linux/man-pages/man2/vfork.2.html)：类似于 `fork` 性能略优于 `fork`，不会复制页表。编写跨 Unix 平台程序时，不建议使用。[注意](https://man7.org/linux/man-pages/man2/vfork.2.html)：
+    * 不会复制页表，因此新进程不应该修改内存而是直接调用 `exec` 相关函数
+    * 在 Linux 中 `vfork` 不是一个系统调用，只是一个 glibc 的库函数，最终调用 `clone` 系统调用（使用 `CLONE_VM | CLONE_VFORK | SIGCHLD` 标志）
+* [`clone` 函数](https://man7.org/linux/man-pages/man2/clone.2.html)：创建一个新进程（线程），与 `fork` 和 `vfork` 相比：
+    * 可以更精确的控制，哪些执行上下文在之间共享，可以做到 `fork`、`vfork`、`pthread_create` 类似的效果
+    * 可以控制进程的**Namespace**（容器的核心技术）
+    需要注意的是：
+    * [`clone` 函数](https://man7.org/linux/man-pages/man2/clone.2.html) 是一个 glibc 函数，其也是 `clone` 系统调用的封装。
+    * `clone` 系统调用本身并不接受一个函数指针作为参数，其真实声明类似于，`long clone(unsigned long flags, void *child_stack, void *ptid, void *ctid, struct pt_regs *regs);`，参见：[stackoverflow](https://stackoverflow.com/a/18904917)。
+    * 在 Linux 5.3 之后，[`clone` 函数](https://man7.org/linux/man-pages/man2/clone.2.html#VERSIONS) 开始使用 clone3 系统调用
+    * 编写跨 Unix 平台程序时，不建议使用。
+
+Namespace 实际上就是 Linux 在进程层面提供的一系列对全局系统资源进行隔离的机制。
+
 ## 系统调用和命令
 
 Namespace 在 Linux 中是进程的属性和进程组紧密相关：一个进程的 Namespace 默认是和其父进程保持一致的。Linux 提供了几个系统调用，来创建、加入观察 Namespace：
