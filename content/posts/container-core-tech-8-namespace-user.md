@@ -486,10 +486,52 @@ abc
 
 ```
 
-### 实验总结
+### /proc 问题
 
-* 该程序只需要 `CAP_SETUID,CAP_SETGID,CAP_SETFCAP,CAP_DAC_OVERRIDE` 这四个权限，从文章 [Linux 进程权限](/posts/linux-process-permission/#实例：容器进程权限限制) 可以得知，docker 默认是有这四个权限的，因此这个程序可以在 Docker 容器中执行。
-* 改程序实现了，在 Linux 中创建一个子进程，这个子进程完全看不到其他子进程的，且该进程拥有的权限和父进程完全一致。
+从文章 [Linux 进程权限](/posts/linux-process-permission/#实例：容器进程权限限制) 可以得知，docker 默认是有 `CAP_SETUID,CAP_SETGID,CAP_SETFCAP,CAP_DAC_OVERRIDE` 这四个权限。似乎上述代码可以在 Docker/k8s 中运行。但是实测，这个程序并不能在 默认的 Docker/k8s 容器中运行。
+
+在 Linux 虚拟机中执行 `mount | grep /proc` 输出如下：
+
+```
+proc on /proc type proc (rw,nosuid,nodev,noexec,relatime)
+systemd-1 on /proc/sys/fs/binfmt_misc type autofs (rw,relatime,fd=30,pgrp=1,timeout=0,minproto=5,maxproto=5,direct,pipe_ino=10609)
+```
+
+在 docker 容器中执行 `mount | grep /proc` 输出如下：
+
+```
+proc on /proc type proc (rw,nosuid,nodev,noexec,relatime)
+proc on /proc/bus type proc (ro,relatime)
+proc on /proc/fs type proc (ro,relatime)
+proc on /proc/irq type proc (ro,relatime)
+proc on /proc/sys type proc (ro,relatime)
+proc on /proc/sysrq-trigger type proc (ro,relatime)
+tmpfs on /proc/asound type tmpfs (ro,relatime)
+tmpfs on /proc/acpi type tmpfs (ro,relatime)
+tmpfs on /proc/kcore type tmpfs (rw,nosuid,size=65536k,mode=755)
+tmpfs on /proc/keys type tmpfs (rw,nosuid,size=65536k,mode=755)
+tmpfs on /proc/timer_list type tmpfs (rw,nosuid,size=65536k,mode=755)
+tmpfs on /proc/sched_debug type tmpfs (rw,nosuid,size=65536k,mode=755)
+```
+
+通过查阅 docker 代码可以看出，这是有 `HostConfig` 的 [`MaskedPaths`](https://github.com/moby/moby/blob/8d193d81af9cbbe800475d4bb8c529d67a6d8f14/api/types/container/host_config.go#L458) 和 [`ReadonlyPaths`](https://github.com/moby/moby/blob/8d193d81af9cbbe800475d4bb8c529d67a6d8f14/api/types/container/host_config.go#L461) 字段配置的，默认值参见：[docker 源码](https://github.com/moby/moby/blob/968a0bcd636b3720d2178d5dfed691c00c68e4a1/oci/defaults.go#L87)。更多参见： runc 对应的是[实现源码](https://github.com/opencontainers/runc/blob/bd69483df53570df10040b6b21f4cf798b9f6d3d/libcontainer/rootfs_linux.go#L1022)。
+
+通过 runc 的 [Issue](https://github.com/opencontainers/runc/issues/1658) 可以看出，这是 [Linux 内核的一个限制](https://github.com/opencontainers/runc/issues/1658#issuecomment-375750981)：当 `/proc` 存在被遮蔽的目录时，mount proc 将报错。因此，上面代码的 `mount("proc", "/proc", "proc", 0, NULL)` 行将报错：
+
+```
+Operation not permitted
+```
+
+有人提了一个 [PR](https://lists.linuxfoundation.org/pipermail/containers/2018-April/038840.html) 其修复该问题，但是并未合入。
+
+如果需要解决该问题，有如下两种方案：
+
+* 开启特权模式。
+* 关闭 `/proc` 的遮蔽（未测试）：
+    * k8s： `spec.containers[*].securityContext.procMount: "Unmasked"` (安装集群时，需配置开启该特性门 https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/)
+    * docker：需要配置 `MaskedPaths`，只能通过客户端配置， cli 不支持，参见：[源码](https://github.com/moby/moby/blob/8d193d81af9cbbe800475d4bb8c529d67a6d8f14/api/types/container/host_config.go#L458)。
+
+上述方式都不是我们正常的容器使用方式，带来了额外的复杂度。因此：在默认配置的容器中创建 User + Mount + PID Namespace 的进程来进行一定的隔离是不可能的。
 
 ## Rootless
 
@@ -497,7 +539,7 @@ abc
 
 在容器技术中，rootless 容器才会使用 User Namespace （如： [Docker rootless 模式](https://docs.docker.com.zh.xy2401.com/engine/security/rootless/)），其整体实现原理类似上述过程。
 
-目前 Rootless 容器在网络和 OverlayFS 上存在一定的限制。
+目前：Rootless 容器在挂载 /proc、网络和 OverlayFS 上存在一定的限制。
 
 更多关于 rootless 容器，参见： https://rootlesscontaine.rs/ 。
 
