@@ -14,17 +14,18 @@ tags:
 
 这里通过实验来验证这些字段的含义和用途，防止错误配置出现线上 bug。
 
-## 参数概述
+## 重试机制
 
 * [`proxy_next_upstream`](http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_next_upstream)：默认值为 `error timeout`，用来定义哪些场景配置为：不成功的尝试（unsuccessful attempts）。可以配置为 `error timeout http_500` 等。
 * [`proxy_next_upstream_tries`](http://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_next_upstream_tries)：默认值为 `0` 即不限制，用来定义不成功的尝试（unsuccessful attempts）的尝试次数，注意这里是尝试（`tries`） 不是重试（`retries`），也就是说：
     * `0` 表示不限制，尝试所有 upstream 的 server。
     * `1` 表示只尝试 1 次，也就是说，第 1 次尝试，不管是否为不成功的尝试（unsuccessful attempts），就立即返回。
     * `2` 表示尝试 2 次，也就是说，第 1 次尝试，如果为不成功的尝试（unsuccessful attempts），就额外在尝试 1 次。
-* [`server 的 max_fails 参数`](http://nginx.org/en/docs/http/ngx_http_upstream_module.html)：默认值为 `1`，用来配置 server 封禁，介绍参见下文。
-* [`server 的 fail_timeout 参数`](http://nginx.org/en/docs/http/ngx_http_upstream_module.html)：`10s`，用来配置 server 封禁，介绍参见下文。
 
 ## server 封禁
+
+* [`server 的 max_fails 参数`](http://nginx.org/en/docs/http/ngx_http_upstream_module.html)：默认值为 `1`，用来配置 server 封禁，介绍参见下文。
+* [`server 的 fail_timeout 参数`](http://nginx.org/en/docs/http/ngx_http_upstream_module.html)：`10s`，用来配置 server 封禁，介绍参见下文。
 
 Nginx 会为 upstream 的每个 server 维护一个 `counter`，这个 `counter` 被定义为，从当前时间往前 `fail_timeout` 的时间段内（实现上可能是简单的分时间段，需要看源码），该 server 作为第 1 个尝试 server 且这次尝试被定义为不成功的尝试（unsuccessful attempts）的尝试的请求的次数。举个例子：
 
