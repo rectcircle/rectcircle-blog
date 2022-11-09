@@ -116,7 +116,177 @@ scrape_configs:
 * 输入 `rate(promhttp_metric_handler_requests_total{code="200"}[1m])` （在选中时间范围内，t 时刻的 counter 减去 1 分钟之前 counter 的差除以 60s 值） 可以查看计数器的变化率。
 * 关于 Prometheus 表达式语法，参见下文或[官方文档](https://prometheus.io/docs/querying/basics/)。
 
-## 数据类型
+## 数据模型
+
+> [DATA MODEL](https://prometheus.io/docs/concepts/data_model/) | [METRIC TYPES](https://prometheus.io/docs/concepts/metric_types/)
+
+Prometheus 的 metrics 在存储上，本质上是时间序列（时序数据）。每个时间序列都有一个唯一的 name 作为唯一标识符以及可选的被称为 labels 的键值对，以及样本值和样本时间采样时间戳。
+
+* metric name 格式必须满足 `[a-zA-Z_:][a-zA-Z0-9_:]*` 正则表达式（冒号最好不要使用），如 `http_requests_total`。
+* metric label 用来标识改时序数据的维度。PromQL 可以基于这些维度进行过滤和聚合，更改任何 label 的值，包括添加或删除 label，都会创建一个新的时间序列。
+    * label name 必须满足 `[a-zA-Z_][a-zA-Z0-9_]*` 正则表达式。以 `__` 开头的标签名称保留供内部使用。
+    * label value 是个 Unicode 字符串。
+    * 跪安与 label 的最佳实践，参见：[best practices for naming metrics and labels](https://prometheus.io/docs/practices/naming/)。
+* metric sample (样本) 即上到的采样数值，每个样本包含：
+    * value 类型为 float64（v2.40 起 value 可以是直方图数据，参见下文）。
+    * timestamp 毫秒精度的时间戳。
+* 一个给定 name 和 labels 的时间序列经常使用如下符号表示：`<metric name>{<label name>=<label value>, ...}`，比如 `api_http_requests_total{method="POST", handler="/messages"}`。
+
+Prometheus 目前支持如下四种数据类型。
+
+### Counter (计数器)
+
+Counter 代表一个单调递增的计数器，其值只能递增，或者在重新启动时重置为零。一般用于如下计算某个值的变化率。例如，您可以使用计数器来表示服务的请求数、完成的任务数或错误数。
+
+也就是说，应用程序想要上报一个 Counter 类型的指标时，只有一个 `Add` 函数。
+
+注意，一般不用 Counter 表示某总量的值，因为 Counter 在服务重启后会清零。
+
+举个例子，想监控某后端系统的 QPS 时，上报一个类型为 Counter 的 Metric。
+
+* Name 为 `http_requests_total`。
+* Labels 为：
+    * `code`：返回的状态码。
+    * `method`：http 请求的方法。
+    * `handler`：请求的路径。
+
+假设采样周期为 1 分钟，且有两个接口分别：
+
+* `GET /handler1` 可能返回 `200`、`500`。
+* `POST /handler2` 可能返回 `200`、`400`。
+
+在程序启动后：
+
+* 第一分钟
+    * `GET /handler1` 返回 200，的数量为 100
+    * `GET /handler1` 返回 500，的数量为 10
+    * `POST /handler2` 返回 200，的数量为 50
+    * `POST /handler2` 返回 400，的数量为 5
+* 第二分钟
+    * `GET /handler1` 返回 200，的数量为 200
+    * `GET /handler1` 返回 500，的数量为 5
+    * `POST /handler2` 返回 200，的数量为 100
+    * `POST /handler2` 返回 400，的数量为 30
+
+此时，
+
+* 第一分钟末，Prometheus 获取到的数据为：
+
+    ```
+    http_requests_total{method=GET, handler=/handler1, code=200} 100
+    http_requests_total{method=GET, handler=/handler1, code=500} 10
+    http_requests_total{method=POST, handler=/handler2, code=200} 50
+    http_requests_total{method=POST, handler=/handler2, code=400} 5
+    ```
+
+* 第二分钟末，Prometheus 获取到的数据为：
+
+    ```
+    http_requests_total{method=GET, handler=/handler1, code=200} 300
+    http_requests_total{method=GET, handler=/handler1, code=500} 15
+    http_requests_total{method=POST, handler=/handler2, code=200} 150
+    http_requests_total{method=POST, handler=/handler2, code=400} 35
+    ```
+
+* 此时在计算 QPS 时，可以通过两个时间的 counter 的差值除以总时间，而得到 QPS（对应函数为 `rate`）。
+
+### Gauge (仪表盘)
+
+Gauge 代表一个可任意变化的值，这个值可增可减。该类型可以用来表示某时刻的总数。比如数据库连接数量、内存使用量等。
+
+也就是说，应用程序想要上报一个 Gauge 类型的指标时，可以通过 `Set` 函数设置成任意值。
+
+### Histogram (直方图)
+
+> v2.40 新增
+
+Histogram 统计的时某个值（通常是请求持续时间或响应大小等）所在的区间（被称为存储桶 Bucket）的数量。
+
+举个例子，比如一个名为 `http_requests_time` 的 Histogram，用来统计请求耗时的分布情况。
+
+配置了 6 个 Bucket：
+
+* 桶 `< 0.2` 秒
+* 桶 `< 0.4` 秒
+* 桶 `< 0.6` 秒
+* 桶 `< 0.8` 秒，
+* 桶 `< 1` 秒，
+* 桶 `< 无穷大` 秒。
+
+在程序启动的一分钟内：
+
+* 请求耗时 `< 0.2` 秒的，有 7 次请求耗时分别为： 0.02, 0.1, 0.15, 0.15, 0.16, 0.17, 0.18 。
+* 请求耗时 `< 0.4` 且 `>= 0.2` 秒的，有 2 次请求耗时分别为： 0.3, 0.35 。
+* 请求耗时 `< 0.6` 且 `>= 0.4` 秒的，有 1 次请求耗时分别为： 0.5 。
+* 请求耗时 `< 0.8` 且 `>= 0.6` 秒的，没有符合要求的请求。
+* 请求耗时 `< 1` 且 `>= 0.8` 秒的，没有符合要求的请求。
+* 请求耗时 `< 无穷大` 且 `>= 1` 秒的，没有符合要求的请求。
+
+通过 `Observe()` 函数，此时 Histogram 会产生如下几个时序数据。
+
+* `<basename>_bucket{le="<upper inclusive bound>"}` 每个 Bucket 的**计数**。
+    * `http_requests_time_bucket{le="0.2"} 7`
+    * `http_requests_time_bucket{le="0.4"} 9` 可以看出，统计的时 `<0.4` 的所以包含 `<0.2` 的数目，下面同理。
+    * `http_requests_time_bucket{le="0.6"} 10`
+    * `http_requests_time_bucket{le="0.8"} 10`
+    * `http_requests_time_bucket{le="1.0"} 10`
+    * `http_requests_time_bucket{le="+Inf"} 10`
+* `<basename>_sum` **值的总和**。
+    * `http_requests_time_sum 2.08` （计算方法为 `0.02 + 0.1 + 0.15 + 0.15 + 0.16 + 0.17 + 0.18 + 0.3 + 0.35 + 0.5`）
+* `<basename>_count` 等价于 `<basename>_bucket{le="+Inf"}`
+    * `http_requests_time_count 10`
+
+在程序运行的第二分钟后，这里的所有指标，都是基于之前第一分钟之后的数据进行累加的（和 Counter 有点类似）。
+
+基于如上，可以计算出：
+
+* 请求 QPS：`rate(<basename>_count)`，即在第一分钟为：`10/60` 次每秒。
+* 平均耗时： `rate(<basename>_sum[1m]) / rate(<basename>_count[1m])`，即在第一分钟为：`2.08 / 10 = 0.208`
+* 分位数：假设我们想计算 90% 的分位数，算法如下（参考：[一文搞懂 Prometheus 的直方图](https://juejin.cn/post/6844903907265642509)）：
+    * 按照 le 标签排序，查找第一个满足 `>= 90% * <basename>_count` 的 le（本例中为 `>= 0.9 * 10 = 9` 即 le 为 0.4），并记：
+        * bucketStart = 这个 le 标签的值，即 0.4
+        * bucketEnd = 下一个 le 标签的值，即 0.6
+        * bucketStartCount = 上一个 le 的数量，即 7
+        * bucketEndCount = 上一个 le 的数量，即 9
+        * count = bucketEndCount - bucketStartCount ，即 `9-7 = 2`，
+        * rank = 90% 在 count 中的序号，即 `90% * <basename>_count + 1 - bucketStartCount`，即 `9-7=2`
+    * 最终，公式为：`bucketStart + (bucketEnd-bucketStart)*float64(rank/count)`，即 `0.4 + 0.2*(2/2) = 0.6` 和真实值 `0.5` 相差不大，在样本量更大的情况下，将更加精确。
+    * Prometheus 提供了相关的函数 `histogram_quantile`。
+
+### Summary
+
+用来在客户端直接计算出某个值（通常是请求持续时间或响应大小等）的分位数，然后直接上报到 Prometheus。
+
+通过 `Observe()` 函数，Summary 会上报如下三个时序指标：
+
+* `<basename>{quantile="<φ>"}` 某个分位数的值。
+* `<basename>_sum` 和 Histogram 的一致，为 **值的总和**。
+* `<basename>_count` 为 `Observe()` 函数调用的次数。
+
+因此，通过 Summary 可以计算出：
+
+* QPS：`rate(<basename>_count)`
+* 平均值： `rate(<basename>_sum[1m]) / rate(<basename>_count[1m])`。
+* 分位数：`<basename>{quantile="<φ>"}`
+
+### Histogram vs Summary
+
+> 参考：Histogram and Summary （[中文](https://hulining.gitbook.io/prometheus/practices/histograms)|[英文](https://prometheus.io/docs/practices/histograms/)）
+
+* Histogram
+    * 客户端性能消耗小，服务端查询分位数时消耗大。
+    * 可以在查询期间自由计算各种不同的分位数。
+    * 分位数的精度无法保证，其精确度受桶的配置、数据分布、数据量大小情况影响。
+    * 可聚合，可以计算全局分位数。
+    * 客户端兼容性好。
+* Summary
+    * 客户端性能消耗大（因为分位数计算发生在客户端），服务端查询分位数时消耗小。
+    * 只能查询客户端上报的哪些分位数。
+    * 分位数的精度可以得到保证，精度会影响客户端的消耗。
+    * 不可聚合，无法计算全局分位数（因此不支持多实例，平行扩展的 http 服务）。
+    * 客户端兼容性不好。
+
+综上所述，大多数场景使用 Histogram 更为灵活。
 
 ## 客户端数据上报
 
