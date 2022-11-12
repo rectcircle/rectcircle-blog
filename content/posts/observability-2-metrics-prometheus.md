@@ -290,7 +290,395 @@ Histogram 统计的时某个值（通常是请求持续时间或响应大小等�
 
 ## 客户端数据上报
 
-以 Go 为例，展示上面所有数据类型的上报
+以 Go 为例，展示上面所有数据类型的上报。
+
+### Go Client 概述
+
+模块 github.com/prometheus/client_golang 包含如下内容（详见：[go doc](https://pkg.go.dev/github.com/prometheus/client_golang/prometheus)）：
+
+* [prometheus](https://pkg.go.dev/github.com/prometheus/client_golang/prometheus) 包，实现了 Metrics 的核心接口：
+    * 四种 Metrics 类型：Counter、Gauge、Histogram、Summary，以及对应的 Vec。
+    * Registry、Registerer、Gatherer 接口，用来管理注册的指标。
+* [prometheus/collectors](https://pkg.go.dev/github.com/prometheus/client_golang@v1.14.0/prometheus/collectors) 包，实现了 Go 进程和 Go Runtime 相关的指标定义和收集。
+* [prometheus/graphite](https://pkg.go.dev/github.com/prometheus/client_golang@v1.14.0/prometheus/promauto) 包，提供了将 Prometheus 指标推送到 Graphite 服务器的能力。
+* [prometheus/promauto](https://pkg.go.dev/github.com/prometheus/client_golang@v1.14.0/prometheus/promauto) 包，提供了一种创建四种 Metrics 类型的可读性更好的 API 风格。
+* [prometheus/promhttp](https://pkg.go.dev/github.com/prometheus/client_golang@v1.14.0/prometheus/promhttp) 包，提供围绕 HTTP 服务器和客户端的工具。
+    * 定义和实现了一系列针对 http server / client 的指标，并通过包装函数（Middleware）方式提供。
+    * 实现了暴露 metrics 的断点，以供 Prometheus Server Pull 采集。
+* prometheus/push 包，提供了将指标推送到 push gateway 的能力。
+
+### 示例
+
+#### 监控 HTTP Server
+
+实现一个 HTTP Server 的 Middleware 可以上报每个请求的监控数据。
+
+`02-prometheus/metrics.go`
+
+```go
+package main
+
+// 本例仅用来展示 Prometheus Go SDK 的用法，不可用于生产。
+// 1. http middleware 可以直接使用 github.com/prometheus/client_golang/prometheus/promhttp 包。
+// 2. go runtime 可以直接使用 github.com/prometheus/client_golang/prometheus/collectors 包。
+
+import (
+	"fmt"
+	"net/http"
+	"os"
+	"runtime"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+type HTTPMetricsMiddleware struct {
+	reg                    *prometheus.Registry
+	httpRequestsTotal      *prometheus.CounterVec
+	goMemstatsAllocBytes   prometheus.Gauge
+	httpDurations          *prometheus.SummaryVec
+	httpDurationsHistogram *prometheus.HistogramVec
+}
+
+func NewHTTPMetrics(reg *prometheus.Registry, normMean, normDomain float64) *HTTPMetricsMiddleware {
+	// 一些进程粒度的标签，比如 pod name 之类的，这里使用 pid 模拟。
+	ConstLabels := map[string]string{
+		"pid": fmt.Sprint(os.Getpid()),
+	}
+	httpLabelNames := []string{"handler", "method", "status_code"}
+	m := &HTTPMetricsMiddleware{
+		reg: reg,
+		// 创建一个 Counter 类型的指标：每个请求会增加 1。
+		// 下文， SummaryVec 或者 httpDurationsHistogram 会自动上报该指标，这里仅做演示。
+		httpRequestsTotal: prometheus.NewCounterVec(
+			prometheus.CounterOpts{
+				Name:        "http_requests_total",
+				Help:        "HTTP request total.",
+				ConstLabels: ConstLabels,
+			},
+			httpLabelNames,
+		),
+		// 创建一个 Gauge 类型的指标：统计当前时刻的 go runtime memstats alloc。
+		// 下文， SummaryVec 或者 httpDurationsHistogram 会自动上报该指标，这里仅做演示。
+		goMemstatsAllocBytes: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name:        "go_memstats_alloc_bytes",
+			Help:        "HTTP request total.",
+			ConstLabels: ConstLabels,
+		}),
+		// 创建一个 SummaryVec 类型的指标：按照 handler 标签，计算请求耗时的 50% 90% 99% 分位数。
+		httpDurations: prometheus.NewSummaryVec(
+			prometheus.SummaryOpts{
+				Name:        "http_durations_seconds",
+				Help:        "HTTP latency distributions.",
+				Objectives:  map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+				ConstLabels: ConstLabels,
+			},
+			httpLabelNames,
+		),
+		// 和上面的 httpDurations 类似，但是类型为 Histogram
+		// Histogram 分为 20 个桶，桶的划分为：
+		//   * 区间 [normMean-5*normDomain, normMean+0.5*normDomain]
+		//   * 步长为 0.5*normDomain
+		// 举个例子，当 normMean = 1, normDomain = 0.2 时，桶划分为： {0, 0.1, 0.2, ..., 1, ..., 1.8, 1.9}
+		httpDurationsHistogram: prometheus.NewHistogramVec(
+			prometheus.HistogramOpts{
+				Name:                        "http_durations_histogram_seconds",
+				Help:                        "HTTP latency distributions.",
+				Buckets:                     prometheus.LinearBuckets(normMean-5*normDomain, .5*normDomain, 20),
+				NativeHistogramBucketFactor: 1.1,
+				ConstLabels:                 ConstLabels,
+			},
+			httpLabelNames,
+		),
+	}
+	reg.MustRegister(m.httpRequestsTotal)
+	reg.MustRegister(m.goMemstatsAllocBytes)
+	reg.MustRegister(m.httpDurations)
+	reg.MustRegister(m.httpDurationsHistogram)
+	return m
+}
+
+func (m *HTTPMetricsMiddleware) MetricsHandler() http.Handler {
+	return promhttp.HandlerFor(m.reg, promhttp.HandlerOpts{
+		// Opt into OpenMetrics to support exemplars.
+		EnableOpenMetrics: true,
+		// Pass custom registry
+		Registry: m.reg,
+	})
+}
+
+func (m *HTTPMetricsMiddleware) WrapHandler(handlerName string, handler http.HandlerFunc) http.HandlerFunc {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		startTime := time.Now()
+		ww := &metricsHTTPResponseWrapper{
+			ResponseWriter: w,
+			statusCode:     0,
+		}
+		handler.ServeHTTP(ww, r)
+		duration := float64(time.Since(startTime)) / float64(time.Second)
+		statusCode := fmt.Sprint(ww.statusCode)
+		m.httpRequestsTotal.WithLabelValues(handlerName, r.Method, statusCode).Add(1)
+		m.httpDurations.WithLabelValues(handlerName, r.Method, statusCode).Observe(duration)
+		m.httpDurationsHistogram.WithLabelValues(handlerName, r.Method, statusCode).Observe(duration)
+	})
+}
+
+func (m *HTTPMetricsMiddleware) StartBackgroundReportGoCollector(interval time.Duration) {
+	// 这只是例子，想要统计 go runtime 相关的指标，可以直接使用 go collector，参见：https://github.com/prometheus/client_golang/blob/main/examples/gocollector/main.go
+	// https://gist.github.com/j33ty/79e8b736141be19687f565ea4c6f4226
+	go func() {
+		for {
+			var stat runtime.MemStats
+			runtime.ReadMemStats(&stat)
+			m.goMemstatsAllocBytes.Set(float64(stat.Alloc))
+			time.Sleep(interval)
+		}
+	}()
+}
+
+type metricsHTTPResponseWrapper struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (w *metricsHTTPResponseWrapper) WriteHeader(statusCode int) {
+	w.statusCode = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+```
+
+`02-prometheus/server.go`
+
+```go
+package main
+
+import (
+	"fmt"
+	"math/rand"
+	"net/http"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
+
+func handler1(w http.ResponseWriter, req *http.Request) {
+	fmt.Println("handler1 handling")
+	time.Sleep(time.Duration(rand.Float64() * float64(time.Second)))
+	statusCodes := []int{200, 400, 500}
+	statusCode := 0
+	r := rand.Intn(100)
+	if r < 91 {
+		statusCode = statusCodes[0]
+	} else if r < 97 {
+		statusCode = statusCodes[1]
+	} else {
+		statusCode = statusCodes[2]
+	}
+	w.WriteHeader(statusCode)
+}
+
+func handler2(w http.ResponseWriter, req *http.Request) {
+	fmt.Println("handler2 handling")
+	time.Sleep(time.Duration(rand.Float64() * float64(time.Second)))
+	statusCodes := []int{200, 400, 500}
+	statusCode := 0
+	r := rand.Intn(100)
+	if r < 93 {
+		statusCode = statusCodes[0]
+	} else if r < 95 {
+		statusCode = statusCodes[1]
+	} else {
+		statusCode = statusCodes[2]
+	}
+	w.WriteHeader(statusCode)
+}
+
+func Run() {
+	reg := prometheus.NewRegistry()
+	metrics := NewHTTPMetrics(reg, 1, 0.2)
+	metrics.StartBackgroundReportGoCollector(10 * time.Second)
+	http.HandleFunc("/handler1", metrics.WrapHandler("/handler1", handler1))
+	http.HandleFunc("/handler2", metrics.WrapHandler("/handler2", handler2))
+	http.HandleFunc("/metrics", metrics.MetricsHandler().ServeHTTP)
+
+	http.ListenAndServe(":8083", nil)
+}
+
+func main() {
+	Run()
+}
+```
+
+#### 编写模拟请求的客户端
+
+`02-prometheus/server_test.go`
+
+```go
+package main
+
+import (
+	"math/rand"
+	"net/http"
+	"testing"
+	"time"
+)
+
+func RequestHandler(handlerName string) {
+	resp, err := http.Get("http://localhost:8083" + handlerName)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+}
+
+func TestRun(t *testing.T) {
+	go Run()
+	handlerNameChan := make(chan string)
+	go func() {
+		for {
+			if rand.Float64() < 0.6 {
+				handlerNameChan <- "/handler1"
+			} else {
+				handlerNameChan <- "/handler2"
+			}
+		}
+	}()
+	for i := 0; i < 100; i++ { // 并发度
+		go func() {
+			for {
+				RequestHandler(<-handlerNameChan)
+			}
+		}()
+	}
+	time.Sleep(130 * time.Second)
+}
+```
+
+#### 配置 Prometheus Server
+
+`02-prometheus/prometheus.yml`
+
+```yaml
+# ~/Downloads/prometheus-2.37.2.darwin-amd64/prometheus --config.file=02-prometheus/prometheus.yml --storage.tsdb.path="prometheus-tsdb-data/"
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "demo"
+    # metrics_path: # 默认是 '/metrics'
+    static_configs:
+      - targets: ["localhost:8083"]
+```
+
+#### 启动测试
+
+```bash
+# 第一个终端
+~/Downloads/prometheus-2.37.2.darwin-amd64/prometheus --config.file=02-prometheus/prometheus.yml --storage.tsdb.path="prometheus-tsdb-data/"
+
+# 第二个终端
+cd 02-prometheus && go test -timeout 600s -run ^TestRun$ ./ -v --count=1
+```
+
+等待第二个终端运行结束，打开 `http://localhost:9090/graph`，切换到 `Graph` 标签，输入如下表达式查看绘图：
+
+1. `rate(http_requests_total[30s])` 请求 qps。
+2. `go_memstats_alloc_bytes` 当前进程分配的内存。
+3. `http_durations_seconds{quantile='0.9'}` 请求耗时 90% 分位数，应该在 0.9 附近。
+4. `rate(http_durations_seconds_count[30s])` 请求 qps，和第 1 个结果完全一致。
+5. `rate(http_durations_seconds_sum[30s]) / rate(http_durations_seconds_count[30s])` 请求平均耗时，应在在 0.5 附近。
+6. `histogram_quantile(0.9, rate(http_durations_histogram_seconds_bucket[30s]))` 请求耗时 90% 分位数，应该在 0.9 附近。
+7. `rate(http_durations_histogram_seconds_count[30s])` 请求 qps，和第 1 个结果完全一致。
+8. `rate(http_durations_histogram_seconds_sum[30s]) / rate(http_durations_histogram_seconds_count[30s])` 请求平均耗时，应在在 0.5 附近。
+
+### 通过 Push Gateway 上报
+
+#### 安装运行 Push Gateway
+
+* 下载并运行 Push Gateway（[下载页面](https://prometheus.io/download/#pushgateway)|[源码页面](https://github.com/prometheus/pushgateway)）。
+
+```bash
+tar xvfz pushgateway-*.tar.gz
+cd pushgateway-*/
+./pushgateway --help  # Mac 需要打开系统偏好设置 -> 安全性和隐私，允许改程序运行。
+./pushgateway
+```
+
+* 打开 `http://localhost:9091` 可以查看 pushgateway 的工作情况。
+
+#### 示例代码改造
+
+`02-prometheus/metrics.go`
+
+```go
+
+// ...
+
+import (
+	// ...
+	"github.com/prometheus/client_golang/prometheus/push"
+)
+
+// ...
+
+func (m *HTTPMetricsMiddleware) StartMetricsPush(interval time.Duration) {
+	go func() {
+		for {
+			_ = push.New("http://localhost:9091/metrics", "demo_by_pushgateway").Gatherer(m.reg).Push()
+			time.Sleep(interval)
+		}
+	}()
+}
+// ...
+```
+
+`02-prometheus/server.go`
+
+```go
+// ...
+func Run() {
+	// ...
+	metrics.StartBackgroundReportGoCollector(10 * time.Second)
+	metrics.StartMetricsPush(10 * time.Second)
+	http.HandleFunc("/handler1", metrics.WrapHandler("/handler1", handler1))
+	// ... 
+}
+// ...
+```
+
+#### 配置 Prometheus Server
+
+`02-prometheus/prometheus-pushgateway.yml`
+
+```yaml
+# ~/Downloads/prometheus-2.37.2.darwin-amd64/prometheus --config.file=02-prometheus/prometheus-pushgateway.yml --storage.tsdb.path="prometheus-tsdb-data/"
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "pushgateway"
+    # metrics_path: # 默认是 '/metrics'
+    honor_labels: true  # 不覆盖 metrics 自身的 job 和 instance 标签，参见： https://prometheus.io/docs/prometheus/latest/configuration/configuration/#scrape_config
+    static_configs:
+      - targets: ["localhost:9091"]
+```
+
+#### 启动测试 (Push)
+
+```bash
+# 第一个终端
+rm -rf prometheus-tsdb-data/ && ~/Downloads/prometheus-2.37.2.darwin-amd64/prometheus --config.file=02-prometheus/prometheus-pushgateway.yml --storage.tsdb.path="prometheus-tsdb-data/"
+
+# 第二个终端
+cd 02-prometheus && go test -timeout 600s -run ^TestRun$ ./ -v --count=1
+```
+
+打开 `http://localhost:9091` 观察 pushgateway 是否收到消息
+
+等待第二个终端运行结束，打开 `http://localhost:9090/graph`，切换到 `Graph` 标签，输入类似上文 [示例-启动测试](#启动测试)，如 `rate(http_requests_total[30s])`，即可看到从 Pushgateway 采集到的来自示例代码 push 上来的指标。
 
 ## 数据查询 PromQL
 
