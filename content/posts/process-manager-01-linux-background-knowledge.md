@@ -12,6 +12,8 @@ tags:
 
 本系列将从 Linux 基础知识起步，理解 tini 源码，并实现一个 Golang 版本的单进程管理器。该进程管理器将作为容器的 entrypoint 进程，即容器的 1 号进程，来管理工作进程。
 
+20221113 updated: 新增 [《进程管理器（四） Go Supervisord》](/posts/process-manager-04-go-supervisord/)。
+
 ## 本节概述
 
 在 Linux 中实现一个可用于生产环境的 1 号进程并不容易，主要需要考虑如下问题：
