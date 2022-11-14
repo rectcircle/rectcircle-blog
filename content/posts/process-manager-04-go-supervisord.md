@@ -157,8 +157,8 @@ numprocs = 1                           ; 默认为 1。启动的进程数量，�
 ; numprocs_start = 0                   ; go 不支持。%(process_num)s 的其实值。
 autostart = true                       ; 默认为 true。是否在 supervisord 启动时自动启动该进程。
 startsecs = 1                          ; 默认为 1。程序在启动后持续多少秒，才将进程状态从 starting 转换到 running，如果运行时长没有达到该限制，则会按照 startretries 进行重试。0 表示不约束最小运行时长。其值必须是整数。
-startretries = 3                       ; 默认为 3。表示程序启动失败多少次后，才将该进程状态设置为 FATAL 状态。
-autorestart = true                     ; 默认为 unexpected。配置程序重启策略。可选值为：false - 永不自动重启，true - 总是自动重启，unexpected - 只有程序启动失败才自动重启（取决于 exitcodes 参数）。实测该参数只有 startsecs 不为 0 才生效
+startretries = 3                       ; 默认为 3。表示程序启动失败多少次后，才将该进程状态设置为 FATAL 状态。实测该参数只有 startsecs 不为 0 才生效。
+autorestart = true                     ; 默认为 unexpected。配置程序重启策略。可选值为：false - 永不自动重启，true - 总是自动重启，unexpected - 只有程序启动失败才自动重启（取决于 exitcodes 参数）。实测该参数只有 startsecs 不为 0 才生效。
 exitcodes = 0,2                          ; 默认为 0。影响 autorestart = unexpected：如果进程退出码不为该参数指定的值，会重新启动。
 stopsignal = TERM                        ; 默认为 TERM。 supervisord ctl stop 时的信号。
 stopwaitsecs = 10                        ; 默认为 10。优雅退出的时间。
