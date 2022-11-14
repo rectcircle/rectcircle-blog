@@ -180,7 +180,7 @@ directory=/tmp                           ; 默认继承 supervisord。进程工�
 一些重试场景的说明：
 
 * 某个**非**常驻进程，运行时间很短（小于 1s）。且可能失败（exit != 0）。此时：
-    * 无论成功失败与否，只执行一次。
+    * 无论成功失败与否，只执行一次（似乎有 bug，参见下文：[startsecs 参数为 0 进程状态异常](#startsecs-参数为-0-进程状态异常)）。
 
         ```ini
         [program:x]
@@ -191,7 +191,7 @@ directory=/tmp                           ; 默认继承 supervisord。进程工�
         ; autorestart = unexpected  ; startsecs = 0 该参数无意义。
         ```
 
-    * 重试 3 次都失败后不再重试： supervisord 无法实现该特性，尝试如下配置。通过观察日志，发现该进程只尝试了 1 次。
+    * 重试 3 次都失败后不再重试： supervisord 无法实现该特性。
     * 无限重试直到成功： supervisord 无法优雅实现该特性，只能通过 sleep 来实现。
 
         ```ini
