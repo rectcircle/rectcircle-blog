@@ -253,7 +253,7 @@ startsecs = 0
 ; autorestart = unexpected  ; startsecs = 0 该参数无意义。
 ```
 
-执行 `./supervisord ctl status x` 获取到状态仍然是 running，输出如下：
+等待退出后，执行 `./supervisord ctl status x` 获取到 `x` 的状态仍然是 running，输出如下：
 
 ```
 x                                Running   pid 12994, uptime 0:00:10
