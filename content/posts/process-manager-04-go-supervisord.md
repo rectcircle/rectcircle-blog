@@ -179,7 +179,7 @@ directory=/tmp                           ; 默认继承 supervisord。进程工�
 
 一些重试场景的说明：
 
-* 某个非常驻进程，运行时间很短（小于 1s）。且可能失败（exit != 0）。此时：
+* 某个**非**常驻进程，运行时间很短（小于 1s）。且可能失败（exit != 0）。此时：
     * 重试 3 次都失败后不再重试： supervisord 无法实现该特性，尝试如下配置。通过观察日志，发现该进程只尝试了 1 次。
 
         ```ini
@@ -214,7 +214,7 @@ directory=/tmp                           ; 默认继承 supervisord。进程工�
         autorestart = true
         ```
 
-    * 退出后（不管正常还是异常退出），重试 3 次：supervisord 无法优雅实现。
+    * 退出后（不管正常还是异常退出）重试 3 次：supervisord 无法优雅实现。
 
         ```ini
         [program:x]
