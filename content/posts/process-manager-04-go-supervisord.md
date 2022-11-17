@@ -35,7 +35,7 @@ GOOS=linux go build -tags release -a -ldflags "-linkmode external -extldflags -s
 # v0.7.3
 ```
 
-## 命令简述
+## 基本使用
 
 go 实现的 supervisord，通过如上命令，编译产物只有唯一的可执行文件 `supervisord`，其静态编译大小在 Linux x86 平台约 19MB。
 
@@ -68,9 +68,60 @@ supervisord 可执行文件主要包含一个主命令和四个工具类的子�
 * `supervisord service ...`，为 supervisord 进程生成当前操作系统进程管理器对应的配置文文件，以 systemd 为例，将生成一个 `.service` 文件。
 * `supervisord version`，打印版本。
 
-## 使用说明
+### 启动 supervisord
 
-### 配置文件
+通过 `supervisord [OPTIONS]` 可以直接启动 supervisord。options，说明如下：
+
+* `-c` 或 `--configuration=` 指定配置文件路径。关于配置文件，参见下文：[配置文件](#配置文件)。不填写时，会再按照如下顺序搜索配置文件（注意，和 [Python 版](http://supervisord.org/configuration.html#configuration-file)不同）：
+
+    1. `$CWD/supervisord.conf`
+    2. `$CWD/etc/supervisord.conf`
+    3. `/etc/supervisord.conf`
+    4. `/etc/supervisor/supervisord.conf` (since Supervisor 3.3.0)
+    5. `../etc/supervisord.conf` (Relative to the executable)
+    6. `../supervisord.conf` (Relative to the executable)
+
+* `-d` 或 `--daemon` 后台模式运行（fork 两次）。
+* `--env-file=` 环境变量文件（即 `.env` 文件）。
+
+### 操作 supervisord
+
+supervisord 提供了 ctl 子命令来操作进程。支持：
+
+* 对进程/组的 status, start, stop, signal, pid (获取进程 id), fg（前台化） 操作。
+* 对 supervisord 的 shutdown, reload 操作。
+
+supervisord ctl 是通过 XMLRPC 方式来操作一个已经启动的 supervisord。因此，需要先获取到 supervisord 的地址，supervisord ctl 会连接按照如下顺序获取到的第一个地址，并进行连接和 rpc 调用：
+
+* 指定了 `-s` 或者 `--serverurl=` 选项。
+* 按照上文 [启动 supervisord](#启动-supervisord) 加载配置的方式获取到配置文件，读取 `[supervisorctl]` 中的 `serverurl` 配置。
+* 最后，兜底使用 `http://localhost:9001`。
+
+supervisord ctl 的示例操作如下。
+
+```bash
+supervisord ctl status
+supervisord ctl status program-1 program-2...
+supervisord ctl status group:*
+supervisord ctl stop program-1 program-2...
+supervisord ctl stop group:*
+supervisord ctl stop all
+supervisord ctl start program-1 program-2...
+supervisord ctl start group:*
+supervisord ctl start all
+supervisord ctl shutdown
+supervisord ctl reload
+supervisord ctl signal <signal_name> <process_name> <process_name> ...
+supervisord ctl signal all
+supervisord ctl pid <process_name>
+supervisord ctl fg <process_name>
+```
+
+### WebUI
+
+supervisord 启动的 server 除了暴露基于 http 的 xmlrpc 端口外，还会提供一个 WebUI。通过该 webui，可以可视化的启动进程。
+
+## 配置文件
 
 supervisord 配置文件格式为 ini （Windows-INI-style），文件后缀名推荐为 `.conf`，其可配置的内容包括：
 
@@ -87,19 +138,6 @@ supervisord 配置文件格式为 ini （Windows-INI-style），文件后缀名�
 
 本部分只列出 go 版本 supervisord 支持的配置项。
 
-#### 主配置配置文件查找和多配置文件
-
-当 go 版本的 supervisord 执行时，不使用 -c 指定配置文件时，按 supervisord 会按照如下顺序尝试查找配置文件（注意，和 [Python 版](http://supervisord.org/configuration.html#configuration-file)不同）：
-
-1. `$CWD/supervisord.conf`
-2. `$CWD/etc/supervisord.conf`
-3. `/etc/supervisord.conf`
-4. `/etc/supervisor/supervisord.conf` (since Supervisor 3.3.0)
-5. `../etc/supervisord.conf` (Relative to the executable)
-6. `../supervisord.conf` (Relative to the executable)
-
-如果 supervisord 执行时指定了 -c 则以 -c 的配置文件为准。
-
 supervisord 的配置文件支持 `[include]` 配置段来加载其他配置文件，语法如下：
 
 ```ini
@@ -107,7 +145,7 @@ supervisord 的配置文件支持 `[include]` 配置段来加载其他配置文�
 files = /an/absolute/filename.conf /an/absolute/*.conf foo.conf config??.conf
 ```
 
-#### supervisord 自身配置
+### supervisord 自身配置
 
 ```ini
 [supervisord]
@@ -121,7 +159,7 @@ minprocs = 20              ; 默认为 20。在 supervisord 启动时至少保�
 identifier = supervisord   ; 默认为 supervisor。此 supervisord 进程的标识符。如果在同一命名空间中的一台机器上运行多个 supervisord，则需要。主要用于 rpc 接口。
 ```
 
-#### supervisord server 配置
+### supervisord server 配置
 
 ```ini
 [inet_http_server]
@@ -137,7 +175,7 @@ username=test1              ; 默认为 None。无鉴权。
 password={SHA}82ab876d1387bfafe46cc1c8a2ef074eae50cb1d  ; 默认为 None。无鉴权。密码明文以及 SHA-1 摘要的形式。
 ```
 
-#### supervisorctl 配置
+### supervisorctl 配置
 
 ```ini
 [supervisorctl]
@@ -147,7 +185,7 @@ password = 123                           ; 密码
 ; prompt = mysupervisor                    ; go 版本不支持
 ```
 
-#### 进程配置
+### 进程配置
 
 ```ini
 [program:x]
@@ -164,7 +202,6 @@ stopsignal = TERM                        ; 默认为 TERM。 supervisord ctl sto
 stopwaitsecs = 10                        ; 默认为 10。优雅退出的时间。
 stopasgroup = true                       ; 默认为 false。supervisord ctl stop 信号是否发送给整个进程组。
 killasgroup = true                       ; 默认为 false。supervisord ctl stop 强制退出时，是否发送给整个进程组。
-user = user1                             ; 默认为 supervisord 进程用户。指定进程启动所在的用户， supervisord 进程必须为 root 才行。
 redirect_stderr=false                    ; 默认为 false。是否将 stderr 重定向到 stdout（相当于 /the/program 2>&1）。
 stdout_logfile=AUTO                      ; go 版本默认为 /dev/null。日志输出位置，支持 /dev/null, /dev/stdout, syslog, syslog @[protocol:]host[:port]., /path/to/file。支持多个输出目标，以逗号分割，如：test.log, /dev/stdout。
 stdout_logfile_maxbytes=50MB             ; 默认 50MB。日志文件轮换的阈值（当日志文件大于该值时，将创建一个新的文件）。支持  KB, MB, GB 单位的字符串， 0 表示不轮换。
@@ -173,8 +210,20 @@ stderr_logfile=AUTO                      ; 参见 stdout_logfile。
 stderr_logfile_maxbytes=50MB             ; 参见 stdout_logfile_maxbytes。
 stderr_logfile_backups=10                ; 参见 stdout_logfile_backups。
 environment=KEY="val",KEY2="val2"        ; 环境变量。
+priority=999                             ; 默认 999。只影响进程启动关闭的顺序。数字越小，越先启动后停止。
+user = user1                             ; 默认为 supervisord 进程用户。指定进程启动所在的用户， supervisord 进程必须为 root 才行。
 directory=/tmp                           ; 默认继承 supervisord。进程工作目录。
 ; serverurl=AUTO                           ; 默认为 AUTO。向该进程通过环境变量 SUPERVISOR_SERVER_URL 传递 supervisord 的 url。实测 go 版本不支持。
+; 下面参数只有 Go 版本存在。
+restartpause=0                           ; 默认为 0。重启时，停止后等待的秒数。
+restart_when_binary_changed=false        ; 默认为 false。是否在程序二进制文件发生更改后重启。
+restart_cmd_when_binary_changed=         ; 默认为 ""。程序文件发生更改后，使用重启命令字符串。
+restart_signal_when_binary_changed=      ; 默认为 ""。程序文件发生更改后，则发送信号以重新启动的信号。
+restart_directory_monitor=               ; 默认为 ""。为重新启动目的而被监视的路径。
+restart_file_pattern=                    ; 默认为 ""。如果文件在 restart_directory_monitor 下发生更改并且文件名与此模式匹配，则进行重新启动。
+restart_cmd_when_file_changed=           ; 默认为 ""。如果 restart_directory_monitor 下具有模式 restart_file_pattern 的任何受监视文件发生更改时的重启命令。
+restart_signal_when_file_changed=        ; 默认为 ""。如果 restart_directory_monitor 下任何模式为 restart_file_pattern 的监控文件发生变化，该信号将被发送到程序。
+depends_on =                             ; 默认为空。该程序的依赖。影响程序的启动顺序。
 ```
 
 一些重试场景的说明：
@@ -226,15 +275,33 @@ directory=/tmp                           ; 默认继承 supervisord。进程工�
         ; autorestart = true    ; 该参数无意义了。
         ```
 
-#### eventlistener 配置
+### 进程分组配置
 
-### 启动 supervisord
+对上文 `[program:x]` 进行配置分组，有如下两个作用：
 
-### 操作 supervisord
+* 通过 priority 控制一组进程的启动顺序。
+* 通过 supervisord ctl 批量操作进程。
 
-### WebUI
+```ini
+[group:x]
+programs=bar,baz
+priority=999
+```
+
+### eventlistener 配置
+
+启动一个事件监听进程，参见：[编程交互-监听事件](#监听事件)。
+
+```ini
+[eventlistener:x]
+; 略 和 [program:x] 基本一致。
+```
 
 ## 编程交互
+
+### 配置和管理进程
+
+### 监听事件
 
 ## 已知问题
 
