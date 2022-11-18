@@ -1,7 +1,7 @@
 ---
 title: "进程管理器（四） Go supervisord"
 date: 2022-11-13T18:07:54+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
@@ -299,15 +299,85 @@ priority=999
 
 ## 编程交互
 
-### 配置和管理进程
+### 配置进程
+
+supervisord 进程的配置是通过配置文件方式来实现的。因此，如果想通过编程的方式来配置一个进程，则需要规划好配置文件的格式。推荐的规划如下：
+
+* 一个 supervisord 主配置文件。如位于 `/etc/supervisord.conf`。
+* 多个 supervisord 的辅助配置文件。如位于 `/etc/supervisord.d/*.conf`
+
+此时主配置文件 `/etc/supervisord.conf` 关于配置文件相关的配置如下所示。
+
+```ini
+[include]
+files = /etc/supervisord.d/*.conf
+; ...
+```
+
+需要对进程进行管理的程序，只需要在 `/etc/supervisord.d` 目录下添加相关配置文件，然后 reload 即可。
+
+### 操作进程
+
+supervisord 配置里启动一个 rpc server，然后就可以通过 rpc 协议来操作这些进程了，因此在主配置文件添加 rpc server 的相关配置，如果是本机管理，建议使用 socket 文件的方式。如：
+
+```ini
+[unix_http_server]
+file = /var/run/supervisord.sock
+
+[supervisorctl]
+serverurl = unix:///var/run/supervisord.sock
+```
+
+此时，可以使用 ochinchina/supervisord 提供的 [xmlrpcclient](https://github.com/ochinchina/supervisord/tree/master/xmlrpcclient) 模块（`go get github.com/ochinchina/supervisord/xmlrpcclient`），来实现对进程的管理。
 
 ### 监听事件
 
-## 已知问题
+> 协议参见：[Python 版文档](http://supervisord.org/events.html)。
+
+略
+
+## 其他说明
+
+### 生产环境建议
 
 [ochinchina/supervisord](https://github.com/ochinchina/supervisord) 项目从其文档，项目管理，代码风格，测试覆盖度等方面来看，质量并不高。因此如果在生产环境使用该项目，需要对所有依赖的功能，做好充分的测试。此外开发人员需要阅读、修改源码，来解决的问题的能力。
 
-### startsecs 参数为 0 进程状态异常
+### 进程状态机
+
+![image](/image/supervisord-subprocess-transitions.png)
+
+* STOPPED 进程从未启动过。
+* STARTING 进程正在启动中（进程启动，且持续时间 < startsecs。如果 startsecs = 0，则跳过该状态）。
+* RUNNING 程序正在运行中（进程启动，且持续时间 >= startsecs。或 startsecs = 0 直接进入该状态）。
+* BACKOFF 进程退出太快 （进程启动，在 < startsecs 之前就退出了，会进入该状态。然后如果还有 startretries 机会，会立即转换到 STARING 状态，尝试再次启动）。
+* STOPPING 进程停止或者从未启动过。
+* EXITED 进程从 RUNNING 状态退出（根据 autorestart、exitcodes 决定是否要重启）。
+* FATAL 进程在经历了 startretries 次启动后，仍然未成功，则切换到该状态。
+* UNKNOWN 未知，supervisord 发生问题。
+
+### 按顺序启动进程
+
+* 方式 1：（Go 版本独有）通过 program 配置段的 `depends_on` 参数可以按照顺序启动进程。
+* 方式 2：通过 program 配置段的 `priority` 参数指定顺序。
+
+### 进程更新自动重启
+
+通过 program 配置段的 `restart_xxx` 相关配置可以实现。
+
+### 问题
+
+#### 缺失健康和就绪检查
+
+* supervisord 对于进程的监控做的很不到位，没有健康检查机制（比如监控某个端口是否存在，http 请求状态等）。
+* supervisord 对于没有对进程的就绪检查，只能通过 startsecs 参数来给程序设定初始化时间。某些场景，两个程序相互依赖，如 B -> A，且 B 需要等待 A 就绪 B 才能启动，且 A 的初始化时间不定，此时 supervisord 就没法很好的支持，只能在 B 程序中实现等待逻辑。
+
+#### 缺失 pid 文件方式的进程管理
+
+某些程序启动后立即退出，但是会产生一个 pid 文件，后续对该程序的管理以改 pid 文件为准。
+
+supervisord 原生不支持该模式，在 Python 版中，需要通过一个 `pidproxy` 的程序来进行代理，参见：[pidproxy](http://supervisord.org/subprocess.html#pidproxy-program)。
+
+#### startsecs 参数为 0 进程状态异常
 
 配置文件如下：
 
