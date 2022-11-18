@@ -682,6 +682,84 @@ cd 02-prometheus && go test -timeout 600s -run ^TestRun$ ./ -v --count=1
 
 ## 数据查询 PromQL
 
+Prometheus 自定义了一种表达式查询语言，被称为 PromQL。本部分将介绍该语言的用法。
+
+### 表达式数据类型
+
+PromQL 表达式的结果有如下四种类型：
+
+* Instant vector，一组时间序列，每个时间序列包含一个样本，所有样本共享相同的时间戳，如。
+* Range vector， 一组时间序列，其中包含每个时间序列随时间变化的一系列数据点
+* Scalar， 一个简单的数字浮点值。
+* String，一个简单的字符串值；目前未使用。
+
+举个例子假设一个 Counter 类型的指标 `http_requests_total` 的采样间隔是 15s。此时：
+
+* `http_requests_total` 这个表达式就是一个 Instant vector ，一个示例为：
+
+	```
+	时间                 值
+	2022-11-18 18:00:15   1
+	2022-11-18 18:00:30   3
+	2022-11-18 18:00:45   9
+	2022-11-18 18:01:00   20
+	```
+
+* `http_requests_total[30s]` 这个表达式就是一个 Range vector，一个示例为：
+
+	```
+	时间范围                                     值
+	2022-11-18 18:00:15 ~ 2022-11-18 18:00:30   [1, 3]
+	2022-11-18 18:00:45 ~ 2022-11-18 18:01:00   [9, 20]
+	```
+
+### 字面量和注释
+
+* 字符串，使用单引号双引号以及反引号包裹，采用 [Go 语言转义规则](https://go.dev/ref/spec#String_literals)。
+
+	```
+	"this is a string"
+	'these are unescaped: \n \\ \t'
+	`these are not unescaped: \n ' " \t`
+	```
+
+* 浮点数字面量。
+
+	```
+	23
+	-2.43
+	3.4e-9
+	0x8f
+	-Inf
+	NaN
+	```
+
+* 注释，以 `#` 号开头。
+
+	```
+	    # This is a comment
+	```
+
+### 时间序列选择
+
+在编写 PromQL 时，首先需要的是选择一个待查询的时间序列（Instant vector 或 Range vector），然后才能使用运算符和函数对这些数据进行处理，以得到最终想要的图表或者报警数据源。
+
+### 运算符和函数
+
+#### 二元运算符
+
+#### 向量匹配
+
+join ?
+
+#### 聚合操作
+
+按照标签进行聚合。
+
+#### 函数
+
+### 与 SQL 对比
+
 ## 数据大盘 Grafana
 
 ## 报警接入
