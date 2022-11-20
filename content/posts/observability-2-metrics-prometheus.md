@@ -682,7 +682,15 @@ cd 02-prometheus && go test -timeout 600s -run ^TestRun$ ./ -v --count=1
 
 ## 数据查询 PromQL
 
-Prometheus 自定义了一种表达式查询语言，被称为 PromQL。本部分将介绍该语言的用法。
+> 参考： [QUERYING PROMETHEUS](https://prometheus.io/docs/prometheus/2.37/querying/basics/)
+
+Prometheus 自定义了一种表达式查询语言，被称为 PromQL。真正的查询实例还需要提供如下参数：
+
+* 开始时间
+* 结束时间
+* 查询解析度 (step / query resolution)
+
+Prometheus 会根据这些 PromQL、开始时间、结束时间、查询解析度，生成评估时间序列。然后到时序数据库中查询、过滤、聚合数据。
 
 ### 表达式数据类型
 
@@ -743,6 +751,84 @@ PromQL 表达式的结果有如下四种类型：
 ### 时间序列选择
 
 在编写 PromQL 时，首先需要的是选择一个待查询的时间序列（Instant vector 或 Range vector），然后才能使用运算符和函数对这些数据进行处理，以得到最终想要的图表或者报警数据源。
+
+#### Instant vector
+
+* `http_requests_total` 选择所有名为 `http_requests_total` 的时间序列
+* `http_requests_total{job="prometheus",group="canary"}` 选择所有名为 `http_requests_total` 且 label 的 `job="prometheus",group="canary"` 的时间序列。通过 `{k1="v1"[...,kn="vn"]}`  的方式可以过滤符合指定条件标签的时间序列。除了 `=`，还支持如下匹配符：
+	* `=` 严格等于。
+	* `!=` 不等于。
+	* `=~` 匹配正则表达式（`env=~"foo"` 等价于 `env=~"^foo$"`）。
+	* `!~` 不匹配正则表达式。
+
+	一些例子如下：
+
+	* `http_requests_total{environment=~"staging|testing|development",method!="GET"}`。
+	* `http_requests_total` 等价于 `{__name__="http_requests_total"}`。
+
+#### Range Vector
+
+在 Instant vector 表达式的后方，添加 `[$TimeDuration]` 即可创建 Range Vector，如： `http_requests_total{job="prometheus"}[5m]`。time duration 为 go time duration 格式：
+
+* `ms` - 毫秒
+* `s` - 秒
+* `m` - 分钟
+* `h` - 小时hours
+* `d` - 天 = 24h
+* `w` - 周 = 7d
+* `y` - 年 = 365d
+
+也支持组合，如：
+
+```
+5h
+1h30m
+5m
+10s
+```
+
+#### 进行时间相对偏移
+
+`offset $TimeDuration` 对评估时间进行偏移，假设对表达式 `http_requests_total offset 5m` 的查询开始时间为 11:00， 结束时间为 11:05，采样周期为 1m，此时：
+
+* 评估时间 11:01，查询到的为 11:01 - 5m 即 10:56 的数据。
+* 评估时间 11:02，查询到的为 11:02 - 5m 即 10:57 的数据。
+* 评估时间 11:03，查询到的为 11:03 - 5m 即 10:58 的数据。
+* 评估时间 11:04，查询到的为 11:04 - 5m 即 10:59 的数据。
+* 评估时间 11:05，查询到的为 11:05 - 5m 即 11:00 的数据。
+
+在图表上来看相当于修改时间序列的时间戳，即坐标系不变，图形向右移动。
+
+一些例子如下：
+
+* `http_requests_total offset 5m` 评估时间 5 分钟前的时间序列。
+* `rate(http_requests_total[5m] offset 1w)` 评估时间 1 周前的 http_requests_total 的 5 分钟 rate。
+* `rate(http_requests_total[5m] offset -1w)` 评估时间 1 周**后**的 http_requests_total 的 5 分钟 rate。 
+
+#### 修改为绝对时间
+
+`@ $UnixTimestamp` （UnixTimestamp 为秒时间戳） 修改 Instant vector 和 Range Vector 单个查询的评估时间为固定值，假设对表达式 `http_requests_total @ 1668909600` （2022-11-20T10:00:00+08）的查询开始时间为 11:00， 结束时间为 11:05，采样周期为 1m，此时：
+
+* 评估时间 11:01，查询到的为固定值 1668909600 即 10:00 的数据。
+* 评估时间 11:02，查询到的为固定值 1668909600 即 10:00 的数据。
+* 评估时间 11:03，查询到的为固定值 1668909600 即 10:00 的数据。
+* 评估时间 11:04，查询到的为固定值 1668909600 即 10:00 的数据。
+* 评估时间 11:05，查询到的为固定值 1668909600 即 10:00 的数据。
+
+在图表上来看，指标变为一条水平的直线。
+
+一些例子如下：
+
+* `http_requests_total @ 1609746000` 始终查询时间戳为 1609746000 的数据。
+* `sum(http_requests_total{method="GET"} @ 1609746000)`
+* `http_requests_total offset 5m @ 1609746000` 支持和 offset 一起使用。
+* `http_requests_total @ 1609746000 offset 5m` 支持和 offset 一起使用， `@` 和 `offest` 的顺序不重要。
+* `start()` 和 `end()` 可以作为 @ 的特殊值。
+
+	```
+	http_requests_total @ start()
+	rate(http_requests_total[5m] @ end())
+	```
 
 ### 运算符和函数
 
