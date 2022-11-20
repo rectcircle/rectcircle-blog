@@ -8,7 +8,7 @@ tags:
   - untagged
 ---
 
-> Prometheus v2.37.2
+> Prometheus v2.37.2 （文档：[中文](https://hulining.gitbook.io/prometheus/)|[英文](https://prometheus.io/docs/)）
 
 ## 概述
 
