@@ -1,7 +1,7 @@
 ---
 title: "可观测性（一）Metrics & Prometheus"
 date: 2022-10-22T19:12:17+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
@@ -1029,18 +1029,36 @@ PromQL 处理的是时序数据，而 SQL 处理的通用的关系数据。本�
 
 ## 数据大盘 Grafana
 
+> 参考：[官方文档](https://prometheus.io/docs/visualization/grafana/)
+
 ## 报警接入
 
-## 常见的 Exporter
+> 参考：[官方文档](https://prometheus.io/docs/alerting/latest/overview/)
+
+## Exporter
 
 > 参考：[官方文档](https://prometheus.io/docs/instrumenting/exporters/)。
 
 ### Node Exporter
 
-https://prometheus.io/docs/guides/node-exporter/
+> 参考：[官方文档](https://prometheus.io/docs/guides/node-exporter/)
 
 ### MySQL Exporter
 
+参见：[github](https://github.com/prometheus/mysqld_exporter)。
+
 ### Redis exporter
 
+参见：[github](https://github.com/oliver006/redis_exporter)。
+
 ### RocketMQ exporter
+
+参见：[github](https://github.com/apache/rocketmq-exporter)。
+
+### 实现一个 Exporter
+
+> 参考：[官方文档](https://prometheus.io/docs/instrumenting/writing_exporters/)
+
+## 最佳实践
+
+> 参考：[官方文档](https://prometheus.io/docs/practices/)
