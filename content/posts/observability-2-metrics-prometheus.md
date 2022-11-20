@@ -756,15 +756,15 @@ PromQL 表达式的结果有如下四种类型：
 
 * `http_requests_total` 选择所有名为 `http_requests_total` 的时间序列
 * `http_requests_total{job="prometheus",group="canary"}` 选择所有名为 `http_requests_total` 且 label 的 `job="prometheus",group="canary"` 的时间序列。通过 `{k1="v1"[...,kn="vn"]}`  的方式可以过滤符合指定条件标签的时间序列。除了 `=`，还支持如下匹配符：
-	* `=` 严格等于。
-	* `!=` 不等于。
-	* `=~` 匹配正则表达式（`env=~"foo"` 等价于 `env=~"^foo$"`）。
-	* `!~` 不匹配正则表达式。
+    * `=` 严格等于。
+    * `!=` 不等于。
+    * `=~` 匹配正则表达式（`env=~"foo"` 等价于 `env=~"^foo$"`）。
+    * `!~` 不匹配正则表达式。
 
 	一些例子如下：
 
-	* `http_requests_total{environment=~"staging|testing|development",method!="GET"}`。
-	* `http_requests_total` 等价于 `{__name__="http_requests_total"}`。
+    * `http_requests_total{environment=~"staging|testing|development",method!="GET"}`。
+    * `http_requests_total` 等价于 `{__name__="http_requests_total"}`。
 
 #### Range Vector
 
@@ -803,7 +803,7 @@ PromQL 表达式的结果有如下四种类型：
 
 * `http_requests_total offset 5m` 评估时间 5 分钟前的时间序列。
 * `rate(http_requests_total[5m] offset 1w)` 评估时间 1 周前的 http_requests_total 的 5 分钟 rate。
-* `rate(http_requests_total[5m] offset -1w)` 评估时间 1 周**后**的 http_requests_total 的 5 分钟 rate。 
+* `rate(http_requests_total[5m] offset -1w)` 评估时间 1 周**后**的 http_requests_total 的 5 分钟 rate。
 
 #### 修改为绝对时间
 
@@ -825,26 +825,207 @@ PromQL 表达式的结果有如下四种类型：
 * `http_requests_total @ 1609746000 offset 5m` 支持和 offset 一起使用， `@` 和 `offest` 的顺序不重要。
 * `start()` 和 `end()` 可以作为 @ 的特殊值。
 
-	```
-	http_requests_total @ start()
-	rate(http_requests_total[5m] @ end())
-	```
+    ```
+    http_requests_total @ start()
+    rate(http_requests_total[5m] @ end())
+    ```
 
 ### 运算符和函数
 
-#### 二元运算符
+#### 算数运算符
+
+* `+` 加
+* `-` 减
+* `*` 乘
+* `/` 除
+* `%` 求余 (modulo)
+* `^` 次幂
+* `atan2` 参见 https://pkg.go.dev/math#Atan2 。
+
+算数运算符的数据类型。
+
+* 两个 scalar 之间：类型直接运算。
+* scalar 和 instant vector 之间：用 scalar 和 instant vector 的每个值进行运算。
+* 两个 instant vectors：参见下文的 [向量匹配](#向量匹配)。
+
+#### 比较运算符
+
+* `==` 相等
+* `!=` 不等于
+* `>` 大于
+* `<` 小于
+* `>=` 大于等于
+* `<=` 小于等于。
+
+算数运算符的数据类型。
+
+* 两个 scalar 之间：如 `1 > bool 0`（`1 > 0` 将报错），返回 1 (true)。
+* scalar 和 instant vector 之间：根据是否添加 `bool` 标识符分为如下两种情况：
+    * `http_requests_total > 100` 保留向量值大于 100 的值，丢弃其他值。
+    * `http_requests_total > bool 100` 将向量值大于 100 的值变为 1 (true)，将小于 100 的值变为 0 (false)，且指标名将被删除。
+* 两个 instant vector 之间：按照下文的 [向量匹配](#向量匹配) 进行匹配。
+    * 如果不添加 `bool` 标识符，则结果为过滤后，表达式成立的左侧的值。不满足条件（表达式非法、没有匹配上、表达式结果为 false）的将被丢弃。
+    * 如果添加 `bool` 标识符，向量的值将变为 1 或 0。1 表示表达式结果为 true， 0 表示表达式非法、没有匹配上、表达式结果为 false。
+
+#### 集合运算符
+
+集合运算符只能在两个 instant vector （vector1、vector2）进行运算。vector1 的元素在 vector2 是否存在的判断是根据向量的标签进行查找判断的。
+
+可以这么理解，假设 vector1 和 vector2 做集合运算，按照标签可以将两者的所有元素划分为如下四种类型：
+
+* `left(vector1)`
+* `middle(vector1)`
+* `middle(vector2)`
+* `right(vector2)`
+
+此时，如下三种集合运算：
+
+* `and` (交集) ，`vector1 and vector2` 结果为： vector1 对应的标签在 vector2 也存在的 vector1 值的集合，即 `middle(vector1)`。
+* `or` (union)，`vector1 or vector2` 结果为： vector1 全部的元素 以及 vector2 中标签在 vector1 中不存在的元素，即 `left(vector1)`、`middle(vector1)` 和 `right(vector2)`。
+* `unless` (补集)，`vector1 and vector2` 结果为： vector1 对应的标签在 vector2 不存在存在的 vector1 值的集合，即 `left(vector1)`。
 
 #### 向量匹配
 
-join ?
+以如下数据为例：
+
+```
+method_code:http_errors:rate5m{method="get", code="500"}  24
+method_code:http_errors:rate5m{method="get", code="404"}  30
+method_code:http_errors:rate5m{method="put", code="501"}  3
+method_code:http_errors:rate5m{method="post", code="500"} 6
+method_code:http_errors:rate5m{method="post", code="404"} 21
+
+method:http_requests:rate5m{method="get"}  600
+method:http_requests:rate5m{method="del"}  34
+method:http_requests:rate5m{method="post"} 120
+```
+
+向量匹配的原则是，按照标签进行匹配，如果用于匹配的标签只有一方存在，那么这个标签对应的数据将被丢弃。
+
+如上所示，两个指标进行向量匹配时，其对应的标签可能并不一样。为了让标签可以对应的上，在进行运算符操作时，可以使用 ignore 或者 on 来选择用于匹配的标签。
+
+* ignore 表示忽略掉指定的标签，而保留其他标签。
+* on 表示只使用指定的标签，忽略掉未声明的标签。
+
+```
+<vector expr> <bin-op> ignoring(<label list>) <vector expr>
+<vector expr> <bin-op> on(<label list>) <vector expr>
+```
+
+使用 ignore 或者 on 可能会带来一个问题，即同一个待匹配的标签存在多个值的情况，可以分如下情况讨论。
+
+* 一对一。以 `method_code:http_errors:rate5m{code="500"} / ignoring(code) method:http_requests:rate5m` 为例，因为 `{code="500"}` 和 `ignoring(code)` 成对出现，因此左侧的向量仍然是一个标签对应一个值。所以左右按照标签进行对应即可。因此结果如下：
+
+    ```
+    // left ({code="500"} / ignoring(code))
+    method_code:http_errors:rate5m{method="get"/*, code="500" */}  24
+    method_code:http_errors:rate5m{method="post"/*, code="500"*/} 6
+    // right
+    method:http_requests:rate5m{method="get"}  600
+    method:http_requests:rate5m{method="post"} 120
+
+    {method="get"}  0.04            //  24 / 600
+    {method="post"} 0.05            //   6 / 120
+    ```
+
+* 多对一以及一对多。需使用 `group_left` 或 `group_right` 来约束，左右哪一方是 **多** 的一方。以 `method_code:http_errors:rate5m / ignoring(code) group_left method:http_requests:rate5m` 为例，结果为：
+
+    ```
+    // left （/ ignore code group_left，匹配时，只是用 method 进行匹配）
+    method_code:http_errors:rate5m{method="get"/*, code="500"/*}  24
+    method_code:http_errors:rate5m{method="get"/*, code="404"/*}  30
+    method_code:http_errors:rate5m{method="post"/*, code="500"/*} 6
+    method_code:http_errors:rate5m{method="post"/*, code="404"*/} 21
+    // right
+    method:http_requests:rate5m{method="get"}  600
+    method:http_requests:rate5m{method="post"} 120
+
+    {method="get", code="500"}  0.04            //  24 / 600
+    {method="get", code="404"}  0.05            //  30 / 600
+    {method="post", code="500"} 0.05            //   6 / 120
+    {method="post", code="404"} 0.175           //  21 / 120
+    ```
+
+* 多对多，不支持。
 
 #### 聚合操作
 
-按照标签进行聚合。
+对某个时刻的值，进行聚合。换句话来说，是减少标签的数目。支持的函数如下：
+
+* `sum` (在指定维度上求和)
+* `max` (在指定维度上求最大值)
+* `min` (在指定维度上求最小值)
+* `avg` (在指定维度上求平均值)
+* `group` (all values in the resulting vector are 1)
+* `stddev` (在指定维度上求标准差)
+* `stdvar` (在指定维度上求方差)
+* `count` (统计向量元素的个数)
+* `count_values` (统计具有相同数值的元素数量)
+* `bottomk` (样本值中最小的 k个值)
+* `topk` (样本值中最大的 k个值)
+* `quantile` (在指定维度上统计 φ-quantile 分位数(0 ≤ φ ≤ 1))
+
+语法如下：
+
+```
+<aggr-op> [without|by (<label list>)] ([parameter,] <vector expression>)
+// or
+<aggr-op>([parameter,] <vector expression>) [without|by (<label list>)]
+```
+
+假设 `http_requests_total` 只有三个标签：`instance`, `application`, `group` 。一些例子如下：
+
+* `sum without (instance) (http_requests_total)` 等价于 `sum by (application, group) (http_requests_total)` 去除 instance 标签维度，计算请求量。
+* `sum(http_requests_total)` 不需要区分标签，计算全局请求量。
+* `topk(5, sum by (instance) (http_requests_total))` 计算获取到请求量前 5 的实例。
+
+#### 二元运算符优先级
+
+从高到底分别是：
+
+* `^`
+* `*`, `/`, `%`, `atan2`
+* `+`, `-`
+* `==`, `!=`, `<=`, `<`, `>=`, `>`
+* `and`, `unless`
+* `or`
+
+相同优先级的运算符是左结合的。例如，2 *3 % 2 等价于 (2* 3) % 2。但是 ^ 是右结合的，所以 2 ^ 3 ^ 2 等价于 2 ^ (3 ^ 2)。
 
 #### 函数
 
+> 参见：[FUNCTIONS](https://prometheus.io/docs/prometheus/2.37/querying/functions/)。
+
+这里重点提一下：
+
+* `rate(v range-vector)` 上文多次提到该函数，其计算的时指标的每秒变化率。如 `rate(http_requests_total[5m])`，计算结果为 `(value[t+5m] - value[t])/ 300`。
+* 针对 Range vector PromQL 提供 `<aggregation>_over_time()` 一系列聚合函数，可以将 `Range vector` 转换为 `Instant vector`。
+
 ### 与 SQL 对比
+
+PromQL 处理的是时序数据，而 SQL 处理的通用的关系数据。本质上可以说 PromQL 是 SQL 的一个特例，因此 SQL 应该是可以完整的表达 PromQL 的语义的。
+
+| PromQL | SQL |
+|-----|--------|
+| metric name | 表名 |
+| label       | 列 (维度列) |
+| 时间戳       | 列 (创建时间) |
+| value       | 列 (事实列)   |
+| 一次查询条件 $StartTime、$EndTime     | select 创建时间 as 评估时间, value where 创建时间 between $StartTime and $EndTime |
+| `http_requests_total`  | from 表名 |
+| `{}`                   | where 维度列条件 |
+| `offset`               | select 创建时间 + offset as 评估时间 where 创建时间 + offset between $StartTime and $EndTime  |
+| `@`                    | 可能需要用到开窗函数 `first_value`，略 |
+| 算数运算符 (scalar 和 scalar) | `select 1 + 1` 或 `select 1 + (select ...)` |
+| 算数运算符 (scalar 和 instant vector) | `select 2 * value from ...` |
+| 算数运算符 (instant 和 instant vector) | `select value1 * value2 from ... <inner/left/right> join ... on 事实列 where value1 is not null and value2 is not null` |
+| 比较运算符 (不带 bool) | `select value from ... where value < 1` 或 `select value1 from ... <inner/left/right> join ... on 维度列 where value1 is not null and value2 is not null and value1 < value2` |
+| 比较运算符 (带 bool) | `select if(value < 1, 1, 0) from ...` 或 `select if(value1 < value2, 1, 0) from ... <inner/left/right> join ... on 维度列 where value1 is not null and value2 is not null`|
+| 集合运算符 (and) | `select value1 from ... inner join ... on 维度列` |
+| 集合运算符 (or) | `select if(value1 is not nul, value1, value2) from ... full join ... on 维度列` |
+| 集合运算符 (unless) | `select if(value1 is not nul, value1, value2) from ... left join ... on 维度列 where value2 is null` |
+| 聚合操作   | `select 指定维度列, 聚合函数(value) from ... group by 指定维度列)` |
+| 接收 Range vector 的函数操作  | `select 所有维度列, 创建时间戳 - 创建时间戳%5m, 聚合函数(value) from ... group by 所有维度列, 创建时间戳 - 创建时间戳%5m` |
 
 ## 数据大盘 Grafana
 
