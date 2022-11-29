@@ -11,7 +11,11 @@ tags:
 
 https://pkg.go.dev/net
 
+环境变量 GODEBUG
+
 https://pkg.go.dev/os/user
+
+tags osusergo
 
 https://tonybai.com/2017/06/27/an-intro-about-go-portability/
 

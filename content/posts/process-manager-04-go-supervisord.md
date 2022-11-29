@@ -382,20 +382,26 @@ GOOS=linux go build -tags release -a -ldflags "-linkmode external -extldflags -s
 
 这将导致编译出的二进制依赖 glibc，在 glibc 版本不正确，或者没有 glibc 的镜像中，使用 `program.user` 配置将 panic。
 
-如果仍在 debian 系统进行编译，有如下两种解决办法：
+如果仍在 debian 系统进行编译，有如下几种解决办法：
 
 1. 强制指定 musl-libc 编译。
 
-```bash
-sudo apt-get update && sudo apt-get install -y musl-tools
-GOOS=linux CC=musl-gcc go build -tags release -a -ldflags "-linkmode external -extldflags -static" -o output/supervisord
-```
+    ```bash
+    sudo apt-get update && sudo apt-get install -y musl-tools
+    GOOS=linux CC=musl-gcc go build -tags release -a -ldflags "-linkmode external -extldflags -static" -o output/supervisord
+    ```
 
 2. 关闭 cgo。
 
-```bash
-GOOS=linux CGO_ENABLED=0 go build -tags release -a -ldflags "-extldflags -static" -o output/supervisord
-```
+    ```bash
+    GOOS=linux CGO_ENABLED=0 go build -tags release -a -ldflags "-extldflags -static" -o output/supervisord
+    ```
+
+3. 单独设置 `os/user` 使用纯 go 实现。
+
+    ```bash
+    GOOS=linux go build -tags osusergo,release -a -ldflags "-linkmode external -extldflags -static" -o supervisord
+    ```
 
 ### 问题
 
