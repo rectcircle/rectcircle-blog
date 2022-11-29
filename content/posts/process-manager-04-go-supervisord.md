@@ -364,6 +364,39 @@ serverurl = unix:///var/run/supervisord.sock
 
 通过 program 配置段的 `restart_xxx` 相关配置可以实现。
 
+### 编译问题
+
+官方给的编译命令是：
+
+```bash
+go generate
+GOOS=linux go build -tags release -a -ldflags "-linkmode external -extldflags -static" -o supervisord
+```
+
+这条命令需要再 alpine (musl-libc) 的操作系统中，编译的结果接口才能正常。如果在常规的 glibc 的 Linux 发行版中（如 debian）编译，将出现如下警告：
+
+```
+/tmp/go-link-2389416050/000002.o: In function `mygetgrouplist':
+/xxx/src/os/user/getgrouplist_unix.go:18: warning: Using 'getgrouplist' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
+```
+
+这将导致编译出的二进制依赖 glibc，在 glibc 版本不正确，或者没有 glibc 的镜像中，使用 `program.user` 配置将 panic。
+
+如果仍在 debian 系统进行编译，有如下两种解决办法：
+
+1. 强制指定 musl-libc 编译。
+
+```bash
+sudo apt-get update && sudo apt-get install -y musl-tools
+GOOS=linux CC=musl-gcc go build -tags release -a -ldflags "-linkmode external -extldflags -static" -o output/supervisord
+```
+
+2. 关闭 cgo。
+
+```bash
+GOOS=linux CGO_ENABLED=0 go build -tags release -a -ldflags "-extldflags -static" -o output/supervisord
+```
+
 ### 问题
 
 #### 缺失健康和就绪检查
