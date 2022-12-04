@@ -40,7 +40,7 @@ GCC 的编译一个可执行文件的过程，可以按照顺序分为如下 4 �
 
 为此，操作系统，通过动态链接的能力，以节约，可执行文件自身占在用的磁盘空间，以及其在加载后占用内存资源。
 
-动态链接的流程为：
+Linux 动态链接的流程为：
 
 * 将函数库，编译成动态链接库 (`.so`)。
 * 可执行文件如果依赖该函数库的函数，在链接阶段将该函数库的名字 (标识) 声明在可执行文件中。此时，生成的可执行文件就不会包含动态链接库的内容，而只存在一个引用，从而节省了磁盘空间。
@@ -67,19 +67,27 @@ GCC 的编译一个可执行文件的过程，可以按照顺序分为如下 4 �
 
 C 语言虽然是一种高级语言，但是和其他的编程语言相比，有一个特殊的身份，即系统编程语言，具体而言就是：
 
-* 多数操作系统是由 C 语言编写的。
+* 多数操作系统是由 C 语言编写的，这要求其标准库是可选的，且需要能操作非常底层的硬件资源，需要具有巨大灵活性。
 * 多数操作系统的系统调用 (API) 是通过 C 语言函数调用方式提供。
 
-因此，C 语言的库不像其他编程语言具有很好的跨平台性。因此 C 语言函数库的可以分为标准的跨平台的部分、操作系统专有两个部分：
+因此，C 语言函数库的可以分为标准的跨平台的部分、操作系统专有两个部分：
 
 * 跨平台的部分主要的标准有：[ISO C](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#ISO-C)、[POSIX](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#POSIX)。
 * 操作系统专有的库有：[BSD](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#Berkeley-Unix)、[SVID](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#SVID)、[XPG](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#XPG)、Linux。这些特殊特定函数，会通过宏来开启，如 Linux 的 [`_GNU_SOURCE`](http://musl.libc.org/doc/1.1.24/manual.html)。
 
-libc 指 C 语言标准库。在 C 语言生态中，不同的 libc 对如上标准或库的情况也是不一样的。一般情况下，会实现标准的 [ISO C](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#ISO-C)、[POSIX](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#POSIX)，在加上该 libc 面向的操作系统的专有库。
+这样 在编写 C 程序时，对于的选择就有了三种：
+
+* 不适用标准库，在无操作系统的嵌入式领域或者操作系统领域。
+* 仅使用跨平台的标准库，这样编写的 C 程序：
+    * 只是用 ISO C 几乎可以在所有的操作系统中使用，包括 windows。
+    * 使用了 POSIX，及基本上可以在类 Unix 跨平台编译。
+* 使用了操作系统专有的库，则大概率只能在该操作系统进行运行。对于 Linux ，一些主流的开源 Unix 应该都是可以运行的。
+
+libc 指 C 语言标准库。不同的 libc 对如上标准或库的情况也是不一样的。一般情况下，会实现标准的 [ISO C](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#ISO-C)、[POSIX](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#POSIX)，在加上该 libc 面向的操作系统的专有库。
 
 下面介绍，在 Linux 中，[主流的 libc 库](http://www.etalabs.net/compare_libcs.html)：
 
-* [glibc](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html)，大而全的 glibc 库，为了实现 Linux 宣扬了，其他类 Unix 操作系统可以在 Linux 中运行，因此支持上述的所有库。是 GNU 基金会下的产物，服务端领域主流的 Linux 版采用的 libc 实现。采用 LGPL 协议（[静态编译不友好](https://www.zyxtech.org/2016/04/28/55/)），下文会专门介绍。
+* [glibc](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html)，大而全的历史包袱很重的 libc 库，据说代码质量很差。为了实现 Linux 宣扬的其他类 Unix 操作系统可以在 Linux 中编译，因此支持上述的所有库。是 GNU 基金会下的产物，服务端领域主流的 Linux 版采用的 libc 实现。采用 LGPL 协议（[静态编译不友好](https://www.zyxtech.org/2016/04/28/55/)），下文会专门介绍。
 * [musl-libc](http://www.musl-libc.org/intro.html)，定位为下一代 Linux 设备，采用 MIT 协议，专为静态编译设计，支持主流的指令集。主要应用云原生和嵌入式领域。
 * [uClibc-ng](https://uclibc-ng.org/)，面向嵌入式的 libc，采用 LGPL 协议（[静态编译不友好](https://www.zyxtech.org/2016/04/28/55/)）。
 
