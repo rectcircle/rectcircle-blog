@@ -34,9 +34,9 @@ GCC 的编译一个可执行文件的过程，可以按照顺序分为如下 4 �
 
 我们编写的代码，最终会编译成可执行文件，这个可执行文件会占用磁盘空间。可执行文件执行时，可执行文件本身会加载到内存中，占用内存资源。
 
-在操作系统中，如 Linux C 会将其提供的系统调用 (API) 封装成提供一个 C 语言的函数，即 glibc。该函数库，基本上是所有 Linux C 的应用程序所必备的。
+编写一个 C 语言的程序，需要调用一些通用的函数（如 [ISO C](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#ISO-C)）以及一些操作系统提供的系统调用的封装函数。这些依赖，基本上是所有 Linux C 的应用程序所必备的。
 
-在计算机发展早期，磁盘和内存的资源是及其昂贵的。如果每个程序，都需要将 glibc 编译到可执行文件中，这样就造成了磁盘和内存资源的浪费。除了 glibc 为，还有很多场景需要多个程序复用同一个函数库的场景，都会造成类似于 glibc 的浪费问题。
+在计算机发展早期，磁盘和内存的资源是及其昂贵的。如果每个程序，都需要将这些函数的实现编译到可执行文件中，这样就造成了磁盘和内存资源的浪费。
 
 为此，操作系统，通过动态链接的能力，以节约，可执行文件自身占在用的磁盘空间，以及其在加载后占用内存资源。
 
@@ -73,7 +73,7 @@ C 语言虽然是一种高级语言，但是和其他的编程语言相比，有
 因此，C 语言的库不像其他编程语言具有很好的跨平台性。因此 C 语言函数库的可以分为标准的跨平台的部分、操作系统专有两个部分：
 
 * 跨平台的部分主要的标准有：[ISO C](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#ISO-C)、[POSIX](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#POSIX)。
-* 操作系统专有的库有：[BSD](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#Berkeley-Unix)、[SVID](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#SVID)、[XPG](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#XPG)、Linux。
+* 操作系统专有的库有：[BSD](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#Berkeley-Unix)、[SVID](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#SVID)、[XPG](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#XPG)、Linux。这些特殊特定函数，会通过宏来开启，如 Linux 的 [`_GNU_SOURCE`](http://musl.libc.org/doc/1.1.24/manual.html)。
 
 libc 指 C 语言标准库。在 C 语言生态中，不同的 libc 对如上标准或库的情况也是不一样的。一般情况下，会实现标准的 [ISO C](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#ISO-C)、[POSIX](https://www.gnu.org/software/libc/manual/2.36/html_mono/libc.html#POSIX)，在加上该 libc 面向的操作系统的专有库。
 
