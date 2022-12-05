@@ -1,24 +1,16 @@
 ---
-title: "Go 静态编译 和 CGO"
-date: 2022-11-29T22:09:22+08:00
-draft: true
+title: "Linux C 静态编译"
+date: 2022-12-05T12:13:10+08:00
+draft: false
 toc: true
 comments: true
 tags:
-  - untagged
+  - linux
 ---
 
-> TODO 拆成两篇文章
-
-## Linux C 相关背景知识
-
-本部分，将复习一下学校里可能学过的 C 语言和操作系统的基础知识，以帮助更好的理解 Go 语言的静态编译和 CGO。
-
-### 编译过程
+## Linux C 编译过程
 
 Linux 又称 [GNU/Linux](https://www.gnu.org/gnu/linux-and-gnu.html) 。自然而然 Linux 提供的系统调用（API）通过 glibc 提供，通过 C 语言描述，因此 C 语言是离 Linux 内核最近的编程语言。
-
-而 GCC 是 Linux 上应用程序默认的编译器。因此，了解 GCC 语言的编译过程，才能更好的理解 Go 语言的静态编译和 CGO 的机制。
 
 GCC 的编译一个可执行文件的过程，可以按照顺序分为如下 4 个阶段，这 4 个阶段前一个阶段是后一个阶段输入进行连接。
 
@@ -32,7 +24,7 @@ GCC 的编译一个可执行文件的过程，可以按照顺序分为如下 4 �
 * 上文介绍的时 C 语言的可执行文件的编译过程。在 Linux 中，最终编译产物还是两种其他类：静态链接库 (`.so`) 和动态链接库 (`.a`)。要编译生成这两种类型的产物的前 3 个阶段和编译一个可执行文件的过程一样，都需要预处理、编译、汇编的过程。
 * Go 语言编译成可执行文件的过程，在链接阶段和 GCC 的过程是类似的，因此我们需要重点看链接的过程。其他过程本文不多做介绍。
 
-### 动态链接原理和优点
+## 动态链接原理和优点
 
 我们编写的代码，最终会编译成可执行文件，这个可执行文件会占用磁盘空间。可执行文件执行时，可执行文件本身会加载到内存中，占用内存资源。
 
@@ -50,7 +42,7 @@ Linux 动态链接的流程为：
 
 以上，是动态链接要解决的主要问题。除了上述流程外，Linux 还提供了另一种使用动态链接库的方法：在代码中动态的调用 `ldopen` 等系统调用来加载甚至替换一个外部函数库。利用这个特性，可以实现代码程序的热更新(参考： [Linux C/C++ 实现热更新](https://howardlau.me/programming/c-cpp-hot-reload.html))，不需要重启进程。
 
-### 动态链接的缺点
+## 动态链接的缺点
 
 没有什么好处是没有代价的，动态链接的本质是一种复用，复用意味着一种耦合。因此会带来如下问题：
 
@@ -65,7 +57,7 @@ Linux 动态链接的流程为：
     * 通过虚拟机封装操作系统的差异，如 Java。
     * 支持通过静态编译的方式生成无外部依赖的可执行文件，如 Go。
 
-### C 语言的库 和 libc
+## C 语言的库 和 libc
 
 C 语言虽然是一种高级语言，但是和其他的编程语言相比，有一个特殊的身份，即系统编程语言，具体而言就是：
 
@@ -93,11 +85,11 @@ libc 指 C 语言标准库。不同的 libc 对如上标准或库的情况也是
 * [musl-libc](http://www.musl-libc.org/intro.html)，定位为下一代 Linux 设备，采用 MIT 协议，专为静态编译设计，支持主流的指令集。主要应用云原生和嵌入式领域。
 * [uClibc-ng](https://uclibc-ng.org/)，面向嵌入式的 libc，采用 LGPL 协议（[静态编译不友好](https://www.zyxtech.org/2016/04/28/55/)）。
 
-### glibc 的动态链接问题
+## glibc 的动态链接问题
 
 > 参考：[glibc FAQ](https://sourceware.org/glibc/wiki/FAQ#Even_statically_linked_programs_need_some_shared_libraries_which_is_not_acceptable_for_me.__What_can_I_do.3F) | [stackoverflow](https://stackoverflow.com/questions/57476533/why-is-statically-linking-glibc-discouraged)
 
-glibc 有一个比较大的问题，即默认情况下 glibc 不支持动态链接。主要原因是：
+glibc 有一个比较大的问题，即默认情况下 glibc 不支持静态链接。主要原因是：
 
 * glibc 的一些实现是依赖其他动态链接库实现的，比如 NSS, gconv, IDN 以及 thread cancellation（通过 dlopen 方式，所以 ldd 命令看不到，但是源码可以看出来，如：[libnss 相关](https://github.com/bminor/glibc/blob/master/nss/nss_module.c)）。
 * 这些动态链接库又声明了对 glibc 的依赖，这样就造成了循环依赖。比如，静态编译了 glibc，由于 glibc 依赖了 `libnss3.so`（`sudo ldconfig -p | grep nss`），而 `ldd /usr/lib/x86_64-linux-gnu/libnss3.so`，此时我们的程序还是会加载一个 glibc 的动态链接库。
@@ -136,7 +128,9 @@ main.c:(.text+0x34): 警告：Using 'getpwuid_r' in statically linked applicatio
 
 但是实际上，执行 `a.out` 会隐式的依赖 `libnss3.so` 和 `libc.so.6`（即 glibc）。实际上，这比动态链接编译的程序还要糟糕。因为该程序隐藏了其依赖。所以该警告必须要消除。
 
-### musl-libc 实现静态链接
+注意：glibc 的 FAQ 给出了一种解决方案是，在编译 glibc 时，通过 `--enable-static-nss` 将其依赖的 NSS 也静态编译，但是官方并不推荐。因此，本文并不介绍此做法。
+
+## musl-libc 实现静态链接
 
 解决上述 glibc 问题，最好的办法就是使用 musl-libc，因为上文提到了，musl-libc 就是专门为静态链接而设计的。
 
@@ -145,174 +139,3 @@ sudo apt update
 sudo apt -y install musl-tools
 musl-gcc main.c -static
 ```
-
-## CGo
-
-### 目的
-
-### 写法
-
-### 编译过程
-
-### 注意事项
-
-## Go 标准库 和 CGo
-
-什么是 Go 的标准库。
-
-### Go 条件编译
-
-### os/user 包
-
-### net 包
-
-## Go 静态编译
-
-### 介绍
-
-什么是 Go 的静态编译。
-
-### 默认编译参数情况
-
-### Go 静态编译场景
-
-|                  | 项目有 CGo 代码 且 **有**用到 dlopen (如 glibc)  | 项目有 CGo 代码 且 **未**用到 dlopen (如 glibc) |                                 项目无 CGo 代码 |
-|------------------|-|-|-|
-| 使用标准库 cgo 实现 | ① | ② | ③ |
-| 使用标准库 go  实现 | ④ | ⑤ | ⑥ |
-
-#### 场景 ①
-
-#### 场景 ②
-
-#### 场景 ③
-
-#### 场景 ④
-
-#### 场景 ⑤
-
-#### 场景 ⑥
-
-## 参考
-
-https://stackoverflow.com/questions/2725255/create-statically-linked-binary-that-uses-getaddrinfo
-
-https://groups.google.com/g/comp.os.linux.development.apps/c/9mT498GaSns
-
-```
-gcc glibc warning statically linked applications
-libnss
-https://sourceware.org/glibc/wiki/FAQ#Even_statically_linked_programs_need_some_shared_libraries_which_is_not_acceptable_for_me.__What_can_I_do.3F
-https://abi-laboratory.pro/?view=changelog&l=glibc&v=2.27
-原因是： glibc 调用了 dlopen 加载了 libnss， libnss 又会依赖 glibc，循环依赖。。。。而 glibc 禁止了静态链接应用。
-
-https://www.cnblogs.com/tsecer/p/10485680.html
-```
-
-https://pkg.go.dev/net
-
-环境变量 GODEBUG
-
-https://pkg.go.dev/os/user
-
-tags osusergo
-
-https://tonybai.com/2017/06/27/an-intro-about-go-portability/
-
-https://blog.haohtml.com/archives/31332
-
-https://promacanthus.netlify.app/experience/golang/01-%E7%BC%96%E8%AF%91%E7%9A%84%E5%9D%91/
-
-https://github.com/golang/go/issues/24787
-
-https://breezetemple.github.io/2018/11/12/statically-linked-binary-that-uses-getaddrinfo/
-
-https://coderfan.net/optimization-golang-compilation-with-statically-linked.html
-
-https://zhuanlan.zhihu.com/p/338891206
-
-https://packages.debian.org/buster/musl-tools
-
-```
-package main
-
-import (
-	"fmt"
-	"os/user"
-	"time"
-)
-
-// sudo apt-get install musl-tools
-// GOOS=linux CC=musl-gcc go build -tags release -a -ldflags "-linkmode external -extldflags -static" -o ./tmp/main ./tmp
-
-func main() {
-	go func() {
-		fmt.Println(user.Lookup("byteide"))
-	}()
-
-	time.Sleep(1 * time.Second)
-}
-```
-
-```
-1. 
-
-CGO_ENABLED=1 go build -tags release -a -ldflags "-linkmode external -extldflags -static" -o ./main main.go
-
-# command-line-arguments
-/tmp/go-link-1654487192/000002.o：在函数‘mygetgrouplist’中：
-/usr/local/lib/bytedance-go/src/os/user/getgrouplist_unix.go:18: 警告：Using 'getgrouplist' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
-/tmp/go-link-1654487192/000001.o：在函数‘mygetgrgid_r’中：
-/usr/local/lib/bytedance-go/src/os/user/cgo_lookup_unix.go:40: 警告：Using 'getgrgid_r' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
-/tmp/go-link-1654487192/000001.o：在函数‘mygetgrnam_r’中：
-/usr/local/lib/bytedance-go/src/os/user/cgo_lookup_unix.go:45: 警告：Using 'getgrnam_r' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
-/tmp/go-link-1654487192/000001.o：在函数‘mygetpwnam_r’中：
-/usr/local/lib/bytedance-go/src/os/user/cgo_lookup_unix.go:35: 警告：Using 'getpwnam_r' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
-/tmp/go-link-1654487192/000001.o：在函数‘mygetpwuid_r’中：
-/usr/local/lib/bytedance-go/src/os/user/cgo_lookup_unix.go:30: 警告：Using 'getpwuid_r' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
-
-docker run -it -v $(pwd)/main:/main busybox  /main
-docker run -it -v $(pwd)/main:/main alpine:latest /main
-
-ldd main.go
-
-	不是动态可执行文件
-
-docker run -it -v $(pwd)/main:/main alpine:latest /main
-
-
-2. 
-
-CGO_ENABLED=0 go build -tags release -a -ldflags "-linkmode external -extldflags -static" -o ./main main.go
-
-# command-line-arguments
-loadinternal: cannot find runtime/cgo
-
-3. 
-
-CGO_ENABLED=1 go build -tags release -a -ldflags "-extldflags -static" -o ./main main.go
-
-docker run -it -v $(pwd)/main:/main busybox  /main
-standard_init_linux.go:211: exec user process caused "no such file or directory"
-
-ldd main
-	linux-vdso.so.1 (0x00007fff09bea000)
-	libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007f13f597d000)
-	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f13f55de000)
-	/lib64/ld-linux-x86-64.so.2 (0x00007f13f5b9a000)
-
-docker run -it -v $(pwd)/main:/main alpine:latest /main
-standard_init_linux.go:211: exec user process caused "no such file or directory"
-
-4. 
-
-CGO_ENABLED=0 go build -tags release -a -ldflags "-extldflags -static" -o ./main main.go
-
-docker run -it -v $(pwd)/main:/main busybox  /main
-docker run -it -v $(pwd)/main:/main alpine:latest /main
-```
-
-GO_BUILDMODE_STATIC := -buildmode=pie
-LDFLAGS_STATIC := -linkmode external -extldflags --static-pie
-
-$(EXTRA_FLAGS) -tags "$(BUILDTAGS) netgo osusergo" \
