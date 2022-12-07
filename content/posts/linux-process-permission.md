@@ -245,6 +245,36 @@ ruid: 1000, euid: 1001, suid: 1001
 * 如果当前进程的 euid 是 root，则 setuid 会设置所有的 ruid、euid 和 suid。
 * 如果当前进程的 euid 不是 root，则 setuid 只会设置 euid，且这个 euid 的可选值只能是 ruid 或 suid，也就是说，一个由开启了设置用户 id 位的可执行文件启动的进程，这个进程 euid 可以在 ruid 和 suid 之间来回切换。
 
+### setuid 不生效原因
+
+在某些时候（如：使用 runc 启动容器时），可能发生 setuid 无效的情况，表现为 sudo 命令输出如下：
+
+```
+sudo: effective uid is not 0, is /usr/bin/sudo on a file system with the 'nosuid' option set or an NFS file system without root privileges?
+```
+
+遇到如上情况，有如下可能性：
+
+* `/usr/bin/sudo` 文件没有设置 setuid 位： `stat /usr/bin/sudo`。权限字段如果以 4 开头则没有问题比（如 `(4755/-rwsr-xr-x)`）。如果不是，使用 root 权限执行如下命令。
+
+    ```bash
+    chmod u+s /usr/bin/sudo
+    ```
+
+* 确认当前进程的 CapBnd 包含 `setuid` 位。先使用 root 安装 `capsh` 命令（`apt-get install libcap2-bin`），然后在出问题的普通用户执行 `capsh --print`。
+
+    * 如果输出 Bounding set 包含 `cap_setuid`，则说明没有问题。
+
+        ```
+        Bounding set =cap_chown,cap_dac_override,cap_fowner,cap_fsetid,cap_kill,cap_setgid,cap_setuid,cap_setpcap,cap_net_bind_service,cap_net_raw,cap_sys_chroot,cap_mknod,cap_audit_write,cap_setfcap
+        ```
+
+    * 如果没有且使用的 runc 启动的容器，检查 `capabilities.bounding` 是否包含 `CAP_SETUID`。
+
+* 检查文件所在文件系统挂载点在挂载时，是否使用了 `nosuid` 选项。通过 `mount | grep nosuid` 命令查看。如果，使用了该选项，检查挂载位置，删除该选项。
+
+* 检查 NoNewPrivs 是否被设置，通过 `cat /proc/$$/status | grep NoNewPrivs`，如果输出 `NoNewPrivs:	0`，标识没有问题。否则，说明通过 prctl 设置了 [`PR_SET_NO_NEW_PRIVS`](https://man7.org/linux/man-pages/man2/prctl.2.html) 为 1，此时，如果是 runc 启动的，设置 [`process.noNewPrivileges`](https://github.com/opencontainers/runc/blob/2da0194236d2bf20a52751139d479ebd05512fc2/vendor/github.com/opencontainers/runtime-spec/specs-go/config.go#L58) 为 false（runc [源码](https://github.com/opencontainers/runc/blob/eddf35e5462e2a9f24d8279874a84cfc8b8453c2/libcontainer/setns_init_linux.go#L57) | [issue](https://github.com/opencontainers/runc/issues/641)）。
+
 ## 进程的能力
 
 > [capabilities(7) — Linux manual page](https://man7.org/linux/man-pages/man7/capabilities.7.html)
