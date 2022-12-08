@@ -1,7 +1,7 @@
 ---
 title: "Go 静态编译 和 CGO"
 date: 2022-12-08T22:00:00+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
