@@ -1,11 +1,11 @@
 ---
 title: "Go 静态编译 和 CGO"
-date: 2022-11-29T22:09:22+08:00
+date: 2022-12-08T22:00:00+08:00
 draft: true
 toc: true
 comments: true
 tags:
-  - untagged
+  - golang
 ---
 
 ## Linux C 静态编译
@@ -216,161 +216,105 @@ Go 语言的一大特色就是，一次编写，多次编译，到处运行。�
 
 ## Go 标准库 和 CGO
 
-什么是 Go 的标准库。
+Go 的标准库基本上所有的包都是通过 Go 语言来实现。
 
-### Go 条件编译
+但是，对于如下的标注库中的包（可能出于性能考虑），除了提供 Go 语言的实现外，还提供了 CGO 的实现：
 
-### os/user 包
+* `os/user`
+* `net`
 
-### net 包
+在默认情况下（Linux 平台，CGO_ENABLED=1），项目使用了如上包中的函数，在编译时，将使用 CGO 的实现。此时 ldd 查看可执行文件，将看到 `libc.so` 等动态链接库的依赖。如 `main.go`：
 
-## Go 静态编译
-
-### 介绍
-
-什么是 Go 的静态编译。
-
-### 默认编译参数情况
-
-### Go 静态编译场景
-
-|                  | 项目有 CGO 代码 且 **有**用到 dlopen (如 glibc)  | 项目有 CGO 代码 且 **未**用到 dlopen (如 glibc) |                                 项目无 CGO 代码 |
-|------------------|-|-|-|
-| 使用标准库 cgo 实现 | ① | ② | ③ |
-| 使用标准库 go  实现 | ④ | ⑤ | ⑥ |
-
-#### 场景 ①
-
-#### 场景 ②
-
-#### 场景 ③
-
-#### 场景 ④
-
-#### 场景 ⑤
-
-#### 场景 ⑥
-
-## 参考
-
-https://stackoverflow.com/questions/2725255/create-statically-linked-binary-that-uses-getaddrinfo
-
-https://groups.google.com/g/comp.os.linux.development.apps/c/9mT498GaSns
-
-```
-gcc glibc warning statically linked applications
-libnss
-https://sourceware.org/glibc/wiki/FAQ#Even_statically_linked_programs_need_some_shared_libraries_which_is_not_acceptable_for_me.__What_can_I_do.3F
-https://abi-laboratory.pro/?view=changelog&l=glibc&v=2.27
-原因是： glibc 调用了 dlopen 加载了 libnss， libnss 又会依赖 glibc，循环依赖。。。。而 glibc 禁止了静态链接应用。
-
-https://www.cnblogs.com/tsecer/p/10485680.html
-```
-
-https://pkg.go.dev/net
-
-环境变量 GODEBUG
-
-https://pkg.go.dev/os/user
-
-tags osusergo
-
-https://tonybai.com/2017/06/27/an-intro-about-go-portability/
-
-https://blog.haohtml.com/archives/31332
-
-https://promacanthus.netlify.app/experience/golang/01-%E7%BC%96%E8%AF%91%E7%9A%84%E5%9D%91/
-
-https://github.com/golang/go/issues/24787
-
-https://breezetemple.github.io/2018/11/12/statically-linked-binary-that-uses-getaddrinfo/
-
-https://coderfan.net/optimization-golang-compilation-with-statically-linked.html
-
-https://zhuanlan.zhihu.com/p/338891206
-
-https://packages.debian.org/buster/musl-tools
-
-```
+```go
 package main
 
 import (
 	"fmt"
 	"os/user"
-	"time"
 )
-
-// sudo apt-get install musl-tools
-// GOOS=linux CC=musl-gcc go build -tags release -a -ldflags "-linkmode external -extldflags -static" -o ./tmp/main ./tmp
-
 func main() {
-	go func() {
-		fmt.Println(user.Lookup("byteide"))
-	}()
-
-	time.Sleep(1 * time.Second)
+    fmt.Println(user.Lookup("root"))
 }
 ```
 
+`ldd main` 将输出：
+
 ```
-1. 
-
-CGO_ENABLED=1 go build -tags release -a -ldflags "-linkmode external -extldflags -static" -o ./main main.go
-
-# command-line-arguments
-/tmp/go-link-1654487192/000002.o：在函数‘mygetgrouplist’中：
-/usr/local/lib/go/src/os/user/getgrouplist_unix.go:18: 警告：Using 'getgrouplist' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
-/tmp/go-link-1654487192/000001.o：在函数‘mygetgrgid_r’中：
-/usr/local/lib/go/src/os/user/cgo_lookup_unix.go:40: 警告：Using 'getgrgid_r' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
-/tmp/go-link-1654487192/000001.o：在函数‘mygetgrnam_r’中：
-/usr/local/lib/go/src/os/user/cgo_lookup_unix.go:45: 警告：Using 'getgrnam_r' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
-/tmp/go-link-1654487192/000001.o：在函数‘mygetpwnam_r’中：
-/usr/local/lib/go/src/os/user/cgo_lookup_unix.go:35: 警告：Using 'getpwnam_r' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
-/tmp/go-link-1654487192/000001.o：在函数‘mygetpwuid_r’中：
-/usr/local/lib/go/src/os/user/cgo_lookup_unix.go:30: 警告：Using 'getpwuid_r' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
-
-docker run -it -v $(pwd)/main:/main busybox  /main
-docker run -it -v $(pwd)/main:/main alpine:latest /main
-
-ldd main.go
-
-	不是动态可执行文件
-
-docker run -it -v $(pwd)/main:/main alpine:latest /main
-
-
-2. 
-
-CGO_ENABLED=0 go build -tags release -a -ldflags "-linkmode external -extldflags -static" -o ./main main.go
-
-# command-line-arguments
-loadinternal: cannot find runtime/cgo
-
-3. 
-
-CGO_ENABLED=1 go build -tags release -a -ldflags "-extldflags -static" -o ./main main.go
-
-docker run -it -v $(pwd)/main:/main busybox  /main
-standard_init_linux.go:211: exec user process caused "no such file or directory"
-
-ldd main
-	linux-vdso.so.1 (0x00007fff09bea000)
-	libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007f13f597d000)
-	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f13f55de000)
-	/lib64/ld-linux-x86-64.so.2 (0x00007f13f5b9a000)
-
-docker run -it -v $(pwd)/main:/main alpine:latest /main
-standard_init_linux.go:211: exec user process caused "no such file or directory"
-
-4. 
-
-CGO_ENABLED=0 go build -tags release -a -ldflags "-extldflags -static" -o ./main main.go
-
-docker run -it -v $(pwd)/main:/main busybox  /main
-docker run -it -v $(pwd)/main:/main alpine:latest /main
+        linux-vdso.so.1 (0x00007fff43bf0000)
+        libpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007f7e3b1b1000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f7e3afdc000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f7e3b1db000)
 ```
 
-GO_BUILDMODE_STATIC := -buildmode=pie
-LDFLAGS_STATIC := -linkmode external -extldflags --static-pie
+此时，通过两种方式可以实现使用标准库中纯 Go 的实现：
 
-$(EXTRA_FLAGS) -tags "$(BUILDTAGS) netgo osusergo" \
+* 方式 1：设置 `CGO_ENABLED=0` 环境变量，禁用 CGO，命令为 `CGO_ENABLED=0 go build main.go`。
+* 方式 2：使用标准库这两个包提供的条件编译标签，强制指定使用纯 Go 的实现。命令为 `go build -tags osusergo,netgo main.go`。
+
+## Go 静态编译场景
+
+这里的静态编译指的是，Go 项目编译出的可执行文件是没有任何动态链接库的依赖。
+
+|                  | 项目有 CGO 代码 且 外部库**有**用到 dlopen (如 glibc)  | 项目有 CGO 代码 且 外部库**未**用到 dlopen (如  musl-libc) |                                 项目无 CGO 代码 |
+|------------------|-|-|-|
+| 使用标准库 cgo 实现 | ① | ② | ③ |
+| 使用标准库 go  实现 | ④ | ⑤ | ⑥ |
+
+下面的场景，在 Linux 平台，编译当前项目 `./cmd` 目录下的 `main` 包为例。
+
+### 场景 ①
+
+针对该场景，无法实现静态编译，如果强制使用如下命令，将警告，并在很多场景直接 panic。
+
+```bash
+# 使用 -ldflags 指定：
+#   -linkmode external : 使用外部链接器
+#   --extldflags -static : 告知 C 语言编译器使用静态编译。
+go build -ldflags "-linkmode external -extldflags -static" ./cmd
+```
+
+编译时，将出现，类似如下警告：
+
+```
+Using 'xxx' in statically linked applications requires at runtime the shared libraries from the glibc version used for linking
+```
+
+### 场景 ②
+
+```bash
+# 安装 musl-libc 编译器
+sudo apt-get install musl-tools
+# 使用 CC 指定 C 语言编译器为 musl-gcc
+# 使用 -ldflags 指定：
+#   -linkmode external : 使用外部链接器
+#   --extldflags -static : 告知 C 语言编译器使用静态编译。
+CC=musl-gcc go build -ldflags "-linkmode external -extldflags -static" ./cmd
+```
+
+### 场景 ③
+
+由于 Go 标准库的 CGO 实现，依赖 libc，因此，无法使用 glibc。所以解法和 **场景 ②** 一致。
+
+### 场景 ④
+
+无法实现，原因参见： **场景 ①**。
+
+### 场景 ⑤
+
+```bash
+# 安装 musl-libc 编译器
+sudo apt-get install musl-tools
+# 使用 CC 指定 C 语言编译器为 musl-gcc
+# 使用 -tags osusergo,netgo 指定：标准库使用纯 Go 实现。
+# 使用 -ldflags 指定：
+#   -linkmode external : 使用外部链接器
+#   --extldflags -static : 告知 C 语言编译器使用静态编译。
+CC=musl-gcc go build -tags osusergo,netgo -ldflags "-linkmode external -extldflags -static" ./cmd
+```
+
+### 场景 ⑥
+
+```bash
+# CGO_ENABLED=0 直接禁用 CGO 即可
+CGO_ENABLED=0 go build ./cmd
+```
