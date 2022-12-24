@@ -172,6 +172,189 @@ cgroup on /sys/fs/cgroup/rdma type cgroup (rw,nosuid,nodev,noexec,relatime,rdma)
 
 ### cpu
 
+#### 描述
+
+自 Linux 2.6 起，Linux 的 CPU 调度器使用的是 CFS (完全公平调度器)。 cgroup 的 cpu 子系统中，通过 [CFS 调度器带宽控制](https://docs.kernel.org/translations/zh_CN/scheduler/sched-bwc.html)特性，以实现控制进程的 CPU 使用率的目的（只对 `non-RT` 非实时策略生效）。相关参数（文件）如下：
+
+* `cpu.cfs_quota_us` 一个周期内最大运行时间，默认为 -1（即不限制）。需要注意的是，如果是多核情况，该值的取值范围为 `(0, 核数*cpu.cfs_period_us]`。
+* `cpu.cfs_period_us` 单个 CPU 一个周期的长度，默认为 100000 us （即 100 ms），不能超过 1 s。
+* `cpu.cfs_burst_us` 略，参见：[CFS 带宽控制](https://docs.kernel.org/translations/zh_CN/scheduler/sched-bwc.html)。
+
+除了如上和 CFS 相关的参数，还有如下参数（文件）可以配置：
+
+* `cpu.shares` 在同一层级下。组内 CPU 的权重。需要注意的是，当 CPU 空闲时，所有组内的 CPU 都是可以占有全部的 CPU 的，当 CPU 繁忙时，各个组的 CPU 时间片的分配则按照这个参数按比例分配，数值越高分配的 CPU 越多。默认为 1024。
+
+说明：除了 cgroup 外，还有一种方式可以 CPU affinity 的方式将进程绑定到某些核心下来控制 CPU 的使用。可以通过 [`taskset`](https://man7.org/linux/man-pages/man1/taskset.1.html) 命令或 [`sched_setaffinity(2) 系统调用`](https://man7.org/linux/man-pages/man2/sched_setaffinity.2.html)设置，也可以通过 cpuset cgroup 子系统进行配置（`/sys/fs/cgroup/cpuset`），本文不多赘述。
+
+总结：
+
+* 配置 CPU 繁忙时调度的优先级，可以通过 `cpu.shares` 进行配置，该设置不影响系统空闲时最大 CPU 使用量。
+* 限制最大 CPU 使用量，可以使用 `cpu.cfs_quota_us` 进行配置，即：`最大使用核心数 = cpu.cfs_quota_us/cpu.cfs_period_us`。（`cpu.cfs_period_us` 一般保持默认，配置分子 `cpu.cfs_quota_us` 即可），k8s 的 `resources.limit.cpu` 即通过该方式实现。
+
+参考：
+
+* [glommer/memcg cpu_stat/Documentation/cgroups/cpu.txt](https://kernel.googlesource.com/pub/scm/linux/kernel/git/glommer/memcg/+/cpu_stat/Documentation/cgroups/cpu.txt)
+* [CFS Bandwidth Control](https://docs.kernel.org/scheduler/sched-bwc.html) | [CFS 带宽控制](https://docs.kernel.org/translations/zh_CN/scheduler/sched-bwc.html)
+* [Cgroup的CPU资源隔离介绍&docker cpu限制](https://blog.csdn.net/liukuan73/article/details/53358423)
+
+#### 实验
+
+> 参考：[使用 cgroups-v1 为应用程序设置 CPU 限制](https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/setting-cpu-limits-to-applications-using-cgroups-v1_setting-limits-for-applications)
+
+实验规划如下：
+
+* 创建一个协程，改协程实现一个死循环，用来占满一个 CPU。
+* 打印当前进程 CPU 占用率，此时应该是 100% 左右。
+* 创建一个 demo cpu cgroup，将 CPU 上线设置为 20%。并将当前进程加入到该 cgroup 中。
+* 打印当前进程 CPU 占用率，应该应该是 20% 左右。
+
+实验代码 `src/go/01-namespace/07-cgroup/v1/01-cpu/main.go`，如下：
+
+```go
+package main
+
+import (
+	"fmt"
+	"os"
+	"path"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/shirou/gopsutil/v3/process"
+	"golang.org/x/sys/unix"
+)
+
+func usage100PercentCPU() {
+	i := 0
+	for {
+		i = i + 1
+	}
+}
+
+func printSelfCPUPercent(p *process.Process) {
+	cpuPercent, err := p.Percent(1 * time.Second)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%.2f%s\n", cpuPercent, "%")
+}
+
+func attachSelfToCgroup(cgroupPath string) error {
+	return os.WriteFile(path.Join(cgroupPath, "cgroup.procs"), []byte(fmt.Sprint(os.Getpid())), 0644)
+}
+
+func printSelfCgroup(subsys string) {
+	selfCgroupBytes, err := os.ReadFile("/proc/self/cgroup")
+	if err != nil {
+		panic(err)
+	}
+	for _, line := range strings.Split(string(selfCgroupBytes), "\n") {
+		subSystems := strings.Split(strings.Split(line, ":")[1], ",")
+		for _, now := range subSystems {
+			if now == subsys {
+				fmt.Println(line)
+				return
+			}
+		}
+	}
+	panic(fmt.Errorf("subsys not found: %s", subsys))
+}
+
+func main() {
+
+	// 启动 CPU 负载
+	go usage100PercentCPU()
+
+	p, err := process.NewProcess(int32(os.Getpid()))
+	if err != nil {
+		panic(err)
+	}
+
+	// 打印默认的情况
+	fmt.Printf("当前进程的 cpu cgroup 为: ")
+	printSelfCgroup("cpu")
+	fmt.Printf("当前进程的 cpu 使用率为: ")
+	printSelfCPUPercent(p)
+	fmt.Println()
+
+	// 在默认 cpu 层级，根 cgroup 创建一个名为 demo 的 cgroup。
+	cpuDemoCgroupDir := "/sys/fs/cgroup/cpu/demo"
+	err = os.Mkdir(cpuDemoCgroupDir, 777)
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		// 使用 unix 的 rmdir 系统调用。
+		// 参考 https://github.com/opencontainers/runc/blob/main/libcontainer/cgroups/utils.go#L231
+		err = unix.Rmdir(cpuDemoCgroupDir)
+		if err != nil && err != unix.ENOENT {
+			panic(err)
+		}
+	}()
+	// 配置 CPU quota 为 0.2 核，0.2 * 100000 = 20000
+	cpuCFSQuotaPath := path.Join(cpuDemoCgroupDir, "cpu.cfs_quota_us")
+	cpuCFSPeriodPath := path.Join(cpuDemoCgroupDir, "cpu.cfs_period_us")
+	cpuCFSPeriod, err := os.ReadFile(cpuCFSPeriodPath) // 100000
+	if err != nil {
+		panic(err)
+	}
+	cpuCFSPeriodInt, err := strconv.ParseInt(strings.TrimSpace(string(cpuCFSPeriod)), 10, 32)
+	if err != nil {
+		panic(err)
+	}
+	cpuCore := 0.2
+	cpuCFSQuotaInt := int(cpuCore * float64(cpuCFSPeriodInt))
+	err = os.WriteFile(cpuCFSQuotaPath, []byte(fmt.Sprint(cpuCFSQuotaInt)), 0644)
+	if err != nil {
+		panic(err)
+	}
+	cpuCFSQuota, err := os.ReadFile(cpuCFSQuotaPath)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("创建 demo cpu cgroup, 配置 core: %f, 即\n  cpu.cfs_quota_us: %s\n  cpu.cfs_quota_us: %s\n",
+		cpuCore,
+		strings.TrimSpace(string(cpuCFSQuota)),
+		strings.TrimSpace(string(cpuCFSPeriod)),
+	)
+	// 将当前进程加入到当前 cgroup
+	err = attachSelfToCgroup(cpuDemoCgroupDir)
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		// 进程退出前，将当前进程脱离 demo cgroup，如果不处理，删除 cgroup 将报错 device or resource busy
+		err = attachSelfToCgroup("/sys/fs/cgroup/cpu")
+		if err != nil {
+			panic(err)
+		}
+	}()
+	fmt.Println("当前进程已加入 demo cpu cgroup")
+	fmt.Println()
+
+	fmt.Printf("当前进程的 cpu cgroup 为: ")
+	printSelfCgroup("cpu")
+	fmt.Printf("当前进程的 cpu 使用率为: ")
+	printSelfCPUPercent(p)
+}
+```
+
+输出如下：
+
+```
+当前进程的 cpu cgroup 为: 4:cpu,cpuacct:/
+当前进程的 cpu 使用率为: 93.24%
+
+创建 demo cpu cgroup, 配置 core: 0.200000, 即
+  cpu.cfs_quota_us: 20000
+  cpu.cfs_quota_us: 100000
+当前进程已加入 demo cpu cgroup
+
+当前进程的 cpu cgroup 为: 4:cpu,cpuacct:/demo
+当前进程的 cpu 使用率为: 21.37%
+```
+
 ### memory
 
 ### devices
