@@ -363,14 +363,14 @@ func main() {
 
 首先需要了解，在 Linux 中，一个进程关于内存占用的一些指标概念：
 
-* RSS (Resident Set Size)，常驻内存大小。进程在物理内存中实际保存的总内存（包含共享库占用的共享内存总数，不包含 swap 中的）。
-* Page Cache (Buffer/Cache)，主要是 IO （文件系统）的缓存（读写文件），该部分内存一般不会回收，会根据配置达到一定水平线后进行回收。
+* RSS (Resident Set Size)，常驻内存大小。进程在物理内存中实际保存的总内存（包含共享库占用的共享内存总数，不包含已 swap 到磁盘中的内存），可以按照进程粒度进程统计。
+* Page Cache (Buffer/Cache)，主要是 IO （文件系统）的缓存（读写文件），该部分内存一般不会回收，会根据配置达到一定水平线后进行回收，该部分内存是多个进程共享呢，由内核统一管理，不会和进程关联，在使用 cgroup 时，可以按照 cgroup 粒度进行统计。
 
 #### 描述
 
 cgroup 对内存的控制的相关主要参数（文件）如下所示（只介绍 [runc](https://github.com/opencontainers/runc/blob/main/libcontainer/cgroups/fs/memory.go#L20) 使用的那些）：
 
-* `memory.limit_in_bytes` rw，默认值 9223372036854771712（0x7FFFFFFFFFFFF000 基本上等于无限制），内存使用（硬）限制，对应的指标为 RSS + Page Cache，cgroup 对应指标超过该值时，内核行为由 `memory.oom_control` 参数决定：
+* `memory.limit_in_bytes` rw，默认值 9223372036854771712（0x7FFFFFFFFFFFF000 基本上等于无限制），内存使用（硬）限制，对应的指标为 RSS + Page Cache，写入 -1 表示无限制，cgroup 对应指标超过该值时，内核行为由 `memory.oom_control` 参数决定：
 	* `memory.oom_control.oom_kill_disable = 0` 内核将 kill -9 该 cgroup `/proc/<pid>/oom_score + /proc/<pid>/oom_adj ` 高的进程（内存占用最高的），退出码为 137。
 	* `memory.oom_control.oom_kill_disable = 1` 该 cgroup 中的进程，调用 [brk(2) 系统调用](https://man7.org/linux/man-pages/man2/brk.2.html) （即 malloc 等）分配内存时，会进入不可中断休眠，表现是进程卡主。在这种场景，可以通过 `cgroup.event_control` 文件来监听到 oom 事件，并交由用户进程进行更精细的处理，而不是简单的 kill，更多参见下文 `cgroup.event_control`。
 * `memory.soft_limit_in_bytes` rw，默认值和 `memory.limit_in_bytes` 一致，内存使用软限制，在 `CONFIG_PREEMPT_RT` 系统中不可用，对应的指标为 RSS + Page Cache。cgroup 对应指标超过该值，将触发内核，回收超过限额的进程占用的内存（猜测是回收 Page Cache），使之尽量和该值靠拢。
@@ -383,7 +383,7 @@ cgroup 对内存的控制的相关主要参数（文件）如下所示（只介�
 	* under_oom bool 值类型，表示当前 cgroup 是否处于缺少内存的状态。如果该 cgroup 缺少内存，则会暂停它里面的进程。under_oom 条目报告值为 1，否则为 0。
 	* oom_kill ??
 * `cgroup.event_control` w，事件通知虚拟文件，某进程可以创建一个 eventfd ，并将将该 eventfd 的文件描述符写入 `cgroup.event_control`，然后内核就会将 oom 事件写入该 eventfd 文件描述符，这个进程通过 epoll 获取到该事件。在 `memory.oom_control.oom_kill_disable = 1` 时，可以实现用户自定义的更精细的 oom 处理，而不是简单的 kill （k8s 的实现机制）。
-* `memory.stat` 获取各种内存相关统计数据，更多参见：[Memory Resource Controller - 5.2 stat file](https://docs.kernel.org/admin-guide/cgroup-v1/memory.html#stat-file)。
+* `memory.stat` 获取各种 cgroup 粒度的内存相关统计数据，更多参见：[Memory Resource Controller - 5.2 stat file](https://docs.kernel.org/admin-guide/cgroup-v1/memory.html#stat-file)。
 * `memory.use_hierarchy` rw，默认值 1，已弃用，是否将子 cgroup 的内存使用情况统计到当前cgroup里面。
 * `memory.failcnt` rw，查看示当前 cgroup 命中限制的次数，可以通过写入 0 重置该计数器。
 * `memory.numa_stat` r，类似于 `memory.stat` 用于查看 numa 架构相关内存状态。
