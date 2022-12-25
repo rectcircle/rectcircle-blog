@@ -371,7 +371,7 @@ func main() {
 cgroup 对内存的控制的相关主要参数（文件）如下所示（只介绍 [runc](https://github.com/opencontainers/runc/blob/main/libcontainer/cgroups/fs/memory.go#L20) 使用的那些）：
 
 * `memory.limit_in_bytes` rw，默认值 9223372036854771712（0x7FFFFFFFFFFFF000 基本上等于无限制），内存使用（硬）限制，对应的指标为 RSS + Page Cache，写入 -1 表示无限制，cgroup 对应指标超过该值时，内核行为由 `memory.oom_control` 参数决定：
-	* `memory.oom_control.oom_kill_disable = 0` 内核将 kill -9 该 cgroup `/proc/<pid>/oom_score + /proc/<pid>/oom_adj ` 高的进程（内存占用最高的），退出码为 137。
+	* `memory.oom_control.oom_kill_disable = 0` 内核将 kill -9 该 cgroup `/proc/<pid>/oom_score + /proc/<pid>/oom_score_adj` 高的进程（内存占用最高的）（`oom_adj` 是旧的 api，应该使用 oom_score_adj），oom_score 计算规则为 `1000 * (RSS + 进程页面 + 交换内存) / (总的物理内存 +交换分区)`，oom_score_adj 取值范围为 `['-1000', '1000']`，退出码为 137，如果想修改 `CAP_SYS_RESOURCE` 则需要 `CAP_SYS_RESOURCE` 特权。更多关于 oom killer 参见：[Taming the OOM killer](https://lwn.net/Articles/317814/)。
 	* `memory.oom_control.oom_kill_disable = 1` 该 cgroup 中的进程，调用 [brk(2) 系统调用](https://man7.org/linux/man-pages/man2/brk.2.html) （即 malloc 等）分配内存时，会进入不可中断休眠，表现是进程卡主。在这种场景，可以通过 `cgroup.event_control` 文件来监听到 oom 事件，并交由用户进程进行更精细的处理，而不是简单的 kill，更多参见下文 `cgroup.event_control`。
 * `memory.soft_limit_in_bytes` rw，默认值和 `memory.limit_in_bytes` 一致，内存使用软限制，在 `CONFIG_PREEMPT_RT` 系统中不可用，对应的指标为 RSS + Page Cache。cgroup 对应指标超过该值，将触发内核，回收超过限额的进程占用的内存（猜测是回收 Page Cache），使之尽量和该值靠拢。
 * `memory.memsw.limit_in_bytes` rw，默认值和 `memory.limit_in_bytes` 一致，对应的指标为 RSS + Page Cache + Swap，行为和 `memory.limit_in_bytes` 一致。
@@ -402,6 +402,14 @@ cgroup 对内存的控制的相关主要参数（文件）如下所示（只介�
 * [docker cgroup 技术之memory（首篇）](https://www.cnblogs.com/charlieroro/p/10180827.html)
 
 #### 实验
+
+实验规划如下：
+
+* 启动一个监控进程，创建一个 demo memory cgroup，将 `memory.limit_in_bytes` 设置为 100 MB，其他保持默认。
+* 监控进程创建两个子进程，加入上面创建的 demo memory cgroup，并申请 70 MB 内存，观察是否有一个被 kill，另外一个仍然存活。
+* 监控进程再创建一个子进程，加入上面创建的 demo memory cgroup，并设置该进程的 oom_score_adj 为 1000，并申请 50 MB 内存，观察是否有该进程被优先 kill。
+* 监控进程写入 1 到 `memory.oom_control` 禁用内核 oom killer，并通过 `cgroup.event_control` 文件配置当前进程接受 OOM 事件。
+* 监控简称创建一个子进程，加入上面创建的 demo memory cgroup，并申请 50 MB 内存，观察是否有进程被 kill，观察两个进程的进程状态，该观察 OOM 事件通知，观察 `memory.usage_in_bytes`、`memory.oom_control` 文件内容。
 
 #### k8s 驱逐
 
