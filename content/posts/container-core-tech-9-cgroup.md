@@ -371,7 +371,7 @@ func main() {
 cgroup 对内存的控制的相关主要参数（文件）如下所示（只介绍 [runc](https://github.com/opencontainers/runc/blob/main/libcontainer/cgroups/fs/memory.go#L20) 使用的那些）：
 
 * `memory.limit_in_bytes` rw，默认值 9223372036854771712（0x7FFFFFFFFFFFF000 基本上等于无限制），内存使用（硬）限制，对应的指标为 RSS + Page Cache，写入 -1 表示无限制，cgroup 对应指标超过该值时，内核行为由 `memory.oom_control` 参数决定：
-	* `memory.oom_control.oom_kill_disable = 0` 内核将 kill -9 该 cgroup `/proc/<pid>/oom_score + /proc/<pid>/oom_score_adj` 高的进程（内存占用最高的）（`oom_adj` 是旧的 api，应该使用 oom_score_adj），oom_score 计算规则为 `1000 * (RSS + 进程页面 + 交换内存) / (总的物理内存 +交换分区)`，oom_score_adj 取值范围为 `['-1000', '1000']`，退出码为 137，如果想修改 `CAP_SYS_RESOURCE` 则需要 `CAP_SYS_RESOURCE` 特权。更多关于 oom killer 参见：[Taming the OOM killer](https://lwn.net/Articles/317814/)。
+	* `memory.oom_control.oom_kill_disable = 0` 内核将 kill -9 该 cgroup `/proc/<pid>/oom_score + /proc/<pid>/oom_score_adj` 高的进程（内存占用最高的）（`oom_adj` 是旧的 api，应该使用 oom_score_adj），oom_score 计算规则为 `1000 * (RSS + 进程页面 + 交换内存) / (总的物理内存 +交换分区)`，oom_score_adj 取值范围为 `['-1000', '1000']`，退出码为 137，如果想修改 `CAP_SYS_RESOURCE` 则需要 `CAP_SYS_RESOURCE` 特权（参见：[proc(5) 手册](https://man7.org/linux/man-pages/man5/proc.5.html)）。更多关于 oom killer 参见：[Taming the OOM killer](https://lwn.net/Articles/317814/)。
 	* `memory.oom_control.oom_kill_disable = 1` 该 cgroup 中的进程，调用 [brk(2) 系统调用](https://man7.org/linux/man-pages/man2/brk.2.html) （即 malloc 等）分配内存时，会进入不可中断休眠，表现是进程卡主。在这种场景，可以通过 `cgroup.event_control` 文件来监听到 oom 事件，并交由用户进程进行更精细的处理，而不是简单的 kill，更多参见下文 `cgroup.event_control`。
 * `memory.soft_limit_in_bytes` rw，默认值和 `memory.limit_in_bytes` 一致，内存使用软限制，在 `CONFIG_PREEMPT_RT` 系统中不可用，对应的指标为 RSS + Page Cache。cgroup 对应指标超过该值，将触发内核，回收超过限额的进程占用的内存（猜测是回收 Page Cache），使之尽量和该值靠拢。
 * `memory.memsw.limit_in_bytes` rw，默认值和 `memory.limit_in_bytes` 一致，对应的指标为 RSS + Page Cache + Swap，行为和 `memory.limit_in_bytes` 一致。
@@ -395,6 +395,8 @@ cgroup 对内存的控制的相关主要参数（文件）如下所示（只介�
 * [使用event_control监听memory cgroup的oom事件](https://www.jianshu.com/p/f2403e33c766)
 * [Redhat 资源管理指南 - A.7. memory](https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/7/html/resource_management_guide/sec-memory)
 * [linux内核的oom score是咋算出来的](https://blog.csdn.net/u010278923/article/details/105688107)
+* [Taming the OOM killer](https://lwn.net/Articles/317814/)
+* [proc(5) 手册](https://man7.org/linux/man-pages/man5/proc.5.html)
 * [Linux swappiness参数设置与内存交换](https://cloud.tencent.com/developer/article/1503835)
 * [Understanding vm.swappiness](https://linuxhint.com/understanding_vm_swappiness/)
 * [Linux Cgroup系列（04）：限制cgroup的内存使用（subsystem之memory](https://segmentfault.com/a/1190000008125359)
