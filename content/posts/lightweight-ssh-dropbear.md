@@ -182,4 +182,4 @@ printf("user=%s uid=%u passwd=%s passwdcrypt=%s testcrypt=%s\n", ses.authstate.p
 user=root uid=0 passwd=123456 passwdcrypt=$5$KDM.1/A3kjHyuqm$.1la1CUeFr/aLLF2FOJTADfsE11PcegBbQl9v9DU6GA testcrypt=$5$KDM.1/A3kjHyuqm$.1la1CUeFr/aLLF2FOJTADfsE11PcegBbQl9v9DU6GA
 ```
 
-因此，如果想实现自定义密码校验，只需在 `svr-authpasswd.c` 127 行，fork 一个子进程将上述测试的变量通过环境变量传递过去，根据子进程的退出码决定是否发送成功消息 `send_msg_userauth_success()`。
+因此，如果想实现自定义密码校验，只需在 [`svr-authpasswd.c` 的 126 行](https://github.com/mkj/dropbear/blob/DROPBEAR_2022.83/svr-authpasswd.c#L126)，fork 一个子进程将上述测试的变量通过环境变量传递过去，根据子进程的退出码决定是否发送成功消息 `send_msg_userauth_success()`。
