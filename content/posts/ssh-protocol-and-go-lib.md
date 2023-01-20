@@ -54,7 +54,7 @@ SSH 协议由 3 个子协议构成。从底层到顶层分别是：
 
 * 传输层协议（[rfc4253](https://www.rfc-editor.org/rfc/rfc4253)），定义了 SSH 协议数据包的格式以及 Key 交换算法。
 * 认证协议（[rfc4252](https://www.rfc-editor.org/rfc/rfc4252)），定义了 SSH 协议支持的用户身份认证算法。
-* 连接协议（[rfc4254](https://www.rfc-editor.org/rfc/rfc4254)），定义了 SSH 支持功能特性：交互式会话（终端、X11 Forwarding）、TCP/IP 端口转发。
+* 连接协议（[rfc4254](https://www.rfc-editor.org/rfc/rfc4254)），定义了 SSH 支持功能特性：交互式登录会话、TCP/IP 端口转发、X11 Forwarding。
 
 需要特别说明的是：
 
@@ -140,7 +140,306 @@ SSH 支持如下几种身份认证协议：
 
 ### SSH 连接协议
 
-TODO Channel 的概念。
+#### Channel
+
+SSH 连接协议定义的交互式登录终端会话、TCP/IP 端口转发、X11 Forwarding 的这些功能，都工作在自己的通道 (Channel) 之上的。
+
+在 SSH 协议中，Channel 实现了对底层连接的多路复用，就是一个虚拟连接，这就是该子协议叫做连接协议的原因。具体而言 Channel：
+
+* 通过一个数字来进行标识和区分这些 Channel。
+* 实现流控 （窗口）。
+
+因此，SSH 连接协议实现的这些功能，都需先建立 Channel，流程如下：
+
+* 服务端和客户端任意一方，发送类型为 `SSH_MSG_CHANNEL_OPEN` (90) 的消息，通知对方需要建立 Channel。
+
+    ```
+    byte      SSH_MSG_CHANNEL_OPEN (90)
+    string    channel type, 可选值为: 'session', 'x11', 'forwarded-tcpip', 'direct-tcpip' 参见 https://www.rfc-editor.org/rfc/rfc4250#section-4.9.1
+    uint32    sender channel 编号
+    uint32    初始化窗口大小
+    uint32    最大包大小
+    ....      下面是 channel type 特定数据
+    ```
+* 另一方接收到消息后，回复类型为 `SSH_MSG_CHANNEL_OPEN_CONFIRMATION` (91) 或 `SSH_MSG_CHANNEL_OPEN_FAILURE` (92) 的消息来告知打开成功或者失败。
+    成功定义如下：
+    ```
+    byte      SSH_MSG_CHANNEL_OPEN_CONFIRMATION (91)
+    uint32    recipient channel 编号，这个是 SSH_MSG_CHANNEL_OPEN 中 sender channel 的值
+    uint32    sender channel 编号
+    uint32    初始化窗口大小
+    uint32    最大包大小
+    ....      下面是 channel type 特定数据
+    ```
+    失败定义如下：
+    ```
+    byte      SSH_MSG_CHANNEL_OPEN_FAILURE (92)
+    uint32    recipient channel
+    uint32    错误码 reason code
+    string    描述，格式为 ISO-10646 UTF-8 encoding [RFC3629]
+    string    language tag [RFC3066]
+    ```
+    预定义的错误码定义如下：
+    ```
+        Symbolic name                           reason code
+        -------------                           -----------
+    SSH_OPEN_ADMINISTRATIVELY_PROHIBITED          1
+    SSH_OPEN_CONNECT_FAILED                       2
+    SSH_OPEN_UNKNOWN_CHANNEL_TYPE                 3
+    SSH_OPEN_RESOURCE_SHORTAGE                    4
+    ```
+
+上文介绍了 Channel 建立的过程，细节参见 [rfc4254#section-5.1](https://www.rfc-editor.org/rfc/rfc4254#section-5.1)。
+
+Channel 建立完成后，在 Channel 中进行数据传输，主要有：
+
+* 流量控制类消息，调节窗口大小。
+
+    ```
+    byte      SSH_MSG_CHANNEL_WINDOW_ADJUST
+    uint32    recipient channel
+    uint32    bytes to add
+    ```
+
+* 数据消息，消息的长度为 `min(数据长度, 窗口大小, 传输层协议的限制)`。
+
+    * 普通数据，如交互式会话的标准输入、标准输出。
+
+        ```
+        byte      SSH_MSG_CHANNEL_DATA
+        uint32    recipient channel
+        string    data
+        ```
+
+    * 扩展数据，如交互式会话的标准出错，标准出错对应 data_type_code 为 1，是 `data_type_code` 唯一的预定义的值。
+
+        ```
+        byte      SSH_MSG_CHANNEL_EXTENDED_DATA
+        uint32    recipient channel
+        uint32    data_type_code
+        string    data
+        ```
+
+Channel 关闭（[rfc4254#section-5.3](https://www.rfc-editor.org/rfc/rfc4254#section-5.3)），在此不多赘述了。
+
+最后，在打开一个特定类型的 Channel 后，需要对这个 Channel 进行 Channel 粒度的配置。如，建立了一个 session 类型的 Channel 后，请求对方创建一个伪终端 (pty、pseudo terminal)。这类的请求叫做 Channel 特定请求（`Channel-Specific Requests`），这类场景使用相同的数据格式：
+
+```
+byte      SSH_MSG_CHANNEL_REQUEST (98)
+uint32    recipient channel，对方的 sender channel 编号
+string    request type in US-ASCII characters only 请求类型，参见：https://www.rfc-editor.org/rfc/rfc4250#section-4.9.3
+boolean   want reply 是否需要对方回复
+....      下面是 request type 特定数据
+```
+
+类似的，对于 `SSH_MSG_CHANNEL_REQUEST` 消息，如果  want reply 为 true，对方应使用 `SSH_MSG_CHANNEL_SUCCESS` (98)、`SSH_MSG_CHANNEL_FAILURE` (100) 进行回复。
+
+#### 交互式会话
+
+在 SSH 语境下，会话（Session）代表远程执行一个程序。这个程序可能是 Shell、应用。同时，它可能有也可能没有一个 tty、可能涉及也可能不涉及 x11 forward。
+
+* 客户端打开一个类型为 `session` 的 Channel（为了安全 ssh 客户端应该拒绝创建 session 的请求）。
+
+    ```
+    byte      SSH_MSG_CHANNEL_OPEN (90)
+    string    "session"
+    uint32    sender channel
+    uint32    initial window size
+    uint32    maximum packet size
+    ```
+
+* 服务端回复一个类型为 `SSH_MSG_CHANNEL_OPEN_CONFIRMATION` 的消息。至此 Session 类型的 Channel 创建完成。
+* 客户端可以请求创建一个伪终端（pty、Pseudo-Terminal）。
+
+    ```
+    byte      SSH_MSG_CHANNEL_REQUEST
+    uint32    recipient channel
+    string    "pty-req"
+    boolean   want_reply
+    string    TERM environment variable value (e.g., vt100)
+    uint32    terminal width, characters (e.g., 80)
+    uint32    terminal height, rows (e.g., 24)
+    uint32    terminal width, pixels (e.g., 640)
+    uint32    terminal height, pixels (e.g., 480)
+    string    encoded terminal modes
+    ```
+
+* 关于 x11 forward 参见 [rfc4254#section-6.3](https://www.rfc-editor.org/rfc/rfc4254#section-6.3)。
+
+* 客户端可以请求设置环境变量。
+
+    ```
+    byte      SSH_MSG_CHANNEL_REQUEST
+    uint32    recipient channel
+    string    "env"
+    boolean   want reply
+    string    variable name
+    string    variable value
+    ```
+
+* 客户端启动一个 Shell 或命令，如下三种情况同一个 Channel 三选一。
+
+    * 启动一个 Shell
+
+        ```
+        byte      SSH_MSG_CHANNEL_REQUEST
+        uint32    recipient channel
+        string    "shell"
+        boolean   want reply
+        ```
+
+    * 执行一个命令
+
+        ```
+        byte      SSH_MSG_CHANNEL_REQUEST
+        uint32    recipient channel
+        string    "exec"
+        boolean   want reply
+        string    command
+        ```
+
+    * 调用其他子系统（如文件传输）
+
+        ```
+        byte      SSH_MSG_CHANNEL_REQUEST
+        uint32    recipient channel
+        string    "subsystem"
+        boolean   want reply
+        string    subsystem name
+        ```
+
+* 上述的启动的程序的输入输出通过如下类型的消息传输：
+
+    * 标准输入、标准输出： `SSH_MSG_CHANNEL_DATA`，具体参见上文。
+    * 标准出错：`SSH_MSG_CHANNEL_EXTENDED_DATA`，扩展类型为 `SSH_EXTENDED_DATA_STDERR`，具体参见上文。
+    * 伪终端设置终端窗口大小指令(详见：[rfc4254#section-6.7](https://www.rfc-editor.org/rfc/rfc4254#section-6.7))：
+
+        ```
+        byte      SSH_MSG_CHANNEL_REQUEST
+        uint32    recipient channel
+        string    "window-change"
+        boolean   FALSE
+        uint32    terminal width, columns
+        uint32    terminal height, rows
+        uint32    terminal width, pixels
+        uint32    terminal height, pixels
+        ```
+
+    * 信号（详见：[rfc4254#section-6.9](https://www.rfc-editor.org/rfc/rfc4254#section-6.9)）：
+
+        ```
+        byte      SSH_MSG_CHANNEL_REQUEST
+        uint32    recipient channel
+        string    "signal"
+        boolean   FALSE
+        string    signal name (without the "SIG" prefix)
+        ```
+
+    * 退出码（详见：[rfc4254#section-6.10](https://www.rfc-editor.org/rfc/rfc4254#section-6.10)）：
+
+        ```
+        byte      SSH_MSG_CHANNEL_REQUEST
+        uint32    recipient channel
+        string    "exit-status"
+        boolean   FALSE
+        uint32    exit_status
+        ```
+
+    * 退出信号（详见：[rfc4254#section-6.10](https://www.rfc-editor.org/rfc/rfc4254#section-6.10)）：
+
+        ```
+        byte      SSH_MSG_CHANNEL_REQUEST
+        uint32    recipient channel
+        string    "exit-signal"
+        boolean   FALSE
+        string    signal name (without the "SIG" prefix)
+        boolean   core dumped
+        string    error message in ISO-10646 UTF-8 encoding
+        string    language tag [RFC3066]
+        ``
+
+#### TCP/IP 端口转发
+
+SSH 协议本质上，是建立了在 client 到 server 端这两个设备之间建立了一条加密通讯链路。SSH 基于此实现了两个方向的端口转发：
+
+* 本地转发（direct-tcpip）： 将 client 监听的 tcp 端口连接转发到 server 上。
+* 远端转发（forwarded-tcpip）：将 server 监听的 tcp 端口连接转发到 client 上。
+
+如上两者，在协议层面上，最大的区别在于（[forwarded-tcpip vs. direct-tcpip](https://groups.google.com/g/comp.security.ssh/c/qEss3K48wQY)）：
+
+* 对于远端转发：流量入口端口位于 server 端，因此 SSH 协议需要提供一种机制，可以让 client 告知 server 监听的 tcp 端口。
+* 而对于本地转发：流量入口位于 client，因此 client 程序自身就可以自助的监听 tcp 端口，而不涉及 client 和 server 端的通讯，因此 client 监听端口不是 SSH 协议需要关心的内容。
+
+**direct-tcpip** 流程
+
+* client 监听一个 tcp 端口，并 accept 连接（该步骤不属于 ssh 协议，属于 ssh 的实现部分）。
+* client accept 返回后， client 发起建立一个类型为 `direct-tcpip` 的 Channel。
+
+    ```
+    byte      SSH_MSG_CHANNEL_OPEN
+    string    "direct-tcpip"
+    uint32    sender channel
+    uint32    initial window size
+    uint32    maximum packet size
+    string    host to connect
+    uint32    port to connect
+    string    originator IP address
+    uint32    originator port
+    ```
+
+* server 接收到消息后，和 `host to connect:port to connect` TCP 端口建立 TCP 连接。
+* 至此，转发 Channel 建立完成，后续通过 `SSH_MSG_CHANNEL_DATA` 进行双向数据的转发。
+* 该流程对应的 openssh client 命令为：
+
+    ```bash
+    ssh -L [LOCAL_IP:]LOCAL_PORT:DESTINATION:DESTINATION_PORT [USER@]SSH_SERVER
+    ```
+
+**forwarded-tcpip** 流程
+
+* 准备阶段（具体参见： [rfc4254#section-7.1](https://www.rfc-editor.org/rfc/rfc4254#section-7.1)）： 
+    * client 请求 server 监听 tcp 端口，作为流量入口。
+
+        ```
+        byte      SSH_MSG_GLOBAL_REQUEST
+        string    "tcpip-forward"
+        boolean   want reply
+        string    address to bind (e.g., "0.0.0.0")
+        uint32    port number to bind
+        ```
+    
+    * server 根据请求信息，监听对应端口，并回复：
+
+        ```
+        byte     SSH_MSG_REQUEST_SUCCESS
+        uint32   port that was bound on the server
+        ```
+* server accept 返回后， server 发起建立一个类型为 `direct-tcpip` 的 Channel。
+
+    ```
+    byte      SSH_MSG_CHANNEL_OPEN
+    string    "forwarded-tcpip"
+    uint32    sender channel
+    uint32    initial window size
+    uint32    maximum packet size
+    string    address that was connected
+    uint32    port that was connected
+    string    originator IP address
+    uint32    originator port
+    ```
+
+* client 接收到消息后，和 `address that was connected:port that was connected` TCP 端口建立 TCP 连接。
+* 至此，转发 Channel 建立完成，后续通过 `SSH_MSG_CHANNEL_DATA` 进行双向数据的转发。
+* 该流程对应的 openssh client 命令为：
+
+    ```bash
+    ssh -R [REMOTE:]REMOTE_PORT:DESTINATION:DESTINATION_PORT [USER@]SSH_SERVER
+    ```
+
+特别说明：
+
+* 每个 TCP 连接，都会创建一个 Channel。
+* 关于端口转发部分，参见：[rfc4254#section-7](https://www.rfc-editor.org/rfc/rfc4254#section-7)。
 
 ## Go Google SSH 库
 
