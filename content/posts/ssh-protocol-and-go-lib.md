@@ -1,7 +1,7 @@
 ---
 title: "SSH 协议浅析 & Go SSH 库源码"
-date: 2022-12-30T14:46:32+08:00
-draft: true
+date: 2022-01-27T00:00:10+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -26,9 +26,9 @@ SSH, The Secure Shell Protocol (安全 Shell 协议)，是一个使用广泛的�
 * [RFC 4253: The Secure Shell (SSH) Transport Layer Protocol](https://www.rfc-editor.org/rfc/rfc4253)
 * [RFC 4254: The Secure Shell (SSH) Connection Protocol](https://www.rfc-editor.org/rfc/rfc4254)
 
-当然，还有一些[其他 RFC](https://www.omnisecu.com/tcpip/important-rfc-related-with-ssh.php) 在实际场景中应用较窄，在此就不列举了。
+还有一些[其他 RFC](https://www.omnisecu.com/tcpip/important-rfc-related-with-ssh.php) 在实际场景中应用较窄，在此就不列举了。
 
-RFC 文档是网络协议的完整定义，追求的是无歧义和准确性，这导致 RFC 文档对于初学者不够友好，比较晦涩，不符合人类的认知规律。因此，本文对 SSH 协议的介绍不会按照 RFC 的顺序和结构来进行，而是按照更符合人类认知的方式来进行。当然一些重要的部分，本文会给出对应的 RFC 章节的引用，以方便定位，尽量兼顾专业性和可读性。
+RFC 文档是网络协议的完整定义，追求的是无歧义和准确性，这导致 RFC 文档对于初学者不够友好，比较晦涩。因此，本文对 SSH 协议的介绍不会按照 RFC 的顺序和结构来进行，而是按照更符合人类认知的方式来进行。对于一些重要的部分，本文会给出对应的 RFC 章节的引用，以方便定位。
 
 本文假设读者使用过 SSH 客户端进行过远程登录。行文上，本文会以：从整体到局部，从低层到顶层，介绍 SSH 协议的包结构。然后以 SSH 登录一台主机执行一条命令的场景为例，通过追踪 Google 维护的 Go SSH 库 [`x/crypto/ssh`](https://pkg.go.dev/golang.org/x/crypto/ssh) 的源码，来实际感受 SSH 协议的整个流程。本文希望读者可以：真正理解 SSH 的整体流程，理解 SSH 协议的设计考量，初步具备对 SSH 协议进行二次开发的能力。
 
@@ -551,7 +551,7 @@ API 可以分为两个部分，分别是 Client 和 Server。下面将分别介�
             * `"exec"`
         * `WantReply bool` 字段，是否需要回复。
         * `Payload []byte` 字段，type 特定数据，可以使用 [`ssh.Unmarshal()`](https://pkg.go.dev/golang.org/x/crypto/ssh#Unmarshal) 方法进行反序列化。
-        * `func (r *Request) Reply(ok bool, payload []byte) error` 方法，对 `WantReply = true` 的方法，必须调用该函数进行回复。 
+        * `func (r *Request) Reply(ok bool, payload []byte) error` 方法，对 `WantReply = true` 的方法，必须调用该函数进行回复。
 * `Stderr() io.ReadWriter` server -> client，对应 `SSH_MSG_CHANNEL_EXTENDED_DATA`，参见上文 [交互式会话](#交互式会话)，在 session 场景对应 stderr。
 * `Reject(reason RejectionReason, message string) error` 拒绝建立该 Channel。
 * `ExtraData() []byte` 类型特定数据。
@@ -805,15 +805,123 @@ _=/usr/bin/env
 
 ### 开启 debug 日志
 
-Go SSH 库中有几个常量，将其设置为 true，打开 Debug 日志，以追踪源码流程，分别是：
+Go SSH 库中有几个常量，可以打开 Debug 日志，以追踪源码流程，分别是：
 
-* `ssh/handshake.go:20`
-* `ssh/mux.go:18`
-* `ssh/transport.go:17`
+* `ssh/handshake.go:20` 打印传输层协议的 Key 交换流程相关 Debug 日志。
+* `ssh/mux.go:18` 打印连接协议相关的 Debug 日志。
+* `ssh/transport.go:17` 打印传输层协议发送和接收到的 Packet 的类型。
+
+本文重点观察传输层协议的部分。因此，只打开 `ssh/transport.go:17` 日志。
 
 ### 客户端流程追踪
 
+重新按照上文 [运行实例代码](#运行实例代码) 方式运行，并观察 client 代码的输出。下文对源码和输出进行分析。
+
+#### ssh.Dial 源码
+
+* 进入 `ssh/demo/client/main.go:18` 函数 `ssh.Dial` 定义。
+    * `ssh/client.go:177` 调用 `net.DialTimeout` 和服务端建立 TCP 连接。
+    * `ssh/client.go:181` 调用 `NewClientConn`，该函数，完成了 SSH 传输层协议和认证协议的流程，并构造一个实现了连接层协议的 mux 对象。
+        * `ssh/client.go:83` 调用 `conn.clientHandshake`，该函数，完成了 SSH 传输层协议和认证协议的流程。
+            * `ssh/client.go:100` 函数 `exchangeVersions`，完成客户端和服务端的协议版本协商。
+            * `ssh/client.go:105` 函数 `newClientTransport`。
+                * `ssh/client.go:126` 调用 `newHandshakeTransport` 函数构造 `*handshakeTransport`。 特别注意的是：
+                    * 在 `ssh/handshake.go:117` 将 `t.readBytesLeft` 初始化为一个较大值。
+                    * 在 `ssh/handshake.go:118` 将 `t.writeBytesLeft` 初始化为一个较大值。
+                    * 在 `ssh/handshake.go:121` 语句 `t.requestKex <- struct{}{}`，发起首次 key 交换流程。
+                * 并启动两个协程，分别是：`go t.readLoop()` 和 `go t.kexLoop()`，具体流程参见下文。
+                * 返回并赋值给 `c.transport`。
+            * `ssh/client.go:108` 调用 `c.transport.waitSession()`，该函数会在上述两个协程，完成 SSH 传输层协议（即 Key 交换算法协商、Key 交换算法执行）后返回。
+            * `ssh/client.go:113` 调用 `c.clientAuthenticate(config)`，执行 SSH 认证协议流程。
+        * `ssh/client.go:87` 调用 `newMux` 构造一个实现了连接层协议的 mux 对象。
+    * `ssh/client.go:185` 调用 `NewClient` 构造一个客户端结构体 `Client`，来提供高层次的 SSH 连接层协议 API。
+
+#### 客户端传输层协议源码
+
+`handshakeTransport` （`ssh/handshake.go`）结构体是传输层协议封装，该结构体说明如下：
+
+* 两个协程 `go t.readLoop()`（`ssh/handshake.go:196`） 和 `go t.kexLoop()` （`ssh/handshake.go:261`）协作，在首次和 Key 老化后，在后台完成 Key 交换。下面按照时序介绍首次 Key 交换的流程：
+    * 时序 1 `kexLoop` 函数：
+        * `ssh/handshake.go:275` 进入 `case <-t.requestKex` 分支（前面的代码有写入，参见 [ssh.Dial 源码](#sshdial-源码) 部分的说明）。
+        * `ssh/handshake.go:280` 调用 `t.sendKexInit()`，给服务端发送 `SSH_MSG_KEXINIT` 消息（20，[rfc4253#section-7.1](https://www.rfc-editor.org/rfc/rfc4253#section-7.1)）本次循环结束。
+        * `ssh/handshake.go:270` 等待 `select` 返回。
+    * 时序 2 `readLoop` 函数：
+        * `ssh/handshake.go:376` 读取服务端 `KexInit` 消息。
+        * `ssh/handshake.go:412` 将 `KexInit` 消息通过 `startKex` channel 告知 `kexLoop`。
+        * `ssh/handshake.go:413` 等待 key 交换完成。
+    * 时序 3 `kexLoop` 函数：
+        * `ssh/handshake.go:271` 进入 `case request, ok = <-t.startKex` 分支，`request != nil`，跳出 268 行 for 循环。
+        * `ssh/handshake.go:303` 进入 `enterKeyExchange` 函数，执行 Key 交换流程。
+        * `ssh/handshake.go:328` 告知 `readLoop`。
+    * 时序 4 `readLoop` 函数：
+        * `ssh/handshake.go:413` 返回 `SSH_MSG_NEWKEYS` （21）。
+        * `ssh/handshake.go:209` 将消息发送给 `t.incoming`。
+    * 时序 5 `ssh/client.go:83` 的 `conn.clientHandshake` 函数：
+        * `ssh/handshake.go:155` 函数 `waitSession` 返回，后续进入认证流程。
+* 协程 `go t.readLoop()` 和 函数 `t.readPacket()`，按照传输层协议的包格式，解密出消息字节数组（上文 [数据包 (Packet) 结构](#数据包-packet-结构) 的 payload），等待上层认证协议和连接协议处理。
+* 函数 `t.writePacket()` 将消息字节数组（上文 [数据包 (Packet) 结构](#数据包-packet-结构) 的 payload）加密并封装到数据包中，并发送到服务端。该函数由上层认证协议和连接协议调用。
+* `go t.readLoop()`、 `t.readPacket()` 和 `t.writePacket()` 底层调用的是 `keyingTransport` 接口，其唯一的实现是 `transport` （`ssh/transport.go:42`）结构体，该结构体底层调用的是 `connectionState` (`ssh/transport.go:69`) 结构体的方法。
+    * `connectionState` 的类似于 `io.ReadWriter`，有如下两个方法：
+        * `writePacket(packet []byte) error`，这里的 packet 命名有问题，实际上是消息字节数组（上文 [数据包 (Packet) 结构](#数据包-packet-结构) 的 payload）。
+        * `readPacket() ([]byte, error)`，返回消息字节数组（上文 [数据包 (Packet) 结构](#数据包-packet-结构) 的 payload）。
+    * `connectionState` 依赖 `packetCipher` （`ssh/transport.go:55`）接口来 packet 的加解密。从上文可以知道：
+        * 传输层协议的 key 交换流程的包是不需要加密的，对应的实现是 `noneCipher`。
+        * 除了 key 交换流程的包都需要使用 key 交换获取到的 key 进行加解密。对应的实现有许多个，如：`streamPacketCipher` 等。
+
+#### 客户端认证和连接协议源码
+
+客户端认证和连接协议源码本文不再逐行分析源码了。下面记录一下相关源码的位置：
+
+* 客户端认证，调用链为：
+    * `ssh.Dial` 函数 `ssh/client.go:181` 对 `ssh.NewClientConn` 的调用。
+    * `ssh/client.go:83` 对 `ssh.connection.clientHandshake` 的调用。
+    * `ssh/client.go:13` 对 `ssh.connection.clientAuthenticate` 的调用。
+* 客户端认证协议，源文件：`ssh/client_auth.go`。
+* 客户端连接协议，源文件：`ssh/mux.go`
+
+#### 客户端传输层协议输出分析
+
+`#` 号开头为说明。
+
+```
+# Go 源码：ssh/messages.go
+# 消息编号：https://www.rfc-editor.org/rfc/rfc4250#section-4.1
+
+# 连接层协议部分：https://www.rfc-editor.org/rfc/rfc4253
+2023/01/26 22:43:43 write client 20   # SSH_MSG_KEXINIT, client -> server, key 交换初始化消息，算法协商。
+2023/01/26 22:43:43 read client 20    # SSH_MSG_KEXINIT, server -> client, key 交换初始化消息，算法协商。
+2023/01/26 22:43:43 write client 30   # client -> server, key 交换算法执行。
+2023/01/26 22:43:43 read client 31    # server -> client, key 交换算法执行。
+2023/01/26 22:43:43 write client 21   # SSH_MSG_NEWKEYS, client -> server, key 交换算法完成。
+2023/01/26 22:43:43 read client 21    # SSH_MSG_NEWKEYS, server -> client, key 交换算法完成。
+2023/01/26 22:43:43 read client 7     # server -> client, 与 SSH 协议扩展有关，参见：https://www.rfc-editor.org/rfc/rfc8308
+2023/01/26 22:43:43 write client 5    # SSH_MSG_SERVICE_REQUEST, client -> server, 请求 ssh-userauth 服务。
+2023/01/26 22:43:43 read client 6     # SSH_MSG_SERVICE_ACCEPT, server -> client, 接收鉴权服务请求。
+
+# 认证协议部分：https://www.rfc-editor.org/rfc/rfc4252
+2023/01/26 22:43:43 write client 50   # SSH_MSG_USERAUTH_REQUEST, client -> server, 请求鉴权
+2023/01/26 22:43:43 read client 51    # SSH_MSG_USERAUTH_FAILURE, server -> client, 鉴权失败
+2023/01/26 22:43:43 write client 50   # SSH_MSG_USERAUTH_REQUEST, client -> server, 请求鉴权
+2023/01/26 22:43:43 read client 52    # SSH_MSG_USERAUTH_SUCCESS, server -> client, 鉴权成功
+
+# 连接协议部分： https://www.rfc-editor.org/rfc/rfc4254
+2023/01/26 22:43:43 write client 90   # SSH_MSG_CHANNEL_OPEN, client -> server, 打开 Channel
+2023/01/26 22:43:43 read client 91    # SSH_MSG_CHANNEL_OPEN_CONFIRMATION, server -> client, 打开 Channel 成功
+2023/01/26 22:43:43 write client 98   # SSH_MSG_CHANNEL_REQUEST, client -> server, Channel 请求，应该是设置环境变量
+2023/01/26 22:43:43 read client 99    # SSH_MSG_CHANNEL_SUCCESS, server -> client, Channel 请求成功
+2023/01/26 22:43:43 write client 98   # SSH_MSG_CHANNEL_REQUEST, client -> server, Channel 请求，应该是运行 env 命令
+2023/01/26 22:43:43 read client 99    # SSH_MSG_CHANNEL_SUCCESS, server -> client, Channel 请求成功
+2023/01/26 22:43:43 write client 96   # SSH_MSG_CHANNEL_EOF, client -> server, 关闭写通道。
+2023/01/26 22:43:43 read client 94    # SSH_MSG_CHANNEL_DATA, server -> client, 服务端写回标准输出。
+2023/01/26 22:43:43 write client 93   # SSH_MSG_CHANNEL_WINDOW_ADJUST, client -> server, 滑动窗口调整。
+2023/01/26 22:43:43 read client 98    # SSH_MSG_CHANNEL_REQUEST, server -> client, 服务端告知命令退出码。
+2023/01/26 22:43:43 read client 97    # SSH_MSG_CHANNEL_CLOSE, server -> client, 服务端关闭 Channel。
+2023/01/26 22:43:43 write client 97   # SSH_MSG_CHANNEL_CLOSE, client -> server, 客户端关闭 Channel。
+```
+
 ### 服务端流程追踪
+
+服务端流程分析可以参考客户端的分析，在此不多赘述了。
 
 ### 和 OpenSSH 关系
 
@@ -821,79 +929,14 @@ Go SSH 库中有几个常量，将其设置为 true，打开 Debug 日志，以�
 
 由于 OpenSSH 协议是事实上的标准，因此 Go 的 SSH 库也对 OpenSSH 的扩展进行了支持。从源码中搜索 `@openssh.com` 可以看到这部分的内容。
 
+关于 SSH 协议的厂商扩展标准，参见： [rfc8308](https://www.rfc-editor.org/rfc/rfc8308)
+
 ### scp 和 sftp
 
-https://github.com/bramvdbogaerde/go-scp
-https://blog.singee.me/2021/01/02/d9e5fe31d708454fb99869a4c9d78f24/
+基于 SSH 的文件传输有 scp 和 sftp 两种方式：
 
-## SSH 协议定制开发
-
-* SSH 底层连接默认是 TCP 协议。但是，在现实中，SSH 可以运行在任意提供可靠性保证的底层连接之上。如 OpenSSH Client 的 ProxyCommand 选项可以配置让 SSH 连接运行在任意底层连接。
-
-## 待梳理
-
-### 秘钥和算法协商
-
-https://emous.github.io/2019/04/28/SSH/#%E5%AE%A2%E6%88%B7%E7%AB%AF%E8%AE%A4%E8%AF%81
-
-https://emous.github.io/2019/04/28/SSH/
-
-* Client 和 Server 立即发送 key 交换消息包。包格式为：
-    * `packet_length` 无需加密。
-    * `padding_length` 无需加密。
-    * `payload` 无需加密，消息。
-        * `byte`         值为 20 (`SSH_MSG_KEXINIT`)
-        * `byte[16]`     cookie (random bytes)
-        * `string[]`     kex_algorithms （Key Exchange 算法）
-    * `padding` 无需加密。
-    * `mac` nil。
-
-### 问题
-
-* 分组加密密文长度和明文不一样是怎么处理的呢？
-
-## 备忘
-
-ssh proxy
-
-```
-package main
-
-import (
-	"fmt"
-	"io"
-	"net"
-	"os"
-)
-
-// ssh -o "ProxyCommand go run ./ %h:%p" -p 22 root@127.0.0.1
-func main() {
-	if len(os.Args) != 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <addr>\n", os.Args[0])
-		os.Exit(1)
-	}
-	var (
-		addr = os.Args[1]
-		in   = os.Stdin
-		out  = os.Stdout
-	)
-	conn, err := net.Dial("tcp", addr)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-	errc := make(chan error, 1)
-	go func() {
-		_, e := io.Copy(conn, in)
-		errc <- e
-	}()
-	go func() {
-		_, e := io.Copy(out, conn)
-		errc <- e
-	}()
-	if err = <-errc; err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
-		os.Exit(1)
-	}
-}
-```
+* scp 是基于命令的标准 IO 实现的。本地 scp 命令会使用 SSH 连接协议，打开一个 session，通过 `SSH_MSG_CHANNEL_REQUEST` 的 exec 在远端执行 scp 命令。远端 scp 会读取文件，按照 scp 协议将文件写入标准输出，这个标准输出通过 SSH Channel 传递到本地的 scp 这个进程中，本地 scp 按照协议协议标准输出，并写入本地文件，即可完成文件书传输。更多参见：
+    * go scp client 库：[bramvdbogaerde/go-scp](https://github.com/bramvdbogaerde/go-scp)。
+    * scp 协议分析文章：[scp 原理](https://blog.singee.me/2021/01/02/d9e5fe31d708454fb99869a4c9d78f24/)
+* sftp 是基于 SSH 连接协议的子系统实现的，对应的是 `SSH_MSG_CHANNEL_REQUEST` 的 subsystem。更多参加：
+    * go sftp server 和 client 库：[pkg/sftp](https://github.com/pkg/sftp)
