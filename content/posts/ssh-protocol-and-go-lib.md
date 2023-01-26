@@ -815,7 +815,47 @@ Go SSH 库中有几个常量，可以打开 Debug 日志，以追踪源码流程
 
 ### 客户端流程追踪
 
-重新按照上文 [运行实例代码](#运行实例代码) 方式运行，并观察 client 代码的输出。下文对源码和输出进行分析。
+#### 客户端传输层协议输出分析
+
+重新按照上文 [运行实例代码](#运行实例代码) 方式运行，并观察 client 代码的输出。
+
+`#` 号开头为说明。
+
+```
+# Go 源码：ssh/messages.go
+# 消息编号：https://www.rfc-editor.org/rfc/rfc4250#section-4.1
+
+# 连接层协议部分：https://www.rfc-editor.org/rfc/rfc4253
+2023/01/26 22:43:43 write client 20   # SSH_MSG_KEXINIT, client -> server, key 交换初始化消息，算法协商。
+2023/01/26 22:43:43 read client 20    # SSH_MSG_KEXINIT, server -> client, key 交换初始化消息，算法协商。
+2023/01/26 22:43:43 write client 30   # client -> server, key 交换算法执行。
+2023/01/26 22:43:43 read client 31    # server -> client, key 交换算法执行。
+2023/01/26 22:43:43 write client 21   # SSH_MSG_NEWKEYS, client -> server, key 交换算法完成。
+2023/01/26 22:43:43 read client 21    # SSH_MSG_NEWKEYS, server -> client, key 交换算法完成。
+2023/01/26 22:43:43 read client 7     # server -> client, 与 SSH 协议扩展有关，参见：https://www.rfc-editor.org/rfc/rfc8308
+2023/01/26 22:43:43 write client 5    # SSH_MSG_SERVICE_REQUEST, client -> server, 请求 ssh-userauth 服务。
+2023/01/26 22:43:43 read client 6     # SSH_MSG_SERVICE_ACCEPT, server -> client, 接收鉴权服务请求。
+
+# 认证协议部分：https://www.rfc-editor.org/rfc/rfc4252
+2023/01/26 22:43:43 write client 50   # SSH_MSG_USERAUTH_REQUEST, client -> server, 请求鉴权
+2023/01/26 22:43:43 read client 51    # SSH_MSG_USERAUTH_FAILURE, server -> client, 鉴权失败
+2023/01/26 22:43:43 write client 50   # SSH_MSG_USERAUTH_REQUEST, client -> server, 请求鉴权
+2023/01/26 22:43:43 read client 52    # SSH_MSG_USERAUTH_SUCCESS, server -> client, 鉴权成功
+
+# 连接协议部分： https://www.rfc-editor.org/rfc/rfc4254
+2023/01/26 22:43:43 write client 90   # SSH_MSG_CHANNEL_OPEN, client -> server, 打开 Channel
+2023/01/26 22:43:43 read client 91    # SSH_MSG_CHANNEL_OPEN_CONFIRMATION, server -> client, 打开 Channel 成功
+2023/01/26 22:43:43 write client 98   # SSH_MSG_CHANNEL_REQUEST, client -> server, Channel 请求，应该是设置环境变量
+2023/01/26 22:43:43 read client 99    # SSH_MSG_CHANNEL_SUCCESS, server -> client, Channel 请求成功
+2023/01/26 22:43:43 write client 98   # SSH_MSG_CHANNEL_REQUEST, client -> server, Channel 请求，应该是运行 env 命令
+2023/01/26 22:43:43 read client 99    # SSH_MSG_CHANNEL_SUCCESS, server -> client, Channel 请求成功
+2023/01/26 22:43:43 write client 96   # SSH_MSG_CHANNEL_EOF, client -> server, 关闭写通道。
+2023/01/26 22:43:43 read client 94    # SSH_MSG_CHANNEL_DATA, server -> client, 服务端写回标准输出。
+2023/01/26 22:43:43 write client 93   # SSH_MSG_CHANNEL_WINDOW_ADJUST, client -> server, 滑动窗口调整。
+2023/01/26 22:43:43 read client 98    # SSH_MSG_CHANNEL_REQUEST, server -> client, 服务端告知命令退出码。
+2023/01/26 22:43:43 read client 97    # SSH_MSG_CHANNEL_CLOSE, server -> client, 服务端关闭 Channel。
+2023/01/26 22:43:43 write client 97   # SSH_MSG_CHANNEL_CLOSE, client -> server, 客户端关闭 Channel。
+```
 
 #### ssh.Dial 源码
 
@@ -879,46 +919,6 @@ Go SSH 库中有几个常量，可以打开 Debug 日志，以追踪源码流程
 * 客户端认证协议，源文件：`ssh/client_auth.go`。
 * 客户端连接协议，源文件：`ssh/mux.go`
 
-#### 客户端传输层协议输出分析
-
-`#` 号开头为说明。
-
-```
-# Go 源码：ssh/messages.go
-# 消息编号：https://www.rfc-editor.org/rfc/rfc4250#section-4.1
-
-# 连接层协议部分：https://www.rfc-editor.org/rfc/rfc4253
-2023/01/26 22:43:43 write client 20   # SSH_MSG_KEXINIT, client -> server, key 交换初始化消息，算法协商。
-2023/01/26 22:43:43 read client 20    # SSH_MSG_KEXINIT, server -> client, key 交换初始化消息，算法协商。
-2023/01/26 22:43:43 write client 30   # client -> server, key 交换算法执行。
-2023/01/26 22:43:43 read client 31    # server -> client, key 交换算法执行。
-2023/01/26 22:43:43 write client 21   # SSH_MSG_NEWKEYS, client -> server, key 交换算法完成。
-2023/01/26 22:43:43 read client 21    # SSH_MSG_NEWKEYS, server -> client, key 交换算法完成。
-2023/01/26 22:43:43 read client 7     # server -> client, 与 SSH 协议扩展有关，参见：https://www.rfc-editor.org/rfc/rfc8308
-2023/01/26 22:43:43 write client 5    # SSH_MSG_SERVICE_REQUEST, client -> server, 请求 ssh-userauth 服务。
-2023/01/26 22:43:43 read client 6     # SSH_MSG_SERVICE_ACCEPT, server -> client, 接收鉴权服务请求。
-
-# 认证协议部分：https://www.rfc-editor.org/rfc/rfc4252
-2023/01/26 22:43:43 write client 50   # SSH_MSG_USERAUTH_REQUEST, client -> server, 请求鉴权
-2023/01/26 22:43:43 read client 51    # SSH_MSG_USERAUTH_FAILURE, server -> client, 鉴权失败
-2023/01/26 22:43:43 write client 50   # SSH_MSG_USERAUTH_REQUEST, client -> server, 请求鉴权
-2023/01/26 22:43:43 read client 52    # SSH_MSG_USERAUTH_SUCCESS, server -> client, 鉴权成功
-
-# 连接协议部分： https://www.rfc-editor.org/rfc/rfc4254
-2023/01/26 22:43:43 write client 90   # SSH_MSG_CHANNEL_OPEN, client -> server, 打开 Channel
-2023/01/26 22:43:43 read client 91    # SSH_MSG_CHANNEL_OPEN_CONFIRMATION, server -> client, 打开 Channel 成功
-2023/01/26 22:43:43 write client 98   # SSH_MSG_CHANNEL_REQUEST, client -> server, Channel 请求，应该是设置环境变量
-2023/01/26 22:43:43 read client 99    # SSH_MSG_CHANNEL_SUCCESS, server -> client, Channel 请求成功
-2023/01/26 22:43:43 write client 98   # SSH_MSG_CHANNEL_REQUEST, client -> server, Channel 请求，应该是运行 env 命令
-2023/01/26 22:43:43 read client 99    # SSH_MSG_CHANNEL_SUCCESS, server -> client, Channel 请求成功
-2023/01/26 22:43:43 write client 96   # SSH_MSG_CHANNEL_EOF, client -> server, 关闭写通道。
-2023/01/26 22:43:43 read client 94    # SSH_MSG_CHANNEL_DATA, server -> client, 服务端写回标准输出。
-2023/01/26 22:43:43 write client 93   # SSH_MSG_CHANNEL_WINDOW_ADJUST, client -> server, 滑动窗口调整。
-2023/01/26 22:43:43 read client 98    # SSH_MSG_CHANNEL_REQUEST, server -> client, 服务端告知命令退出码。
-2023/01/26 22:43:43 read client 97    # SSH_MSG_CHANNEL_CLOSE, server -> client, 服务端关闭 Channel。
-2023/01/26 22:43:43 write client 97   # SSH_MSG_CHANNEL_CLOSE, client -> server, 客户端关闭 Channel。
-```
-
 ### 服务端流程追踪
 
 服务端流程分析可以参考客户端的分析，在此不多赘述了。
@@ -929,7 +929,7 @@ Go SSH 库中有几个常量，可以打开 Debug 日志，以追踪源码流程
 
 由于 OpenSSH 协议是事实上的标准，因此 Go 的 SSH 库也对 OpenSSH 的扩展进行了支持。从源码中搜索 `@openssh.com` 可以看到这部分的内容。
 
-关于 SSH 协议的厂商扩展标准，参见： [rfc8308](https://www.rfc-editor.org/rfc/rfc8308)
+关于 SSH 协议的厂商扩展标准，参见： [rfc8308](https://www.rfc-editor.org/rfc/rfc8308)。
 
 ### scp 和 sftp
 
@@ -939,4 +939,4 @@ Go SSH 库中有几个常量，可以打开 Debug 日志，以追踪源码流程
     * go scp client 库：[bramvdbogaerde/go-scp](https://github.com/bramvdbogaerde/go-scp)。
     * scp 协议分析文章：[scp 原理](https://blog.singee.me/2021/01/02/d9e5fe31d708454fb99869a4c9d78f24/)
 * sftp 是基于 SSH 连接协议的子系统实现的，对应的是 `SSH_MSG_CHANNEL_REQUEST` 的 subsystem。更多参加：
-    * go sftp server 和 client 库：[pkg/sftp](https://github.com/pkg/sftp)
+    * go sftp server 和 client 库：[pkg/sftp](https://github.com/pkg/sftp)。
