@@ -24,7 +24,7 @@ tags:
 
 SSH 通用反向代理库需满足如下需求：
 
-* 拦截 SSH 认证：client 和 proxy 之间，proxy 和 server 之间的认证是解耦的，可以灵活配置的。
+* 认证拦截：client 和 proxy 之间，proxy 和 server 之间的认证是解耦的，可以灵活配置的。
 * 功能透明：client 通过 proxy 连接到 server 所具备的能力需和 client 直连 server 所具备的能力对等。
 * 可审计：proxy 需要可以拿到 SSH 数据包的明文数据，以支持功能过滤，访问记录。
 
