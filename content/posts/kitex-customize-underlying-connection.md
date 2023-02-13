@@ -155,6 +155,8 @@ go run ./cmd/01-netpoll/client
 ### 使用标准库网络库
 
 > 本示例存在死循环导致的 CPU 占用过高问题，需要官方解决，参见 Issue : [gonet.gonetTransServerFactory has dead loop #701](https://github.com/cloudwego/kitex/issues/701)。
+>
+> 20230213 更新: 官方已修复，预计在 `v0.4.6` 发布。
 
 根据如下信息：
 
@@ -247,6 +249,8 @@ go run ./cmd/02-stdnet/client
 ### 使用 Websocket
 
 > 本示例存在死循环导致的 CPU 占用过高问题，需要官方解决，参见 Issue : [gonet.gonetTransServerFactory has dead loop #701](https://github.com/cloudwego/kitex/issues/701)。
+>
+> 20230213 更新: 官方已修复，预计在 `v0.4.6` 发布。
 
 某些场景，TCP 可能没法直接使用，但是 Websocket 可以使用，此时想实现 Kitex Over Websocket。
 
