@@ -480,3 +480,5 @@ go run ./cmd/03-websocket/client
 > [hashicorp/yamux](http://github.com/hashicorp/yamux)
 
 从上文 Websocket 的实现可以看出 Kitex 的 gonet 传输层，通过对 Dialer、Listener 的自定义，可以支持任意实现了 `net.Conn` 接口的底层。而，Yamux 是满足该模型的，因此 Yamux 多路复用器也很容易实现，在此就不多赘述了。
+
+实现参见： [github](https://github.com/rectcircle/kitex-customize-underlying-connection/tree/master/cmd/04-yamux)。
