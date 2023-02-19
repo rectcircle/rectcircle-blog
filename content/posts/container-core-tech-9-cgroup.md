@@ -12,7 +12,7 @@ tags:
 
 CGroup 即 Control groups (控制组)，是 Linux 内核提供的对进程资源的使用进行限制和监控的机制。
 
-Linux 内核通过文件提供（VFS）暴露 CGroup 的 API。也就是说，用户可以通过文件系统 API 来控制进程的 CGroup 情况。
+Linux 内核通过文件系统（VFS）提供 CGroup 的 API 。也就是说，用户可以通过文件系统 API 来控制进程的 CGroup 情况。
 
 下面介绍 CGroup 的一些概念：
 
@@ -160,9 +160,9 @@ cgroup on /sys/fs/cgroup/rdma type cgroup (rw,nosuid,nodev,noexec,relatime,rdma)
     * 该 cgroup 目录包含如下两类：
         * 文件：用于设置或者查看该 cgroup 的资源限制配置、占用情况、关联的进程。
         * 目录：该 cgroup 的子 cgroup。
-* 通过写入 pid `<cgroup>/cgroup.procs` 可以将一个进程移动到指定 cgroup 中。
-* 假设 cgroup A 对应的路径为 `<hierarchy>/A`，B 对应的路径为 `<hierarchy>/A/B`，则可以说 A 时 B 的父 CGroup。此时，B 对资源的限制默认继承 A 的配置，且 B 不能超过 A 的配置的上限。
-* 假设一个进程已经位于某个子系统为 `cpu,cpuacct` 的 hierarchy 中了，则该进程就不能加入其他的只有 `cpu` 的 hierarchy。因为如果允许这种情况存在，内核就不知道该进程的 cpu 要以哪个为准了。
+* 通过将 PID 写入 `<cgroup>/cgroup.procs`，可以将一个进程移动到指定的 CGroup 中。
+* 假设 CGroup A 对应的路径为 `<hierarchy>/A`，B 对应的路径为 `<hierarchy>/A/B`，则可以说 A 是 B 的父 CGroup。此时，B 对资源的限制默认继承 A 的配置，且 B 不能超过 A 的配置上限。
+* 如果一个进程已经位于某个子系统为 `cpu,cpuacct` 的 hierarchy 中，那么该进程就不能加入其他只有 `cpu` 的 hierarchy。因为如果允许这种情况存在，内核就无法确定该进程的 CPU 该以哪个为准。
 
 ## cgroup v2
 
@@ -176,7 +176,7 @@ cgroup on /sys/fs/cgroup/rdma type cgroup (rw,nosuid,nodev,noexec,relatime,rdma)
 
 #### 描述
 
-自 Linux 2.6 起，Linux 的 CPU 调度器使用的是 CFS (完全公平调度器)。 cgroup 的 cpu 子系统中，通过 [CFS 调度器带宽控制](https://docs.kernel.org/translations/zh_CN/scheduler/sched-bwc.html)特性，以实现控制进程的 CPU 使用率的目的（只对 `non-RT` 非实时策略生效）。相关参数（文件）如下：
+自 Linux 2.6 起，Linux 的 CPU 调度器使用的是 CFS (完全公平调度器)。 cgroup 的 cpu 子系统中，通过 [CFS 调度器带宽控制](https://docs.kernel.org/translations/zh_CN/scheduler/sched-bwc.html) 特性，以实现控制进程的 CPU 使用率的目的（只对 `non-RT` 非实时策略生效）。相关参数（文件）如下：
 
 * `cpu.cfs_quota_us` 一个周期内最大运行时间，默认为 -1（即不限制）。需要注意的是，如果是多核情况，该值的取值范围为 `(0, 核数*cpu.cfs_period_us]`。
 * `cpu.cfs_period_us` 单个 CPU 一个周期的长度，默认为 100000 us （即 100 ms），不能超过 1 s。
@@ -191,7 +191,7 @@ cgroup on /sys/fs/cgroup/rdma type cgroup (rw,nosuid,nodev,noexec,relatime,rdma)
 总结：
 
 * 配置 CPU 繁忙时调度的优先级，可以通过 `cpu.shares` 进行配置，该设置不影响系统空闲时最大 CPU 使用量。
-* 限制最大 CPU 使用量，可以使用 `cpu.cfs_quota_us` 进行配置，即：`最大使用核心数 = cpu.cfs_quota_us/cpu.cfs_period_us`。（`cpu.cfs_period_us` 一般保持默认，配置分子 `cpu.cfs_quota_us` 即可），k8s 的 `resources.limit.cpu` 即通过该方式实现。
+* 要限制最大 CPU 使用量，可以使用 `cpu.cfs_quota_us` 进行配置。即，最大使用核心数等于 `cpu.cfs_quota_us/cpu.cfs_period_us`。一般情况下 `cpu.cfs_period_us` 保持默认，只需要配置 `cpu.cfs_quota_us` 就可以了。Kubernetes 中的 resources.limit.cpu 也是通过这种方式实现的。
 
 参考：
 
@@ -370,19 +370,28 @@ func main() {
 
 cgroup 对内存的控制的相关主要参数（文件）如下所示（只介绍 [runc](https://github.com/opencontainers/runc/blob/main/libcontainer/cgroups/fs/memory.go#L20) 使用的那些）：
 
-* `memory.limit_in_bytes` rw，默认值 9223372036854771712（0x7FFFFFFFFFFFF000 基本上等于无限制），内存使用（硬）限制，对应的指标为 RSS + Page Cache，写入 -1 表示无限制，cgroup 对应指标超过该值时，内核行为由 `memory.oom_control` 参数决定：
-    * `memory.oom_control.oom_kill_disable = 0` 内核将 kill -9 该 cgroup `/proc/<pid>/oom_score + /proc/<pid>/oom_score_adj` 高的进程（内存占用最高的）（`oom_adj` 是旧的 api，应该使用 oom_score_adj），oom_score 计算规则为 `1000 * (RSS + 进程页面 + 交换内存) / (总的物理内存 +交换分区)`，oom_score_adj 取值范围为 `['-1000', '1000']`，退出码为 137，如果想修改 `oom_adj` 则需要 `CAP_SYS_RESOURCE` 特权（参见：[proc(5) 手册](https://man7.org/linux/man-pages/man5/proc.5.html)）。更多关于 oom killer 参见：[Taming the OOM killer](https://lwn.net/Articles/317814/)。
-    * `memory.oom_control.oom_kill_disable = 1` 该 cgroup 中的进程，调用 [brk(2) 系统调用](https://man7.org/linux/man-pages/man2/brk.2.html) （即 malloc 等）分配内存时，会进入不可中断休眠，表现是进程卡主。在这种场景，可以通过 `cgroup.event_control` 文件来监听到 oom 事件，并交由用户进程进行更精细的处理，而不是简单的 kill，更多参见下文 `cgroup.event_control`。
+* `memory.limit_in_bytes` rw，默认值 9223372036854771712（0x7FFFFFFFFFFFF000 基本上等于无限制），内存使用（硬）限制，对应的指标为 RSS + Page Cache（不包含 `swap`），写入 -1 表示无限制。需要注意的是：
+    * cgroup 对应指标超过该值时，内核行为由 `memory.oom_control` 参数决定：
+        * `memory.oom_control.oom_kill_disable = 0` 内核将 kill -9 该 cgroup 中 `/proc/<pid>/oom_score + /proc/<pid>/oom_score_adj` 数值最高的进程（内存占用最高的）（`oom_adj` 是旧的 api，应该使用 `oom_score_adj`）。
+            * `oom_score` 是由内核计算出来的，消耗内存越多分越高，存活时间越长分越低，取值范围为。
+            * `oom_score_adj` 可以由用户配置，取值范围为 `['-1000', '1000']`（`-1000` 永远不会被 kill，`1000` 首先被 kill），如果想修改 `oom_score_adj` 则需要 `CAP_SYS_RESOURCE` 特权（参见：[proc(5) 手册](https://man7.org/linux/man-pages/man5/proc.5.html)）。
+            * 更多关于 oom killer 参见：[Taming the OOM killer](https://lwn.net/Articles/317814/)。
+        * `memory.oom_control.oom_kill_disable = 1` 该 cgroup 中的进程，调用 [brk(2) 系统调用](https://man7.org/linux/man-pages/man2/brk.2.html) （即 malloc 等）分配内存时，会进入不可中断休眠，表现是进程卡住。在这种场景，可以通过 `cgroup.event_control` 文件来监听到 oom 事件，并交由用户进程进行更精细的处理，而不是简单的 kill，更多参见下文 `cgroup.event_control`。
+    * 该值会影响 Swap 分区的使用，假设该参数设置为 `100MB`，但是 `swap` 还剩余 `100MB`。则在该 cgroup 的进程看来，只要申请的内存总量 `>= 200MB` 才会被 Kill。因此，在测试该参数时，使用 `sudo swapoff -a` 先关闭 Swap 以排除 Swap 的干扰。
 * `memory.soft_limit_in_bytes` rw，默认值和 `memory.limit_in_bytes` 一致，内存使用软限制，在 `CONFIG_PREEMPT_RT` 系统中不可用，对应的指标为 RSS + Page Cache。cgroup 对应指标超过该值，将触发内核，回收超过限额的进程占用的内存（猜测是回收 Page Cache），使之尽量和该值靠拢。
 * `memory.memsw.limit_in_bytes` rw，默认值和 `memory.limit_in_bytes` 一致，对应的指标为 RSS + Page Cache + Swap，行为和 `memory.limit_in_bytes` 一致。
 * `memory.usage_in_bytes` r，该 cgroup 中使用的内存总数，对应的指标为 RSS + Page Cache。
 * `memory.max_usage_in_bytes` r，该 cgroup 使用的中内存+swap总数，对应的指标为 RSS + Page Cache + Swap。
 * `memory.swappiness` rw，默认值 60，配置内存交换的发生时机，越小交换的次数越少，参见：[Understanding vm.swappiness](https://linuxhint.com/understanding_vm_swappiness/)。
-* `memory.oom_control` rw，写入可以配置是否禁用内核 oom killer（默认启用）。读取可以获取到如下数据：
-    * oom_kill_disable 默认为 0，是否禁用内核 oom killer。参见 `memory.limit_in_bytes` 描述。
-    * under_oom bool 值类型，表示当前 cgroup 是否处于缺少内存的状态。如果该 cgroup 缺少内存，则会暂停它里面的进程。under_oom 条目报告值为 1，否则为 0。
-    * oom_kill ??
-* `cgroup.event_control` w，事件通知虚拟文件，某进程可以创建一个 eventfd ，并将将该 eventfd 的文件描述符写入 `cgroup.event_control`，然后内核就会将 oom 事件写入该 eventfd 文件描述符，这个进程通过 epoll 获取到该事件。在 `memory.oom_control.oom_kill_disable = 1` 时，可以实现用户自定义的更精细的 oom 处理，而不是简单的 kill （k8s 的实现机制）。
+* `memory.oom_control` rw，
+    * 写入 `1`，可以配置禁用内核 oom killer（默认启用 oom killer）。
+    * 读取可以获取到如下数据：
+        * oom_kill_disable 默认为 0，是否禁用内核 oom killer。参见 `memory.limit_in_bytes` 描述。
+        * under_oom bool 值类型，表示当前 cgroup 是否处于缺少内存的状态。如果该 cgroup 缺少内存，则会暂停它里面的进程。under_oom 条目报告值为 1，否则为 0。
+        * oom_kill ??
+* `cgroup.event_control` w，事件通知虚拟文件，某进程可以创建一个 eventfd ，并将将该 eventfd 的文件描述符写入 `cgroup.event_control`，然后内核就会将 oom 事件写入该 eventfd 文件描述符，这个进程通过 epoll 获取到该事件。有两种常见用途：
+    * `memory.oom_control.oom_kill_disable = 0` ，监听 oom 事件，进行监控报警，辅助调度。
+    * 配置 `memory.oom_control.oom_kill_disable = 1` ，在用户态实现 oom-killer，而不是使用内核的 oom-killer。
 * `memory.stat` 获取各种 cgroup 粒度的内存相关统计数据，更多参见：[Memory Resource Controller - 5.2 stat file](https://docs.kernel.org/admin-guide/cgroup-v1/memory.html#stat-file)。
 * `memory.use_hierarchy` rw，默认值 1，已弃用，是否将子 cgroup 的内存使用情况统计到当前cgroup里面。
 * `memory.failcnt` rw，查看示当前 cgroup 命中限制的次数，可以通过写入 0 重置该计数器。
@@ -407,17 +416,346 @@ cgroup 对内存的控制的相关主要参数（文件）如下所示（只介�
 
 实验规划如下：
 
-* 启动一个监控进程，创建一个 demo memory cgroup，将 `memory.limit_in_bytes` 设置为 100 MB，其他保持默认。
-* 监控进程创建两个子进程，加入上面创建的 demo memory cgroup，并申请 70 MB 内存，观察是否有一个被 kill，另外一个仍然存活。
-* 监控进程再创建一个子进程，加入上面创建的 demo memory cgroup，并设置该进程的 oom_score_adj 为 1000，并申请 50 MB 内存，观察是否有该进程被优先 kill。
-* 监控进程写入 1 到 `memory.oom_control` 禁用内核 oom killer，并通过 `cgroup.event_control` 文件配置当前进程接受 OOM 事件。
-* 监控简称创建一个子进程，加入上面创建的 demo memory cgroup，并申请 50 MB 内存，观察是否有进程被 kill，观察两个进程的进程状态，该观察 OOM 事件通知，观察 `memory.usage_in_bytes`、`memory.oom_control` 文件内容。
+1. 启动一个监控进程，创建一个 demo memory cgroup，将 `memory.limit_in_bytes` 设置为 100 MB，其他保持默认。
+2. 监控进程创建两个子进程，加入上面创建的 demo memory cgroup，并申请 70 MB 内存，观察是否有一个被 kill，另外一个仍然存活。
+3. 监控进程再创建一个子进程，加入上面创建的 demo memory cgroup，并设置该进程的 oom_score_adj 为 1000，并申请 50 MB 内存，观察是否有该进程被优先 kill。
+4. 监控进程写入 1 到 `memory.oom_control` 禁用内核 oom killer，并通过 `cgroup.event_control` 文件配置当前进程接受 OOM 事件。
+5. 监控再创建一个子进程，加入上面创建的 demo memory cgroup，并申请 50 MB 内存，观察是否有进程被 kill，观察两个进程的进程状态，观察是否 OOM 事件通知，观察 `memory.usage_in_bytes`、`memory.oom_control` 文件内容。
+
+实验代码 `src/go/01-namespace/07-cgroup/v1/02-memory/main.go`，如下：
+
+```go
+package main
+
+import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/shirou/gopsutil/v3/process"
+	"golang.org/x/sys/unix"
+)
+
+const (
+	MB                  = 1024 * 1024
+	memoryDemoCgroupDir = "/sys/fs/cgroup/memory/demo"
+)
+
+const (
+	SubCommandMonitor = "monitor"
+	SubCommandAlloc   = "alloc"
+)
+
+var PinnedAllocMemory [][]byte
+
+func allocMemory(size int64) {
+	b := make([]byte, size)
+	for i := int64(0); i < size; i++ {
+		b[i] = byte(i)
+	}
+	PinnedAllocMemory = append(PinnedAllocMemory, b)
+}
+
+func printRSSMemory(p *process.Process) {
+	m, err := p.MemoryInfo()
+	if err != nil {
+		panic(err)
+	}
+	s := 0
+	for i := 0; i < len(PinnedAllocMemory[0]); i++ {
+		s += int(PinnedAllocMemory[0][i])
+	}
+	fmt.Printf("  pid %d: %s\n", p.Pid, m.String())
+}
+
+func handleOOMEvent() {
+	fmt.Println("=== handle oom event ...")
+	usage_in_bytes, err := os.ReadFile(path.Join(memoryDemoCgroupDir, `memory.usage_in_bytes`))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("memory.usage_in_bytes: \n%s\n", string(usage_in_bytes))
+	ommControlBytes, err := os.ReadFile(path.Join(memoryDemoCgroupDir, `memory.oom_control`))
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("memory.oom_control: \n%s\n", string(ommControlBytes))
+	procsBytes, err := os.ReadFile(path.Join(memoryDemoCgroupDir, "cgroup.procs"))
+	if err != nil {
+		panic(err)
+	}
+	procs := strings.Split(string(procsBytes), "\n")
+	for _, pidStr := range procs {
+		pidStr = strings.TrimSpace(pidStr)
+		if pidStr == "" {
+			break
+		}
+		pid64, _ := strconv.ParseInt(pidStr, 10, 32)
+		p, err := process.NewProcess(int32(pid64))
+		if err != nil {
+			panic(err)
+		}
+		status, err := p.Status()
+		if err != nil {
+			panic(err)
+		}
+		oom_score, _ := os.ReadFile(fmt.Sprintf("/proc/%d/oom_score", p.Pid))
+		oom_adj, _ := os.ReadFile(fmt.Sprintf("/proc/%d/oom_adj ", p.Pid))
+		oom_score_adj, _ := os.ReadFile(fmt.Sprintf("/proc/%d/oom_score_adj", p.Pid))
+		fmt.Printf("pid %d state is: %v (oom_adj=%s, oom_score=%s, oom_score_adj=%s)\n", p.Pid, status, strings.TrimSpace(string(oom_adj)), strings.TrimSpace(string(oom_score)), strings.TrimSpace(string(oom_score_adj)))
+		// 如果要模拟内核的 oom-killer 的逻辑： oom_score + oom_adj + oom_score_adj 排序，并给最大的那个发送 SIGKILL(9) 信号。
+		//
+		// 但是 oom-killer 作为 Linux 内存分配的最后的保证，非常不建议禁用 oom-killer。
+		//
+		// 因此推荐如下：
+		//   1. 通过调整 `oom_score_adj` 来调整进程的内存优先级，以自定义 oom 时 killer 的顺序。
+		//   2. 可以通过监听 oom killer 事件，统计 oom 发生的频率，以辅助调度。
+		//   2. 如需收集记录进程被 kill 的日志，只能通过 `dmesg` 或 /var/log/syslog 内核日志获取信息 （killed process）。
+	}
+}
+
+func createOOMEventHandler() {
+	// https://www.jianshu.com/p/f2403e33c766
+	// https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/7/html/resource_management_guide/sec-memory
+	var events [128]unix.EpollEvent
+	var buf [8]byte
+	// 创建epoll实例
+	epollFd, err := unix.EpollCreate1(unix.EPOLL_CLOEXEC)
+	if err != nil {
+		panic(err)
+	}
+	// 创建eventfd实例
+	efd, _ := unix.Eventfd(0, unix.EFD_CLOEXEC)
+
+	event := unix.EpollEvent{
+		Fd:     int32(efd),
+		Events: unix.EPOLLHUP | unix.EPOLLIN | unix.EPOLLERR,
+	}
+	// 将eventfd添加到epoll中进行监听
+	unix.EpollCtl(epollFd, unix.EPOLL_CTL_ADD, int(efd), &event)
+
+	// 打开oom_control文件
+	evtFile, _ := os.Open(path.Join(memoryDemoCgroupDir, "memory.oom_control"))
+
+	// 注册oom事件，当有oom事件时，eventfd将会有数据可读
+	data := fmt.Sprintf("%d %d", efd, evtFile.Fd())
+	ioutil.WriteFile(path.Join(memoryDemoCgroupDir, "cgroup.event_control"), []byte(data), 0o700)
+
+	for {
+		// 开始监听oom事件
+		n, err := unix.EpollWait(epollFd, events[:], -1)
+		if err == nil {
+			for i := 0; i < n; i++ {
+				// 消费掉eventfd的数据
+				unix.Read(int(events[i].Fd), buf[:])
+				// 处理 oom envent
+				handleOOMEvent()
+			}
+		}
+	}
+}
+
+func monitor() {
+	// 1.1 在默认 memory 层级，根 cgroup 创建一个名为 demo 的 cgroup。
+	if err := os.Mkdir(memoryDemoCgroupDir, 0o755); err != nil {
+		panic(err)
+	}
+	defer func() {
+		// 使用 unix 的 rmdir 系统调用。
+		// 参考 https://github.com/opencontainers/runc/blob/main/libcontainer/cgroups/utils.go#L231
+		if err := unix.Rmdir(memoryDemoCgroupDir); err != nil && err != unix.ENOENT {
+			panic(err)
+		}
+	}()
+	// 1.2 配置该 cgroup 的 memory.limit_in_bytes 为 100 MB
+	if err := os.WriteFile(filepath.Join(memoryDemoCgroupDir, "memory.limit_in_bytes"), []byte("100M"), 0o644); err != nil {
+		panic(err)
+	}
+
+	// 2.1 创建两个进程，先加入 cgroup，再分配 70MB 左右内存（注意：实测先分配内存再加入不会被 cgroup 感知？）。
+	proc1 := exec.Command("/proc/self/exe", fmt.Sprint(70*MB))
+	proc1.Stdout = os.Stdout
+	proc1.Stderr = os.Stderr
+	if err := proc1.Start(); err != nil {
+		panic(err)
+	}
+	proc1Done := make(chan error, 1)
+	go func() { proc1Done <- proc1.Wait(); close(proc1Done) }()
+	defer func() { proc1.Process.Kill(); proc1.Wait() }()
+	fmt.Printf("proc1 %d start ...\n", proc1.Process.Pid)
+	time.Sleep(1 * time.Second)
+
+	proc2 := exec.Command("/proc/self/exe", fmt.Sprint(70*MB))
+	proc2.Stdout = os.Stdout
+	proc2.Stderr = os.Stderr
+	if err := proc2.Start(); err != nil {
+		panic(err)
+	}
+	proc2Done := make(chan error, 1)
+	go func() { proc2Done <- proc2.Wait(); close(proc2Done) }()
+	defer func() { proc2.Process.Kill(); proc2.Wait() }()
+	fmt.Printf("proc2 %d start ...\n", proc2.Process.Pid)
+	time.Sleep(1 * time.Second)
+
+	// 2.3 观察两个进程的存活状态
+	select {
+	case <-proc1Done:
+		fmt.Printf("proc1 %d has exited: %s\n", proc1.Process.Pid, proc1.ProcessState.String())
+	default:
+		fmt.Printf("proc1 %d running\n", proc1.Process.Pid)
+	}
+	select {
+	case <-proc2Done:
+		fmt.Printf("proc2 %d has exited: %s\n", proc2.Process.Pid, proc2.ProcessState.String())
+	default:
+		fmt.Printf("proc2 %d is running\n", proc2.Process.Pid)
+	}
+	fmt.Println()
+
+	// 3.1 再创建一个子进程，加入上面创建的 demo memory cgroup，并设置该进程的 oom_score_adj 为 1000，并申请 50 MB 内存
+	proc3 := exec.Command("/proc/self/exe", fmt.Sprint(50*MB), "1000")
+	proc3.Stdout = os.Stdout
+	proc3.Stderr = os.Stderr
+	if err := proc3.Start(); err != nil {
+		panic(err)
+	}
+	proc3Done := make(chan error, 1)
+	go func() { proc3Done <- proc3.Wait(); close(proc3Done) }()
+	defer func() { proc3.Process.Kill(); proc3.Wait() }()
+	fmt.Printf("proc3 %d start ...\n", proc3.Process.Pid)
+	time.Sleep(1 * time.Second)
+
+	select {
+	case <-proc1Done:
+		fmt.Printf("proc1 %d has exited: %s\n", proc1.Process.Pid, proc1.ProcessState.String())
+	default:
+		fmt.Printf("proc1 %d running\n", proc1.Process.Pid)
+	}
+	select {
+	case <-proc2Done:
+		fmt.Printf("proc2 %d has exited: %s\n", proc2.Process.Pid, proc2.ProcessState.String())
+	default:
+		fmt.Printf("proc2 %d is running\n", proc2.Process.Pid)
+	}
+	select {
+	case <-proc3Done:
+		fmt.Printf("proc3 %d has exited: %s\n", proc3.Process.Pid, proc3.ProcessState.String())
+	default:
+		fmt.Printf("proc3 %d is running\n", proc3.Process.Pid)
+	}
+	fmt.Println()
+
+	// ! 注意：这里只是一个演示，在生产环境不建议禁用 oom-killer
+	// 4.1 监控进程写入 1 到 `memory.oom_control` 禁用内核 oom killer，并通过 `cgroup.event_control` 文件配置当前进程接受 OOM 事件。
+	if err := os.WriteFile(filepath.Join(memoryDemoCgroupDir, "memory.oom_control"), []byte("1"), 0o644); err != nil {
+		panic(err)
+	}
+	go createOOMEventHandler()
+	// 5.1 监控再创建一个子进程，加入上面创建的 demo memory cgroup，并申请 50 MB 内存
+	proc4 := exec.Command("/proc/self/exe", fmt.Sprint(50*MB))
+	proc4.Stdout = os.Stdout
+	proc4.Stderr = os.Stderr
+	if err := proc4.Start(); err != nil {
+		panic(err)
+	}
+	proc4Done := make(chan error, 1)
+	go func() { proc4Done <- proc4.Wait(); close(proc4Done) }()
+	defer func() { proc4.Process.Kill(); proc4.Wait() }()
+	fmt.Printf("proc4 %d start ...\n", proc4.Process.Pid)
+	time.Sleep(1 * time.Second)
+	// time.Sleep(60 * time.Second)
+}
+
+// sudo swapoff -a
+// go build ./src/go/01-namespace/07-cgroup/v1/02-memory && sudo ./02-memory; rm -rf ./02-memory
+// sudo dmesg -T | egrep -i 'killed process'
+// sudo swapon -a
+
+func main() {
+	if len(os.Args) == 1 {
+		monitor()
+	} else {
+		s, err := strconv.ParseInt(os.Args[1], 10, 64)
+		if err != nil {
+			panic(err)
+		}
+		// 2.1.a 加入 Cgroup。
+		if err = os.WriteFile(path.Join(memoryDemoCgroupDir, "cgroup.procs"), []byte(fmt.Sprint(os.Getpid())), 0o644); err != nil {
+			panic(err)
+		}
+		// 3.1.a 配置进程的 `oom_score_adj`
+		if len(os.Args) == 3 {
+			adj, err := strconv.ParseInt(os.Args[2], 10, 64)
+			if err != nil {
+				panic(err)
+			}
+			if err = os.WriteFile("/proc/self/oom_score_adj", []byte(fmt.Sprint(adj)), 0o644); err != nil {
+				panic(err)
+			}
+		}
+		// 2.2.b 申请内存
+		allocMemory(s)
+		p, err := process.NewProcess(int32(os.Getpid()))
+		if err != nil {
+			panic(err)
+		}
+		printRSSMemory(p)
+		time.Sleep(60 * time.Second)
+	}
+}
+```
+
+输出如下：
+
+```
+proc1 380232 start ...
+  pid 380232: {"rss":80896000,"vms":1247854592,"hwm":0,"data":0,"stack":0,"locked":0,"swap":0}
+proc2 380256 start ...
+  pid 380256: {"rss":82972672,"vms":1247789056,"hwm":0,"data":0,"stack":0,"locked":0,"swap":0}
+proc1 380232 has exited: signal: killed
+proc2 380256 is running
+
+proc3 380270 start ...
+proc1 380232 has exited: signal: killed
+proc2 380256 is running
+proc3 380270 has exited: signal: killed
+
+proc4 380295 start ...
+=== handle oom event ...
+memory.usage_in_bytes: 
+104857600
+
+memory.oom_control: 
+oom_kill_disable 1
+under_oom 1
+oom_kill 2
+
+pid 380256 state is: [sleep] (oom_adj=, oom_score=669, oom_score_adj=0)
+pid 380295 state is: [sleep] (oom_adj=, oom_score=668, oom_score_adj=0)
+```
+
+#### 最佳实现
+
+* oom-killer 作为 Linux 内存资源的硬限制，不建议通过 `memory.oom_control` 禁用。
+* 如有对进行内存优先级的自定义需求，可以通过 `/proc/<pid>/oom_score_adj` 来调整。
+* `cgroup.event_control` 仅建议用来，监听 oom killer 事件，统计 oom 发生的频率，以辅助调度。
+* 如需收集记录进程被 kill 的日志，只能通过 `dmesg` 或 `/var/log/syslog` 内核日志获取信息 （killed process） 来获取。
 
 #### k8s 驱逐
 
-https://www.modb.pro/db/190637
-https://kubernetes.io/zh-cn/docs/concepts/scheduling-eviction/
-https://kubernetes.io/zh-cn/docs/concepts/scheduling-eviction/node-pressure-eviction/
+* k8s 对内存管理的最小粒度是 Pod。
+* k8s 将 Pod `resources.limits.memory` 设置到 cgroup 的 `memory.limit_in_bytes`。
+* k8s 会按照 [QoS](https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/quality-service-pod/) 配置 Pod 中进程的 `/proc/<pid>/oom_score_adj`。
+* k8s 的后台进程 (kubelet)，会在后台监控宿主机（node）的资源水位，在触发 cgroup 的 oom-killer 之前，主动的杀死 Pod （压力驱逐，该机制仅针对类似内存之类的不可压缩资源），更多参见：[节点压力驱逐](https://kubernetes.io/zh-cn/docs/concepts/scheduling-eviction/node-pressure-eviction/)。
+* 总结一下，站在 Pod 角度。可以分两种情况，来讨论 k8s Pod 因内存问题而出现异常：
+    * Pod 进程实际使用的内存总和的内存超过了 `resources.limits.memory` 的限制。此时 cgroup 的 `memory.limit_in_bytes` 发生作用，会 kill 掉这个内存使用超限的进程。在这种情况下，操作的粒度是进程，因此 Pod 并不一定会被会退出，而是某个（些）进程退出。
+    * Node 压力过大，Pod 申请的内存没有达到限制。此时 k8s 的节点压力驱逐机制生效，会按照策略驱逐某个（些）Pod，并重新调度到其他的 Node 中重新创建。在这种情况下，操作的粒度是 Pod，因此整个 Pod 都会退出。
 
 ### devices
 
