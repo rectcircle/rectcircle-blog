@@ -19,7 +19,7 @@ Linux 提供了一些可以配置的内核参数，来配置内核的行为。
 * 临时配置，通过 `sysctl` 命令读取和配置。
     * 读取，如 `sudo sysctl net.ipv4.ip_forward`。
     * 配置，如 `sudo sysctl -w net.ipv4.ip_forward = 1`。
-* 永久配置，通过编写`/etc/sysctl.conf` 或 `/etc/sysctl.d/*` 进行配置。
+* 永久配置，通过编写 `/etc/sysctl.conf` 或 `/etc/sysctl.d/*` 进行配置。
     * 手动执行 `sudo sysctl -p` 将立即生效。
     * 重启后将永久生效。
 
