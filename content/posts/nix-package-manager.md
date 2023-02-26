@@ -90,7 +90,7 @@ bash <(curl -L https://nixos.org/nix/install)
     nix-channel --update
     ```
 
-### 软件包管理
+### 常用命令
 
 以 Go 安装为例：
 
@@ -112,6 +112,14 @@ nix-env -e go
 # 真正删除没有被使用的软件包
 nix-collect-garbage -d
 ```
+
+## Nix 包管理
+
+### 概述
+
+### 用户 Profiles
+
+### Channel
 
 ## 命令和全局配置
 
@@ -177,6 +185,11 @@ nix 包安装脚本 `install` 流程如下（单用户模式）：
 
 * 二进制缓存服务
 * 私有包 channel 管理
+* 构建钩子 https://nixos.org/manual/nix/stable/advanced-topics/post-build-hook.html
+    * 识别到 `OUT_PATHS=/nix/store/2n080hnd7j34a4li4w7n4lg15pgnm116-user-environment` 为时，根据 manifest.nix 配置获取所有的包。
+    * 几种策略
+        * 检查 cache 服务是否存在相关包（包括依赖包），不存在则上传上去。（不安全，适合内网环境）
+        * 将相关包名报告构建服务，构建服务发现包不存在，则重新根据名字重新到 channel 去拉重新构建并缓存。
 
 ### Helm 实现
 
