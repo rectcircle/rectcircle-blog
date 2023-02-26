@@ -8,6 +8,8 @@ tags:
   - untagged
 ---
 
+> version: 2.13.2
+
 ## 简介
 
 Nix 是一个 `*nix` (Linux、类 Unix) 操作系统的包（软件）管理工具。和各个
@@ -51,11 +53,65 @@ Nix 自称其是一个纯函数式，Nix 的包（每个版本）被视为函数
 
 ## 快速开始
 
+本节参考：
+
+* [Nix Manual - 快速开始](https://nixos.org/manual/nix/stable/quick-start.html)
+* [清华大学 Nix 源](https://mirrors.tuna.tsinghua.edu.cn/help/nix/)
+
 ### 安装 Nix
 
-### 使用 Nix 安装软件包
+Nix 提供了两种安装方式，单用户安装和多用户安装。一般情况下单用户安装就足够了，因此本文介绍的是单用户安装。
 
-### 发布一个 Nix 包
+```bash
+# 非中国大陆地区或全局科学上网用户，可以直接使用如下官方命令一键安装。
+bash <(curl -L https://nixos.org/nix/install)
+```
+
+大陆用户，建议使用清华源，步骤如下：
+
+* 单用户安装且不自动添加包 channel。
+
+    ```bash
+    sh <(curl https://mirrors.tuna.tsinghua.edu.cn/nix/latest/install) --no-daemon --no-channel-add
+    source ~/.nix-profile/etc/profile.d/nix.sh
+    ```
+
+* 配置官方包 channel nixpkgs 的二进制缓存服务。
+
+    ```bash
+    mkdir -p ~/.config/nix && echo 'substituters = https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store https://cache.nixos.org/' > ~/.config/nix/nix.conf
+    ```
+
+* 配置官方包 channel nixpkgs 的 mirrors。
+
+    ```bash
+    # 如下命令本质上是，将包 channel 配置写入 ~/.nix-channels 文件
+    nix-channel --add https://mirrors.tuna.tsinghua.edu.cn/nix-channels/nixpkgs-unstable nixpkgs
+    nix-channel --update
+    ```
+
+### 软件包管理
+
+以 Go 安装为例：
+
+```bash
+# 搜索
+nix-env -qaP go
+# nixpkgs.go_1_18  go-1.18.10
+# nixpkgs.go       go-1.19.5
+# nixpkgs.go_1_20  go-1.20.1
+
+# 安装
+nix-env -iA nixpkgs.go
+
+# 查看安装
+which go
+
+# 卸载 go (软件包并未删除，而是从环境变量里面去除)
+nix-env -e go
+# 真正删除没有被使用的软件包
+nix-collect-garbage -d
+```
 
 ## 命令和全局配置
 
