@@ -123,6 +123,44 @@ nix-collect-garbage -d
 
 ### 安装脚本分析
 
+Nix 提供了安装脚本（[官方](https://nixos.org/nix/install) | [清华源](https://mirrors.tuna.tsinghua.edu.cn/nix/latest/install)），主要负责下载解压 nix 包，流程如下：
+
+* 根据当前操作系统情况，通过 wget 或 curl 对应架构的 `tar.xz` 包（以清华源、Linux x64 为例，地址为： https://mirrors.tuna.tsinghua.edu.cn/nix//nix-2.13.2/nix-2.13.2-x86_64-linux.tar.xz）到临时目录，大小约为 21M。
+* 使用 sha256 （shasum 命令）校验包完整性，并解压（`tar -xJf "$tarball" -C "$unpack"`）到临时目录。
+* 执行解压后的软件包里面的安装脚本 `$unpack/*/install`，并把命令行参数传递给他。
+
+先观察 nix 包主要包含各个平台的安装脚本和软件包存储存储目录 `store`，如下所示：
+
+```
+create-darwin-volume.sh
+install
+install-darwin-multi-user.sh
+install-multi-user
+install-systemd-multi-user.sh
+.reginfo
+store/
+```
+
+nix 包安装脚本 `install` 流程如下（单用户模式）：
+
+* 设置环境变量（如 `nix=/nix/store/lsr79q5xqd9dv97wn87x12kzax8s8i1s-nix-2.13.2`），检查 nix 包目录、系统环境变量是否满足条件。
+* 检查 `/nix` 目录是否存在，不存在则调用创建该目录并将该目录 owner 设置为当前执行安装脚本的用户，此刻需要用户输入 sudo 密码。
+* 创建 `/nix/store` 和 `/nix/var/nix`。
+* 将 `store/` 的全部目录复制到 `/nix/store` 目录中。
+* 使用 `$nix/bin/nix-store --load-db` 命令加载数据库文件 `.reginfo`。
+* 执行 `"$nix/bin/nix-env" -i "$nix"`，为当前用户创建 profile 文件，此步骤会创建 `~/.nix-profile/` 目录。
+* 默认情况下，会执行 `"$nix/bin/nix-channel" --add https://nixos.org/channels/nixpkgs-unstable` 添加 nix 官方 channel nixpkgs，该步骤会创建 `~/.nix-channels` 文件（如上文所示，大陆地区使用 `--no-channel-add` 不添加，否则 update 阶段会很慢）。并执行 `"$nix/bin/nix-channel" --update nixpkgs`，该步骤会添加 `~/.nix-defexpr` 目录。
+* 最后，会根据当前用户安装的 shell 情况，将类似于 `if [ -e ~/.nix-profile/etc/profile.d/nix.sh ]; then . ~/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer` 的启用 nix 的语句添加到各个 shell 的配置文件中（目前支持：sh、bash、zsh、fish）。
+
+总结一下，单用户模式安装，nix 对系统的影响如下：
+
+* 添加 `/nix` 目录，约 100M。
+* 添加 `~/.nix-profile` 软链。
+* 添加 `~/.nix-channels` 文件。
+* 添加 `~/.nix-defexpr` 目录。
+
+因此如果想完全卸载单用户安装的 nix，直接删除掉上述文件和目录即可。
+
 ### 包 Channel
 
 ### 安装旧版包
