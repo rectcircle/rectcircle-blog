@@ -1,7 +1,7 @@
 ---
-title: "Nix 包管理器详解"
+title: "Nix 详解（一） 像传统包管理器一样使用 Nix"
 date: 2023-02-25T20:48:49+08:00
-draft: true
+draft: false
 toc: true
 comments: true
 tags:
@@ -10,9 +10,9 @@ tags:
 
 > version: nix-2.14.1
 
-## 简介
+## 简述
 
-Nix 是一个 `*nix` (Linux、类 Unix) 操作系统的包（软件）管理工具。和各个
+Nix 是一个 `*nix` (Linux、MacOS 等) 操作系统的 DevOps 工具集，其核心是一套设计严密的包管理工具。
 
 和 Debian 系的 apt、Redhat 系的 yum 不同。Nix 在设计上是跨平台的，可以在任何 `*nix` 平台使用（这可能就是 nix 命名的来源）。
 
@@ -30,14 +30,14 @@ Nix 自称其是一个纯函数式，Nix 的包（每个版本）被视为函数
 
 从上面的介绍可以看出，nix 的能力和 Docker 的部分能力存在重叠，特别在环境可重现方面。但是两者存在本质的不同，nix 是一个包管理和配置工具，而 docker 是一个构建和部署容器的工具。因此两者应用场景存在不同：
 
-* nix 一般用在项目开发阶段，可以通过配置文件直接在当前系统中，给开发人员提供一个可重现的开发环境。这个开发环境本质上是通过 PATH 环境变量生成的，各个 IDE 可以零成本集成。
+* nix 一般用在项目开发、编译阶段，可以通过配置文件直接在当前系统中，给开发人员提供一个可重现的开发环境。这个开发环境本质上是通过 PATH 环境变量生成的，各个 IDE 可以零成本集成。
 * docker 一般用在项目的构建和部署阶段。如果将 docker 应用在开发阶段，会存在如下问题：
     * IDE 集成困难，只能通过各个 IDE 提供的 Remote 特性才能进入容器，学习成本并不低。
     * 修改开发环境步骤过长(修改 Dockerfile、构建 Dockerfile、删除旧容器、运行新容器），不易测试。
 
 包管理工具实际上是一个 Linux 发行版的核心。反过来讲，拥有了一个包管理工具，很容易的就可以创造一个 Linux 发行版。因此 Nix 项目组还提供了一个将 Nix 作为包管理工具的发行版 NixOS。
 
-本文主要介绍 Nix 这个包管理工具，而不会介绍 NixOS。阅读本文可以了解：
+本文主要介绍 Nix 工具集，而不会介绍 NixOS。阅读本系列文章可以了解：
 
 * 如何安装配置和使用 Nix 包管理工具（类比 apt 那样使用）。
 * 如何通过 Nix 为自己的项目配置一个可重现的开发环境（类比 Dockerfile）。
@@ -45,11 +45,14 @@ Nix 自称其是一个纯函数式，Nix 的包（每个版本）被视为函数
 * 介绍 Nix 各种机制的原理。
 * 如何为自己的组织，私有化部署一套 Nix 基础设施（类似于建设一个 apt mirror 和一个私有 apt 源）。
 
+本文，是本系列的第一篇，将主要从传统的包管理器视角，介绍 nix 作为操作系统包管理器的相关能力。
+
 本节参考：
 
 * [Will Nix Overtake Docker?](https://blog.replit.com/nix-vs-docker)
 * [Nix Manual - Introduction](https://nixos.org/manual/nix/stable/introduction.html)
 * [NixOS 首页](https://nixos.org/)
+* [Welcome to nix.dev](https://nix.dev/)
 
 ## 快速开始
 
@@ -87,7 +90,7 @@ bash <(curl -L https://nixos.org/nix/install)
     ```bash
     # 如下命令本质上是，将包 channel 配置写入 ~/.nix-channels 文件
     nix-channel --add https://mirrors.tuna.tsinghua.edu.cn/nix-channels/nixpkgs-unstable nixpkgs
-    nix-channel --update
+    nix-channel --update # 下载 channel 并更新 ~/.local/state/nix
     ```
 
 ### 常用命令
@@ -215,39 +218,11 @@ https://mirrors.tuna.tsinghua.edu.cn/nix-channels/nixpkgs-unstable nixpkgs
 
 最后，可以通过 `nix-channel --remove nixpkgs` 删除 channel。
 
-本部分，只介绍使用者如何配置 channel。关于 channel 的目录结构，如何自定义一个私有 Channel，参见下文原理分析、
+本部分，只介绍使用者如何配置 channel。关于 channel 的目录结构，如何自定义一个私有 Channel，参见后续文章分析。
 
-## 使用 Nix 配置项目依赖
+## 安装脚本分析
 
-TODO
-
-https://grass.show/post/create-environment-with-nix-and-direnv
-https://devpress.csdn.net/cicd/62ee0a19c6770329307f3202.html#devmenu9
-https://marketplace.visualstudio.com/items?itemName=arrterian.nix-env-selector
-
-### 简单示例
-
-假设开发一个 Go 项目。TODO
-
-### Nix 语言详解
-
-### 安装到 Profile
-
-### 与 VSCode 集成
-
-https://github.com/arrterian/nix-env-selector/issues/66
-
-## 高级话题
-
-### 编写发布 Nix 包
-
-### 搭建私有 Channel
-
-### 搭建二进制缓存服务
-
-### 安装脚本分析
-
-Nix 提供了安装脚本（[官方](https://nixos.org/nix/install) | [清华源](https://mirrors.tuna.tsinghua.edu.cn/nix/latest/install)），主要负责下载解压 nix 包，流程如下：
+上文使用了 Nix 提供的安装脚本来安装 Nix（[官方](https://nixos.org/nix/install) | [清华源](https://mirrors.tuna.tsinghua.edu.cn/nix/latest/install)），其主要负责下载解压 nix 包，流程如下：
 
 * 根据当前操作系统情况，通过 wget 或 curl 对应架构的 `tar.xz` 包（以清华源、Linux x64 为例，地址为： https://mirrors.tuna.tsinghua.edu.cn/nix//nix-2.13.2/nix-2.13.2-x86_64-linux.tar.xz）到临时目录，大小约为 21M。
 * 使用 sha256 （shasum 命令）校验包完整性，并解压（`tar -xJf "$tarball" -C "$unpack"`）到临时目录。
@@ -282,110 +257,6 @@ nix 包安装脚本 `install` 流程如下（单用户模式）：
 * 添加 `~/.nix-profile` 软链。
 * 添加 `~/.nix-channels` 文件。
 * 添加 `~/.nix-defexpr` 目录。
+* 添加 `~/.local/state/nix` 目录。
 
 因此如果想完全卸载单用户安装的 nix，直接删除掉上述文件和目录即可。
-
-### 安装旧版包
-
-## 私有化部署
-
-### 目标
-
-### 架构设计
-
-* 二进制缓存服务
-* 私有包 channel 管理
-* 构建钩子 https://nixos.org/manual/nix/stable/advanced-topics/post-build-hook.html
-    * 识别到 `OUT_PATHS=/nix/store/2n080hnd7j34a4li4w7n4lg15pgnm116-user-environment` 为时，根据 manifest.nix 配置获取所有的包。
-    * 几种策略
-        * 检查 cache 服务是否存在相关包（包括依赖包），不存在则上传上去。（不安全，适合内网环境）
-        * 将相关包名报告构建服务，构建服务发现包不存在，则重新根据名字重新到 channel 去拉重新构建并缓存。
-
-### Helm 实现
-
-TODO
-
-## 命令和全局配置
-
-本部分仅介绍常用的命令和参数，其他细节参见：[官方手册](https://nixos.org/manual/nix/stable/command-ref/command-ref.html)。
-
-### nix-channel
-
-Channel 管理。
-
-```bash
-# 添加 Channel （官方）
-nix-channel --add https://nixos.org/channels/nixpkgs-unstable
-# 添加 Channel （清华 mirror）
-nix-channel --add https://mirrors.tuna.tsinghua.edu.cn/nix-channels/nixpkgs-unstable nixpkgs
-# 下载 Channel 内容
-nix-channel --update
-# 删除 Channel
-nix-channel --remove nixpkgs
-```
-
-### nix-env
-
-包管理命令，常见用法如下：
-
-```bash
-# 列出已配置 channel 中，所有可用的包
-nix-env -qaP
-# 列出 /path/to/nixpkgs channel 中，所有可安装的包
-nix-env -qaPf /path/to/nixpkgs
-# 按关键字查询
-nix-env -qaP firefox
-nix-env -qaP 'firefox.*' # 支持正则
-# 列出已配置 channel 中，所有可安装的包，以及其状态。
-nix-env -qaPs
-# -PS  nixpkgs.bash                bash-3.0
-# --S  nixpkgs.binutils            binutils-2.15
-# IPS  nixpkgs.bison               bison-1.875d
-# I 表示已应用到当前环境，P 表示已经安装到 /nix/store 中了，S 表示在缓存 server 是否存在二进制缓存。
-
-# 安装包
-nix-env -iA nixpkgs.go
-# 升级包
-nix-env -uA nixpkgs.go
-# 升级所有包
-nix-env -u
-# 仅打印可以升级的包
-nix-env -u --dry-run
-# 卸载包（磁盘空间未释放，如需释放，参见垃圾回收）
-nix-env -e go
-
-
-# nix 特色的环境版本管理（每次安装、升级、写在都会生成一个版本）
-# 列出所有环境版本
-nix-env --list-generations
-# 回滚到上一个版本
-nix-env --rollback 
-# 回滚到指定版本
-nix-env --switch-generation 43
-```
-
-常见选项说明：
-
-* `-q` 查询操作。
-* `-a` 只列出可以安装，但还未安装的包。
-* `-P` 打印属性路径（唯一标识）。
-* `-s` 获取软件包的状态。
-* `-i` 安装软件包。
-* `-A` 表示使用包属性名定位安装包
-
-### nix-collect-garbage
-
-释放磁盘空间
-
-```bash
-# 真正删除没有被使用的软件包
-nix-collect-garbage -d
-```
-
-## 参考
-
-* [Nix 手册](https://nixos.org/manual/nix/stable/)
-* [Nix github](https://github.com/NixOS/nix)
-* [NixOS wiki](https://nixos.wiki/)
-* [NixOS Learn](https://nixos.org/learn.html)
-* [清华大学 Nix 源](https://mirrors.tuna.tsinghua.edu.cn/help/nix/)
