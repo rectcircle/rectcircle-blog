@@ -8,7 +8,7 @@ tags:
   - untagged
 ---
 
-> version: 2.13.2
+> version: nix-2.14.1
 
 ## 简介
 
@@ -16,7 +16,7 @@ Nix 是一个 `*nix` (Linux、类 Unix) 操作系统的包（软件）管理工�
 
 和 Debian 系的 apt、Redhat 系的 yum 不同。Nix 在设计上是跨平台的，可以在任何 `*nix` 平台使用（这可能就是 nix 命名的来源）。
 
-Nix 自称其是一个纯函数式，Nix 的包（每个版本）被视为函数式编程领域的值。具体而言，每个包的每个版本都会根据文件内容，计算 Hash，并将该软件的所有文件都存放到一个带有 Hash 值的目录中（因此其没有采用 [`FHS`](https://en.wikipedia.org/wiki/Filesystem_Hierarchy_Standard) 目录结构标准），如：
+Nix 自称其是一个纯函数式，Nix 的包（每个版本）被视为函数式编程领域的值。具体而言，每个包的每个版本都会计算 Hash，并将该软件的所有文件都存放到一个带有 Hash 值的目录中（因此其没有采用 [`FHS`](https://en.wikipedia.org/wiki/Filesystem_Hierarchy_Standard) 目录结构标准），如：
 
 ```
 /nix/store/b6gvzjyb2pg0kjfwrjmg1vfhh54ad73z-firefox-33.1/
@@ -95,6 +95,8 @@ bash <(curl -L https://nixos.org/nix/install)
 以 Go 安装为例：
 
 ```bash
+# 更新 channel 源 （类似于 apt update)
+nix-channel --update
 # 搜索
 nix-env -qaP go
 # nixpkgs.go_1_18  go-1.18.10
@@ -111,17 +113,109 @@ which go
 nix-env -e go
 # 真正删除没有被使用的软件包
 nix-collect-garbage -d
+
+# 更新 nix 自身
+nix-env -iA nixpkgs.nix nixpkgs.cacert
 ```
 
 ## Nix 包管理
 
 ### 概述
 
+本章节介绍的是， 站在需要安装软件包的用户视角，如何使用 nix 获取、安装、升级、删除包。这些能力主要通过 nix-env 命令提供。
+
+首先，一个包管理工具，必然有一个软件源（类似于 /etc/apt/source.list），在 Nix 中，被叫做 channel。因此，如上文快速开始所示，要使用 nix-env 之前，需要使用 `nix-channel` 子命令添加一个 channel。
+
+然后即可使用 `nix-env` 对软件包进行管理。
+
+* `nix-env -qaP 关键词` 查询软件包。
+* `nix-env -iA 包属性名` 安装软件包（`-A` 表示，使用包属性名定位软件包，格式为 `channel名.包名`）。
+* `nix-env -e 包名` 卸载包（注意这里是包名）。
+* `nix-env -uA 包属性名` 升级软件包。
+* `nix-env -u` 升级所有软件包。
+
 ### 用户 Profiles
 
-### Channel
+nix 通过 profile 机制，将安装的软件包应用到用户 shell 环境中。其原理如下：
 
-## 命令和全局配置
+* nix 在安装时，会在用户的 shell profile 中注入类似如下语句。
+
+    ```bash
+    if [ -e ~/.nix-profile/etc/profile.d/nix.sh ]; then . ~/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
+    ```
+
+* 用户启动 shell 时，会执行 `. ~/.nix-profile/etc/profile.d/nix.sh` 脚本。该脚本的核心是给 PATH 添加 `~/.nix-profile/bin` 路径（通过 `echo $PATH` 可以看到)。观察 `~/.nix-profile`，可以看出：
+    * `~/.nix-profile` 是一个软链，指向了 `/nix/var/nix/profiles/per-user/$username/profile`。
+    * `/nix/var/nix/profiles/per-user/$username/profile` 同样是一个软链，指向了 `profile-20-link`
+    * `/nix/var/nix/profiles/per-user/$username/profile-20-link` 同样是一个软链，指向了 `/nix/store/g92kgz15smykgwqlhcd6lbphphqsm0a2-user-environment`。
+    * 最终，观察 `/nix/store/g92kgz15smykgwqlhcd6lbphphqsm0a2-user-environment/bin` （即 `~/.nix-profile/bin`），可以看到安装的软件的可执行文件的软链，如下所示：
+
+        ```
+        hello -> /nix/store/260q5867crm1xjs4khgqpl6vr9kywql1-hello-2.12.1/bin/hello
+        nix -> /nix/store/n6vimgasfqxz4xbmbzyvh61llhrapya7-nix-2.14.1/bin/nix
+        nix-build -> /nix/store/n6vimgasfqxz4xbmbzyvh61llhrapya7-nix-2.14.1/bin/nix-build
+        nix-channel -> /nix/store/n6vimgasfqxz4xbmbzyvh61llhrapya7-nix-2.14.1/bin/nix-channel
+        nix-collect-garbage -> /nix/store/n6vimgasfqxz4xbmbzyvh61llhrapya7-nix-2.14.1/bin/nix-collect-garbage
+        nix-copy-closure -> /nix/store/n6vimgasfqxz4xbmbzyvh61llhrapya7-nix-2.14.1/bin/nix-copy-closure
+        nix-daemon -> /nix/store/n6vimgasfqxz4xbmbzyvh61llhrapya7-nix-2.14.1/bin/nix-daemon
+        nix-env -> /nix/store/n6vimgasfqxz4xbmbzyvh61llhrapya7-nix-2.14.1/bin/nix-env
+        nix-hash -> /nix/store/n6vimgasfqxz4xbmbzyvh61llhrapya7-nix-2.14.1/bin/nix-hash
+        nix-instantiate -> /nix/store/n6vimgasfqxz4xbmbzyvh61llhrapya7-nix-2.14.1/bin/nix-instantiate
+        nix-prefetch-url -> /nix/store/n6vimgasfqxz4xbmbzyvh61llhrapya7-nix-2.14.1/bin/nix-prefetch-url
+        nix-shell -> /nix/store/n6vimgasfqxz4xbmbzyvh61llhrapya7-nix-2.14.1/bin/nix-shell
+        nix-store -> /nix/store/n6vimgasfqxz4xbmbzyvh61llhrapya7-nix-2.14.1/bin/nix-store
+        ```
+
+* 在使用 `nix-env` 管理软件包时，流程应该如下所示：
+
+    * 安装时，从 binary server 下载依赖和软件包到 `/nix/store` 中（或者本地编译，存储到 `/nix/store`）。
+    * 根据当前的 profile 即 `/nix/var/nix/profiles/per-user/$username/profile` 和安装、卸载的软件包的情况，生成一个新的 profile 目录，存放到 `/nix/store/$hash-user-environment`
+    * 创建一个软链 `/nix/var/nix/profiles/per-user/$username/profile-$序号-link` 指向上一步的 profile。
+    * 修改软链 `/nix/var/nix/profiles/per-user/$username/profile` 指向 `profile-$序号-link`，完成。
+
+* 切换到历史上的其他版本。
+
+    * `nix-env --list-generations` 查看历史所有环境列表
+    * `nix-env --rollback` 回滚到上一个版本，即将 `/nix/var/nix/profiles/per-user/$username/profile` 指向上一版本的 `profile-$序号-link`。
+    * `nix-env --switch-generation 43` 回滚到指定版本，即将 `/nix/var/nix/profiles/per-user/$username/profile` 指向上一版本的 `profile-43-link`。
+
+* 上面介绍的是默认的基于用户的 profile，nix 提供了生成和应用自定义 profile，而非使用 `/nix/var/nix/profiles/per-user/$username` 的方式。
+    * `nix-env -p /nix/var/nix/profiles/other-profile -iA nixpkgs.nix nixpkgs.cacert nixpkgs.go` -p 参数可以手动指定 profile 的生成位置（注意，nix 自身不会自动添加）。
+    * `nix-env --switch-profile /nix/var/nix/profiles/other-profile` 将当前用户的 profile 切换到指定目录，即，修改 `~/.nix-profile` 软链的指向。
+
+* 垃圾回收机制。`nix-env` 核心是生成 profile 以及修改软链，`nix-env` 不会删除 /nix/sotre 下的软件包。因此需要通过 `nix-collect-garbage -d` 删除所有历史上的 profile 以及当前 profile 没有引用的，存放在 /nix/sotre 下的软件包。其原理是保留 `/nix/var/nix/gcroots` 中存在指向 `/nix/sotre` 的软件包，其他则删除。
+
+### Channel 管理
+
+在 Nix 中 Channel 类似于 apt source 的概念。可以通过如下命令，添加一个 Channel。
+
+```bash
+nix-channel --add https://nixos.org/channels/nixpkgs-unstable
+# 清华 mirror
+nix-channel --add https://mirrors.tuna.tsinghua.edu.cn/nix-channels/nixpkgs-unstable nixpkgs
+```
+
+该命令会将配写入 `~/.nix-channels`。
+
+```
+https://mirrors.tuna.tsinghua.edu.cn/nix-channels/nixpkgs-unstable nixpkgs
+```
+
+执行 `nix-channel --update` 将会从 url 中下载 channel 的内容，`nix-env` 会根据 `~/.nix-defexpr/channels` 获取到包信息，存储路径如下：
+
+* `~/.nix-defexpr/channels` 指向 `~/.local/state/nix/profiles/channels`
+* `~/.local/state/nix/profiles/channels` 指向 `channels-1-link`
+* `~/.local/state/nix/profiles/channels-1-link` 指向 `/nix/store/$hash-user-environment`
+* 因此 `~/.nix-defexpr/channels` 指向 `/nix/store/$hash-user-environment`，包含
+
+    ```
+    /nix/store/$hash-env-manifest.nix
+    /nix/store/$hash-nixpkgs/nixpkgs
+    ```
+
+最后，可以通过 `nix-channel --remove nixpkgs` 删除 channel。
+
+本部分，只介绍使用者如何配置 channel。关于 channel 的目录结构，如何自定义一个私有 Channel，参见下文原理分析、
 
 ## 开发环境项目配置
 
@@ -194,6 +288,83 @@ nix 包安装脚本 `install` 流程如下（单用户模式）：
 ### Helm 实现
 
 TODO
+
+## 命令和全局配置
+
+本部分仅介绍常用的命令和参数，其他细节参见：[官方手册](https://nixos.org/manual/nix/stable/command-ref/command-ref.html)。
+
+### nix-channel
+
+Channel 管理。
+
+```bash
+# 添加 Channel （官方）
+nix-channel --add https://nixos.org/channels/nixpkgs-unstable
+# 添加 Channel （清华 mirror）
+nix-channel --add https://mirrors.tuna.tsinghua.edu.cn/nix-channels/nixpkgs-unstable nixpkgs
+# 下载 Channel 内容
+nix-channel --update
+# 删除 Channel
+nix-channel --remove nixpkgs
+```
+
+### nix-env
+
+包管理命令，常见用法如下：
+
+```bash
+# 列出已配置 channel 中，所有可用的包
+nix-env -qaP
+# 列出 /path/to/nixpkgs channel 中，所有可安装的包
+nix-env -qaPf /path/to/nixpkgs
+# 按关键字查询
+nix-env -qaP firefox
+nix-env -qaP 'firefox.*' # 支持正则
+# 列出已配置 channel 中，所有可安装的包，以及其状态。
+nix-env -qaPs
+# -PS  nixpkgs.bash                bash-3.0
+# --S  nixpkgs.binutils            binutils-2.15
+# IPS  nixpkgs.bison               bison-1.875d
+# I 表示已应用到当前环境，P 表示已经安装到 /nix/store 中了，S 表示在缓存 server 是否存在二进制缓存。
+
+# 安装包
+nix-env -iA nixpkgs.go
+# 升级包
+nix-env -uA nixpkgs.go
+# 升级所有包
+nix-env -u
+# 仅打印可以升级的包
+nix-env -u --dry-run
+# 卸载包（磁盘空间未释放，如需释放，参见垃圾回收）
+nix-env -e
+
+
+# nix 特色的环境版本管理（每次安装、升级、写在都会生成一个版本）
+# 列出所有环境版本
+nix-env --list-generations
+# 回滚到上一个版本
+nix-env --rollback 
+# 回滚到指定版本
+nix-env --switch-generation 43
+```
+
+常见选项说明：
+
+* `-q` 查询操作。
+* `-a` 只列出可以安装，但还未安装的包。
+* `-P` 打印属性路径（唯一标识）。
+* `-s` 获取软件包的状态。
+* `-i` 安装软件包。
+* `-A` 表示使用包属性名定位安装包
+
+### nix-collect-garbage
+
+释放磁盘空间
+
+```bash
+# 真正删除没有被使用的软件包
+nix-collect-garbage -d
+```
 
 ## 参考
 
