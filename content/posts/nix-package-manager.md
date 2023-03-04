@@ -183,7 +183,7 @@ nix 通过 profile 机制，将安装的软件包应用到用户 shell 环境中
     * `nix-env -p /nix/var/nix/profiles/other-profile -iA nixpkgs.nix nixpkgs.cacert nixpkgs.go` -p 参数可以手动指定 profile 的生成位置（注意，nix 自身不会自动添加）。
     * `nix-env --switch-profile /nix/var/nix/profiles/other-profile` 将当前用户的 profile 切换到指定目录，即，修改 `~/.nix-profile` 软链的指向。
 
-* 垃圾回收机制。`nix-env` 核心是生成 profile 以及修改软链，`nix-env` 不会删除 /nix/sotre 下的软件包。因此需要通过 `nix-collect-garbage -d` 删除所有历史上的 profile 以及当前 profile 没有引用的，存放在 /nix/sotre 下的软件包。其原理是保留 `/nix/var/nix/gcroots` 中存在指向 `/nix/sotre` 的软件包，其他则删除。
+* 垃圾回收机制。`nix-env` 核心是生成 profile 以及修改软链，`nix-env` 不会删除 /nix/sotre 下的软件包。因此需要通过 `nix-collect-garbage -d` 删除所有历史上的 profile 以及当前 profile 没有引用的，存放在 /nix/sotre 下的软件包。其原理是保留 `/nix/var/nix/gcroots` 中的和当前系统运行的进程中的，存在指向 `/nix/sotre` 的软件包（`nix-store --gc --print-roots` 可以通过该命令看到），其他则删除。
 
 ### Channel 管理
 
@@ -217,11 +217,33 @@ https://mirrors.tuna.tsinghua.edu.cn/nix-channels/nixpkgs-unstable nixpkgs
 
 本部分，只介绍使用者如何配置 channel。关于 channel 的目录结构，如何自定义一个私有 Channel，参见下文原理分析、
 
-## 开发环境项目配置
+## 使用 Nix 配置项目依赖
 
-## 编写发布 Nix 包
+TODO
 
-## Nix 原理分析
+https://grass.show/post/create-environment-with-nix-and-direnv
+https://devpress.csdn.net/cicd/62ee0a19c6770329307f3202.html#devmenu9
+https://marketplace.visualstudio.com/items?itemName=arrterian.nix-env-selector
+
+### 简单示例
+
+假设开发一个 Go 项目。TODO
+
+### Nix 语言详解
+
+### 安装到 Profile
+
+### 与 VSCode 集成
+
+https://github.com/arrterian/nix-env-selector/issues/66
+
+## 高级话题
+
+### 编写发布 Nix 包
+
+### 搭建私有 Channel
+
+### 搭建二进制缓存服务
 
 ### 安装脚本分析
 
@@ -263,13 +285,7 @@ nix 包安装脚本 `install` 流程如下（单用户模式）：
 
 因此如果想完全卸载单用户安装的 nix，直接删除掉上述文件和目录即可。
 
-### 包 Channel
-
 ### 安装旧版包
-
-### Nix 软件包安装分析
-
-### Nix 二进制缓存服务
 
 ## 私有化部署
 
@@ -336,7 +352,7 @@ nix-env -u
 # 仅打印可以升级的包
 nix-env -u --dry-run
 # 卸载包（磁盘空间未释放，如需释放，参见垃圾回收）
-nix-env -e
+nix-env -e go
 
 
 # nix 特色的环境版本管理（每次安装、升级、写在都会生成一个版本）
