@@ -194,21 +194,3 @@ which curl
 * 某些场景，`.nix` 声明的依赖还未下载时，该扩展可能会阻塞 VSCode 加载其他的扩展。
 * 由于某些场景，如果其他依赖开发环境的扩展比该扩展先激活，可能读取到的是配置前的环境变量，从而导致这些扩展找不到相关依赖（参见：[issue](https://github.com/arrterian/nix-env-selector/issues/66)），这个问题比较致命，受限于 VSCode 机制（参见：[issue](https://github.com/microsoft/vscode/issues/152806)），该问题通过常规办法可能难以解决。
 * 该扩展不会自动配置 VSCode Terminal 的 Shell，因此仍然需要上文的 direnv。
-
-## 安装旧版包
-
-在 nix 中，官方的 Channel 是 [nixpkgs](https://github.com/NixOS/nixpkgs)，这个 Channel 是通过 git 管理的。
-
-通过 `nix-env -qaP go` 可以看到，目前最新版本提交的 nixpkgs 的 Go 只有最新的三个版本 1.18、1.19 和 1.20。
-
-很多时候，我们希望，安装更旧版本的依赖时，就需要获取到包含更旧 Go 的配置的 nixpkgs 那个 commit 的快照。
-
-因此，现在的问题是，如何通过包名查询历史版本对应的 commit，然后通过上文的类似于 `https://github.com/NixOS/nixpkgs/archive/794f34657e066a5e8cc4bb34491fee02240c6ac4.tar.gz` 的方式即可安装旧版本的包。
-
-nixpkgs 官方并未提供该能力，但是幸运的是 nix 社区有一个站点可以查询这些信息： https://lazamar.co.uk/nix-versions/ 。
-
-其原理可以参见：[该站点作者博客](https://lazamar.github.io/download-specific-package-version-with-nix/)。
-
-nixpkgs 官方关于安装旧版包的讨论参见：[No way to install/use a specific package version? #9682](https://github.com/NixOS/nixpkgs/issues/9682)。
-
-注意：从多个历史 commit 的 nixpkgs 安装包会导致磁盘占用快速上升。

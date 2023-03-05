@@ -220,6 +220,24 @@ https://mirrors.tuna.tsinghua.edu.cn/nix-channels/nixpkgs-unstable nixpkgs
 
 本部分，只介绍使用者如何配置 channel。关于 channel 的目录结构，如何自定义一个私有 Channel，参见后续文章分析。
 
+### 安装旧版包
+
+在 nix 中，官方的 Channel 是 [nixpkgs](https://github.com/NixOS/nixpkgs)，这个 Channel 是通过 git 管理的。
+
+通过 `nix-env -qaP go` 可以看到，目前最新版本提交的 nixpkgs 的 Go 只有最新的三个版本 1.18、1.19 和 1.20。
+
+很多时候，我们希望，安装更旧版本的依赖时，就需要获取到包含更旧 Go 的配置的 nixpkgs 那个 commit 的快照。
+
+因此，现在的问题是，如何通过包名查询历史版本对应的 commit，然后通过上文的类似于 `https://github.com/NixOS/nixpkgs/archive/794f34657e066a5e8cc4bb34491fee02240c6ac4.tar.gz` 的方式即可安装旧版本的包。
+
+nixpkgs 官方并未提供该能力，但是幸运的是 nix 社区有一个站点可以查询这些信息： https://lazamar.co.uk/nix-versions/ 。
+
+其原理可以参见：[该站点作者博客](https://lazamar.github.io/download-specific-package-version-with-nix/)。
+
+nixpkgs 官方关于安装旧版包的讨论参见：[No way to install/use a specific package version? #9682](https://github.com/NixOS/nixpkgs/issues/9682)。
+
+注意：从多个历史 commit 的 nixpkgs 安装包会导致磁盘占用快速上升。
+
 ## 安装脚本分析
 
 上文使用了 Nix 提供的安装脚本来安装 Nix（[官方](https://nixos.org/nix/install) | [清华源](https://mirrors.tuna.tsinghua.edu.cn/nix/latest/install)），其主要负责下载解压 nix 包，流程如下：
