@@ -226,6 +226,14 @@ https://mirrors.tuna.tsinghua.edu.cn/nix-channels/nixpkgs-unstable nixpkgs
 
 通过 `nix-env -qaP go` 可以看到，目前最新版本提交的 nixpkgs 的 Go 只有最新的三个版本 1.18、1.19 和 1.20。
 
+上文对于 Go 的安装，使用的是最新 commit 的 nixpkgs （通过 nix-channel 配置）。
+
+而 `nix-env` 还提供了基于某个特殊版本的 nixpkgs 的安装机制。如：
+
+```bash
+nix-env -iA go -f https://github.com/NixOS/nixpkgs/archive/d1c3fea7ecbed758168787fe4e4a3157e52bc808.tar.gz
+```
+
 很多时候，我们希望，安装更旧版本的依赖时，就需要获取到包含更旧 Go 的配置的 nixpkgs 那个 commit 的快照。
 
 因此，现在的问题是，如何通过包名查询历史版本对应的 commit，然后通过上文的类似于 `https://github.com/NixOS/nixpkgs/archive/794f34657e066a5e8cc4bb34491fee02240c6ac4.tar.gz` 的方式即可安装旧版本的包。
@@ -238,7 +246,10 @@ nixpkgs 官方并未提供该能力，但是幸运的是 nix 社区有一个站�
 
 nixpkgs 官方关于安装旧版包的讨论参见：[No way to install/use a specific package version? #9682](https://github.com/NixOS/nixpkgs/issues/9682)。
 
-注意：从多个历史 commit 的 nixpkgs 安装包会导致磁盘占用快速上升。
+注意：
+
+* 中国大陆地区，建议先通过科学上网，clone 下整个 https://github.com/NixOS/nixpkgs 仓库（几个 G 大小），然后 checkout 到指定版本，然后在通过 `nix-env -f` 指定到 nixpkgs 根目录目录。
+* 从多个历史 commit 的 nixpkgs 安装包会导致磁盘占用快速上升。
 
 ## 安装脚本分析
 

@@ -58,7 +58,8 @@ nix-env -u
 nix-env -u --dry-run
 # 卸载包（磁盘空间未释放，如需释放，参见垃圾回收）
 nix-env -e go
-
+# 安装旧版包 https://lazamar.co.uk/nix-versions/
+nix-env -iA go -f https://github.com/NixOS/nixpkgs/archive/d1c3fea7ecbed758168787fe4e4a3157e52bc808.tar.gz
 
 # nix 特色的环境版本管理（每次安装、升级、写在都会生成一个版本）
 # 列出所有环境版本
@@ -77,6 +78,9 @@ nix-env --switch-generation 43
 * `-s` 获取软件包的状态。
 * `-i` 安装软件包。
 * `-A` 表示使用包属性名定位安装包
+* `-f` 从指定 git commit 的 channel 中安装包（commit id 前往 https://github.com/NixOS/nixpkgs/commits/master 查询），支持 url、本地目录。中国大陆网络问题：
+    * 方案1：前往，[清华源 Release 目录](https://mirrors.tuna.tsinghua.edu.cn/nix-channels/releases/?C=M&O=D)， 搜索最新的`nixpkgs-unstable@nixpkgs` 开头的最新，复制 nixexprs.tar.xz 路径。
+    * 方案2：先通过科学上网，clone 下整个 https://github.com/NixOS/nixpkgs 仓库（几个 G 大小），然后 checkout 到指定版本，然后在通过 `nix-env -f` 指定到 nixpkgs 根目录目录，这样后续就不用处理网络问题了。
 
 ### nix-collect-garbage
 
@@ -110,8 +114,9 @@ nix-shell -p go_1_19 jq curl --pure -I nixpkgs=https://github.com/NixOS/nixpkgs/
 
 * `-p` 从 nixpkgs 中，指定安装的 package。
 * `--pure` 指，不继承当前进程的环境变量。
-* `-I` 从指定 git commit 的 channel 中安装包（commit id 前往 https://github.com/NixOS/nixpkgs/commits/master 查询）。
-    * 中国大陆前往，[清华源 Release 目录](https://mirrors.tuna.tsinghua.edu.cn/nix-channels/releases/?C=M&O=D)， 搜索最新的`nixpkgs-unstable@nixpkgs` 开头的最新，复制 nixexprs.tar.xz 路径。
+* `-I` 从指定 git commit 的 channel 中安装包（commit id 前往 https://github.com/NixOS/nixpkgs/commits/master 查询），支持 url、本地目录。中国大陆网络问题：
+    * 方案1：前往，[清华源 Release 目录](https://mirrors.tuna.tsinghua.edu.cn/nix-channels/releases/?C=M&O=D)， 搜索最新的`nixpkgs-unstable@nixpkgs` 开头的最新，复制 nixexprs.tar.xz 路径。
+    * 方案2：先通过科学上网，clone 下整个 https://github.com/NixOS/nixpkgs 仓库（几个 G 大小），然后 checkout 到指定版本，然后在通过 `nix-env -f` 指定到 nixpkgs 根目录目录，这样后续就不用处理网络问题了。
 * `-i` 指定 shell 交互式解释器。
 * `<path>` 最后一个参数为一个 `.nix` 文件，默认为当前目录的 `shell.nix` 如果 `shell.nix` 不存在，则当前目录的 `default.nix`。注意，如果指定且写在 shell 的 shebang 中，则当前路径为为脚本所在目录，而不是 work dir。
 
