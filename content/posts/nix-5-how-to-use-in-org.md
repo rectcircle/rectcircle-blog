@@ -1,5 +1,5 @@
 ---
-title: "Nix 详解（四）在团队中落地设计"
+title: "Nix 详解（五）在大型组织中落地设计"
 date: 2023-02-25T20:48:49+08:00
 draft: true
 toc: true

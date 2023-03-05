@@ -1,5 +1,5 @@
 ---
-title: "Nix 详解（二） 项目依赖管理"
+title: "Nix 详解（三） nix 领域特定语言"
 date: 2023-02-25T20:48:49+08:00
 draft: true
 toc: true

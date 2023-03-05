@@ -1,5 +1,5 @@
 ---
-title: "Nix 详解（三） 发布一个 Package"
+title: "Nix 详解（四） 发布一个 Package"
 date: 2023-02-25T20:48:49+08:00
 draft: true
 toc: true
