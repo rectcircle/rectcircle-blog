@@ -132,6 +132,7 @@ nix-shell -p go_1_19 jq curl --pure -I nixpkgs=https://github.com/NixOS/nixpkgs/
 * 安装旧版本相关
     * [Nix package versions](https://lazamar.co.uk/nix-versions/)
     * [Searching and installing old versions of Nix packages](https://lazamar.github.io/download-specific-package-version-with-nix/)。
+    * [github lazamar/nix-package-versions](https://github.com/lazamar/nix-package-versions)
     * [No way to install/use a specific package version? #9682](https://github.com/NixOS/nixpkgs/issues/9682)
 * 其他
     * [VSCode 扩展 Nix Environment Selector](https://marketplace.visualstudio.com/items?itemName=arrterian.nix-env-selector) | [issue](https://github.com/arrterian/nix-env-selector/issues/66) | [issue](https://github.com/microsoft/vscode/issues/152806)

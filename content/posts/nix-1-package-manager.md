@@ -234,6 +234,8 @@ nixpkgs 官方并未提供该能力，但是幸运的是 nix 社区有一个站�
 
 其原理可以参见：[该站点作者博客](https://lazamar.github.io/download-specific-package-version-with-nix/)。
 
+此外，该项目已开源，参见： [lazamar/nix-package-versions](https://github.com/lazamar/nix-package-versions)。
+
 nixpkgs 官方关于安装旧版包的讨论参见：[No way to install/use a specific package version? #9682](https://github.com/NixOS/nixpkgs/issues/9682)。
 
 注意：从多个历史 commit 的 nixpkgs 安装包会导致磁盘占用快速上升。
