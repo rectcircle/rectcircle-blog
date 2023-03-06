@@ -25,7 +25,7 @@ tags:
 
 * 存在较高沟通和时间成本，搭建流程繁琐枯燥，尤其是大型项目。
 * 不同的开发的设备配置可能不一致，在搭建开发环境的时候，极大概率可能会遇到各种奇奇怪怪的问题。
-* 统一设备多个项目可能存在冲突。
+* 同一设备多个项目可能存在冲突。
 
 为了解决开发环境搭建的问题，各个语言都有自己的解决方案，如 python venv。
 
@@ -49,7 +49,7 @@ nix-shell -p go_1_19 jq curl
 
 需要特别说明的是，上述命令并非完全可重现，原因如下：
 
-* 该命令仍然集成了当前 shell 的一些环境变量。在不同的设备中得到的 shell 环境可能有所差异。
+* 该命令仍然继承了当前 shell 的一些环境变量。在不同的设备中得到的 shell 环境可能有所差异。
 * 在写这篇文章的时刻没有任何问题，但是随着时间的推移。如，两年后，这个命令可能就不生效。原因在于，该命令要安装的包来自 nixpkgs channel，而该 channel 随着时间的推移，会发生变化，比如未来 go_1_19 已经不再维护时，相关文件可能会直接被删除。
 
 因此，如果想得到一个可重现的临时开发环境，命令如下：
@@ -108,7 +108,7 @@ which curl
 
 ## 通过 shell.nix 配置环境
 
-> [nix wiki 使用 nix-shell](配置开发环境 https://nixos.wiki/wiki/Development_environment_with_nix-shell)
+> [nix wiki 使用 nix-shell 配置开发环境](https://nixos.wiki/wiki/Development_environment_with_nix-shell)
 
 nix-shell 除了支持通过命令行参数以及 shell shebang 方式配置依赖外。还支持通过 `shell.nix` 配置文件的方式来配置项目的依赖。
 
