@@ -120,6 +120,14 @@ nix-shell -p go_1_19 jq curl --pure -I nixpkgs=https://github.com/NixOS/nixpkgs/
 * `-i` 指定 shell 交互式解释器。
 * `<path>` 最后一个参数为一个 `.nix` 文件，默认为当前目录的 `shell.nix` 如果 `shell.nix` 不存在，则当前目录的 `default.nix`。注意，如果指定且写在 shell 的 shebang 中，则当前路径为为脚本所在目录，而不是 work dir。
 
+## nix-instantiate
+
+执行一个 `.nix` 文件。
+
+```
+nix-instantiate --eval nix-lang-demo/01-hello.nix
+```
+
 ## 全局配置
 
 ## 参考

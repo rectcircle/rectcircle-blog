@@ -10,32 +10,70 @@ tags:
 
 > version: nix-2.14.1
 
-TODO
+## 概述
 
-https://grass.show/post/create-environment-with-nix-and-direnv
-https://devpress.csdn.net/cicd/62ee0a19c6770329307f3202.html#devmenu9
-https://marketplace.visualstudio.com/items?itemName=arrterian.nix-env-selector
+为了更好的描述一个包，从源码到制品的过程，nix 设计了一套领域特定语言（DSL），来声明一个包。这个语言就叫做 nix 语言。
 
-## 场景概述
+nix 是一种特定领域的、纯函数式的、惰性求值的、动态类型的编程语言。
 
-假设开发一个 Go 项目，同时脚本依赖 jq、curl。TODO
+该语言主要的应用场景为：
 
-## 临时开发环境
+* 定义一个 nix channel，之前文章多次提到的 nixpkgs 收录的超过 8 万个包，就是通过 nix 语言声明的。
+* 在 `shell.nix` 中使用，正如之前文章所讲，其可以为一个项目定义一个可重现的隔离的开发环境。
+* 在 NixOS 中，来定义操作系统环境，本系列不多赘述。
 
-## 可重现 shell 脚本
+## Hello World
 
-## 通过 shell.nix 配置环境
+`nix-lang-demo/01-hello.nix`
 
-https://nix.dev/tutorials/ad-hoc-developer-environments#
+```nix
+let
+  msg = "hello world";
+in msg
+```
 
-https://nix.dev/tutorials/reproducible-scripts
+运行代码，`nix-instantiate --eval nix-lang-demo/01-hello.nix`，输出如下：
 
-## Nix 语言详解
+```
+"hello world"
+```
 
-## 与 IDE 集成
+除了直接运行一个 `.nix` 代码文件外。通过实验性的 `nix repl` 命令，可以打开一个 nix 交互式 shell，来交互式的执行 nix 表达式。
 
-https://github.com/arrterian/nix-env-selector/issues/66
+## 程序结构
 
-https://nixos.wiki/wiki/Visual_Studio_Code#Using_nix-shell
+和常规的命令式通用编程语言不同，nix 是一种声明式的表达式语言。
 
-## 安装旧版包
+常规的 Go、Java、C 等编程语言，一个程序的入口是一个 main 函数。
+
+在 nix 中，没有一个 main 函数。一个 nix 的程序就是 nix 提供的几种基本结构组合而成的表达式。
+
+在执行一个正确的 nix 程序时，解释器最终会推导出一个且必须推导出一个值出来。这个值，必须是 nix 支持的几种数据类型之一，参见下文。
+
+## 数据类型
+
+nix 的数据类型类似于 JSON，可以分为基本数据类型、列表和属性集。
+
+### 基本数据类型
+
+### 列表
+
+### 属性集
+
+## 命名
+
+## 操作
+
+## 函数
+
+## 库
+
+## 非纯函数
+
+## 推导 (derivation)
+
+https://www.zhihu.com/question/279855101/answer/2023496231
+
+## nixpkgs 分析
+
+## 自定义 channel
