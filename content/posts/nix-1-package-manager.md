@@ -236,7 +236,7 @@ nix-env -iA go -f https://github.com/NixOS/nixpkgs/archive/d1c3fea7ecbed75816878
 
 很多时候，我们希望，安装更旧版本的依赖时，就需要获取到包含更旧 Go 的配置的 nixpkgs 那个 commit 的快照。
 
-因此，现在的问题是，如何通过包名查询历史版本对应的 commit，然后通过上文的类似于 `https://github.com/NixOS/nixpkgs/archive/794f34657e066a5e8cc4bb34491fee02240c6ac4.tar.gz` 的方式即可安装旧版本的包。
+因此，现在的问题是，如何通过包名查询历史版本对应的 commit，然后通过上文的类似于 `https://github.com/NixOS/nixpkgs/archive/$commitID.tar.gz` 的方式即可安装旧版本的包。
 
 nixpkgs 官方并未提供该能力，但是幸运的是 nix 社区有一个站点可以查询这些信息： https://lazamar.co.uk/nix-versions/ 。
 
