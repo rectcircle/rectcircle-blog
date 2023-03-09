@@ -40,6 +40,8 @@ in msg
 
 除了直接运行一个 `.nix` 代码文件外。通过实验性的 `nix repl` 命令，可以打开一个 nix 交互式 shell，来交互式的执行 nix 表达式。
 
+关于 `let in` 参见下文：[局部变量](#局部变量)
+
 ## 程序结构
 
 和常规的命令式通用编程语言不同，nix 是一种声明式的表达式语言。
@@ -173,23 +175,273 @@ in add 1
 * 第三行，将 inc 作为函数调用，参数为 1。此时，实际上调用了 `__functor` 函数。
 * 利用该特性可以实现类似面向对象的效果。
 
-TODO rec 列表
+默认情况下，定义一个属性集，属性之间是不能相互引用，如下将报错：
 
-## 命名
+```nix
+{
+  y = 123;
+  x = y;
+}
+```
 
-* let in
-* with
-* inherit
+通过，在花括号前添加 `rec`，表示声明一个递归属性集。此时，同一属性集内部的属性可以相互引用，如下不会报错：
+
+```nix
+rec {
+  y = 123;
+  x = y;
+}
+```
+
+此外，递归属性集，属性的引用和顺序无关，如下不会报错：
+
+```nix
+rec {
+  x = y;
+  y = 123;
+}
+```
+
+此外，在递归属性集中，如果引用的名字，在作用域内有同名的变量，且属性集内也有同名的属性，此时取属性集属性的值。如下：
+
+```nix
+let y = 456;
+in rec {
+  x = y;
+  y = 123;
+}
+```
+
+将返回： `{ x = 123; y = 123; }`。
+
+## 变量
+
+### 局部变量
+
+nix 通过 `let in` 来创建一个作用域，并定义一批变量，如：
+
+```
+let
+  a = 1;
+  b = 2;
+in
+  a + b
+```
+
+如上写法等价于： `1 + 2`。
+
+### 属性继承
+
+当我们想构造一个属性集，并想将作用域中的某些属性作为该属性集的属性时，一般的写法如下：
+
+```nix
+let
+  a = 1;
+  b = 2;
+in {
+  a = a;
+  b = b;
+  c = 3;
+}
+```
+
+nix 提供继承语法糖，可以将上述简化为形式：
+
+```nix
+let
+  a = 1;
+  b = 2;
+in {
+  inherit a b;
+  c = 3;
+}
+```
+
+inherit 还可以从一个属性集中继承几个属性，示例如下：
+
+```nix
+let
+  a = 1;
+  x = {
+    b = 2;
+    c = 3;
+  };
+in {
+  inherit a;
+  inherit (x) b c;
+}
+```
+
+等价于：
+
+```nix
+let
+  a = 1;
+  x = {
+    b = 2;
+    c = 3;
+  };
+in {
+  a = 1;
+  b = x.b;
+  c = x.c;
+}
+```
+
+### with 表达式
+
+类似于 python 的 with。通过 with 可以创建一个作用域，并将一个属性集中属性作为作用域中的变量。
+
+示例如下：
+
+```nix
+with {
+  a = 1;
+  b = 2;
+}; a + b
+```
+
+等价于：
+
+```nix
+let
+  a = 1;
+  b = 2;
+in a + b
+```
+
+等价于：
+
+```nix
+let 
+x = {
+    a = 1;
+    b = 2; 
+  };
+in with x;
+a + b
+```
 
 ## 流程控制
 
+### 条件表达式
+
+语法如下：
+
+```
+if e1 then e2 else e3
+```
+
+例如：
+
+```
+let x = 1;
+in if x > 0 then "x > 0" else "x <= 1"
+```
+
+返回，  "x > 0"。
+
+### 循环
+
+nix 是个无副作用的函数式的表达式语言。因此，nix 没有命令式编程语言的 while 或者 for 循环。
+
+一般情况，需要循环场景，就是对列表或者属性集进行转换。nix 可以通过内置高阶函数，如 `builtins.filter`、 `builtins.map`，来达到类似的效果。
+
+## 错误处理
+
+### 断言
+
+通过 assert 可以检查某些条件是否成立，语法如下：
+
+```nix
+assert e1; e2
+```
+
+其中 e1 是一个可以计算为 bool 类型值的表达式。如果 e1 为 true，则返回 e2 的值，如果 e1 为 false，则停止计算，并打印调用栈信息。如：
+
+* `assert true; 1` 将返回 1。
+* `assert false; 1` 将报错。
+
+### 抛出错误
+
+nix 的错误抛出，由内置函数提供，语法如下：
+
+```nix
+builtins.throw s
+```
+
+抛出错误，如果上层没有处理，解释器会打印消息 `s`，并停止运行（评估）。
+
+### 错误终止
+
+nix 的错误终止，由内置函数提供，语法如下：
+
+```nix
+builtins.abort s
+```
+
+上层无法捕捉该异常，解释器会打印消息 `s`，并停止运行（评估）。
+
+### 错误捕捉
+
+nix 的错误捕捉，由内置函数提供，语法如下：
+
+```nix
+builtins.tryEval e
+```
+
+* 只能捕捉 `assert` 和 `builtins.throw` 产生的错误。
+* 返回一个属性集，包含两个手机用：
+    * `success` bool 类型，是否成功，如果捕捉到错误，则该属性为 `false`。
+    * `value` 任意类型。
+        * 如果 `success = false`，则该参数为 `false`，注意，不是错误消息（参见：[issue](https://github.com/NixOS/nix/issues/356)）。
+        * 否者该参数 e 的值。
+
 ## 操作
 
-## 内置函数
+> 参见：[Nix 手册 Operators](https://nixos.org/manual/nix/stable/language/operators.html#operators)
 
-## 库
+Nix 操作符和 C 语言的类似，区别是：
 
-## 非纯函数
+* nix 不支持 `:?`，类似效果的是 `if then else`。
+* nix 不支持 `++`，`--`、`+=`、`-=` 等类似的涉及修改变量值的操作符。
+* nix 支持的一些 C 语言没有的操作符：
+    * `attrset ? attrpath`，返回 bool 值， 判断属性集中是否存在某个属性。
+    * `list ++ list`，返回一个 list，两个 list 连接产生一个新的 list。
+    * `string + string`，返回一个 string，字符串拼接。
+    * `path + path`，返回一个 path，路径拼接（注意最终都会转换为绝对路径进行拼接，而不是路径 join）。
+    * `path + string`，返回一个 path，路径拼接（两者先转换为字符串，然后直接拼接到一起，然后转换为一个路径）。
+    * `string + path`，返回一个 string，路径拼接（path 路径必须存在，nix 会将该路径复制到 /nix/store 中，并将 string 和 `/nix/store/$hash-文件名` 拼接，并转换为字符串），比如 `"/abc" + ./README.md`，返回 `"/abc/nix/store/qmj08qmd1bb89g6wami4v2fq5ma4f42c-README.md"`。
+    * `attrset // attrset` 使用后一个属性集更新到前一个属性集中（存在则覆盖），返回这个更新后的属性集。
+    * `bool -> bool` 一种特殊的逻辑运算符，等价于 `!b1 || b2`，参见：[wiki](https://en.wikipedia.org/wiki/Truth_table#Logical_implication)。
+
+## 内置常量和内置函数
+
+* 内置常量：
+    * `builtins`，包含内置函数的属性集。
+    * `builtins.currentSystem`，如 `"i686-linux"` or `"x86_64-darwin"`。
+* 已经添加到顶层作用域，无需通过 `builtins` 引用的内置函数：
+    * `abort`，参见上文错误处理。
+    * `baseNameOf s` 类似于 gnu 的 basename，去除路径的路径，返回文件名。
+    * `break` In debug mode (enabled using --debugger), pause Nix expression evaluation and enter the REPL. Otherwise, return the argument v.
+    * `derivation` nix 编译系统核心函数，参见下文：[推导](#推导-derivation)。
+    * `derivationStrict` 没找到相关手册，只有一个相关 [issue](https://github.com/NixOS/nix/issues/7569)。
+    * `dirOf s` 类似于 gnu 的 dirname，返回路径所在目录。
+    * `fetchGit`、`fetchMercurial`、`fetchTarball`、`fetchTree`，参见下文：[fetch 相关函数](#fetch-相关函数)。
+    * `fromTOML` 未找到相关文档。
+    * `import` 参见下文：[导入其他文件](#导入其他文件)。
+    * `isNull e` 判断是否是 null（此功能已弃用；使用 `e == null` 代替）。
+    * `map f list` 转换一个列表，函数式编程的 map 原语。
+    * `placeholder` 不太理解，参见：[原文](https://nixos.org/manual/nix/stable/language/builtins.html#builtins-placeholder)。
+    * `removeAttrs set list` 从 set 中删除指定的属性。
+    * `scopedImport` 未找到相关文档。
+    * `throw` 参见上文错误处理。
+    * `toString` 将值转换为字符串，一个属性集可以通过特殊属性 `__toString = self: ...;` 自定义 toString 格式。
+* 其他内置函数，参见：[Nix 手册 - 内置函数](https://nixos.org/manual/nix/stable/language/builtins.html)。
+
+## 导入其他文件
+
+## fetch 相关函数
 
 ## 推导 (derivation)
 
