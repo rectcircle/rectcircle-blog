@@ -939,17 +939,6 @@ in
 
 nix 通过 `import path`， 执行其他文件的代码，并返回执行的结果。在 nix 中 import 是一个内置函数。这里的 path 可以是一个 `.nix` 文件，也可以是一个目录，如果是一个目录或压缩包的话，将执行该目录中的 `default.nix` 文件。示例如下：
 
-* TODO 被导入文件
-
-  ```nix
-
-  ```
-
-* TODO 主文件
-
-  ```nix
-  ```
-
 通过 `import` 函数可以将 nix 代码拆分到文件和目录，以实现模块划分和代码复用。
 
 前文介绍的 nixpkgs channel 本质上就是这样一个模块。下文有一些导入 nixpkgs 的一些惯用用法。
@@ -977,6 +966,42 @@ nix 通过 `import path`， 执行其他文件的代码，并返回执行的结�
         }) {};
     in
     ```
+
+完整示例
+
+`nix-lang-demo/demopath/default.nix`
+
+```nix
+{
+  c = "demopath/default.nix var c";
+}
+```
+
+`nix-lang-demo/11-import.nix`。
+
+```nix
+# nix-env -iA nixpkgs.jq # 为了更好的展示结果，使用 jq 进行结果格式化展示。
+# nix-instantiate --eval nix-lang-demo/11-import.nix --strict --json | jq
+let
+  import_file = import ./01-hello.nix;
+  import_dir = import ./demopath;
+in
+{
+  demo_01_import_file = import_file;
+  demo_02_import_dir = import_dir;
+}
+```
+
+执行代码 `nix-env -iA nixpkgs.jq && nix-instantiate --eval nix-lang-demo/11-import.nix --strict --json | jq`，输出如下：
+
+```json
+{
+  "demo_01_import_file": "hello world",
+  "demo_02_import_dir": {
+    "c": "demopath/default.nix var c"
+  }
+}
+```
 
 ## 推导 (derivation)
 
