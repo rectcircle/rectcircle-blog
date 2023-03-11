@@ -897,6 +897,44 @@ nix 提供了一些从网络上下载文件的内置函数，执行这些函数�
     }) {};
     ```
 
+完整示例 (`nix-lang-demo/10-builtins-fetch.nix`)。
+
+```nix
+# nix-env -iA nixpkgs.jq # 为了更好的展示结果，使用 jq 进行结果格式化展示。
+# nix-instantiate --eval nix-lang-demo/10-builtins-fetch.nix --strict --json | jq
+let
+  fetchurl = builtins.fetchurl;
+  fetchGit = builtins.fetchGit;
+  fetchTarball = builtins.fetchTarball;
+in
+{
+  demo_01_fetchurl = fetchurl {
+    url = "http://ftp.nluug.nl/pub/gnu/hello/hello-2.1.1.tar.gz";
+    sha256 = "1md7jsfd8pa45z73bz1kszpp01yw6x5ljkjk2hx7wl800any6465";
+  };
+  demo_02_fetchGit = fetchGit {
+    name = "learn-nix-demo-source";
+    url = "https://github.com/rectcircle/learn-nix-demo.git";
+    rev = "7f4952a6ecf7dcd90c8bb0c8d14795ae1add5326";
+    ref = "master";
+    shallow = true;
+  };
+  demo_03_fetchTarball = fetchTarball {
+    url = "https://mirrors.tuna.tsinghua.edu.cn/nix-channels/releases/nixpkgs-unstable%40nixpkgs-23.05pre462063.2ce9b9842b5/nixexprs.tar.xz";
+  };
+}
+```
+
+执行代码 `nix-env -iA nixpkgs.jq && nix-instantiate --eval nix-lang-demo/10-builtins-fetch.nix --strict --json | jq`，输出如下：
+
+```json
+{
+  "demo_01_fetchurl": "/nix/store/9bw6xyn3dnrlxp5vvis6qpmdyj4dq4xy-hello-2.1.1.tar.gz",
+  "demo_02_fetchGit": "/nix/store/zjii7ls858zb1qw0mi2v3rd7xg780fav-learn-nix-demo-source",
+  "demo_03_fetchTarball": "/nix/store/10njnx13qh4x3z7j7q0jh7m64s0s95w1-source"
+}
+```
+
 ## 模块系统
 
 nix 通过 `import path`， 执行其他文件的代码，并返回执行的结果。在 nix 中 import 是一个内置函数。这里的 path 可以是一个 `.nix` 文件，也可以是一个目录，如果是一个目录或压缩包的话，将执行该目录中的 `default.nix` 文件。示例如下：
