@@ -429,7 +429,7 @@ Nix 操作符和 C 语言的类似，区别是：
     * `dirOf s` 类似于 gnu 的 dirname，返回路径所在目录。
     * `fetchGit`、`fetchMercurial`、`fetchTarball`、`fetchTree`，参见下文：[fetch 相关函数](#fetch-相关函数)。
     * `fromTOML` 未找到相关文档。
-    * `import` 参见下文：[导入其他文件](#导入其他文件)。
+    * `import` 参见下文：[模块系统](#模块系统)。
     * `isNull e` 判断是否是 null（此功能已弃用；使用 `e == null` 代替）。
     * `map f list` 转换一个列表，函数式编程的 map 原语。
     * `placeholder` 不太理解，参见：[原文](https://nixos.org/manual/nix/stable/language/builtins.html#builtins-placeholder)。
@@ -439,9 +439,139 @@ Nix 操作符和 C 语言的类似，区别是：
     * `toString` 将值转换为字符串，一个属性集可以通过特殊属性 `__toString = self: ...;` 自定义 toString 格式。
 * 其他内置函数，参见：[Nix 手册 - 内置函数](https://nixos.org/manual/nix/stable/language/builtins.html)。
 
-## 导入其他文件
-
 ## fetch 相关函数
+
+nix 提供了一些从网络上下载文件的内置函数，执行这些函数，nix 会将这些文件下载下来，并存储到 `/nix/store` 中，并返回存储的路径。
+
+* `builtins.fetchurl` 下载 url。
+
+  ```nix
+  let fetchurl = builtins.fetchurl;
+  in fetchurl {
+    url = "http://ftp.nluug.nl/pub/gnu/hello/hello-2.1.1.tar.gz";
+    sha256 = "1md7jsfd8pa45z73bz1kszpp01yw6x5ljkjk2hx7wl800any6465";
+  }
+  ```
+
+* `builtins.fetchGit args` 从 git 中下载文件。
+
+    * args 是一个属性集。
+
+        * `url` 仓库地址。
+        * `name` 存储到 `/nix/store` 的名称，默认为 URL 的 basename。
+        * `rev` 要获取的 git 修订版。默认为 ref 指向的。
+        * `ref` 分支名或者标签名，如 `master`、`"refs/heads/0.5-release"`，默认为 `HEAD`。
+        * `submodules` 是否 checkout 子模块，默认为 false。
+        * `shallow` 是否浅克隆，默认为 false。
+        * `allRefs` 是否获取仓库的所有引用，默认为 false，即只获取 `ref` 参数配置的。
+
+    * 示例：通过 ssh 从私有仓库获取。
+
+        ```nix
+        builtins.fetchGit {
+          url = "git@github.com:my-secret/repository.git";
+          ref = "master";
+          rev = "adab8b916a45068c044658c4158d81878f9ed1c3";
+        }
+        ```
+
+    * 示例：配置引用。
+
+        ```nix
+        builtins.fetchGit {
+          url = "https://github.com/NixOS/nix.git";
+          ref = "refs/heads/0.5-release";
+        }
+        ```
+
+    * 示例：下载指定分支的指定 commit（推荐配置 rev 来指定 commit，这样是可重现的，否则随着分支的提交，未来某个时刻获取到的和当前可能不一致）。
+
+        ```nix
+        builtins.fetchGit {
+          url = "https://github.com/nixos/nix.git";
+          rev = "841fcbd04755c7a2865c51c1e2d3b045976b7452";
+          ref = "1.11-maintenance";
+        }
+        ```
+
+    * 示例：如果要查找的 commit 位于 git 存储库的默认分支中，您可以省略 ref 属性。
+
+        ```nix
+        builtins.fetchGit {
+          url = "https://github.com/nixos/nix.git";
+          rev = "841fcbd04755c7a2865c51c1e2d3b045976b7452";
+        }
+        ```
+
+    * 示例：指定某个具体 tag。
+
+        ```nix
+        builtins.fetchGit {
+          url = "https://github.com/nixos/nix.git";
+          ref = "refs/tags/1.9";
+        }
+        ```
+
+    * 示例：获取最新版本。
+
+        ```nix
+        builtins.fetchGit {
+          url = "ssh://git@github.com/nixos/nix.git";
+          ref = "master";
+        }
+        ```
+
+* `builtins.fetchTarball args`  从 url 中下载一个 tar 包（压缩格式必须是 gzip, bzip2 or xz 之一的）（缓存在 `~/.cache/nix/tarballs/` 路径），并解包到一个目录中。注意，tar 的顶层目录会被删除。然后将目录存储到 `/nix/store`，并返回该路径，该函数一般和 import 函数（参见下文）一起使用。
+
+    ```nix
+    with import (fetchTarball {
+      url = "https://github.com/NixOS/nixpkgs/archive/nixos-14.12.tar.gz";
+      sha256 = "1jppksrfvbk5ypiqdz4cddxdl8z6zyzdb2srq8fcffr327ld5jj2";
+    }) {};
+    ```
+
+## 模块系统
+
+nix 通过 `import path`， 执行其他文件的代码，并返回执行的结果。在 nix 中 import 是一个内置函数。这里的 path 可以是一个 `.nix` 文件，也可以是一个目录，如果是一个目录或压缩包的话，将执行该目录中的 `default.nix` 文件。示例如下：
+
+* TODO 被导入文件
+
+  ```nix
+
+  ```
+
+* TODO 主文件
+
+  ```nix
+  ```
+
+通过 `import` 函数可以将 nix 代码拆分到文件和目录，以实现模块划分和代码复用。
+
+前文介绍的 nixpkgs channel 本质上就是这样一个模块。下文有一些导入 nixpkgs 的一些惯用用法。
+
+* 示例 1：通过 github 提供的 archive 链接，导入一个历史上某个版本的 nixpkgs。
+
+    ```nix
+    let
+        pkgs = import (builtins.fetchTarball {
+            url = "https://github.com/NixOS/nixpkgs/archive/d1c3fea7ecbed758168787fe4e4a3157e52bc808.tar.gz";
+        }) {};
+    in
+    ```
+
+* 示例 2：通过 git 命令，导入一个历史上某个版本的 nixpkgs。
+
+    ```nix
+    let
+        pkgs = import (builtins.fetchGit {
+            # Descriptive name to make the store path easier to identify
+            name = "my-old-revision";
+            url = "https://github.com/NixOS/nixpkgs/";
+            ref = "refs/heads/nixpkgs-unstable";
+            rev = "d1c3fea7ecbed758168787fe4e4a3157e52bc808";
+        }) {};
+    in
+    ```
 
 ## 推导 (derivation)
 
