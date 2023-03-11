@@ -574,7 +574,7 @@ if e1 then e2 else e3
 
 ```
 let x = 1;
-in if x > 0 then "x > 0" else "x <= 1"
+in if x > 0 then "x > 0" else "x <= 0"
 ```
 
 返回，  "x > 0"。
@@ -584,6 +584,37 @@ in if x > 0 then "x > 0" else "x <= 1"
 nix 是个无副作用的函数式的表达式语言。因此，nix 没有命令式编程语言的 while 或者 for 循环。
 
 一般情况，需要循环场景，就是对列表或者属性集进行转换。nix 可以通过内置高阶函数，如 `builtins.filter`、 `builtins.map`，来达到类似的效果。
+
+### 示例
+
+`nix-lang-demo/07-flow-control.nix`
+
+```nix
+# nix-env -iA nixpkgs.jq # 为了更好的展示结果，使用 jq 进行结果格式化展示。
+# nix-instantiate --eval nix-lang-demo/07-flow-control.nix --strict --json | jq
+let
+  x = 1;
+  l = [1 2 3 4 5 6];
+  filter = builtins.filter;
+  map = builtins.map;
+in {
+  demo_01_x_great_than_0 = if x > 0 then "x > 0" else "x <= 0";
+  demo_02_l_filter_map = map (e: e * 2) (filter (e: e<=3) l);
+}
+```
+
+执行代码 `nix-env -iA nixpkgs.jq && nix-instantiate --eval nix-lang-demo/07-flow-control.nix --strict --json | jq`，输出如下：
+
+```json
+{
+  "demo_01_x_great_than_0": "x > 0",
+  "demo_02_l_filter_map": [
+    2,
+    4,
+    6
+  ]
+}
+```
 
 ## 错误处理
 
