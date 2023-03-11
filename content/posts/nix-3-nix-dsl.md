@@ -60,7 +60,7 @@ nix 的数据类型类似于 JSON，可以分为基本数据类型、列表和�
 
 * 字符串，支持多种表达方式。
     * `"string"` 双引号包裹的字符串，对于特殊字符需使用 `\` 转移，如： `\"`、`\$`、`\n`、`\r`、`\t`。该类字符串支持使用 `${}` 进行插值。和其他语言的 `""` 相比，在 nix 中，该类型字符串支持多行的写法。
-    * `''string''` 两个单引号包裹的字符串，支持多行，该类字符串会自动删除每一行相同数目（这个数目为所有行中前导空格数最小的数目，如果第一行紧挨这`''`，则不参与统计）的前导空格。比如：
+    * `''string''` 两个单引号包裹的字符串，支持多行，该类字符串会自动删除每一行相同数目（这个数目为所有行中前导空格数最小的数目）的前导空格。比如：
 
         ```nix
         ''
@@ -86,7 +86,7 @@ nix 的数据类型类似于 JSON，可以分为基本数据类型、列表和�
     * 最后，符合 [RFC 2396](http://www.ietf.org/rfc/rfc2396.txt) 的 URL 可以不适用引号包裹，可以直接使用。
 
 * 数字，支持且不区分整型和浮点型，格式如 `123`、`123.43`、`.27e13`
-* 路径，如 `/bin/sh`、`./abc`、`abc/123`，包含一个斜杠的会被识别为路径类型。nix 会把这些路径都转换为绝对路径。
+* 路径，如 `/bin/sh`、`./abc`、`abc/123`，包含一个斜杠的会被识别为路径类型。nix 会把这些路径都转换为绝对路径，注意 nix 中的相对路径都是相对于 `.nix` 源代码文件的。
 
     nix 也支持 `~/abc` 这种写法。
 
@@ -96,8 +96,66 @@ nix 的数据类型类似于 JSON，可以分为基本数据类型、列表和�
 
     除了 `<>` 语法外，路径也支持插值，注意，至少要有一个 `/` 出现在插值之前，才会被识别为路径。例如：`a.${foo}/b.${bar}` 会被识别为除法运算而不是路径，因此需要改为 `./a.${foo}/b.${bar}`。
 
+    注意，通过 `nix-instantiate --eval` 执行文件时，如果使用 `--strict` 启用严格模式，则需要保证所有的 PATH 都必须存在，且 nix 会将这些文件或目录复制到 `/nix/store` 中，路径变量的值将变为 `/nix/store/$hash-$name`。
+
 * bool，可选值为 true 或 false。
 * null，空值，表示 null。
+
+完整示例 (`nix-lang-demo/02-primitives-data-type.nix`)。
+
+```nix
+# nix-env -iA nixpkgs.jq # 为了更好的展示结果，使用 jq 进行结果格式化展示。
+# nix-instantiate --eval nix-lang-demo/02-primitives-data-type.nix --strict --json | jq
+let
+  a = "1";
+in {
+  demo_01_str_double_quotes = "foo bar \r \t \n \\ \${";
+  demo_02_str_with_string_interpolation = "a: ${a}";
+  demo_03_str_two_single_quotes = ''
+    line1
+    line2
+    \r \n \t \
+    ''\r ''\t ''\n ''' ''${
+    a: ${a}
+    '';
+
+  demo_04_str_url = https://rectcircle.cn;
+  demo_05_num_int = 1;
+  demo_06_num_float = 1.1;
+  demo_07_num_e = .27e13;
+
+  demo_08_path_abs_path = /bin/sh;
+  demo_09_path_rel_path1 = ./demopath/a;
+  demo_10_path_rel_path2 = demopath/a;
+  demo_11_path_home_path = ~/.bashrc;
+
+  demo_12_bool_true = true;
+  demo_13_bool_false = false;
+
+  demo_14_null = null;
+}
+```
+
+执行代码 `nix-env -iA nixpkgs.jq && nix-instantiate --eval nix-lang-demo/02-primitives-data-type.nix --strict --json | jq`，输出如下：
+
+```json
+{
+  "demo_01_str_double_quotes": "foo bar \r \t \n \\ ${",
+  "demo_02_str_with_string_interpolation": "a: 1",
+  "demo_03_str_two_single_quotes": "line1\nline2\n\\r \\n \\t \\\n\r \t \n'' ${\na: 1\n",
+  "demo_04_str_url": "https://rectcircle.cn",
+  "demo_05_num_int": 1,
+  "demo_06_num_float": 1.1,
+  "demo_07_num_e": 2700000000000,
+  "demo_08_path_abs_path": "/nix/store/9wk86jmq024g8yb40wh4y5znkh1dix8y-sh",
+  "demo_09_path_rel_path1": "/nix/store/w996igw5fhzp5pmk8g9bfv99is99b0ap-a",
+  "demo_10_path_rel_path2": "/nix/store/w996igw5fhzp5pmk8g9bfv99is99b0ap-a",
+  "demo_11_path_home_path": "/nix/store/x1znix2cdfg9fnmgvkdda19n28jphdm7-.bashrc",
+  "demo_12_bool_true": true,
+  "demo_13_bool_false": false,
+  "demo_14_null": null
+}
+```
 
 ### 函数类型
 
@@ -124,6 +182,41 @@ in addOne 1 # 返回 2
         * `f {a = 1; b = 2; c = 3;}` 返回 8。
         * `f {a = 1; b = 2; c = 3; d = 4;}` 返回 8。
 
+完整示例 (`nix-lang-demo/03-func-data-type.nix`)。
+
+```nix
+# nix-env -iA nixpkgs.jq # 为了更好的展示结果，使用 jq 进行结果格式化展示。
+# nix-instantiate --eval nix-lang-demo/03-func-data-type.nix --strict --json | jq
+let
+  addOne = x: x+1;
+  add = x: y: x + y;
+  addTwo = add 2;
+  addAttrs = {x, y}: x + y;
+  addAttrsYDefault2 = {x, y?2}: x + y;
+  addAttrsAtAndRemaining = attrs@{x, y, ...}: x + attrs.y + attrs.z;
+in {
+  demo_01_add_one_2 = addOne 2;
+  demo_02_add_1_2 = add 1 2;
+  demo_03_add_two_1 = addTwo 1;
+  demo_04_add_attrs_x1_y2 = addAttrs { x = 1; y = 2; };
+  demo_05_add_attrs_y_default2_x1 = addAttrsYDefault2 { x = 1; };
+  demo_06_add_attrs_at_and_remaining_x_1_y_1_z_1_q_3 = addAttrsAtAndRemaining { x = 1; y = 1; z = 1; q = 3; };
+}
+```
+
+执行代码 `nix-env -iA nixpkgs.jq && nix-instantiate --eval nix-lang-demo/03-func-data-type.nix --strict --json | jq`，输出如下：
+
+```json
+{
+  "demo_01_add_one_2": 3,
+  "demo_02_add_1_2": 3,
+  "demo_03_add_two_1": 3,
+  "demo_04_add_attrs_x1_y2": 3,
+  "demo_05_add_attrs_y_default2_x1": 3,
+  "demo_06_add_attrs_at_and_remaining_x_1_y_1_z_1_q_3": 3
+}
+```
+
 ### 列表
 
 nix 通过方括号 `[]` 定义一个列表。和其他语言不通，列表中的元素通过空格而不是分割。
@@ -133,6 +226,36 @@ nix 通过方括号 `[]` 定义一个列表。和其他语言不通，列表中�
 而对于 `[ 123 ./foo.nix "abc" f { x = y; } ]` 列表，包含 5 个元素。第四个元素为一个函数、第五个元素为属性集。
 
 注意：数组的求值是惰性的，且是严格长度的。
+
+完整示例 (`nix-lang-demo/04-list-data-type.nix`)。
+
+```nix
+# nix-env -iA nixpkgs.jq # 为了更好的展示结果，使用 jq 进行结果格式化展示。
+# nix-instantiate --eval nix-lang-demo/04-list-data-type.nix --strict --json | jq
+let
+  addAttrs = { x, y }: x + y;
+  demo_01_list_1 = [ 123 demopath/a "abc" (addAttrs { x = 1; y = 2; }) ];
+  demo_01_list_2 = [ 123 demopath/a "abc" addAttrs { x = 1; y = 2; } ];
+in
+{
+  demo_01_list_1 = demo_01_list_1;
+  demo_01_list_2_len = builtins.length demo_01_list_2;
+}
+```
+
+执行代码 `nix-env -iA nixpkgs.jq && nix-instantiate --eval nix-lang-demo/03-func-data-type.nix --strict --json | jq`，输出如下：
+
+```json
+{
+  "demo_01_list_1": [
+    123,
+    "/nix/store/w996igw5fhzp5pmk8g9bfv99is99b0ap-a",
+    "abc",
+    3
+  ],
+  "demo_01_list_2_len": 5
+}
+```
 
 ### 属性集
 
@@ -213,6 +336,80 @@ in rec {
 ```
 
 将返回： `{ x = 123; y = 123; }`。
+
+完整示例 (`nix-lang-demo/05-attrs-data-type.nix`)。
+
+```nix
+# nix-env -iA nixpkgs.jq # 为了更好的展示结果，使用 jq 进行结果格式化展示。
+# nix-instantiate --eval nix-lang-demo/05-attrs-data-type.nix --strict --json | jq
+let
+  bKey = "b";
+  dKey = "d";
+  demo_01_define = {
+    a = 1;
+    b = "b";
+    "$!@#?" = 123;
+    ${dKey} = 4;
+    ${null} = true;
+  };
+  demo_02_access = {
+    a = demo_01_define.a;
+    b = demo_01_define.${bKey};
+    c = demo_01_define.c or "c not exist";
+    "$!@#?" = demo_01_define."$!@#?";
+    d = demo_01_define.d;
+  };
+
+  callable_attr_define = { __functor = self: x: x + self.x; };
+  demo_03_callable_attr_object = callable_attr_define // { x = 1; };
+
+  demo_04_rec_attr1 = rec {
+    y = 123;
+    x = y;
+  };
+  y = 456;
+  demo_05_rec_attr2 = rec {
+    x = y;
+    y = 123;
+  };
+in
+{
+  demo_01_define = demo_01_define;
+  demo_02_access = demo_02_access;
+  demo_03_call_attr = demo_03_callable_attr_object 2;
+  demo_04_rec_attr1 = demo_04_rec_attr1;
+  demo_05_rec_attr2 = demo_05_rec_attr2;
+}
+```
+
+执行代码 `nix-env -iA nixpkgs.jq && nix-instantiate --eval nix-lang-demo/05-attrs-data-type.nix --strict --json | jq`，输出如下：
+
+```json
+{
+  "demo_01_define": {
+    "$!@#?": 123,
+    "a": 1,
+    "b": "b",
+    "d": 4
+  },
+  "demo_02_access": {
+    "$!@#?": 123,
+    "a": 1,
+    "b": "b",
+    "c": "c not exist",
+    "d": 4
+  },
+  "demo_03_call_attr": 3,
+  "demo_04_rec_attr1": {
+    "x": 123,
+    "y": 123
+  },
+  "demo_05_rec_attr2": {
+    "x": 123,
+    "y": 123
+  }
+}
+```
 
 ## 变量
 
