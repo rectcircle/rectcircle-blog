@@ -716,7 +716,7 @@ Nix 操作符和 C 语言的类似，区别是：
 * nix 不支持 `:?`，类似效果的是 `if then else`。
 * nix 不支持 `++`，`--`、`+=`、`-=` 等类似的涉及修改变量值的操作符。
 * nix 支持的一些 C 语言没有的操作符：
-    * `attrset ? attrpath`，返回 bool 值， 判断属性集中是否存在某个属性。
+    * `attrset ? attrpath`，返回 bool 值， 判断属性集中是否存在某个属性。attrpath 支持 `a.b.c` 格式。
     * `list ++ list`，返回一个 list，两个 list 连接产生一个新的 list。
     * `string + string`，返回一个 string，字符串拼接。
     * `path + path`，返回一个 path，路径拼接（注意最终都会转换为绝对路径进行拼接，而不是路径 join）。
@@ -724,6 +724,63 @@ Nix 操作符和 C 语言的类似，区别是：
     * `string + path`，返回一个 string，路径拼接（path 路径必须存在，nix 会将该路径复制到 /nix/store 中，并将 string 和 `/nix/store/$hash-文件名` 拼接，并转换为字符串），比如 `"/abc" + ./README.md`，返回 `"/abc/nix/store/qmj08qmd1bb89g6wami4v2fq5ma4f42c-README.md"`。
     * `attrset // attrset` 使用后一个属性集更新到前一个属性集中（存在则覆盖），返回这个更新后的属性集。
     * `bool -> bool` 一种特殊的逻辑运算符，等价于 `!b1 || b2`，参见：[wiki](https://en.wikipedia.org/wiki/Truth_table#Logical_implication)。
+
+完整示例 (`nix-lang-demo/09-operators.nix`)。
+
+```nix
+# nix-env -iA nixpkgs.jq # 为了更好的展示结果，使用 jq 进行结果格式化展示。
+# nix-instantiate --eval nix-lang-demo/09-operators.nix --strict --json | jq
+let
+  attrs1 = {
+    x = 1;
+  };
+  list1 = [1 2];
+  list2 = [3 4];
+in
+{
+  demo_01_attrs1_has_x = attrs1 ? x;
+  demo_02_attrs1_has_y = attrs1 ? y;
+  demo_03_attrs1_has_a_dot_b = attrs1 ? a.b;
+
+  demo_04_list1_concat_list2 = list1 ++ list2;
+
+  demo_05_str1_concat_str2 = "abc" + "123";
+  # demo_06_path1_concat_path2 = demopath/a + demopath/b; # 严格模式将报错，因为返回的路径不存在。
+  demo_07_path1_concat_str2 = "demopath/a" + demopath/b; 
+  # demo_08_str1_concat_path2 = demopath/a + "demopath/b"; # 严格模式将报错，因为返回的路径不存在。
+
+  demo_08_attrs = attrs1;
+  demo_09_attrs1_merge_attrs2 = attrs1 // {y = 2;};
+
+  demo_10_implication = false -> true;
+}
+```
+
+执行代码 `nix-env -iA nixpkgs.jq && nix-instantiate --eval nix-lang-demo/09-operators.nix --strict --json | jq`，输出如下：
+
+```json
+{
+  "demo_01_attrs1_has_x": true,
+  "demo_02_attrs1_has_y": false,
+  "demo_03_attrs1_has_a_dot_b": false,
+  "demo_04_list1_concat_list2": [
+    1,
+    2,
+    3,
+    4
+  ],
+  "demo_05_str1_concat_str2": "abc123",
+  "demo_07_path1_concat_str2": "demopath/a/nix/store/nqxj2if4v96ksj1mgsblgc375wcslf83-b",
+  "demo_08_attrs": {
+    "x": 1
+  },
+  "demo_09_attrs1_merge_attrs2": {
+    "x": 1,
+    "y": 2
+  },
+  "demo_10_implication": true
+}
+```
 
 ## 内置常量和内置函数
 
