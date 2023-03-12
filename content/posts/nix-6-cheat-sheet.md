@@ -132,6 +132,7 @@ nix-instantiate --eval nix-lang-demo/01-hello.nix
 
 ## 参考
 
+* [Nix Pills](https://nixos.org/guides/nix-pills)
 * [nix.dev](https://nix.dev/)
 * [Nix 手册](https://nixos.org/manual/nix/stable/)
 * [Nix github](https://github.com/NixOS/nix)

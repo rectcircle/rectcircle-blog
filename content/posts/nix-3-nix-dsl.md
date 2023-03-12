@@ -1005,7 +1005,276 @@ in
 
 ## 推导 (derivation)
 
-https://www.zhihu.com/question/279855101/answer/2023496231
+> 参考: [nix-pills/our-first-derivation](https://nixos.org/guides/nix-pills/our-first-derivation.html) | [nix-pills/working-derivation.html](https://nixos.org/guides/nix-pills/working-derivation.html)
+
+### 概述
+
+前文，我们一直将 nix 定位为一个包管理工具。但实际上，从本质上来说，nix 的核心是一个包构建系统。
+
+因此，nix 语言需要提供一套机制，可以让用户定义，软件包从源码到二进制产物的过程。
+
+而推导（derivation）就是这样一个最重要的的一个内置函数。是 nix 作为一个构建系统的核心。
+
+### 参数说明
+
+在 nix 中， derivation 内置函数，定义一个软件包重源码到二进制产物的过程，该函数传递一个属性集作为参数，包含如下属性：
+
+* `system` 必填，字符串，定义该构建过程要求的 CPU 架构（x86_64、arm）和操作系统名（linux、darwin）。可通过 `nix -vv --version` 命令获取（或者通过 `builtins.currentSystem` 变量获取，如果是支持所有平台，则可以直接使用这个参数），如果系统不匹配将失败（通过配置，nix 支持远端构建，参见： [forward builds for other platforms](https://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html)）。该字段会作为环境变量传递给 `builder` 进程。
+* `name` 必填，字符串。被 nix-env 用作包的符号名称，并影响其最终存储路径 `/nix/store/$hash-$name`，如果同时支持多版本的场景吗，建议该字段为 `产品名-版本号`。。该字段会作为环境变量传递给 `builder` 进程。
+* `builder` 必填，字符串或路径，描述一个构建脚本，可以来是另一个 derivation、源码，如 `./builder.sh`。推荐使用 bash `"${pkgs.bash}/bin/bash"`。该字段指向的路径会拷贝到 `/nix/store` 中，并作为环境变量传递给 `builder` 进程。
+* `args` 选填，字符串列表，传递给 `builder` 的命令行参数。推荐写法为 `["-c" '' 编译脚本 '']`。
+* `outputs` 选填，字符串列表，默认为 `["out"]`。一般情况下，不需要更改（除非想精细化的管理依赖，如配置为 `[ "lib" "headers" "doc" ]`时，其他的推导只需要依赖 `lib` 目录，这种写法可以加速缓存下载）。nix 会在 `/nix/store` 中创建这个列表中声明的所有路径。然后，将该列表中的元素作为 key，对应的路径作为 value，作为环境变量传递给 `builder` 进程。
+* `其他属性` 选填，支持字符串、数字、路径、列表、bool、null。这些字段会作为环境变量传递到 `builder` 进程中。需要说明的是：
+    * 路径类型，会拷贝到 `/nix/store` 中，然后将绝对路径传递 `builder` 给进程。
+    * bool 类型 true，会转换为 1。bool 类型 false、null 会转换为空串。
+    * 列表类型，元素会转换为字符串，然后用空格分隔拼接成一个字符串。
+
+### 示例
+
+#### 源码
+
+假设我们有一个 Go 项目，该项目是一个命令行工具，希望通过 nix 编译和发行该包。本部分实现一下该项目：
+
+`nix-package-demo/go.mod`
+
+```go
+module github.com/rectcircle/learn-nix-demo/nix-package-demo
+
+go 1.19
+```
+
+`nix-package-demo/main.go`
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+	fmt.Println("hello world!")
+}
+```
+
+#### 定义一个包
+
+`nix-lang-demo/12-derivation.nix`
+
+```nix
+# drv_path=$(nix-instantiate nix-lang-demo/12-derivation.nix) && echo "drv_path: $drv_path" && echo "drv: $(nix --extra-experimental-features nix-command show-derivation $drv_path)" && nix-store -r $drv_path && nix-store --read-log $drv_path
+# nix-env -e my-nix-package-demo-0.0.1 ; nix-collect-garbage -d  # 彻底卸载。
+
+# 整体来开，该文件定义了一个函数，该函数，参数为 pkgs 默认会拿系统中的 nixpkgs，返回一个 derivation 的返回值。
+{pkgs ? import <nixpkgs> { } }:
+let
+  derivation = builtins.derivation;
+  # pkgs = import <nixpkgs> {};
+  # 从 github 中获取示例项目的源码，会存储到 /nix/store 中的一个子目录中。source 的值是一个指向这个子目录的路径。
+  source = fetchGit {
+    name = "learn-nix-demo-source";
+    url = "https://github.com/rectcircle/learn-nix-demo.git";
+    rev = "7f4952a6ecf7dcd90c8bb0c8d14795ae1add5326";
+    ref = "master";
+    shallow = true;
+  };
+in 
+derivation {
+  # 由于 go 项目是跨平台的，所以，这里直接使用 builtins.currentSystem，表示支持任意平台。
+  system = builtins.currentSystem;
+  name = "my-nix-package-demo-0.0.1";
+  # 会启动 nixpkgs 的 bash 来构建项目。
+  builder = "${pkgs.bash}/bin/bash";
+  # 额外的环境变量，会传递到 builder 进程。
+  A = "1";
+  # bash 命令的参数。即 bash -c 脚本 。
+  args = [ "-c" 
+  # 在这个脚本，观察下，nix 如何设置这个脚本的环境变量，以及文件系统，参见输出。
+  ''
+    set -e
+    ${pkgs.coreutils}/bin/echo ">>> export -p" && export -p && echo
+
+    echo ">>> export PATH=${pkgs.go_1_19}/bin:${pkgs.bash}/bin:${pkgs.coreutils}/bin" && export PATH="${pkgs.go_1_19}/bin:${pkgs.bash}/bin:${pkgs.coreutils}/bin" && echo
+
+    echo ">>> pwd" && pwd && echo
+    echo ">>> id" && id && echo
+    echo ">>> ls -al /" && ls -al / && echo
+    echo ">>> ls -al /bin" && ls -al /bin && echo
+    echo ">>> ls -al /build" && ls -al /build && echo
+    echo ">>> ls -al /nix/store" && ls -al /nix/store && echo
+
+    echo ">>> mkdir -p $out/bin" && mkdir -p $out/bin && echo
+    echo ">>> cd ${source}/nix-package-demo && CGO_ENABLED=0 go build -o $out/bin/my-nix-package-demo ./" && cd ${source}/nix-package-demo && CGO_ENABLED=0 go build -o $out/bin/my-nix-package-demo ./ && echo
+
+    echo ">>> ls -al $out/bin" && ls -al $out/bin && echo
+  ''];
+}
+```
+
+#### 测试和输出分析
+
+执行 `drv_path=$(nix-instantiate nix-lang-demo/12-derivation.nix) && echo "drv_path: $drv_path" && echo "drv: $()" && nix-store -r $drv_path && nix-store --read-log $drv_path` 命令，输出可以分为三部分。
+
+第一部分，`nix-instantiate nix-lang-demo/12-derivation.nix` 的执行，通过 `echo "drv_path: $drv_path"` 可以看出去，其将打印一个路径。
+
+```
+drv_path: /nix/store/svf3hf64w6sadkc0gdpbss7ql0cr6s3d-my-nix-package-demo-0.0.1.drv
+```
+
+这个路径命名为 `/nix/store/$hash-$name.drv`，nix-instantiate 会执行 `nix-lang-demo/12-derivation.nix` 表达式。并将结果到该路径。
+
+`.drv` 文件是 nix 构建工具的输入，nix 会根据该文件的配置来执行构建（如有缓存，将直接拉取而跳过构建）。
+
+第二部分， `nix --extra-experimental-features nix-command show-derivation $drv_path` 将使用 json 格式展示上一步产生的 `.drv` 文件。
+
+```json
+{
+  "/nix/store/svf3hf64w6sadkc0gdpbss7ql0cr6s3d-my-nix-package-demo-0.0.1.drv": {
+    "args": [
+      "-c",
+      "set -e\n/nix/store/bg8f47vihykgqcgblxkfk9sbvc4dnksa-coreutils-9.1/bin/echo \">>> export -p\" && export -p && echo\n\necho \">>> export PATH=/nix/store/633qlvqjryvq0h43nwvzkd5vqxh2rh3c-go-1.19.6/bin:/nix/store/5ynbf6wszmggr0abwifdagrixgnya5vy-bash-5.2-p15/bin:/nix/store/bg8f47vihykgqcgblxkfk9sbvc4dnksa-coreutils-9.1/bin\" && export PATH=\"/nix/store/633qlvqjryvq0h43nwvzkd5vqxh2rh3c-go-1.19.6/bin:/nix/store/5ynbf6wszmggr0abwifdagrixgnya5vy-bash-5.2-p15/bin:/nix/store/bg8f47vihykgqcgblxkfk9sbvc4dnksa-coreutils-9.1/bin\" && echo\n\necho \">>> pwd\" && pwd && echo\necho \">>> id\" && id && echo\necho \">>> ls -al /\" && ls -al / && echo\necho \">>> ls -al /bin\" && ls -al /bin && echo\necho \">>> ls -al /build\" && ls -al /build && echo\necho \">>> ls -al /nix/store\" && ls -al /nix/store && echo\n\necho \">>> mkdir -p $out/bin\" && mkdir -p $out/bin && echo\necho \">>> cd /nix/store/zjii7ls858zb1qw0mi2v3rd7xg780fav-learn-nix-demo-source/nix-package-demo && CGO_ENABLED=0 go build -o $out/bin/my-nix-package-demo ./\" && cd /nix/store/zjii7ls858zb1qw0mi2v3rd7xg780fav-learn-nix-demo-source/nix-package-demo && CGO_ENABLED=0 go build -o $out/bin/my-nix-package-demo ./ && echo\n\necho \">>> ls -al $out/bin\" && ls -al $out/bin && echo\n"
+    ],
+    "builder": "/nix/store/5ynbf6wszmggr0abwifdagrixgnya5vy-bash-5.2-p15/bin/bash",
+    "env": {
+      "A": "1",
+      "builder": "/nix/store/5ynbf6wszmggr0abwifdagrixgnya5vy-bash-5.2-p15/bin/bash",
+      "name": "my-nix-package-demo-0.0.1",
+      "out": "/nix/store/rqj3xxlzw7i9iwqqw2xafj9ykv4gy1zh-my-nix-package-demo-0.0.1",
+      "system": "x86_64-linux"
+    },
+    "inputDrvs": {
+      "/nix/store/c65s9ncxdkfcijaxn6c9gglcw1zyaapx-go-1.19.6.drv": [
+        "out"
+      ],
+      "/nix/store/czc8ym3wasmrsnwvlxzavxlfpfi2zg65-bash-5.2-p15.drv": [
+        "out"
+      ],
+      "/nix/store/psc5y2s3prwxf1ph760nd7n1978s4411-coreutils-9.1.drv": [
+        "out"
+      ]
+    },
+    "inputSrcs": [
+      "/nix/store/zjii7ls858zb1qw0mi2v3rd7xg780fav-learn-nix-demo-source"
+    ],
+    "outputs": {
+      "out": {
+        "path": "/nix/store/rqj3xxlzw7i9iwqqw2xafj9ykv4gy1zh-my-nix-package-demo-0.0.1"
+      }
+    },
+    "system": "x86_64-linux"
+  }
+}
+```
+
+重点关注，如下字段：
+
+* `inputDrvs` nix 会分析，我们的 nix 代码，分析我们是否引用了其他**推导**。本例中，我们在 builder 中使用了 `${pkgs.bash}`、在 args 中使用了 `${pkgs.go_1_19}`、`${pkgs.bash}`、`${pkgs.coreutils}`。因此， nix 识别出这些依赖，添加到了该字段。
+* `inputSrcs` nix 会分析，我们的 nix 代码，分析我们是否引用了其他**路径**。本例中，我们在 args 中引用 fetchGit 获取到的 `source` 路径。因此 nix 识别出了这些依赖，添加到了该字段。
+* `env` 字段中包含了 `A`，说明声明中的 `A` 属性被加到了环境变量中。此外 `outputs.out` 也被加到了环境变量中。
+* `outputs` 可以看出 outputs 目录，已经被创建出来。
+
+此外，从该输出可以看出：
+
+* 所有的路径都在 `/nix/store` 目录中。nix 不会依赖除了 /nix/store 之外的其他目录，这保证了 nix 函数式不可便的特性。
+* 可以看出 `outputs.out` 目录的 hash 值在编译执行之前就确定，从该特性可以看出，nix 的 hash 是由 nix 代码的执行情况决定的，而不是文件内容的 hash。这保证了，同样的 nix 代码生成的各种目录都是一致的。基于这一点 nix 才能实现二进制缓存。
+
+第三部分：`nix-store -r $drv_path && nix-store --read-log $drv_path` 根据 `.drv` 进行编译（对应目录不存在的话），然后打印出输出。
+
+```
+/nix/store/rqj3xxlzw7i9iwqqw2xafj9ykv4gy1zh-my-nix-package-demo-0.0.1
+>>> export -p
+declare -x A="1"
+declare -x HOME="/homeless-shelter"
+declare -x NIX_BUILD_CORES="4"
+declare -x NIX_BUILD_TOP="/build"
+declare -x NIX_LOG_FD="2"
+declare -x NIX_STORE="/nix/store"
+declare -x OLDPWD
+declare -x PATH="/path-not-set"
+declare -x PWD="/build"
+declare -x SHLVL="1"
+declare -x TEMP="/build"
+declare -x TEMPDIR="/build"
+declare -x TERM="xterm-256color"
+declare -x TMP="/build"
+declare -x TMPDIR="/build"
+declare -x builder="/nix/store/5ynbf6wszmggr0abwifdagrixgnya5vy-bash-5.2-p15/bin/bash"
+declare -x name="my-nix-package-demo-0.0.1"
+declare -x out="/nix/store/rqj3xxlzw7i9iwqqw2xafj9ykv4gy1zh-my-nix-package-demo-0.0.1"
+declare -x system="x86_64-linux"
+
+>>> export PATH=/nix/store/633qlvqjryvq0h43nwvzkd5vqxh2rh3c-go-1.19.6/bin:/nix/store/5ynbf6wszmggr0abwifdagrixgnya5vy-bash-5.2-p15/bin:/nix/store/bg8f47vihykgqcgblxkfk9sbvc4dnksa-coreutils-9.1/bin
+
+>>> pwd
+/build
+
+>>> id
+uid=1000(nixbld) gid=100(nixbld) groups=100(nixbld),65534(nogroup)
+
+>>> ls -al /
+total 32
+drwxr-x---   9 nixbld nixbld  4096 Mar 12 07:27 .
+drwxr-x---   9 nixbld nixbld  4096 Mar 12 07:27 ..
+drwxr-xr-x   2 nixbld nixbld  4096 Mar 12 07:27 bin
+drwx------   2 nixbld nixbld  4096 Mar 12 07:27 build
+drwxr-xr-x   4 nixbld nixbld  4096 Mar 12 07:27 dev
+dr-xr-xr-x   2 nixbld nixbld  4096 Mar 12 07:27 etc
+drwxr-xr-x   3 nixbld nixbld  4096 Mar 12 07:27 nix
+dr-xr-xr-x 194 nobody nogroup    0 Mar 12 07:27 proc
+drwxrwxrwt   2 nixbld nixbld  4096 Mar 12 07:27 tmp
+
+>>> ls -al /bin
+total 224
+drwxr-xr-x 2 nixbld nixbld   4096 Mar 12 07:27 .
+drwxr-x--- 9 nixbld nixbld   4096 Mar 12 07:27 ..
+-r-xr-xr-x 1 nixbld nixbld 217776 Jan  1  1970 sh
+
+>>> ls -al /build
+total 8
+drwx------ 2 nixbld nixbld 4096 Mar 12 07:27 .
+drwxr-x--- 9 nixbld nixbld 4096 Mar 12 07:27 ..
+
+>>> ls -al /nix/store
+total 68
+drwxrwxr-t 17 nixbld nixbld 4096 Mar 12 07:27 .
+drwxr-xr-x  3 nixbld nixbld 4096 Mar 12 07:27 ..
+dr-xr-xr-x  4 nixbld nixbld 4096 Jan  1  1970 2w4k8nvdyiggz717ygbbxchpnxrqc6y9-gcc-12.2.0-lib
+dr-xr-xr-x  4 nixbld nixbld 4096 Jan  1  1970 5ynbf6wszmggr0abwifdagrixgnya5vy-bash-5.2-p15
+dr-xr-xr-x  3 nixbld nixbld 4096 Jan  1  1970 633qlvqjryvq0h43nwvzkd5vqxh2rh3c-go-1.19.6
+dr-xr-xr-x  6 nixbld nixbld 4096 Jan  1  1970 76l4v99sk83ylfwkz8wmwrm4s8h73rhd-glibc-2.35-224
+dr-xr-xr-x  4 nixbld nixbld 4096 Jan  1  1970 9zbi407givkvv1m0bd0icwcic3b3q24y-mailcap-2.1.53
+dr-xr-xr-x  4 nixbld nixbld 4096 Jan  1  1970 bg8f47vihykgqcgblxkfk9sbvc4dnksa-coreutils-9.1
+dr-xr-xr-x  4 nixbld nixbld 4096 Jan  1  1970 bw9s084fzmb5h40x98mfry25blj4cr9r-acl-2.3.1
+dr-xr-xr-x  3 nixbld nixbld 4096 Jan  1  1970 bx5ikpp0p8nx88xdldkx16w3k3jzd2qc-busybox-static-x86_64-unknown-linux-musl-1.36.0
+dr-xr-xr-x  3 nixbld nixbld 4096 Jan  1  1970 dg8213bqr29hg180gf4ypcj2vvzw4fl3-tzdata-2022g
+dr-xr-xr-x  5 nixbld nixbld 4096 Jan  1  1970 jn9kg98dsaajx4mh95rb9r5rf2idglqh-attr-2.5.1
+dr-xr-xr-x  3 nixbld nixbld 4096 Jan  1  1970 jvl8dr21nrwhqywwxcl8di4j55765gvy-gmp-with-cxx-stage4-6.2.1
+dr-xr-xr-x  4 nixbld nixbld 4096 Jan  1  1970 lg2skbyyn1d7nkczqjz8mms38z4nhj2b-iana-etc-20221107
+dr-xr-xr-x  3 nixbld nixbld 4096 Jan  1  1970 qmnr18aqd08zdkhka695ici96k6nzirv-libunistring-1.0
+dr-xr-xr-x  4 nixbld nixbld 4096 Jan  1  1970 vv6rlzln7vhxk519rdsrzmhhlpyb5q2m-libidn2-2.3.2
+dr-xr-xr-x  4 nixbld nixbld 4096 Jan  1  1970 zjii7ls858zb1qw0mi2v3rd7xg780fav-learn-nix-demo-source
+
+>>> mkdir -p /nix/store/rqj3xxlzw7i9iwqqw2xafj9ykv4gy1zh-my-nix-package-demo-0.0.1/bin
+
+>>> cd /nix/store/zjii7ls858zb1qw0mi2v3rd7xg780fav-learn-nix-demo-source/nix-package-demo && CGO_ENABLED=0 go build -o /nix/store/rqj3xxlzw7i9iwqqw2xafj9ykv4gy1zh-my-nix-package-demo-0.0.1/bin/my-nix-p>
+
+>>> ls -al /nix/store/rqj3xxlzw7i9iwqqw2xafj9ykv4gy1zh-my-nix-package-demo-0.0.1/bin
+total 1796
+drwxr-xr-x 2 nixbld nixbld    4096 Mar 12 07:27 .
+drwxr-xr-x 3 nixbld nixbld    4096 Mar 12 07:27 ..
+-rwxr-xr-x 1 nixbld nixbld 1827660 Mar 12 07:27 my-nix-package-demo
+```
+
+* `export -p` 可以看出，nix builder 中的执行环境是一个和操作系统完全隔离的干净的环境。其中：
+    * `HOME="/homeless-shelter"`、 `PATH="/path-not-set"` 只是一个占位符。
+    * 上文 `.drv` 中的环境变量都正确的注入了。
+    * `pwd`、`TMP`、`TEMPDIR` 都在 `/build` 目录。
+* `id` 可以看出，nix 创建了一个构建用的用户 `1000(nixbld)`。
+* `ls -al /` 可以看出，nix 应该利用了 Linux 的 Mount 和 User namespace 实现的构建隔离。
+
+#### 恢复现场
+
+```bash
+nix-env -e my-nix-package-demo-0.0.1 ; nix-collect-garbage -d
+```
 
 ## 常见 shell.nix 分析
 
@@ -1013,4 +1282,18 @@ nix 执行 `shell.nix` 脚本（如果返回一个函数 `LAMBDA`，则使用 `{
 
 ## nixpkgs 分析
 
+```
+# ls -al nix/store/*-hello-*.drv
+
+# nix --extra-experimental-features nix-command show-derivation /nix/store/7ky0zmis8b384k5sx852i0fq7x9ir2jl-hello-2.12.1.drv
+```
+
 ## 自定义 channel
+
+## 其他说明
+
+### 纯函数性
+
+hash 值
+
+### 各种 Name
