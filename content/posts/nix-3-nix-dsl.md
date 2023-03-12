@@ -1,14 +1,14 @@
 ---
 title: "Nix 详解（三） nix 领域特定语言"
-date: 2023-02-25T20:48:49+08:00
-draft: true
+date: 2023-03-12T22:52:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
   - untagged
 ---
 
-> version: nix-2.14.1
+> version: nix-2.14.1 | [示例代码库](https://github.com/rectcircle/learn-nix-demo)
 
 ## 概述
 
@@ -1418,7 +1418,7 @@ nix --extra-experimental-features nix-command show-derivation /nix/store/7ky0zmi
 * `nativeBuildInputs` 声明仅在本次编译时依赖的其他包（derivation），如 go 编译器，git 等。
 * `buildInputs` 声明在运行时依赖的其他包（derivation），如 glibc 等，为了支持交叉编译，还有大量 `depsXxx` 相关属性，不太理解。
 * `passthru` 该属性目前主要用户测试，该字段的变更不会影响 `.drv` 文件的生成，不会影响 hash 的生成。
-* `xxxPhase` 默认如果不给出此类参数，将自动执行位于 `pkgs/stdenv/generic/setup.sh` 中的所有阶段。如果项目中没有提供 Makefile 则需要手动提供 `buildPhase`、`installPhase` 脚本。支持的所有阶段如下（`$` 开头的表示默认没有实现）：
+* `xxxPhase` 该函数会执行位于 `pkgs/stdenv/generic/setup.sh` 中的 `genericBuild` 函数，该函数将构建过程分成了很多各阶段。如果项目使用 autotools 来管理编译过程，则一般不用修改该类字段。如果项目中没有提供 Makefile 则需要手动提供 `buildPhase`、`installPhase` 脚本。支持的所有阶段如下（`$` 开头的表示默认没有实现）：
 
     ```
     $prePhases unpackPhase patchPhase $preConfigurePhases configurePhase $preBuildPhases buildPhase checkPhase $preInstallPhases installPhase fixupPhase installCheckPhase $preDistPhases distPhase $postPhases
@@ -1428,10 +1428,146 @@ nix --extra-experimental-features nix-command show-derivation /nix/store/7ky0zmi
 
 ## 自定义 channel
 
+根据 nixpkgs 分析章节，做一个自定义 channel 会非常的简单。
+
+上文，推导（derivation）的示例已经定义了一个包了，下面我们使用同样的示例代码，定义两个包。
+
+第一个包，使用 `stdenv.mkDerivation` 函数定义，`nix-lang-demo/13-mkderivation.nix`。
+
+```nix
+{pkgs ? import <nixpkgs> { } }:
+let
+  stdenv = pkgs.stdenv;
+in 
+stdenv.mkDerivation {
+  pname = "my-nix-package-demo-build-by-my-mk-derivation";
+  version = "0.0.1";
+  src = fetchGit {
+    name = "learn-nix-demo-source";
+    url = "https://github.com/rectcircle/learn-nix-demo.git";
+    rev = "7f4952a6ecf7dcd90c8bb0c8d14795ae1add5326";
+    ref = "master";
+    shallow = true;
+  };
+  nativeBuildInputs = [ pkgs.go_1_19 pkgs.git ];
+  buildPhase = ''
+    cd nix-package-demo && CGO_ENABLED=0 go build -o $pname ./
+  '';
+  installPhase = ''
+    mkdir -p $out/bin
+    cp $pname $out/bin
+  '';
+}
+```
+
+第二个包，使用 `buildGoModule` 函数定义，`nix-lang-demo/14-build-go-module.nix`。
+
+```nix
+# https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/go/module.nix
+{ pkgs ? import <nixpkgs> { } }:
+pkgs.buildGoModule {
+  pname = "my-nix-package-demo-by-build-go-module";
+  version = "0.0.1";
+  src = fetchGit {
+    name = "learn-nix-demo-source";
+    url = "https://github.com/rectcircle/learn-nix-demo.git";
+    rev = "7f4952a6ecf7dcd90c8bb0c8d14795ae1add5326";
+    ref = "master";
+    shallow = true;
+  };
+
+  vendorHash = null;  # 自动生成。
+
+  modRoot = "./nix-package-demo";
+  CGO_ENABLED = false;
+  postInstall = ''
+    mv $out/bin/nix-package-demo $out/bin/$pname
+  '';
+}
+```
+
+现在定义这个 channel 的 `./default.nix`。
+
+```nix
+# nix-env -qaP -f ./
+# nix-env -iA my-nix-package-demo_0_0_1 -f ./
+# nix-env -e my-nix-package-demo-0.0.1 ; nix-collect-garbage -d  # 彻底卸载。
+# nix-env -iA my-nix-package-demo-build-by-my-mk-derivation_0_0_1 -f ./
+# nix-env -e my-nix-package-demo-build-by-my-mk-derivation-0.0.1 ; nix-collect-garbage -d  # 彻底卸载。
+# nix-env -iA my-nix-package-demo-by-build-go-module_0_0_1 -f ./
+# nix-env -e my-nix-package-demo-by-build-go-module-0.0.1 ; nix-collect-garbage -d  # 彻底卸载。
+
+{ pkgs ? import <nixpkgs> { } }:
+{
+  my-nix-package-demo_0_0_1 = import ./nix-lang-demo/12-derivation.nix { inherit pkgs; };
+  my-nix-package-demo-build-by-my-mk-derivation_0_0_1 = import ./nix-lang-demo/13-mkderivation.nix { inherit pkgs; };
+  my-nix-package-demo-by-build-go-module_0_0_1 = import ./nix-lang-demo/14-build-go-module.nix { inherit pkgs; };
+}
+```
+
+此时，通过 `nix-env -qaP -f ./` 即可想 nixpkgs 一样列出这个 channel 的三个包。
+
+```
+my-nix-package-demo_0_0_1                            my-nix-package-demo-0.0.1
+my-nix-package-demo-build-by-my-mk-derivation_0_0_1  my-nix-package-demo-build-by-my-mk-derivation-0.0.1
+my-nix-package-demo-by-build-go-module_0_0_1         my-nix-package-demo-by-build-go-module-0.0.1
+```
+
+可以使用如下命令安装卸载。
+
+```bash
+nix-env -iA my-nix-package-demo_0_0_1 -f ./
+nix-env -e my-nix-package-demo-0.0.1 ; nix-collect-garbage -d  # 彻底卸载。
+nix-env -iA my-nix-package-demo-build-by-my-mk-derivation_0_0_1 -f ./
+nix-env -e my-nix-package-demo-build-by-my-mk-derivation-0.0.1 ; nix-collect-garbage -d  # 彻底卸载。
+nix-env -iA my-nix-package-demo-by-build-go-module_0_0_1 -f ./
+nix-env -e my-nix-package-demo-by-build-go-module-0.0.1 ; nix-collect-garbage -d  # 彻底卸载。
+```
+
 ## 其他说明
 
 ### 纯函数性
 
-hash 值
+最后，讨论一下 nix 语言如何保证 nix 工具是一个纯函数包管理工具。
+
+首先，纯函数指的是没有副作用的函数，也就是说，对于同一个参数的多次调用，一个纯函数可以保证，其返回值永远不变，且不会对外部世界产生任何影响。
+
+从语法上看，nix 所有的语法、操作符都是纯函数性的。但是由于 nix 语言定义的是编译的过程，必然要涉及文件系统的操作，如读取文件、将编译产物写入文件。
+
+针对这种情况，nix 的解决办法是，所有对于路径的操作，nix 会根据固定的规则生成一个位于 `/nix/store` 的路径。如果是输入类路径，会将文件拷贝到这个位置。
+
+关键在于这个路径个规则。由于 nix 除了路径和网络下载之外的所有操作都是纯函数的，因此 nix 代码不管运行多少次，到了需要处理目录的地方，其运行状态一定是完全一致，因此 nix 就可以根据运行状态生成一个 hash，并结合路径名生成该路径。这样，在狭义上 nix 并非纯函数，但是在逻辑上，却达到了纯函数的效果。
+
+由于 nix 有了纯函数的保证，那么这些路径的操作就是可以被缓存的。这样，在配合二进制缓存，nix 的安装速度可以做到非常快。
+
+这种机制，对纯函数性的保证实际上比较脆弱，如下的场景可能破坏 nix 的纯函数性，带来不可重现。
+
+* 对于 fetchGit 可以利用 git 的 `rev` 机制，可以保证纯函数性。对于 `fetchTarball` 可以使用 `sha256` 保证纯函数性。但是对于 `fetchurl` 则无法保证纯函数型（因此在[严格评估模式 restricted evaluation mode](https://nixos.org/manual/nix/stable/command-ref/conf-file.html)下，该函数是不可用的）。
+* 在使用 derivation 中，总是会调用 shell 来执行命令，而 shell 是无法保证纯函数性的，例如用户在 shell 脚本中使用 curl 来下载内容，且没有校验和处理异常，则会破坏 nix 的纯函数性。
+
+因此，在开发一个 nix 包时，如果要保证纯函数性，则要求：
+
+* 不要使用 `fetchurl`。
+* 在编写 shell 脚本时，不要使用 curl 下载内容，时刻注意该 shell 脚本是否是可重现的。
 
 ### 各种 Name
+
+至此，当我们要安装一个包时，我们会遇到好几种 Name，在这里总结下这些 Name 之间的关系。
+
+* `derivation_name` 即这个包的名字：
+    * 定义位置：在调用 `derivation` 函数时，传递的 `name` 属性。
+    * 使用位置：
+        * 如果 `derivation` 没有配置 outputs 时（采用默认值 `["out"]`），则该 out 为 `/nix/sotre/$hash_$derivation_name`。
+        * 使用 `nix-env -e $derivation_name` 删除包时。
+        * 查询包 `nix-env -qaP` 输出的第二列。
+* `pname` 在 nixpkgs 的包名：
+    * 定义位置：在调用 `stdenv.mkDerivation` 函数是，传递的 `pname` 属性。
+    * 使用位置：
+        * `stdenv.mkDerivation` 函数传递给 derivation 函数的 name 时，传递的是 `$pname-$version`。也就是说：`$derivation_name=$pname-$version`。
+* `attr_name` 执行一个 `default.nix` 后产生属性集中的属性名。
+    * 定义位置：`default.nix` 中最终返回的属性机中。
+    * 使用位置：
+        * 查询包 `nix-env -qaP` 输出的第一列，格式为 `$channel_name.$attr_name`。
+        * 查询包 `nix-env -qaP -f path/to/channel` 输出的第一列，格式为 `$attr_name`。
+        * 安装包 `nix-env -iA $channel_name.$attr_name`。
+        * 安装包 `nix-env -iA $attr_name -f path/to/channel`。
