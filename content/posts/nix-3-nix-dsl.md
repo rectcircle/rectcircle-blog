@@ -1020,7 +1020,7 @@ in
 在 nix 中， derivation 内置函数，定义一个软件包重源码到二进制产物的过程，该函数传递一个属性集作为参数，包含如下属性：
 
 * `system` 必填，字符串，定义该构建过程要求的 CPU 架构（x86_64、arm）和操作系统名（linux、darwin）。可通过 `nix -vv --version` 命令获取（或者通过 `builtins.currentSystem` 变量获取，如果是支持所有平台，则可以直接使用这个参数），如果系统不匹配将失败（通过配置，nix 支持远端构建，参见： [forward builds for other platforms](https://nixos.org/manual/nix/stable/advanced-topics/distributed-builds.html)）。该字段会作为环境变量传递给 `builder` 进程。
-* `name` 必填，字符串。被 nix-env 用作包的符号名称，并影响其最终存储路径 `/nix/store/$hash-$name`，如果同时支持多版本的场景吗，建议该字段为 `产品名-版本号`。。该字段会作为环境变量传递给 `builder` 进程。
+* `name` 必填，字符串。被 nix-env 用作包的符号名称，并影响其最终存储路径 `/nix/store/$hash-$name`，如果同时支持多版本的场景吗，建议该字段为 `包名-版本号`。。该字段会作为环境变量传递给 `builder` 进程。
 * `builder` 必填，字符串或路径，描述一个构建脚本，可以来是另一个 derivation、源码，如 `./builder.sh`。推荐使用 bash `"${pkgs.bash}/bin/bash"`。该字段指向的路径会拷贝到 `/nix/store` 中，并作为环境变量传递给 `builder` 进程。
 * `args` 选填，字符串列表，传递给 `builder` 的命令行参数。推荐写法为 `["-c" '' 编译脚本 '']`。
 * `outputs` 选填，字符串列表，默认为 `["out"]`。一般情况下，不需要更改（除非想精细化的管理依赖，如配置为 `[ "lib" "headers" "doc" ]`时，其他的推导只需要依赖 `lib` 目录，这种写法可以加速缓存下载）。nix 会在 `/nix/store` 中创建这个列表中声明的所有路径。然后，将该列表中的元素作为 key，对应的路径作为 value，作为环境变量传递给 `builder` 进程。
@@ -1055,7 +1055,7 @@ func main() {
 }
 ```
 
-#### 定义一个包
+#### 定义 derivation
 
 `nix-lang-demo/12-derivation.nix`
 
@@ -1119,7 +1119,7 @@ derivation {
 drv_path: /nix/store/svf3hf64w6sadkc0gdpbss7ql0cr6s3d-my-nix-package-demo-0.0.1.drv
 ```
 
-这个路径命名为 `/nix/store/$hash-$name.drv`，nix-instantiate 会执行 `nix-lang-demo/12-derivation.nix` 表达式。并将结果到该路径。
+这个路径命名为 `/nix/store/$hash-$name.drv`。可以看出，nix-instantiate 会执行 `nix-lang-demo/12-derivation.nix` 表达式（如果该文件返回的是一个函数类型，则会使用 `{}` 再调用该函数）。并将结果到该路径。
 
 `.drv` 文件是 nix 构建工具的输入，nix 会根据该文件的配置来执行构建（如有缓存，将直接拉取而跳过构建）。
 
@@ -1166,12 +1166,12 @@ drv_path: /nix/store/svf3hf64w6sadkc0gdpbss7ql0cr6s3d-my-nix-package-demo-0.0.1.
 
 重点关注，如下字段：
 
-* `inputDrvs` nix 会分析，我们的 nix 代码，分析我们是否引用了其他**推导**。本例中，我们在 builder 中使用了 `${pkgs.bash}`、在 args 中使用了 `${pkgs.go_1_19}`、`${pkgs.bash}`、`${pkgs.coreutils}`。因此， nix 识别出这些依赖，添加到了该字段。
-* `inputSrcs` nix 会分析，我们的 nix 代码，分析我们是否引用了其他**路径**。本例中，我们在 args 中引用 fetchGit 获取到的 `source` 路径。因此 nix 识别出了这些依赖，添加到了该字段。
+* `inputDrvs` nix 会分析，我们的 nix 代码，分析我们是否引用了其他**推导**。本例中，我们在 builder 中使用了 `${pkgs.bash}`、在 args 中使用了 `${pkgs.go_1_19}`、`${pkgs.bash}`、`${pkgs.coreutils}`。因此， nix 识别出这些依赖，添加到了该字段。在 `nix-instantiate` 执行过程中，这些依赖就会被构建完成。
+* `inputSrcs` nix 会分析，我们的 nix 代码，分析我们是否引用了其他**路径**。本例中，我们在 args 中引用 fetchGit 获取到的 `source` 路径。因此 nix 识别出了这些依赖，添加到了该字段。在 `nix-instantiate` 执行过程中，这些依赖就会被获取完成。
 * `env` 字段中包含了 `A`，说明声明中的 `A` 属性被加到了环境变量中。此外 `outputs.out` 也被加到了环境变量中。
 * `outputs` 可以看出 outputs 目录，已经被创建出来。
 
-此外，从该输出可以看出：
+此外，需要强调的是：
 
 * 所有的路径都在 `/nix/store` 目录中。nix 不会依赖除了 /nix/store 之外的其他目录，这保证了 nix 函数式不可便的特性。
 * 可以看出 `outputs.out` 目录的 hash 值在编译执行之前就确定，从该特性可以看出，nix 的 hash 是由 nix 代码的执行情况决定的，而不是文件内容的 hash。这保证了，同样的 nix 代码生成的各种目录都是一致的。基于这一点 nix 才能实现二进制缓存。
@@ -1276,17 +1276,155 @@ drwxr-xr-x 3 nixbld nixbld    4096 Mar 12 07:27 ..
 nix-env -e my-nix-package-demo-0.0.1 ; nix-collect-garbage -d
 ```
 
+### derivation 和 stdenv.mkDerivation
+
+这里可以看出，写一个 derivation 启动一个 bash 还是比较麻烦的，最麻烦的是，需要手动设置 PATH 环境变量。
+
+为此，nixpkgs 封装了一个便捷的函数 `stdenv.mkDerivation`，该函数就是对 `derivation` 的封装，提供了更友好的编程接口。
+
+因此，在实践中，一般使用 `stdenv.mkDerivation` 来定义一个推导。
+
+关于 `stdenv.mkDerivation` 参见下文 [nixpkgs 分析](#nixpkgs-分析)。
+
 ## 常见 shell.nix 分析
 
-nix 执行 `shell.nix` 脚本（如果返回一个函数 `LAMBDA`，则使用 `{}` 调用该函数），产生一个非函数值，根据这个值启动一个 Shell。
+上一篇文章，我们使用 shell.nix 定义了一个项目的开发依赖。代码 `nix-package-demo/shell.nix` 如下所示：
+
+```nix
+# { pkgs ? import <nixpkgs> { } }:
+let 
+  pkgs = import ( builtins.fetchTarball { 
+    url = "https://mirrors.tuna.tsinghua.edu.cn/nix-channels/releases/nixpkgs-unstable%40nixpkgs-23.05pre460011.f5ffd578778/nixexprs.tar.xz"; 
+  }) {};
+in
+pkgs.mkShell {
+  buildInputs =
+    [
+      pkgs.curl
+      pkgs.jq
+      pkgs.go
+      pkgs.which
+    ];
+  shellHook = ''
+    export TEST_ENV_VAR=ABC
+  '';
+}
+```
+
+执行命令 `drv_path=$(nix-instantiate nix-package-demo/shell.nix) && echo "drv_path: $drv_path" && echo "drv: $(nix --extra-experimental-features nix-command show-derivation $drv_path)"` 可以看到输出如下：
+
+```
+drv_path: /nix/store/wwmkmm2wvfjh5jh5mhb0anxqpz4s26cx-nix-shell.drv
+drv: {
+  "/nix/store/wwmkmm2wvfjh5jh5mhb0anxqpz4s26cx-nix-shell.drv": {
+    "args": [
+      "-e",
+      "/nix/store/6xg259477c90a229xwmb53pdfkn6ig3g-default-builder.sh"
+    ],
+    "builder": "/nix/store/5ynbf6wszmggr0abwifdagrixgnya5vy-bash-5.2-p15/bin/bash",
+    "env": {
+      "__structuredAttrs": "",
+      "buildInputs": "/nix/store/gd51gknpxqaxyd0gycmszm8ckrvwvs0l-curl-7.88.0-dev /nix/store/7paksrb0nbm7q9x7rzzabqlgjci9rx8k-jq-1.6-dev /nix/store/633qlvqjryvq0h43nwvzkd5vqxh2rh3c-go-1.19.6 /nix/store/v0g0r8khhdxn8gwcx3yg57wmndzfdgz5-which-2.21",
+      "buildPhase": "{ echo \"------------------------------------------------------------\";\n  echo \" WARNING: the existence of this path is not guaranteed.\";\n  echo \" It is an internal implementation detail for pkgs.mkShell.\";\n  echo \"------------------------------------------------------------\";\n  echo;\n  # Record all build inputs as runtime dependencies\n  export;\n} >> \"$out\"\n",
+      "builder": "/nix/store/5ynbf6wszmggr0abwifdagrixgnya5vy-bash-5.2-p15/bin/bash",
+      "cmakeFlags": "",
+      "configureFlags": "",
+      "depsBuildBuild": "",
+      "depsBuildBuildPropagated": "",
+      "depsBuildTarget": "",
+      "depsBuildTargetPropagated": "",
+      "depsHostHost": "",
+      "depsHostHostPropagated": "",
+      "depsTargetTarget": "",
+      "depsTargetTargetPropagated": "",
+      "doCheck": "",
+      "doInstallCheck": "",
+      "mesonFlags": "",
+      "name": "nix-shell",
+      "nativeBuildInputs": "",
+      "out": "/nix/store/2zx26yarglz5wqbkl6mqbaxqfyinrixn-nix-shell",
+      "outputs": "out",
+      "patches": "",
+      "phases": "buildPhase",
+      "preferLocalBuild": "1",
+      "propagatedBuildInputs": "",
+      "propagatedNativeBuildInputs": "",
+      "shellHook": "export TEST_ENV_VAR=ABC\n",
+      "stdenv": "/nix/store/c3f4jdwzn8fm9lp72m91ffw524bakp6v-stdenv-linux",
+      "strictDeps": "",
+      "system": "x86_64-linux"
+    },
+    "inputDrvs": {
+      "/nix/store/65wj1fwk5f3wncd1j3dmk29k3nzghl8d-which-2.21.drv": [
+        "out"
+      ],
+      "/nix/store/c65s9ncxdkfcijaxn6c9gglcw1zyaapx-go-1.19.6.drv": [
+        "out"
+      ],
+      "/nix/store/czc8ym3wasmrsnwvlxzavxlfpfi2zg65-bash-5.2-p15.drv": [
+        "out"
+      ],
+      "/nix/store/r7wldahsa6maa0m7nnjf82azcy4g8hdh-jq-1.6.drv": [
+        "dev"
+      ],
+      "/nix/store/saw3hgzcr6lsy051kclm3y7kif8b4i6h-curl-7.88.0.drv": [
+        "dev"
+      ],
+      "/nix/store/xjk0c9yw2i25xr08ngk60bc47q9fw2jd-stdenv-linux.drv": [
+        "out"
+      ]
+    },
+    "inputSrcs": [
+      "/nix/store/6xg259477c90a229xwmb53pdfkn6ig3g-default-builder.sh"
+    ],
+    "outputs": {
+      "out": {
+        "path": "/nix/store/2zx26yarglz5wqbkl6mqbaxqfyinrixn-nix-shell"
+      }
+    },
+    "system": "x86_64-linux"
+  }
+}
+```
+
+因此 `mkShell` 本质上就是创建了一个包含了声明依赖的 derivation。
+
+而 `nix-shell` 的流程就是，先调用 `nix-instantiate nix-package-demo/shell.nix`，生成一个 `.drv` 文件，然后根据该文件配置，启动一个 Shell。
 
 ## nixpkgs 分析
 
-```
-# ls -al nix/store/*-hello-*.drv
+> 参考： [nixpkgs github](https://github.com/NixOS/nixpkgs) | [nixpkgs 手册](https://nixos.org/manual/nixpkgs/stable/) |
 
-# nix --extra-experimental-features nix-command show-derivation /nix/store/7ky0zmis8b384k5sx852i0fq7x9ir2jl-hello-2.12.1.drv
+基于上面的背景知识，nixpkgs 和 nix channel 的原理可以很容易的立即。
+
+nixpkgs 本质上就是一个 nix 代码库，该库主要包含如下两类内容：
+
+* 一些对 nix 原生能力进行易用化封装的函数，如 `mkShell`、`stdenv.mkDerivation`。
+* 包含了开源世界 80000+ 个软件包的 `derivation` 声明。
+
+可以通过 `nixpkgs.hello` 的源码（[pkgs/applications/misc/hello/default.nix](https://github.com/NixOS/nixpkgs/blob/f94a71f899b26311b439c9efc25f915745b50a8c/pkgs/applications/misc/hello/default.nix)），以及生成的 `.drv` 来了解，如何通过 `stdenv.mkDerivation` 来定一个软件包的 `derivation`。
+
+```bash
+nix-env -iA nixpkgs.hello
+ls -al /nix/store/*-hello-*.drv
+nix --extra-experimental-features nix-command show-derivation /nix/store/7ky0zmis8b384k5sx852i0fq7x9ir2jl-hello-2.12.1.drv
 ```
+
+这里重点介绍一下，nixpkgs 的 `stdenv.mkDerivation` 的属性集参数的一些重要属性（详见：[Chapter 6. The Standard Environment](https://nixos.org/manual/nixpkgs/stable/#chap-stdenv)）。
+
+* `pname` 包名。
+* `version` 包版本。最终对应 derivation name 为 `"${pname}-${version}"`。
+* `src` 源代码路径一般等于 fetch 相关函数调用。在脚本可以通过 `src` 环境变量获取到。
+* `nativeBuildInputs` 声明仅在本次编译时依赖的其他包（derivation），如 go 编译器，git 等。
+* `buildInputs` 声明在运行时依赖的其他包（derivation），如 glibc 等，为了支持交叉编译，还有大量 `depsXxx` 相关属性，不太理解。
+* `passthru` 该属性目前主要用户测试，该字段的变更不会影响 `.drv` 文件的生成，不会影响 hash 的生成。
+* `xxxPhase` 默认如果不给出此类参数，将自动执行位于 `pkgs/stdenv/generic/setup.sh` 中的所有阶段。如果项目中没有提供 Makefile 则需要手动提供 `buildPhase`、`installPhase` 脚本。支持的所有阶段如下（`$` 开头的表示默认没有实现）：
+
+    ```
+    $prePhases unpackPhase patchPhase $preConfigurePhases configurePhase $preBuildPhases buildPhase checkPhase $preInstallPhases installPhase fixupPhase installCheckPhase $preDistPhases distPhase $postPhases
+    ```
+
+针对各种不同的编程语言和框架， nixpkgs 也提供了对应的便捷函数，如 `buildGoModule`，本文不多赘述，详见：[Chapter 17. Languages and frameworks](https://nixos.org/manual/nixpkgs/stable/#chap-language-support)。
 
 ## 自定义 channel
 
