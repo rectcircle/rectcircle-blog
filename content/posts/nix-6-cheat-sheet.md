@@ -120,13 +120,39 @@ nix-shell -p go_1_19 jq curl --pure -I nixpkgs=https://github.com/NixOS/nixpkgs/
 * `-i` 指定 shell 交互式解释器。
 * `<path>` 最后一个参数为一个 `.nix` 文件，默认为当前目录的 `shell.nix` 如果 `shell.nix` 不存在，则当前目录的 `default.nix`。注意，如果指定且写在 shell 的 shebang 中，则当前路径为为脚本所在目录，而不是 work dir。
 
-## nix-instantiate
+### nix-instantiate
 
 执行一个 `.nix` 文件。
 
-```
+```bash
+# 执行一个 nix 文件，并不会递归求值。
 nix-instantiate --eval nix-lang-demo/01-hello.nix
+# 执行一个 nix 文件，并递归求值，并将值以 json 格式打印，注意如果包含函数这种没法序列化为 json 的将报错。
+nix-instantiate --eval nix-lang-demo/02-primitives-data-type.nix --strict --json
+# 执行一个 nix 文件，要求该函数返回一个 derivation 类型，或者返回值为 derivation 类型的函数。
+# 然后将 derivation 序列化到 /nix/store/$hash-$name.drv 文件。
+nix-instantiate nix-lang-demo/12-derivation.nix
 ```
+
+### nix show-derivation
+
+```bash
+# 将一个 /nix/store/$hash-$name.drv 转换为 json 格式，并输出。
+nix --extra-experimental-features nix-command show-derivation $(nix-instantiate path/to/file.nix)
+```
+
+### nix-store
+
+```bash
+# 构建一个 /nix/store/$hash-$name.drv 文件。
+nix-store -r $(nix-instantiate path/to/file.nix)
+# 打印 /nix/store/$hash-$name.drv 构建过程日志。
+nix-store --read-log $(nix-instantiate path/to/file.nix)
+```
+
+### nix repl
+
+启动一个 nix 语言的交互式环境。
 
 ## 全局配置
 
