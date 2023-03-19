@@ -178,3 +178,9 @@ nix-store --read-log $(nix-instantiate path/to/file.nix)
     * [VSCode 扩展 Nix Environment Selector](https://marketplace.visualstudio.com/items?itemName=arrterian.nix-env-selector) | [issue](https://github.com/arrterian/nix-env-selector/issues/66) | [issue](https://github.com/microsoft/vscode/issues/152806)
     * [使用Nix+direnv快速构建不同软件版本的开发环境](https://grass.show/post/create-environment-with-nix-and-direnv)
     * [如何使用 Nix 轻松获取依赖项](https://devpress.csdn.net/cicd/62ee0a19c6770329307f3202.html#devmenu9)
+* 二进制缓存
+    * [Nix Wiki - Binary Cache](https://nixos.wiki/wiki/Binary_Cache)
+    * [Nix Reference Manual - Sharing Packages Between Machines](https://nixos.org/manual/nix/stable/package-management/sharing-packages.html)
+* 论文
+    * [The Purely Functional Software Deployment Model](https://edolstra.github.io/pubs/phd-thesis.pdf)
+    * [NixOS: A Purely Functional Linux Distribution](https://edolstra.github.io/pubs/nixos-icfp2008-final.pdf)
