@@ -8,7 +8,7 @@ tags:
   - untagged
 ---
 
-> version: nix-2.14.1
+> version: nix-2.14.1 | [示例代码库](https://github.com/rectcircle/learn-nix-demo)
 
 ## 简述
 
