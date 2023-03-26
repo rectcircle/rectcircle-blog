@@ -66,7 +66,7 @@ nix-channel --add https://example.com/channel/rdgrouppkgs rdgrouppkgs
 nix-channel --update
 ```
 
-这用，用户即可通过 `nix-env -iA nixpkgs.go` 安装 nixpkgs 的包；通过 `nix-env -iA rdgrouppkgs.myAbcPkg.xxx` 安装私有包。
+这样，用户即可通过 `nix-env -iA nixpkgs.go` 安装 nixpkgs 的包；通过 `nix-env -iA rdgrouppkgs.myAbcPkg.xxx` 安装私有包。
 
 ## Nix 缓存聚合器
 
