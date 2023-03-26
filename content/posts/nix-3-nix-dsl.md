@@ -1415,7 +1415,7 @@ nix --extra-experimental-features nix-command show-derivation /nix/store/7ky0zmi
 * `pname` 包名。
 * `version` 包版本。最终对应 derivation name 为 `"${pname}-${version}"`。
 * `src` 源代码路径一般等于 fetch 相关函数调用。在脚本可以通过 `src` 环境变量获取到。
-* `nativeBuildInputs` 声明仅在本次编译时依赖的其他包（derivation），如 go 编译器，git 等。
+* `nativeBuildInputs` 声明在编译时依赖的其他包（derivation），如 go 编译器，git 等。
 * `buildInputs` 声明在运行时依赖的其他包（derivation），如 glibc 等，为了支持交叉编译，还有大量 `depsXxx` 相关属性，不太理解。
 * `passthru` 该属性目前主要用户测试，该字段的变更不会影响 `.drv` 文件的生成，不会影响 hash 的生成。
 * `xxxPhase` 该函数会执行位于 `pkgs/stdenv/generic/setup.sh` 中的 `genericBuild` 函数，该函数将构建过程分成了很多各阶段。如果项目使用 autotools 来管理编译过程，则一般不用修改该类字段。如果项目中没有提供 Makefile 则需要手动提供 `buildPhase`、`installPhase` 脚本。支持的所有阶段如下（`$` 开头的表示默认没有实现）：
@@ -1425,6 +1425,8 @@ nix --extra-experimental-features nix-command show-derivation /nix/store/7ky0zmi
     ```
 
 针对各种不同的编程语言和框架， nixpkgs 也提供了对应的便捷函数，如 `buildGoModule`，本文不多赘述，详见：[Chapter 17. Languages and frameworks](https://nixos.org/manual/nixpkgs/stable/#chap-language-support)。
+
+注意：不管是 nativeBuildInputs 还是 buildInputs，即使其产物在 Cache 中存在，也都会自动下载下来。似乎并不存在 build-only 方式的声明，参见： [issue](https://github.com/NixOS/nix/issues/8107)。
 
 ## 自定义 channel
 

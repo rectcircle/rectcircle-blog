@@ -158,6 +158,7 @@ nix-store --read-log $(nix-instantiate path/to/file.nix)
 
 ## 参考
 
+* [Awesome Nix](https://nix-community.github.io/awesome-nix/)
 * [Nix Pills](https://nixos.org/guides/nix-pills)
 * [nix.dev](https://nix.dev/)
 * [Nix 手册](https://nixos.org/manual/nix/stable/)
