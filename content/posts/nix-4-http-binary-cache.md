@@ -274,7 +274,54 @@ nar 文件是一种 Nix 软件包存档文件格式，用于在不同的计算�
 * `NarSize` 除了上文方式外，还可以通过 `nix-store -q --size /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1` 命令可以查看，该命令读取的是 `/nix/var/nix/db` 数据库中的，不是实时计算的。
 * `References` 通过 `nix-store -q --references /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1` 命令可以查看。
 * `Deriver` 通过 `nix-store -q --deriver /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1` 命令可以查看。
-* `Sig` 通过 `nix-store --generate-binary-cache-key key-name secret-key-file public-key-file` 生成。
+* `Sig` 通过 `nix-store --generate-binary-cache-key binarycache.example.com cache-priv-key.pem cache-pub-key.pem` 生成一个秘钥对。签名算法，参见： [edolstra/nix-serve/nix-serve.psgi#L40](https://github.com/edolstra/nix-serve/blob/master/nix-serve.psgi#L40)。使用 ChatGPT 将该签名算法转换为了 Go 的写法，如下所示：
+
+	```go
+	import (
+		"io/ioutil"
+		"crypto/sha256"
+		"encoding/hex"
+		"golang.org/x/crypto/openpgp"
+		"golang.org/x/crypto/openpgp/armor"
+		"golang.org/x/crypto/openpgp/packet"
+	)
+
+	func signNixStorePath(storePath string, narHash string, narSize string, refs []string, secretKeyFile string) (string, error) {
+		// 读取秘钥
+		secretKey, err := ioutil.ReadFile(secretKeyFile)
+		if err != nil {
+			return "", err
+		}
+		secretKey = bytes.TrimSpace(secretKey)
+
+		// 计算指纹
+		hash := sha256.New()
+		hash.Write([]byte(storePath + narHash + narSize))
+		for _, ref := range refs {
+			hash.Write([]byte(ref))
+		}
+		fingerprint := hex.EncodeToString(hash.Sum(nil))
+
+		// 对指纹进行数字签名
+		signer, err := openpgp.ReadArmoredKeyRing(bytes.NewReader(secretKey))
+		if err != nil {
+			return "", err
+		}
+		entity := signer[0]
+		var sigBuf bytes.Buffer
+		writer, err := armor.Encode(&sigBuf, "PGP SIGNATURE", nil)
+		if err != nil {
+			return "", err
+		}
+		defer writer.Close()
+		err = entity.PrivateKey.Sign(&sigBuf, bytes.NewReader([]byte(fingerprint)), &packet.Config{})
+		if err != nil {
+			return "", err
+		}
+
+		return sigBuf.String(), nil
+	}
+	```
 
 ## 搭建二进制缓存服务
 

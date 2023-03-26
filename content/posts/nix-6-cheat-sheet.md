@@ -1,7 +1,7 @@
 ---
 title: "Nix 详解（六） 备忘单"
-date: 2023-02-25T20:48:49+08:00
-draft: true
+date: 2023-03-27T02:00:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -12,7 +12,7 @@ tags:
 
 ## 命令
 
-本部分仅介绍常用的命令，其他细节参见：[官方手册](https://nixos.org/manual/nix/stable/command-ref/command-ref.html)。
+本部分仅记录本系列使用过的，以及一些常用的命令，更多细节参见：[官方手册](https://nixos.org/manual/nix/stable/command-ref/command-ref.html)。
 
 ### nix-channel
 
@@ -120,6 +120,10 @@ nix-shell -p go_1_19 jq curl --pure -I nixpkgs=https://github.com/NixOS/nixpkgs/
 * `-i` 指定 shell 交互式解释器。
 * `<path>` 最后一个参数为一个 `.nix` 文件，默认为当前目录的 `shell.nix` 如果 `shell.nix` 不存在，则当前目录的 `default.nix`。注意，如果指定且写在 shell 的 shebang 中，则当前路径为为脚本所在目录，而不是 work dir。
 
+### nix repl
+
+启动一个 nix 语言的交互式环境。
+
 ### nix-instantiate
 
 执行一个 `.nix` 文件。
@@ -141,6 +145,25 @@ nix-instantiate nix-lang-demo/12-derivation.nix
 nix --extra-experimental-features nix-command show-derivation $(nix-instantiate path/to/file.nix)
 ```
 
+### nix-build
+
+构建 derivation 并在当前目录创建指向 /nix/store 中 out 的软链 `result`。
+
+该命令是 `nix-instantiate` 和 `nix-store --realise` 的一个包装器。
+
+```bash
+# 构建 nixpkgs 中属性为名为 go_1_19 的 derivation
+nix-build '<nixpkgs>' -A go_1_19
+# ls -l result
+# lrwxrwxrwx  ...  result -> /nix/store/d18hyl92g30l...-go-1.19.3
+
+# nix 表达式可以通过 -E 直接给出
+nix-build -E 'with import <nixpkgs> { }; runCommand "foo" { } "echo bar > $out"'
+
+# 可以从指定 url 的 channel 构建
+nix-build https://github.com/NixOS/nixpkgs/archive/master.tar.gz -A hello
+```
+
 ### nix-store
 
 ```bash
@@ -148,11 +171,47 @@ nix --extra-experimental-features nix-command show-derivation $(nix-instantiate 
 nix-store -r $(nix-instantiate path/to/file.nix)
 # 打印 /nix/store/$hash-$name.drv 构建过程日志。
 nix-store --read-log $(nix-instantiate path/to/file.nix)
+
+# 将一个 derivation 输出打包成 nar 包
+nix-store --dump /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1 > test.nar
+# 将 test.nar 压缩为 test.nar.xz
+# xz test.nar
+# 将一个 derivation 的 nar 包导入当前机器
+nix-store --import v02pl5dhayp8jnz8ahdvg5vi71s8xc6g.nar
+# 查询一个 derivation 输出的 nar 包的 hash
+nix-store -q --hash /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1
+# 查询一个 derivation 输出的 nar 包的 size
+nix-store -q --size /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1
+# 查询一个 derivation 输出的直接依赖
+nix-store -q --references /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1
+# 查询一个 derivation 输出的所有依赖（闭包）
+nix-store -q --requisites /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1
+# 查询一个 derivation 输出对应的 drv文件
+nix-store -q --deriver /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1
+# 生成签名用的 key
+nix-store --generate-binary-cache-key binarycache.example.com cache-priv-key.pem cache-pub-key.pem
+
+# 将一个 derivation 输出及其所有依赖导出到文件
+nix-store --export $(nix-store -qR /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1) > hello.closure
+# 将一个 derivation 输出及其所有依赖导入到当前机器
+nix-store --import < hello.closure
 ```
 
-### nix repl
+### nix-hash
 
-启动一个 nix 语言的交互式环境。
+生成 `nar` 和 `nar.xz` 等文件的 hash。
+
+```bash
+nix-hash --type sha256 --flat --base32 test.nar
+```
+
+### nix-copy-closure
+
+将某个 `/nix/store/xxx` 目录及其依赖通过 ssh 协议拷贝到另一台机器。
+
+```bash
+nix-copy-closure --to alice@itchy.example.org /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1
+```
 
 ## 全局配置
 
