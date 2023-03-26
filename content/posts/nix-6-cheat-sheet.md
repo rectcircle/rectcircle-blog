@@ -12,7 +12,7 @@ tags:
 
 ## 命令
 
-本部分仅记录本系列使用过的，以及一些常用的命令，更多细节参见：[官方手册](https://nixos.org/manual/nix/stable/command-ref/command-ref.html)。
+本部分仅记录本系列使用过的，以及一些常用的命令，更多细节参见：[官方手册 - 命令参考](https://nixos.org/manual/nix/stable/command-ref/command-ref.html)。
 
 ### nix-channel
 
@@ -213,7 +213,14 @@ nix-hash --type sha256 --flat --base32 test.nar
 nix-copy-closure --to alice@itchy.example.org /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1
 ```
 
-## 全局配置
+## 配置文件
+
+单用户安装，路径 ~/.config/nix/nix.conf ，详见：[官方手册 - 配置文件](https://nixos.org/manual/nix/stable/command-ref/conf-file.html)。
+
+```
+# 二进制缓存服务
+substituters = https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store https://cache.nixos.org/
+```
 
 ## 参考
 
