@@ -1,14 +1,14 @@
 ---
-title: "Linux 网络虚拟化技术（五） Wireguard VPN"
-date: 2022-06-19T23:11:00+08:00
-draft: true
+title: "Linux 网络虚拟化技术（6） Wireguard VPN"
+date: 2023-04-09T01:50:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
   - linux
 ---
 
-> 声明：在中文语境下，VPN 被用作突破互联网管控手段的代名词。本文介绍的 VPN 并非这个含义，而是其原意，面向组织的虚拟私有网络。
+> 声明：在中文语境下，VPN 被特化为突破互联网管控手段的代名词。本文介绍的 VPN 并非这个含义，而是其原意，面向组织的虚拟私有网络。
 
 ## 概述
 
@@ -123,7 +123,7 @@ wg pubkey < mac.key > mac.key.pub
 
 ### 配置 huawei
 
-该设备为 Ubuntu 22.04，内核版本为  5.15，因此不需要升级内核，可以直接安装（参考：[官方文档](https://www.wireguard.com/install/#ubuntu-module-tools)）。
+该设备为 Ubuntu 22.04，内核版本为  5.15，因此不需要升级内核（如果内核小于 5.6 需先升级内核），可以直接安装（参考：[官方文档](https://www.wireguard.com/install/#ubuntu-module-tools)）。
 
 ```bash
 sudo apt update
@@ -155,7 +155,7 @@ AllowedIPs = 192.168.96.4/32
 PublicKey = xxx # cat mac.key.pub 获取
 ```
 
-启动 wg0 接口 ` wg-quick up wg0`。
+启动 wg0 接口 `wg-quick up wg0`。
 
 内核需开启 forward 等内核参数：
 
@@ -281,9 +281,72 @@ PersistentKeepalive = 15
 
 ### 配置 mac
 
-## 相关技术
+在中国大陆地区无法从 App Store 下载 [GUI 版本 wireguard](https://apps.apple.com/us/app/wireguard/id1451685025)，因此本部分将介绍 cli 方式。
 
-本文至今，并未提到 NAT 穿透等相关技术，因为在 Wireguard 并不关心 NAT。
+```bash
+brew install wireguard-tools
+```
+
+配置文件 `vim /etc/wireguard/wg0.conf`。
+
+```ini
+[Interface]
+# Name = mac
+Address = 192.168.96.4/32
+PrivateKey = xxx # cat mac.key 获取
+
+[Peer]
+# Name = huawei
+Endpoint = <huawei 公网IP>:51820
+AllowedIPs = 192.168.96.0/24,192.168.31.0/24
+PublicKey = xxx # cat huawei.key.pub 获取
+PersistentKeepalive = 15
+```
+
+启动 wg0 接口 `wg-quick up wg0`。
+
+## 用户态实现
+
+在某些情况下，无法将内核升级到 5.6 之上，此时可以选择官方用户态实现（[官方代码仓库](https://www.wireguard.com/repositories/) 列表）：[wireguard-go](https://github.com/WireGuard/wireguard-go)。
+
+```bash
+# 依赖
+apt update
+apt install -y git libmnl-dev libelf-dev build-essential pkg-config
+# 安装 Go
+wget https://go.dev/dl/go1.20.3.linux-amd64.tar.gz
+tar -zxvf go1.20.3.linux-amd64.tar.gz
+rm -rf go1.20.3.linux-amd64.tar.gz
+mv go /usr/local/
+echo 'export PATH=/usr/local/go/bin:$PATH' >> /etc/profile
+export PATH=$PATH:/usr/local/go/bin
+# 编译安装 wireguard-go
+git clone https://git.zx2c4.com/wireguard-go
+cd wireguard-go
+# 最新版似乎有 bug，卡在 [#] wg setconf utun2 /dev/fd/63
+# https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=253537
+git checkout 0.0.20201118
+go build -v -o "wireguard-go"
+mv wireguard-go /usr/sbin/wireguard-go
+cd ../
+rm -rf wireguard-go
+# 编译安装 WireGuard
+git clone https://git.zx2c4.com/WireGuard
+cd WireGuard/src/tools
+make && make install
+cd ../../../
+rm -rf WireGuard
+```
+
+注意：该实现依赖 tun 内核模块，需开启，才能正常工作。
+
+后续步骤和上文[配置 huawei](#配置-huawei) 一致。
+
+设置开启自动启动：
+
+```bash
+systemctl enable wg-quick@wg0
+```
 
 ## 参考
 
