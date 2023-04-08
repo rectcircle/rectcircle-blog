@@ -87,9 +87,17 @@ interface 通过一个 `ini` 格式的配置文件定义，包含：
 
 下面分析如下几个场景的数据流：
 
-* mi11 访问 openwrt。
-* mi11 访问 nas。
-* pc 访问 mac。
+* mi11 访问 openwrt，sip 为 192.168.96.3，dip 为 192.168.96.2。
+    * ip 包从应用到达 `mi11` 的 wireguard interface，该 interface 查询 peer 列表，发现第一个 peer 的 AllowedIPs 的 `192.168.96.0/24` 能匹配上该数据包的 dip。因此数据通过 `m11 -> huawei` 的 UDP tunnel，发送到 `huawei` 的 wireguard interface。
+    * ip 包到达 `huawei` 的 wireguard interface，该 interface 查询 peer 列表，发现第一个 peer 的 AllowedIPs 的 `192.168.96.2/32` 能匹配上该数据包的 dip。因此数据通过 `openwrt -> huawei` 的 UDP tunnel，发送到 `openwrt` 的 wireguard interface。这里值得提一下的是，在 tunnel 视角，这个 tunnel 的方向是 `openwrt -> huawei`，即 openwrt 侧发起建立的，但是 `huawei -> openwrt` 的 ip 数据包，是可以通过该 tunnel 从 `huawei` 发送到 `openwrt` 的。
+    * ip 包到达 `openwrt` 的 wireguard interface，该 interface 发现目标 ip 就是当前 interface ip，说明该数据包的目标就是当前设备。于是，该数据包将传送到应用层。
+    * 流程结束。
+* mi11 访问 nas，sip 为 192.168.96.3，dip 为 192.168.31.5。
+    * 前面的流程和第一个场景的 1、2 步一致，只是参数不同。
+    * ip 包到达 `openwrt` 后，会查询当前设备的路由表，发现 dip 在当前 lan 局域网内，于是将 ip 包发送到 nas 设备。这里值得提一下的是，该流程和 wiredguard 没有关系，是 openwrt 自身对路由表的处理逻辑了。
+* pc 访问 mac。sip 为 192.168.31.2，dip 为 192.168.96.4。
+    * ip 包从应用到达 `pc` 的内核，内核通过默认路由发送到网关 `openwrt`，这里值得提一下的是，该流程和 wiredguard 没有关系，是局域网的自身配置决定的。
+    * 后续的流程和第一个场景的 1、2 步一致，只是参数不同。
 
 ## 相关技术
 
