@@ -99,6 +99,188 @@ interface 通过一个 `ini` 格式的配置文件定义，包含：
     * ip 包从应用到达 `pc` 的内核，内核通过默认路由发送到网关 `openwrt`，这里值得提一下的是，该流程和 wiredguard 没有关系，是局域网的自身配置决定的。
     * 后续的流程和第一个场景的 1、2 步一致，只是参数不同。
 
+## 实施细节
+
+本部分将上文流程部分示例进行落地实施，这个过程有很多细节值得关注。
+
+### 生成 key
+
+建议在 Linux 系统安装 wireguard 工具集（安装参见：[下文](#配置-huawei)），通过命令行生成所有设备 wireguard 配置 interface 需要的公私钥。
+
+```bash
+cd /etc/wireguard/
+umask 0077
+wg genkey > huawei.key
+wg genkey > openwrt.key
+wg genkey > mi11.key
+wg genkey > mac.key
+umask 0022
+wg pubkey < huawei.key > huawei.key.pub
+wg pubkey < openwrt.key > openwrt.key.pub
+wg pubkey < mi11.key > mi11.key.pub
+wg pubkey < mac.key > mac.key.pub
+```
+
+### 配置 huawei
+
+该设备为 Ubuntu 22.04，内核版本为  5.15，因此不需要升级内核，可以直接安装（参考：[官方文档](https://www.wireguard.com/install/#ubuntu-module-tools)）。
+
+```bash
+sudo apt update
+sudo apt install wireguard
+```
+
+配置文件 `vim /etc/wireguard/wg0.conf`。
+
+```ini
+[Interface]
+# Name = huawei
+Address = 192.168.96.1/24
+PrivateKey = xxx # cat huawei.key 获取
+ListenPort = 51820
+
+[Peer]
+# Name = openwrt
+AllowedIPs = 192.168.96.2/32,192.168.31.0/24
+PublicKey = xxx # cat openwrt.key.pub 获取
+
+[Peer]
+# Name = mi11
+AllowedIPs = 192.168.96.3/32
+PublicKey = xxx # cat mi11.key.pub 获取
+
+[Peer]
+# Name = mac
+AllowedIPs = 192.168.96.4/32
+PublicKey = xxx # cat mac.key.pub 获取
+```
+
+启动 wg0 接口 ` wg-quick up wg0`。
+
+内核需开启 forward 等内核参数：
+
+```bash
+# ipv4 包转发
+echo "net.ipv4.ip_forward = 1" >> /etc/sysctl.conf
+# arp 代理
+echo "net.ipv4.conf.all.proxy_arp = 1" >> /etc/sysctl.conf
+# ipv6 包转发
+echo "net.ipv6.conf.all.forwarding = 1" >> /etc/sysctl.conf
+# 应用配置
+sysctl -p /etc/sysctl.conf
+```
+
+如果需要通过该节点转发外网访问流程，需配置 iptables 开启 NAT。
+
+```bash
+iptables -A INPUT -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -m conntrack --ctstate RELATED,ESTABLISHED -j ACCEPT
+iptables -A FORWARD -i wg0 -o wg0 -m conntrack --ctstate NEW -j ACCEPT
+# 192.168.96.0/24 为 VPN 网段，eth0 为公网出口网卡设备。
+iptables -t nat -A POSTROUTING -s 192.168.96.0/24 -o eth0 -j MASQUERADE
+```
+
+测试路由是否正常：
+
+```bash
+ip route get 192.168.96.2
+ip route get 192.168.31.1
+```
+
+最后，需要到云服务器管理后台开放 UDP 51820 端口入流量。
+
+### 配置 openwrt
+
+> openwrt 各种定制版层出不穷，本文介绍的官方编译版本，版本号为： 22.03 x86_64。
+
+openwrt 提供了 GUI 方式配置 wiredguard 的包，打开 WebUI -> 系统 -> Sofeware。搜索安装： `luci-app-wireguard`、`wireguard-tools`、`luci-i18n-wireguard-zh-cn`，然后重启 Openwrt。
+
+配置文件如下：
+
+```ini
+[Interface]
+# Name = openwrt
+Address = 192.168.96.2/32
+PrivateKey = xxx # cat openwrt.key 获取
+
+[Peer]
+# Name = huawei
+Endpoint = <huawei 公网IP>:51820
+AllowedIPs = 192.168.96.0/24
+PublicKey = xxx # cat huawei.key.pub 获取
+PersistentKeepalive = 15
+```
+
+打开 WebUI -> 网络 -> 接口 -> 添加新接口，填写如下信息，点击创建接口。
+
+* 名称： wg0
+* 协议：WireGuard VPN
+
+常规设置，导入配置文件，点击加载配置文件，将上面配置文件粘贴进来，点击导入配置。然后进行一些额外的配置
+
+* 对端 -> 第一个条目 -> 编辑， 勾选路由允许的 IP。添加对 AllowedIPs 路由。这样才能实现局域网内的设备通过 VPN IP 访问其他设备。
+
+然后，一直点保存、保存并应用。
+
+目前，还有个问题，即在 `huawei` 上无法访问 `192.168.31.0/24` 上的 IP。原因是没有给 OpenWrt  wg0 配置防火墙，配置方法如下：
+
+* 打开 OpenWrt WebUI -> 网络 -> 防火墙 -> 常规配置 -> Zone，点击添加，填写如下内容（该部分是试出来的，并不太理解）：
+    * 名称： wg0
+    * Input、Output、Forward： accept
+    * Masquerading： 勾选
+    * Covered network：选择 wg0、lan （如果没有 wg0 可以先创建出来后面再编辑）
+    * Allow forward to destination zones： lan
+    * Allow forward from source zones： lan
+* 保存并应用后，重新配置 wg0 接口。
+    * WebUI -> 网络 -> 接口 -> wg0，编辑。
+    * 防火墙设置，创建分配防火墙区域，选择 wg0。
+* 保存并应用即可。
+
+此时可以进行如下测试：
+
+```bash
+# huawei 上执行
+ping 192.168.96.2
+ping 192.168.31.1
+# openwrt 上执行
+ping 192.168.96.1
+# pc 上执行
+ping 192.168.96.1
+```
+
+如上均可以 ping 通，说明配置正确。
+
+### 配置 mi
+
+前往 [f-droid](https://f-droid.org/en/packages/com.wireguard.android/) 下载安装最新版安卓客户端。
+
+配置文件如下：
+
+```ini
+[Interface]
+# Name = mi11
+Address = 192.168.96.3/32
+PrivateKey = xxx # cat mi11.key 获取
+
+[Peer]
+# Name = huawei
+Endpoint = <huawei 公网IP>:51820
+AllowedIPs = 192.168.96.0/24,192.168.31.0/24
+PublicKey = xxx # cat huawei.key.pub 获取
+PersistentKeepalive = 15
+```
+
+打开 Android App，点击加号，导入配置，或者手动填写配置，保存后，点击开关开启 VPN。
+
+验证方法为：
+
+* 在 `huawei`，`ping 192.168.96.3` 是否可以 ping 通
+* 在 `mi11`，关闭 WIFI，使用数据流量，打开 VPN：
+    * 打开浏览器，访问 OpenWrt 的 WebUI 的内网地址，本例中为 `192.168.31.254`，是否可以正常打开。
+    * 打开 ES 文件浏览器，是否可以连接到 NAS 上的 Samba 服务器。
+
+### 配置 mac
+
 ## 相关技术
 
 本文至今，并未提到 NAT 穿透等相关技术，因为在 Wireguard 并不关心 NAT。
