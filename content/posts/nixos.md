@@ -59,3 +59,9 @@ sudo nixos-rebuild switch
 ```
 
 至此，一个最小化的 NixOS 配置完成，可通过 ssh 远程登录 NixOS。
+
+## NixOS 设计和原理解析
+
+## nixos-rebuild 使用说明
+
+## 配置文件说明
