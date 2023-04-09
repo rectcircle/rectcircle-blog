@@ -222,6 +222,13 @@ nix-copy-closure --to alice@itchy.example.org /nix/store/v02pl5dhayp8jnz8ahdvg5v
 substituters = https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store https://cache.nixos.org/
 ```
 
+## 实验性特性
+
+目前 (2023-04) nix 有一些实现性特性，本系列暂不介绍，仅在此列出，后续正式推出后再视情况整理介绍：
+
+* `nix` 命令集，用来替代 `nix-xxx` 的命令，详见：[Nix manual - Nix](https://nixos.org/manual/nix/stable/command-ref/new-cli/nix.html)
+* Flakes 以声明的方式指定位于代码仓库的依赖，详见：[NixOS Wiki - Flakes](https://nixos.wiki/wiki/Flakes)
+
 ## 参考
 
 * [Awesome Nix](https://nix-community.github.io/awesome-nix/)
