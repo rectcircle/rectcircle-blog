@@ -23,7 +23,7 @@ tags:
 
 ## 快速配置
 
-介绍选了 NixOS minimal Installation （不安装桌面环境），需要进行一些配置才能更好的使用，大概配置如下内容。
+假设按照章节说明，选了 Minimal Installation （不安装桌面环境），需要进行一些配置才能更好的使用，大概配置如下内容。
 
 * 使用清华源二进制缓存加速下载
 * 最小化安装的 NixOS 的只提供了 nano 编辑器，Linux 用户应该更熟悉 vim，因此，安装 vim。
@@ -45,7 +45,7 @@ tags:
   services.openssh.enable = true;
 ```
 
-大陆地区，为了加速安装，从清华源获取 channel。
+大陆地区，从清华源获取 Channel。
 
 ```bash
 sudo nix-channel --add https://mirrors.tuna.tsinghua.edu.cn/nix-channels/nixos-22.11 nixos
@@ -57,3 +57,5 @@ sudo nix-channel --update
 ```bash
 sudo nixos-rebuild switch
 ```
+
+至此，一个最小化的 NixOS 配置完成，可通过 ssh 远程登录 NixOS。
