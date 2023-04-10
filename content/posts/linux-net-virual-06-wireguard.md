@@ -1,5 +1,5 @@
 ---
-title: "Linux 网络虚拟化技术（6） Wireguard VPN"
+title: "Linux 网络虚拟化技术（六） Wireguard VPN"
 date: 2023-04-09T01:50:00+08:00
 draft: false
 toc: true
