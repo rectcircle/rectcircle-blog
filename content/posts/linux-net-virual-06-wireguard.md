@@ -350,7 +350,7 @@ systemctl enable wg-quick@wg0
 
 ## 基于 Wireguard VPN 的应用
 
-从上面可以看出 Wireguard VPN 专注于 VPN 核心问题，解决流量加密和 Tunnel 问题。直接使用配置起来非常麻烦。因此，业界有基于 Wireguard 的面相普通用户更友好的商业产品： [tailscale](https://tailscale.com/) 比较适合小型组织。类似对开源届也实现了 tailscale 的开源替代 [headscale](https://github.com/juanfont/headscale)。当然面向大型组织，可以基于 Wireguard VPN 根据自身需求自研自己的 VPN 服务。
+从上面可以看出 Wireguard VPN 专注于 VPN 核心问题，解决流量加密和 Tunnel 问题。直接使用配置起来非常麻烦。因此，业界有基于 Wireguard 的面相普通用户更友好的商业产品： [tailscale](https://tailscale.com/) 比较适合小型组织。该产品开源届也实现了 tailscale 的开源替代 [headscale](https://github.com/juanfont/headscale)。当然面向大型组织，可以基于 Wireguard VPN 根据自身需求自研自己的 VPN 服务。
 
 除了面向组织的 VPN 场景，Wireguard VPN 的另一个重要场景就是云原生领域。基于 Wireguard VPN 的 k8s 网络插件，实现搭建跨内网，跨云的 k8s 集群。这个网络插件 [Kilo](https://kilo.squat.ai/)。
 
