@@ -1,7 +1,7 @@
 ---
 title: "NixOS 详解"
-date: 2023-04-10T00:00:00+08:00
-draft: true
+date: 2023-04-16T00:00:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -192,13 +192,131 @@ NixOS 是通过 `/etc/nixos/configuration.nix` 配置文件配置的。
 
 ### 配置语法
 
+`/etc/nixos/configuration.nix` 配置文件是一个 nix 表达式，可以使用 nix 语言的所有特性，关于 nix 语言，参见本系列：[Nix 详解（三） nix 领域特定语言](/posts/nix-3-nix-dsl/)。
+
+该表达式必须是一个 nix 函数结构如下：
+
+```nix
+{ config, pkgs, ... }:
+{
+  # option definitions
+}
+```
+
+下文具体场景配置的位置上如无说明，均位于 `# option definitions` 附近。
+
+### Nix 配置
+
+如：
+
+```
+  nix.settings.substituters = [ "https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store" ];
+```
+
+更多参见：[NixOS options search](https://search.nixos.org/options?channel=22.11&show=nix.settings.substituters&from=0&size=50&sort=relevance&type=packages&query=nix.settings)。
+
 ### 包安装
+
+所有可用包，前往 https://search.nixos.org/packages 搜索，并配置到配置文件，例如：
+
+```nix
+  environment.systemPackages = with pkgs; [
+    vim
+    wget
+  ];
+```
 
 ### Shell Profile
 
-https://stackoverflow.com/questions/45023485/how-to-set-an-alias-in-nixos
-https://nixos.org/manual/nixos/stable/options.html#opt-environment.interactiveShellInit
+很多时候，我们想给 shell 配置一些 alias 导出一些自己的环境变量，此时可以通过如下方式配置：
 
-### 服务管理
+```nix
+  environment.interactiveShellInit = ''
+    alias l='ls -alh'
+    alias k='kubectl'
+    alias ll='ls -l'
+  '';
+  environment.variables = {
+    A = "1";
+  };
+```
+
+更多参见：[NixOS options search](https://search.nixos.org/options?channel=22.11&from=0&size=50&sort=relevance&type=packages&query=interactiveShellInit)。
+
+### 用户配置
+
+可以为某个用户配置用户粒度的包、环境变量等。
+
+前往 [NixOS options search](https://search.nixos.org/options)，搜索 `users.users.<name>`。
+
+### 安装服务
+
+如果想安装一些服务，如 MySQL，Redis 等，可以前往 [NixOS options search](https://search.nixos.org/options)，搜索 `services.xxx` 搜索配置项，按照说明配置即可。
+
+### 配置原理
+
+上文介绍了 `/etc/nixos/configuration.nix` 配置文件的基本结构和常见场景的用法。这里介绍下 NixOS 是如何根据这个配置文件生成这个系统的最终配置项，最终应用到系统中的过程。
+
+回顾一下 `/etc/nixos/configuration.nix` 语法，其本质上是一个 nix 函数，这类函数在 NixOS 中被称为 NixOS Module。
+
+* 该函数接收包含至少包含 `config`、`pkgs` 属性的属性集。可以通过 `nix repl --expr  '{ nixos = import <nixpkgs/nixos> { configuration = {}; }; }'` 命令，进入 nix repl，输入 nixos 即可查看该属性集的属性，注意该命令只能在 NixOS 系统中执行，不能在只装了 nix 的其他 Linux 发行版中运行：
+    * `config` 属性集，属性为 NixOS 模块的选项的配置，据官网称，超过 10000 个，可以通过 [官方搜索站点](https://search.nixos.org/options) 或 [NixOS Manual - Appendix A. Configuration Options](https://nixos.org/manual/nixos/stable/options.html) 查找包含属性和默认值。也可以通过在上述 repl 中输入 `nixos.config.x` 按 Tab 可以看到包含的属性。
+    * `pkgs` 属性集，即 nixpkgs 声明的 nix package，据官网称，超过 80000 个，可以通过 [官方搜索站点](https://search.nixos.org/packages) 查找。也可以通过在上述 repl 中输入 `nixos.pkgs.x` 按 Tab 查看。
+    * `options` 是对 `config` 选项的定义，包括数据类型，数据校验，默认值，描述说明等。
+    * `system`  ???
+    * `vm` ???
+    * `vmWithBootLoader` ???
+* 该函数返回 NixOS Module 配置的属性集，有两个选择：
+    * 速记模式语法，即 `/etc/nixos/configuration.nix` 使用的模式，这个属性集本身代表就是一个 `config`，这种模式，在实现中会转换为标准语法，参见：[源码](https://github.com/NixOS/nixpkgs/blob/22.11/lib/modules.nix#L418)。
+    * 标准语法，一般在定义 Module 时使用，返回一个包含 `config`、`options`、`imports` 等属性的属性集，例如： [sshd 服务模块源码](https://github.com/NixOS/nixpkgs/blob/22.11/nixos/modules/services/networking/ssh/sshd.nix)。
+
+NixOS 配置相关源码也位于 [`NixOS/nixpkgs`](https://github.com/NixOS/nixpkgs) 代码库，结合代码可以得知 NixOS 加载配置的过程如下：
+
+* 读取 `NIXOS_CONFIG` 环境变量指向的文件，或 `<nixos-config>` 文件（`/etc/nixos/configuration.nix`），获取用户配置的 NixOS Module （[nixpkgs/nixos/default.nix](https://github.com/NixOS/nixpkgs/blob/22.11/nixos/default.nix)）。
+* 加载所有的 nixpkgs 所有的 NixOS Module (官方 Module) （[nixpkgs/nixos/modules/module-list.nix](https://github.com/NixOS/nixpkgs/blob/22.11/nixos/modules/module-list.nix)）。
+* 根据如上两步获取的 Module 列表对 config 的配置，options 中声明的默认值，imports 中声明的依赖关系，生成最终的 `config` （[`nixpkgs/lib/modules.nix`](https://github.com/NixOS/nixpkgs/blob/22.11/lib/modules.nix)）。
+
+最后 nixos-rebuild 会根据最终的 `config` 配置，配置操作系统，该步骤参见： [NixOS Manual - Chapter 69. What happens during a system switch?](https://nixos.org/manual/nixos/stable/index.html#sec-switching-systems)。
 
 ## nixos-rebuild 使用说明
+
+nixos-rebuild 用于根据 `/etc/nixos/configuration.nix` 配置文件，应用到系统，常用的子命令如下：
+
+* `switch` 使用最新的配置应用到系统中，并保证重启后保持。
+* `test` 对配置进行构建，并立即应用到当前系统，下次启动后将回滚到之前的状态。
+* `boot` 对配置进行构建，但是不立即应用到系统中，下次启动后再生效。
+* `build` 只进行构建，并产生一个 result 软链指向最新的构建，但是不会对当前系统造成任何影响。
+
+回滚通过如下选项触发：
+
+* `--rollback` 如 `nixos-rebuild --rollback switch`。
+
+如果想切换到任意版本，步骤如下：
+
+* 使用 `sudo nix-env --list-generations --profile /nix/var/nix/profiles/system` 列出系统的所有版本。
+* 使用如下命令切换版本（参见： [issue](https://github.com/NixOS/nixpkgs/issues/24374)）：
+
+  ```bash
+  sudo nix-env --switch-generation 12345 -p /nix/var/nix/profiles/system
+  sudo /nix/var/nix/profiles/system/bin/switch-to-configuration switch
+  ```
+
+软件和系统更新：
+
+```bash
+# 只更新软件包。
+sudo nixos-rebuild switch --upgrade
+# 更新大版本：如有新版本替换如下链接（注意如果 Nix 数据库架构变更，可能升级后无法轻易撤销）。
+sudo nix-channel --add https://nixos.org/channels/nixos-22.11 nixos
+sudo nixos-rebuild switch --upgrade
+# 自动更新配置
+# system.autoUpgrade.enable = true;
+# system.autoUpgrade.allowReboot = true;
+# system.autoUpgrade.channel = https://nixos.org/channels/nixos-22.11;
+```
+
+## 相关站点
+
+* [NixOS Manual](https://nixos.org/manual/nixos/stable/index.html)
+* [NixOS Options Search](https://search.nixos.org/options)
+* [github NixOS/nixpkgs -  nixpkgs/nixos](https://github.com/NixOS/nixpkgs/tree/master/nixos)
