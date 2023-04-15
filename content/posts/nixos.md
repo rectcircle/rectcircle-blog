@@ -1,5 +1,5 @@
 ---
-title: "NixOS 详解"
+title: "NixOS 指南"
 date: 2023-04-16T00:00:00+08:00
 draft: false
 toc: true
