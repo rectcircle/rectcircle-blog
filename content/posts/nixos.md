@@ -181,4 +181,24 @@ env
 
 ## 配置文件说明
 
+NixOS 是通过 `/etc/nixos/configuration.nix` 配置文件配置的。
+
+本部分将介绍如果利用该配置文件，在其他 Linux 系统中需要执行一堆命令才能完成的系统配置。
+
+由于 `/etc/nixos/configuration.nix` 配置项过多，本部分仅介绍一些常见的场景。对于其他场景以及全部配置项，请查阅：
+
+* [NixOS Manual - II. Configuration](https://nixos.org/manual/nixos/stable/index.html#ch-configuration)。
+* [NixOS Manual - Appendix A. Configuration Options](https://nixos.org/manual/nixos/stable/options.html)。
+
+### 配置语法
+
+### 包安装
+
+### Shell Profile
+
+https://stackoverflow.com/questions/45023485/how-to-set-an-alias-in-nixos
+https://nixos.org/manual/nixos/stable/options.html#opt-environment.interactiveShellInit
+
+### 服务管理
+
 ## nixos-rebuild 使用说明
