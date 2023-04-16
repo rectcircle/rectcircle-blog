@@ -278,6 +278,8 @@ NixOS 配置相关源码也位于 [`NixOS/nixpkgs`](https://github.com/NixOS/nix
 
 最后 nixos-rebuild 会根据最终的 `config` 配置，配置操作系统，该步骤参见： [NixOS Manual - Chapter 69. What happens during a system switch?](https://nixos.org/manual/nixos/stable/index.html#sec-switching-systems)。
 
+更多关于 NixOS Module 参见： [NixOS Wiki](https://nixos.wiki/wiki/NixOS_modules)。
+
 ## nixos-rebuild 使用说明
 
 nixos-rebuild 用于根据 `/etc/nixos/configuration.nix` 配置文件，应用到系统，常用的子命令如下：
@@ -319,4 +321,6 @@ sudo nixos-rebuild switch --upgrade
 
 * [NixOS Manual](https://nixos.org/manual/nixos/stable/index.html)
 * [NixOS Options Search](https://search.nixos.org/options)
+* [NixOS Wiki - NixOS modules](https://nixos.wiki/wiki/NixOS_modules)
+* [NixOS Wiki - nixos-rebuild](https://nixos.wiki/wiki/Nixos-rebuild)
 * [github NixOS/nixpkgs -  nixpkgs/nixos](https://github.com/NixOS/nixpkgs/tree/master/nixos)
