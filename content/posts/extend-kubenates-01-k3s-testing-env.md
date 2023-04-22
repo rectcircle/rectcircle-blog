@@ -153,13 +153,13 @@ ps -ef -w w
 
 参见：[官方文档](https://docs.k3s.io/zh/installation/kube-dashboard)。
 
-注意，建立 proxy 的命令为，这样才能在局域网的其他设备中访问：
+注意，如果浏览器和 k3s server 不在同一设备执行如下命令：
 
 ```bash
-# k3s 所在机器执行
-kubectl proxy --address='0.0.0.0'
+# k3s 所在设备执行
+kubectl proxy
 # 浏览器所在设备执行
-ssh -L localhost:8001:localhost:8001 -NT dev # dev 为 k3s 所在机器的 host
+ssh -L localhost:8001:localhost:8001 -NT dev # dev 为 k3s 所在设备的 host
 ```
 
 打开浏览器，访问：  http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ 。
