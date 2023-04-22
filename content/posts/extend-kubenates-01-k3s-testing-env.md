@@ -147,7 +147,7 @@ ps -ef -w w
     * `traefik` 默认 ingress controller。
     * `metrics-server` 容器。
     * `local-path-provisioner` 利用本地磁盘实现 pvc 的一个存储类。
-* `/coredns -conf /etc/coredns/Corefile` core dns。
+    * `coredns` core dns。
 
 ## 安装 Kubernetes 仪表板
 
