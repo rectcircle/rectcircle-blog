@@ -37,7 +37,7 @@ k3s 除了支持单机部署一个集群外，还支持如下场景，比如：
     * [多 server 并使用外部数据库](https://docs.k3s.io/zh/architecture#%E5%85%B7%E6%9C%89%E5%A4%96%E9%83%A8%E6%95%B0%E6%8D%AE%E5%BA%93%E7%9A%84%E9%AB%98%E5%8F%AF%E7%94%A8-k3s-server)
     * [server 禁用 agent](https://docs.k3s.io/zh/advanced#%E8%BF%90%E8%A1%8C%E6%97%A0-agent-%E7%9A%84-server%E5%AE%9E%E9%AA%8C%E6%80%A7)
     * 为多个 server 配置一个 4 层 LB。
-    * agent 独立部署，配置到 LB 中。
+    * agent 独立部署，配置 server 为上一步的 LB 地址。
 * 混合云：[支持 agent 部署在不同的内网中](https://docs.k3s.io/zh/installation/network-options#%E5%88%86%E5%B8%83%E5%BC%8F%E6%B7%B7%E5%90%88%E6%88%96%E5%A4%9A%E4%BA%91%E9%9B%86%E7%BE%A4)。
 * [IPv4、IPv6 双栈](https://docs.k3s.io/zh/installation/network-options#%E5%8F%8C%E6%A0%88-ipv4--ipv6-%E7%BD%91%E7%BB%9C)。
 
