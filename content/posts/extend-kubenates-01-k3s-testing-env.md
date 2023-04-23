@@ -47,7 +47,7 @@ k3s 除了支持单机部署一个集群外，还支持如下场景，比如：
 
 > version: [v1.26.3+k3s1](https://github.com/k3s-io/k3s/tree/v1.26.3+k3s1)
 
-在使用 systemd 或 openrc 的 Linux x86_64 或 amd 操作系统 （kernal version > ??） 中执行如下安装命令（详细要求参见：[官方文档 - 要求](https://docs.k3s.io/zh/installation/requirements)）：
+在使用 systemd 或 openrc 的 Linux x86_64 或 amd 操作系统 （kernal version >= 5.1） 中执行如下安装命令（详细要求参见：[官方文档 - 要求](https://docs.k3s.io/zh/installation/requirements)）：
 
 ```bash
 # curl -sfL https://get.k3s.io | sh -
