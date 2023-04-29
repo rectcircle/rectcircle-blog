@@ -75,7 +75,25 @@ Containerd 守护进程默认提供了两套 API：
 
 ### 配置 service
 
+```bash
+wget https://raw.githubusercontent.com/containerd/containerd/v1.7.0/containerd.service
+sudo mv containerd.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now containerd
+```
+
 ### 启动容器
+
+注意：这里使用了 ctr 命令行工具，该命令行工具仅用于调试使用，官方不建议在生产环境使用。
+
+```bash
+ctr --help
+sudo ctr info
+sudo ctr images pull docker.io/library/busybox:1.36
+sudo ctr run -d docker.io/library/busybox:1.36 busybox sleep infinity
+# sudo ctr task kill -s 9 busybox # 停止
+# sudo ctr container rm busybox   # 删除
+```
 
 ## 流程分析
 
@@ -86,6 +104,8 @@ Containerd 守护进程默认提供了两套 API：
 ### 容器启动
 
 ## API 简要说明
+
+### 概念
 
 ### 原生 API
 
