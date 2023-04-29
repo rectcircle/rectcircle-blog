@@ -169,3 +169,24 @@ token 通过如下方式获取：
 ```bash
 kubectl -n kubernetes-dashboard create token admin-user
 ```
+
+## k3s 集群操作
+
+### 停止和启动
+
+k3s 提供了两种停止 k3s 集群的方式：
+
+* `sudo systemctl stop k3s.service` 仅停止 k3s server 服务，已运行的容器仍然运行。
+* `sudo k3s-killall.sh` 停止 k3s server 服务，同时停止所有运行中的容器、网络、iptables、并重置 containerd 的状态。集群数据不会删除，在启动后，k3s 会重新拉起对应的 Pod。
+
+针对以上两种，重新启动的方式都是一样的：
+
+```bash
+sudo systemctl start k3s.service
+```
+
+### 卸载
+
+```bash
+k3s-uninstall.sh
+```
