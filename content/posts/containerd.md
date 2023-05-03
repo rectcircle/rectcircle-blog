@@ -99,7 +99,39 @@ sudo ctr run -d docker.io/library/busybox:1.36 busybox sleep infinity
 
 ### 进程分析
 
+执行 `ps xao pid,ppid,uid,cmd` 与 containerd 有关的进程输出入如下：
+
+```
+    PID    PPID   UID CMD
+ 934457       1     0 /usr/local/bin/containerd
+ 935161       1     0 /usr/local/bin/containerd-shim-runc-v2 -namespace default -id busybox -address /run/containerd/containerd.sock
+ 935181  935161     0 sleep infinity
+```
+
+* `/usr/local/bin/containerd` containerd 守护进程，通过 `/run/containerd/containerd.sock` 对外提供 gRPC 接口。
+* `/usr/local/bin/containerd-shim-runc-v2` 每个容器对应一个，shim （垫片）进程，负责管理容器（主进程）的生命周期。本例中为上文 busybox 容器的 shim 进程（详见：[博客](https://container42.com/2022/01/10/shim-shiminey-shim-shiminey/)）。
+    * shim 需实现如下两个层面的接口：
+        * 命令行接口：
+            * `start` 子命令：containerd 会按照给定标准，调用该 `start` 子命令，在该退出之前，必须通过将 shim grpc server 的 unix socket 地址写入 stdout，这个 unix socket 位于 `/run/containerd/s/` 目录。（可通过 `sudo lsof -p 935161 | grep unix` 查看，[源码](https://github.com/containerd/containerd/blob/v1.7.0/runtime/v2/shim/util_unix.go#L68)），在 `containerd-shim-runc-v2` 的实现为：
+                * 调用 [`shim.SocketAddress`](https://github.com/containerd/containerd/blob/v1.7.0/runtime/v2/shim/util_unix.go#L68) 生成用于提供 shim grpc server 服务的 unix socket addr，并监听该 socket。
+                * 通过 `cmd.ExtraFiles` 将这个 socket 传递给子进程，然后将这个 addr 通过 stdout 告知 containerd 进程，start 命令退出。
+                * 启动 shim grpc server 进程，该进程会获取到上文传递的 socket 文件描述符，参见：[源码](https://github.com/containerd/containerd/blob/v1.7.0/runtime/v2/shim/shim_unix.go#L58)。
+            * `delete` 子命令，略。
+
+            更多参见： [runtime v2 - README - Shim Authoring](https://github.com/containerd/containerd/blob/v1.7.0/runtime/v2/README.md)。
+
+        * shim grpc server 接口的实现，接口定义参见：[shim.proto](https://github.com/containerd/containerd/blob/v1.7.0/api/runtime/task/v2/shim.proto)。
+    * 主要职责为：
+        * 执行 runC 命令启动容器；
+        * 监控容器进程状态，当容器执行完成后，通过 exit fifo 文件报告容器进程结束状态；
+        * 当容器 1 号进程被杀死后，reaper 掉其所有其子进程。该职责通过 [`prctl` 系统调用](https://man7.org/linux/man-pages/man2/prctl.2.html) 和 `PR_SET_CHILD_SUBREAPER` 选项实现。
+
+* `sleep infinity` 容器主进程，由 `runc` 引导启动。本例中为上文 busybox 容器的 1 号进程。
+
 ### 数据存储
+
+> https://github.com/containerd/containerd/blob/v1.7.0/docs/ops.md
+> https://github.com/containerd/containerd/blob/v1.7.0/docs/content-flow.md
 
 ### 容器启动
 
@@ -110,5 +142,9 @@ sudo ctr run -d docker.io/library/busybox:1.36 busybox sleep infinity
 ### 原生 API
 
 ### CRI API
+
+## 配置和运维
+
+https://github.com/containerd/containerd/blob/v1.7.0/docs/ops.md
 
 ## Containerd 插件
