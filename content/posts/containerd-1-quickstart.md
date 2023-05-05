@@ -1,7 +1,7 @@
 ---
-title: "Containerd 详解"
-date: 2023-04-29T12:55:23+08:00
-draft: true
+title: "Containerd 详解（一） 快速开始"
+date: 2023-05-05T16:10:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -34,9 +34,7 @@ Containerd 守护进程默认提供了两套 API：
 * Containerd 提供单个节点的容器生命周期管理，包括镜像、存储、rootfs、网络，启动容器是 Containerd 通过 [OCI-runtime](https://github.com/opencontainers/runtime-spec) 标准调用 runc。
 * Runc 容器引导器，负责根据一个容器的具体配置，在指定 rootfs 上引导启动一个容器进程。
 
-## 快速开始
-
-### 安装
+## 安装
 
 > [Getting started with containerd - Installing containerd
 ](https://github.com/containerd/containerd/blob/v1.7.0/docs/getting-started.md#installing-containerd)
@@ -73,7 +71,7 @@ Containerd 守护进程默认提供了两套 API：
     sudo tar Cxzvf /opt/cni/bin cni-plugins-linux-amd64-v1.2.0.tgz
     ```
 
-### 配置 service
+## 配置 service
 
 ```bash
 wget https://raw.githubusercontent.com/containerd/containerd/v1.7.0/containerd.service
@@ -82,7 +80,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now containerd
 ```
 
-### 启动容器
+## 启动容器
 
 注意：这里使用了 ctr 命令行工具，该命令行工具仅用于调试使用，官方不建议在生产环境使用。
 
@@ -95,9 +93,7 @@ sudo ctr run -d docker.io/library/busybox:1.36 busybox sleep infinity
 # sudo ctr container rm busybox   # 删除
 ```
 
-## 流程分析
-
-### 进程分析
+## 进程分析
 
 执行 `ps xao pid,ppid,uid,cmd` 与 containerd 有关的进程输出入如下：
 
@@ -128,23 +124,108 @@ sudo ctr run -d docker.io/library/busybox:1.36 busybox sleep infinity
 
 * `sleep infinity` 容器主进程，由 `runc` 引导启动。本例中为上文 busybox 容器的 1 号进程。
 
-### 数据存储
+## 存储分析
 
-> https://github.com/containerd/containerd/blob/v1.7.0/docs/ops.md
-> https://github.com/containerd/containerd/blob/v1.7.0/docs/content-flow.md
+> 参考： [ops.md](https://github.com/containerd/containerd/blob/v1.7.0/docs/ops.md) | [content-flow.md](https://github.com/containerd/containerd/blob/v1.7.0/docs/content-flow.md)
 
-### 容器启动
+### /var/lib/containerd/
 
-## API 简要说明
+containerd `root` 目录。用于存储持久化的数据，默认为 `/var/lib/containerd`，可以通过 `--root` 选项配置。
 
-### 概念
+containerd 本身是插件化的，因此 containerd 自身并不会在该目录存储任何内容。该目录的内容都是由 containerd 插件创建和维护的。
 
-### 原生 API
+```
+/var/lib/containerd/
+├── io.containerd.content.v1.content
+│   ├── blobs
+│   └── ingest
+├── io.containerd.metadata.v1.bolt
+│   └── meta.db
+├── io.containerd.runtime.v2.task
+│   ├── default
+│   └── example
+├── io.containerd.snapshotter.v1.btrfs
+└── io.containerd.snapshotter.v1.overlayfs
+    ├── metadata.db
+    └── snapshots
+```
 
-### CRI API
+* `io.containerd.content.v1.content` 目录 OCI image （即 docker 镜像） 内存存储，更多参见：[oci image spec](/posts/oci-image-spec/)。
+* `io.containerd.metadata.v1.bolt` 存储 containerd 管理的镜像、容器、快照的元数据，存储的内容参见：[源码](https://github.com/containerd/containerd/blob/v1.7.0/metadata/buckets.go)。
+* `io.containerd.snapshotter.v1.<type>` Snapshotter 快照目录，参见：[Snapshotters 文档](https://github.com/containerd/containerd/blob/v1.7.0/docs/snapshotters/README.md)。
+    * `io.containerd.snapshotter.v1.btrfs` 使用 btrfs 文件系统创建容器快照的目录，目前仍处于早期阶段，默认不启用。
+    * `io.containerd.snapshotter.v1.overlayfs` 默认的 snapshotter。采用 overlayfs2 创建快照。
 
-## 配置和运维
+上文我们多次提到了 snapshotter 、快照之类的概念。containerd 的主要职责就是，从一个镜像加上运行配置，最终启动一个容器。我们知道，容器的是有独立于宿主机的根文件系统的（rootfs）。containerd 将镜像转换为一个 rootfs 的语义抽象为一种插件： snapshotter 。开发者可以自由的利用不同的底层技术，来构造 rootfs。
 
-https://github.com/containerd/containerd/blob/v1.7.0/docs/ops.md
+containerd 默认提供了多种 snapshotter 实现，目前广泛使用的是 overlayfs。而 `io.containerd.snapshotter.v1.overlayfs` 目录就是 overlayfs snapshotter 的数据目录，这里重点介绍一下其结构和原理。
 
-## Containerd 插件
+执行 `mount | grep busybox` 观察 busybox 的 rootfs：
+
+```
+overlay on /run/containerd/io.containerd.runtime.v2.task/default/busybox/rootfs type overlay (rw,relatime,lowerdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/1/fs,upperdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/3/fs,workdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/3/work)
+```
+
+可以看出关键信息如下：
+
+* `lowerdir` 为 `/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/1/fs`。
+* `upperdir` 为 `/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/3/fs`。
+* `workdir` 为 `/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/3/work`。
+* 挂载点为 `/run/containerd/io.containerd.runtime.v2.task/default/busybox/rootfs`
+
+因此 `overlayfs` snapshotter 插件的准备一个容器的 root 的执行过程如下：
+
+* 将 `io.containerd.content.v1.content` 目录的 layer blobs 解压到 `io.containerd.snapshotter.v1.overlayfs/snapshots/<id>/fs` 中，并创建 `work` 目录，并记录到 `metadata.db` 中。
+* 创建一个 `upperdir` 目录，存储到 `io.containerd.snapshotter.v1.overlayfs/snapshots/<id>/fs` 并创建 `work` 目录，并记录到  `metadata.db` 中。
+* 调用构造 mount 命令参数，创建 rootfs 挂载到 `/run/containerd/io.containerd.runtime.v2.task/<namespace>/<name>/rootfs`
+
+### /run/containerd/
+
+containerd `state` 目录。用于存储临时数据，默认为 `/run/containerd`，可以通过 `--state` 选项配置。
+
+```
+/run/containerd
+├── containerd.sock
+├── containerd.sock.ttrpc
+├── fifo
+│   └── 2043724491
+│       ├── busybox-stderr
+│       ├── busybox-stdin
+│       └── busybox-stdout
+├── io.containerd.runtime.v1.linux
+├── io.containerd.runtime.v2.task
+│   └── default
+│       └── busybox
+│           ├── address
+│           ├── config.json
+│           ├── init.pid
+│           ├── log
+│           ├── log.json
+│           ├── options.json
+│           ├── rootfs
+│           ├── runtime
+│           ├── shim-binary-path
+│           └── work -> /var/lib/containerd/io.containerd.runtime.v2.task/default/busybox
+├── runc
+│   └── default
+│       └── busybox
+│           └── state.json
+└── s
+    └── 3646bf529360b2d2555bc0d946ef2fb07e38596749e16cccbd778773b61a6f3c
+```
+
+* `containerd.sock` containerd 主服务，GRPC 服务。
+* `containerd.sock.ttrpc` 用于低内存环境 GRPC 服务。
+* `fifo` ??
+* `io.containerd.runtime.v1.linux` ??
+* `io.containerd.runtime.v2.task/<namespace>/<name>` 容器数据。
+    * `address` 连接到 shim 进程的地址，本例中文件内容为 `unix:///run/containerd/s/3646bf529360b2d2555bc0d946ef2fb07e38596749e16cccbd778773b61a6f3c`。
+    * `config.json` oci runtime spec 配置文件 (runc 配置)。
+    * `init.pid` 容器 1 号进程在宿主机名字空间的 pid。
+    * `log` 日志??
+    * `log.json` 日志??
+    * `options.json` 选项??
+    * `rootfs` 容器 rootfs，overlayfs 挂载点。
+    * `runtime` ??
+    * `shim-binary-path` shim 可执行文件路径。
+    * `work` 指向 `/var/lib/containerd/io.containerd.runtime.v2.task/default/busybox`
