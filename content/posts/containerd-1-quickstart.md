@@ -229,3 +229,5 @@ containerd `state` 目录。用于存储临时数据，默认为 `/run/container
     * `runtime` ??
     * `shim-binary-path` shim 可执行文件路径。
     * `work` 指向 `/var/lib/containerd/io.containerd.runtime.v2.task/default/busybox`
+* `runc/<default>/<name>/state.json` runc 容器状态文件。
+* `s/xxx` 与 shim 通讯的 domain socket 文件。
