@@ -12,4 +12,8 @@ tags:
 
 ## overlayfs 插件分析
 
+https://dev.to/napicella/what-is-a-containerd-snapshotters-3eo2
+
+https://www.jianshu.com/p/86296691ca49
+
 ## 实现自己的 snapshot 插件
