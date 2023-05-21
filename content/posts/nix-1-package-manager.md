@@ -188,6 +188,12 @@ nix 通过 profile 机制，将安装的软件包应用到用户 shell 环境中
 
 * 垃圾回收机制。`nix-env` 核心是生成 profile 以及修改软链，`nix-env` 不会删除 /nix/sotre 下的软件包。因此需要通过 `nix-collect-garbage -d` 删除所有历史上的 profile 以及当前 profile 没有引用的，存放在 /nix/sotre 下的软件包。其原理是保留 `/nix/var/nix/gcroots` 中的和当前系统运行的进程中的，存在指向 `/nix/sotre` 的软件包（`nix-store --gc --print-roots` 可以通过该命令看到），其他则删除。
 
+本文描述了无 deamon 的单用户安装模式，因此默认只能单个用户（主用户）使用。根据本文的 profile 特性，实际上也是可以给其他用户使用，做法是：
+
+* 所有管理操作（包括安装包、配置 channel 等）都有主用户配置，这个主用户最好为 root。
+* 为其他用户创建一个 profile （当然也可以复用主用户的 profile），然后创建软链，如 `~/.nix-profile -> /nix/var/nix/profiles/per-user/rectcircle/profile`。
+* 修改用户 profile 文件，如 `~/.bashrc`，添加 `if [ -e /home/rectcircle/.nix-profile/etc/profile.d/nix.sh ]; then . /home/rectcircle/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer`。
+
 ### Channel 管理
 
 在 Nix 中 Channel 类似于 apt source 的概念。可以通过如下命令，添加一个 Channel。

@@ -89,8 +89,9 @@ ctr --help
 sudo ctr info
 sudo ctr images pull docker.io/library/busybox:1.36
 sudo ctr run -d docker.io/library/busybox:1.36 busybox sleep infinity
-# sudo ctr task kill -s 9 busybox # 停止
-# sudo ctr container rm busybox   # 删除
+# sudo ctr task kill -s 9 busybox  # 停止 task
+# sudo ctr container rm busybox    # 删除 container
+# sudo ctr snapshot delete busybox # 删除 snapshot
 ```
 
 ## 进程分析
