@@ -217,7 +217,7 @@ containerd `state` 目录。用于存储临时数据，默认为 `/run/container
 
 * `containerd.sock` containerd 主服务，GRPC 服务。
 * `containerd.sock.ttrpc` 用于低内存环境 GRPC 服务。
-* `fifo` ??
+* `fifo` 容器进程（task）的 stdin、stdout、stderr 对接到目录的 fifo 文件中。kubectl attach 等命令原理就是对接到这个目录下的 fifo 文件。
 * `io.containerd.runtime.v1.linux` ??
 * `io.containerd.runtime.v2.task/<namespace>/<name>` 容器数据。
     * `address` 连接到 shim 进程的地址，本例中文件内容为 `unix:///run/containerd/s/3646bf529360b2d2555bc0d946ef2fb07e38596749e16cccbd778773b61a6f3c`。
