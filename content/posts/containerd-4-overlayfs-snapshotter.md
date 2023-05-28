@@ -1,5 +1,5 @@
 ---
-title: "Containerd 详解（三） snapshot 插件"
+title: "Containerd 详解（四） overlayfs snapshotter"
 date: 2023-04-29T12:55:23+08:00
 draft: true
 toc: true
