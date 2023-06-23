@@ -7,4 +7,7 @@
 		"node_modules",
 		"themes"
 	],
+	"markdown.copyFiles.destination": {
+		"content/series/vscode/**/*": "/image/vscode/"
+	}
 }
