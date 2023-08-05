@@ -32,7 +32,7 @@ tags:
 
 使用 k3s 搭建一个单节点的测试 Kubernetes。
 
-参见：[扩展 Kubernetes （一） k3s 测试环境搭建](/posts/extend-kubenates-01-k3s-testing-env/)。
+参见：[扩展 Kubernetes （一） k3s 测试环境搭建](/posts/extend-kubernetes-01-k3s-testing-env/)。
 
 ### 测试程序
 
@@ -73,10 +73,11 @@ int main(int argc, char *argv[]) {
 }
 ```
 
-静态编译。
+静态编译安装到 PATH。
 
 ```bash
 gcc -static mem-alloc.c -o mem-alloc
+sudo cp mem-alloc /usr/local/bin
 ```
 
 验证。
@@ -91,6 +92,94 @@ ps aux | grep mem-alloc | grep -v grep # shell 2
 
 ### 场景1：node 空闲但 c1 内存超过 limit
 
+#### 非 1 号进程内存直接超过 limit
+
+`case1/pod1.yaml`
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: case1-1
+spec:
+  volumes:
+  - name: mem-alloc
+    hostPath:
+      path: /usr/local/bin/mem-alloc
+  containers:
+  - name: p1
+    image: busybox:1.36
+    command:
+    - /bin/sh
+    args: 
+    - -c
+    - |
+      mem-alloc 2500 &
+      exec mem-alloc 100
+    resources:
+      requests:
+        memory: 1G
+      limits:
+        memory: 2G
+    volumeMounts:
+    - mountPath: /bin/mem-alloc
+      name: mem-alloc
+  - name: p2
+    image: busybox:1.36
+    command:
+      - /bin/sh
+    args: 
+      - -c
+      - sleep infinity
+    resources:
+      requests:
+        memory: 0.25G
+      limits:
+        memory: 0.5G
+    volumeMounts:
+    - mountPath: /bin/mem-alloc
+      name: mem-alloc
+```
+
+* 挂载 `mem-alloc` 进程模拟内存占用。
+* 在 c1 容器中，先启动一个子进程申请 2500 MB，再让 1 号进程申请 100 MB。
+* 观察 pod、容器、进程情况
+
+创建 pod
+
+```bash
+sudo kubectl apply -f case1/pod1.yaml
+```
+
+观察现象
+
+```bash
+sudo kubectl get pod case1-1
+# 输出如下，说明在 Kubernetes 看来，pod 和 容器启动正常
+# case1-1   2/2     Running   0          85s
+sudo kubectl exec -it case1-1 -- top
+# 输出如下，7 号进程已经被僵尸状态（STAT 为 Z），已经被 Kill，1 号进程正常
+# Mem: 3956532K used, 12436616K free, 2252K shrd, 198904K buff, 1877444K cached
+# CPU:  2.5% usr  0.0% sys  0.0% nic 97.5% idle  0.0% io  0.0% irq  0.0% sirq
+# Load average: 0.23 0.26 0.18 2/439 20
+#   PID  PPID USER     STAT   VSZ %VSZ CPU %CPU COMMAND
+#     1     0 root     S     101m  0.6   3  0.0 mem-alloc 100
+#    14     0 root     R     4404  0.0   3  0.0 top
+#     7     1 root     Z        0  0.0   2  0.0 [mem-alloc]
+```
+
+清理现场
+
+```bash
+sudo kubectl delete pod case1-1
+```
+
+#### 1 号进程内存直接超过 limit
+
+#### 容器总内存超过 limit 且 非 1 号进程内存占用更多
+
+#### 容器总内存超过 limit 且 1 号进程内存占用更多
+
 * 常规 runc
     * 分场景
         * p1 > p2 oom kill p1，containerd 重启：p1、p2 均重启。退出码/信号多少？
@@ -98,3 +187,7 @@ ps aux | grep mem-alloc | grep -v grep # shell 2
     * pod 无异常（ip 不会变化、数据不丢失）。c2 仍运行。
 
 ### 场景2：node 负载高发生驱逐
+
+## 参考
+
+* [TODO](https://izsk.me/2023/02/09/Kubernetes-Out-Of-Memory-1/)
