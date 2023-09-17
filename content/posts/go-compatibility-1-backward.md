@@ -147,9 +147,9 @@ func main() {
 和升级 Go 编译器不同，升级 `go line` 的版本需要一些额外的成本，即需要评估项目代码是否依赖 GODEBUG 中声明的不兼容的变更，操作路径如下：
 
 * 完成上述的 Go 编译器升级。
-* 在需要升级的 go module 中，执行 `go list -f '{{.DefaultGODEBUG}}' ./` 获取会变更的行为列表。
+* 在需要升级的 go module 中，执行 `go list -f '{{.DefaultGODEBUG}}' ./` 获取可能不兼容的变更的列表。
 * 根据 [GODEBUG History](https://go.dev/doc/godebug#history) 文档中的说明，对照项目代码，评估是否有影响，如果有影响，进行代码修改。
-* 最后执行 `go get go@latest` 升级 `go line`
+* 最后执行 `go get go@latest` 升级 `go line`。
 
 ## 参考
 
