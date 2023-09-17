@@ -72,7 +72,7 @@ go env -w GOPROXY='https://goproxy.cn|direct'
 
 * Go 编译器版本为 `go1.21.0` 时，执行编译（`GOTOOLCHAIN=go1.21.0 go run ./`）将报错 `go: module ../01-goline-new requires go >= 1.21.1 (running go 1.21.0)`。
 * Go 编译器版本为 `go1.21.1` 时，执行编译（`GOTOOLCHAIN=go1.21.1 go run ./`）将报错 `go: updates to go.mod needed; to update it: go mod tidy`。
-    * 执行 `go mod tidy` 后， `go line` 将变更为 `go 1.21.0`。
+    * 执行 `go mod tidy` 后， `go line` 将变更为 `go 1.21.1`。
 
 总结：在 Go 1.21 及其之后，编译器保证，项目的 `go line` 版本必须大于等于依赖的  `go line` 版本（`go.work` 和 `go.mod` 均需满足）。
 
