@@ -224,6 +224,16 @@ cpuacct 子系统用于统计该 cgroup 下的进程的 CPU 使用情况。在�
 
 这些指标在容器资源监控场景非常有用，通过 k8s 中，内置到 Kubelet 的 [`cAdvisor`](https://github.com/google/cadvisor) 对容器的 CPU 的监控的原理和上述类似，关于 k8s 的 metrics 相关，参见：[官方文档](https://kubernetes.io/zh-cn/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/)。
 
+#### cpuset 描述
+
+cpu 子系统控制的是进程在 cpu 时间片上的分配，无法控制 cpu 被调度到哪个核心。而 cpuset 子系统控制的就是：进程能被调度到那些 cpu。一般情况下，该子系统位于位于 `/sys/fs/cgroup/cpuset` hierarchy 目录。
+
+常用文件如下：
+
+* `cpuset.cpus` 当前 cgroup 下的进程可以使用的 cpu 核心的范围，例如 `0-5`。
+
+k8s 的 CPU 策略管理中，如果 kubelet 开启了 static 策略，那么，QoS 为 Guaranteed 的 Pod， 则会利用到了该特性来分配独占 CPU，参见： [官方文档](https://kubernetes.io/zh-cn/docs/tasks/administer-cluster/cpu-management-policies/#static-policy)。
+
 #### 实验
 
 > 参考：[使用 cgroups-v1 为应用程序设置 CPU 限制](https://access.redhat.com/documentation/zh-cn/red_hat_enterprise_linux/8/html/managing_monitoring_and_updating_the_kernel/setting-cpu-limits-to-applications-using-cgroups-v1_setting-limits-for-applications)
