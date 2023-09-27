@@ -1,5 +1,5 @@
 ---
-title: "容器核心技术（九） CGroup"
+title: "容器核心技术（九） cgroup"
 date: 2022-10-15T00:15:42+08:00
 draft: true
 toc: true
@@ -10,11 +10,11 @@ tags:
 
 ## 概述
 
-CGroup 即 Control groups (控制组)，是 Linux 内核提供的对进程资源的使用进行限制和监控的机制。
+cgroup 即 Control groups (控制组)，是 Linux 内核提供的对进程资源的使用进行限制和监控的机制。
 
-Linux 内核通过文件系统（VFS）提供 CGroup 的 API 。也就是说，用户可以通过文件系统 API 来控制进程的 CGroup 情况。
+Linux 内核通过文件系统（VFS）提供 cgroup 的 API 。也就是说，用户可以通过文件系统 API 来控制进程的 cgroup 情况。
 
-下面介绍 CGroup 的一些概念：
+下面介绍 cgroup 的一些概念：
 
 * cgroup (控制组)：控制一组进程的 1 种或者多种 Linux 资源的概念。
 * hierarchy (层级)：cgroup 作为节点构成一颗树。 hierarchy 通过 mount 系统调用来创建，每个 hierarchy 会绑定一种或多种 subsystem。
@@ -160,11 +160,13 @@ cgroup on /sys/fs/cgroup/rdma type cgroup (rw,nosuid,nodev,noexec,relatime,rdma)
     * 该 cgroup 目录包含如下两类：
         * 文件：用于设置或者查看该 cgroup 的资源限制配置、占用情况、关联的进程。
         * 目录：该 cgroup 的子 cgroup。
-* 通过将 PID 写入 `<cgroup>/cgroup.procs`，可以将一个进程移动到指定的 CGroup 中。
-* 假设 CGroup A 对应的路径为 `<hierarchy>/A`，B 对应的路径为 `<hierarchy>/A/B`，则可以说 A 是 B 的父 CGroup。此时，B 对资源的限制默认继承 A 的配置，且 B 不能超过 A 的配置上限。
+* 通过将 PID 写入 `<cgroup>/cgroup.procs`，可以将一个进程移动到指定的 cgroup 中。
+* 假设 cgroup A 对应的路径为 `<hierarchy>/A`，B 对应的路径为 `<hierarchy>/A/B`，则可以说 A 是 B 的父 cgroup。此时，B 对资源的限制默认继承 A 的配置，且 B 不能超过 A 的配置上限。
 * 如果一个进程已经位于某个子系统为 `cpu,cpuacct` 的 hierarchy 中，那么该进程就不能加入其他只有 `cpu` 的 hierarchy。因为如果允许这种情况存在，内核就无法确定该进程的 CPU 该以哪个为准。
 
 ## cgroup v2
+
+> [Linxu 内核文档](https://www.kernel.org/doc/Documentation/cgroup-v2.txt)
 
 ## 常用的 cgroup 子系统
 
@@ -803,7 +805,7 @@ pid 380295 state is: [sleep] (oom_adj=, oom_score=668, oom_score_adj=0)
 * [pids](https://www.kernel.org/doc/Documentation/cgroup-v1/pids.txt) 限制进程可 fork的进程数。
 * [rdma](https://www.kernel.org/doc/Documentation/cgroup-v1/rdma.txt) 限制和隔离进程对 RDMA/IB （Remote Direct Memory Access 即远程直接内存访问） 设备的访问。
 
-## CGroup 的权限委托
+## cgroup 的权限委托
 
 ## cgroup namespace
 
