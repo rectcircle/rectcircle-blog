@@ -172,9 +172,9 @@ cgroup on /sys/fs/cgroup/rdma type cgroup (rw,nosuid,nodev,noexec,relatime,rdma)
 
 本部分，仅介绍 cgroup v1 的内容。
 
-### cpu
+### cpu、cpuacct 和 cpuset
 
-#### 描述
+#### cpu 描述
 
 自 Linux 2.6 起，Linux 的 CPU 调度器使用的是 CFS (完全公平调度器)。 cgroup 的 cpu 子系统中，通过 [CFS 调度器带宽控制](https://docs.kernel.org/translations/zh_CN/scheduler/sched-bwc.html) 特性，以实现控制进程的 CPU 使用率的目的（只对 `non-RT` 非实时策略生效）。相关参数（文件）如下：
 
@@ -198,6 +198,31 @@ cgroup on /sys/fs/cgroup/rdma type cgroup (rw,nosuid,nodev,noexec,relatime,rdma)
 * [glommer/memcg cpu_stat/Documentation/cgroups/cpu.txt](https://kernel.googlesource.com/pub/scm/linux/kernel/git/glommer/memcg/+/cpu_stat/Documentation/cgroups/cpu.txt)
 * [CFS Bandwidth Control](https://docs.kernel.org/scheduler/sched-bwc.html) | [CFS 带宽控制](https://docs.kernel.org/translations/zh_CN/scheduler/sched-bwc.html)
 * [Cgroup的CPU资源隔离介绍&docker cpu限制](https://blog.csdn.net/liukuan73/article/details/53358423)
+
+#### cpuacct 描述
+
+cpuacct 子系统用于统计该 cgroup 下的进程的 CPU 使用情况。在一般的 Linux 系统中和 cpu 子系统位于同一个层次目录下即： `/sys/fs/cgroup/cpu,cpuacct`。常用文件如下：
+
+* `cpuacct.usage` 系统运行到现在，当前 cgroup 下的进程所使用的 cpu 时间，单位为纳秒。
+* `cpuacct.usage_all` 系统运行到现在，当前 cgroup 下的进程在每个核心下，用户态和内核态，分别使用的 cpu 时间，单位为纳秒。
+* `cpuacct.usage_percpu` 系统运行到现在，当前 cgroup 下的进程在每个核心下，分别使用的 cpu 时间，单位为纳秒。
+
+通过这些文件可以计算出某个 cgroup 下 CPU 的其他指标，简单的算法为：
+
+* 获取当前时刻 `cpuacct` 相关文件内容 （记为 before）。
+* sleep 1 秒后，再次获取 `cpuacct` 相关文件内容（记为 after）。
+* `after - before`，即可获取 1 秒内 CPU 时间消耗情况。
+
+最后，一些常用的指标如下：
+
+* cgroup cpu 核心使用数： `(after{cpuacct.usage} - before{cpuacct.usage}) / 1000000000`。取值范围和 cgroup 分配的核心数有关，如：
+    * `cpu.cfs_period_us` 为 100000。
+    * `cpu.cfs_quota_us` 为 400000。
+    * 则上述公式取值范围为 `[0, 4]`
+    * 假设某一秒内其值为 `2.1` 则表示，使用了 2.1 个 CPU 核，即 `210%` 个 CPU。
+* cgroup cpu 总体使用率：`(after{cpuacct.usage} - before{cpuacct.usage}) / 1000000000 / (cpu.cfs_period_us / cpu.cfs_quota_us)`。取值范围为 `[0, 1]`，即分配给该 cgroup 的全部的 cpu 资源的使用率。
+
+这些指标在容器资源监控场景非常有用，通过 k8s 中，内置到 Kubelet 的 [`cAdvisor`](https://github.com/google/cadvisor) 对容器的 CPU 的监控的原理和上述类似，关于 k8s 的 metrics 相关，参见：[官方文档](https://kubernetes.io/zh-cn/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/)。
 
 #### 实验
 
