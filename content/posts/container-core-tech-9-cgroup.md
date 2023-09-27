@@ -792,11 +792,18 @@ pid 380295 state is: [sleep] (oom_adj=, oom_score=668, oom_score_adj=0)
     * Pod 进程实际使用的内存总和的内存超过了 `resources.limits.memory` 的限制。此时 cgroup 的 `memory.limit_in_bytes` 发生作用，会 kill 掉这个内存使用超限的进程。在这种情况下，操作的粒度是进程，因此 Pod 并不一定会被会退出，而是某个（些）进程退出。
     * Node 压力过大，Pod 申请的内存没有达到限制。此时 k8s 的节点压力驱逐机制生效，会按照策略驱逐某个（些）Pod，并重新调度到其他的 Node 中重新创建。在这种情况下，操作的粒度是 Pod，因此整个 Pod 都会退出。
 
-### devices
+### 其他
 
-### net_cls
+在 k8s 中暂未使用，本文不做说明，如需了解，参见如下链接：
 
-### blkio
+* [blkio](https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt) 限制进程的磁盘IO带宽和IO操作。
+* [devices](https://www.kernel.org/doc/Documentation/cgroup-v1/devices.txt) 允许或禁止进程访问指定的设备。
+* [freezer](https://www.kernel.org/doc/Documentation/cgroup-v1/freezer-subsystem.txt) 暂停或恢复进程执行。
+* [hugetlb](https://www.kernel.org/doc/Documentation/cgroup-v1/hugetlb.txt) 限制进程对大页内存的使用。
+* [net_cls](https://www.kernel.org/doc/Documentation/cgroup-v1/net_cls.txt) 通过标记网络数据包来分类控制网络流量。
+* [net_prio](https://www.kernel.org/doc/Documentation/cgroup-v1/net_prio.txt) 设置进程生成的网络流量的优先级。
+* [pids](https://www.kernel.org/doc/Documentation/cgroup-v1/pids.txt) 限制进程可 fork的进程数。
+* [rdma](https://www.kernel.org/doc/Documentation/cgroup-v1/rdma.txt) 限制和隔离进程对 RDMA/IB （Remote Direct Memory Access 即远程直接内存访问） 设备的访问。
 
 ## CGroup 的权限委托
 
