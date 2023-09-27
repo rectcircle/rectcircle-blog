@@ -1,7 +1,7 @@
 ---
 title: "容器核心技术（九） cgroup"
-date: 2022-10-15T00:15:42+08:00
-draft: true
+date: 2023-09-27T00:17:37+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -163,10 +163,6 @@ cgroup on /sys/fs/cgroup/rdma type cgroup (rw,nosuid,nodev,noexec,relatime,rdma)
 * 通过将 PID 写入 `<cgroup>/cgroup.procs`，可以将一个进程移动到指定的 cgroup 中。
 * 假设 cgroup A 对应的路径为 `<hierarchy>/A`，B 对应的路径为 `<hierarchy>/A/B`，则可以说 A 是 B 的父 cgroup。此时，B 对资源的限制默认继承 A 的配置，且 B 不能超过 A 的配置上限。
 * 如果一个进程已经位于某个子系统为 `cpu,cpuacct` 的 hierarchy 中，那么该进程就不能加入其他只有 `cpu` 的 hierarchy。因为如果允许这种情况存在，内核就无法确定该进程的 CPU 该以哪个为准。
-
-## cgroup v2
-
-> [Linxu 内核文档](https://www.kernel.org/doc/Documentation/cgroup-v2.txt)
 
 ## 常用的 cgroup 子系统
 
@@ -403,7 +399,7 @@ func main() {
 
 #### 描述
 
-cgroup 对内存的控制的相关主要参数（文件）如下所示（只介绍 [runc](https://github.com/opencontainers/runc/blob/main/libcontainer/cgroups/fs/memory.go#L20) 使用的那些）：
+cgroup 对内存的控制的相关主要参数（文件）如下所示（只介绍 [runc](https://github.com/opencontainers/runc/blob/main/libcontainer/cgroups/fs/memory.go#L20) 使用的那些，位于 `/sys/fs/cgroup/memory` 层级目录）：
 
 * `memory.limit_in_bytes` rw，默认值 9223372036854771712（0x7FFFFFFFFFFFF000 基本上等于无限制），内存使用（硬）限制，对应的指标为 RSS + Page Cache（不包含 `swap`），写入 -1 表示无限制。需要注意的是：
     * cgroup 对应指标超过该值时，内核行为由 `memory.oom_control` 参数决定：
@@ -805,30 +801,86 @@ pid 380295 state is: [sleep] (oom_adj=, oom_score=668, oom_score_adj=0)
 * [pids](https://www.kernel.org/doc/Documentation/cgroup-v1/pids.txt) 限制进程可 fork的进程数。
 * [rdma](https://www.kernel.org/doc/Documentation/cgroup-v1/rdma.txt) 限制和隔离进程对 RDMA/IB （Remote Direct Memory Access 即远程直接内存访问） 设备的访问。
 
-## cgroup 的权限委托
+## cgroup v2
+
+> [Linxu 内核文档](https://www.kernel.org/doc/Documentation/cgroup-v2.txt)
+
+[kubernetes](https://kubernetes.io/zh-cn/docs/concepts/architecture/cgroups/#cgroup-v2)
+
+### 和 v1 对比
+
+> [cgroups(7) — Linux manual page - CGROUPS VERSION 2](https://man7.org/linux/man-pages/man7/cgroups.7.html#CGROUPS_VERSION_2)
+
+* cgroups v2 使用一个统一的层次结构，且所有控制器都自动安装到这个层次结构（根）。也就是说，v2 只有一颗 cgroup 树。以 `memory.limit_in_bytes` 为例，其根 cgroup 的路径在 v1 和 v2 分别为：
+    * `/sys/fs/cgroup/memory/memory.stat`
+    * `/sys/fs/cgroup/memory.stat`
+* 除了根 cgroup 外，进程只能添加到叶子节点的 cgroup 中 （这让资源管理更加好理解，实现也更加容易）。
+* cgroup v2 节点要挂载那些控制器需要通过 `cgroup.controllers` 和 `cgroup.subtree_control` 配置，而不是 v1 之前的自动继承层次绑定的控制器（更加灵活了）。
+* cgroup v2 删除了 `tasks`（该文件在 v1 中用来配置线程的），通过 `cgroup.type` 来决定管理的粒度。
+* cgroup v2 删除了 `cpuset` 使用的 `cgroup.clone_children` 文件。
+* 新增 cgroup.events 文件提供统一的通知机制。
+* v2 实现了较为安全的委派机制，参见下结。
+
+### 委托机制 (delegation)
+
+委派指的是，允许非 root 用户创建自己的子 cgroup，并在这个子 cgroup 中作资源管理。几个关键点:
+
+* 支持用户命名空间 (user namespace)
+* 设置 cgroup 所有者
+* 控制文件访问权限
+* 不强制要求 root 权限
+
+委托方式有两种：
+
+* 委托给用户：修改即可对应的目录文件的权限（如 chown 命令修改）。
+* 重新 mount，如： `mount -t cgroup2 -o remount,nsdelegate none /sys/fs/cgroup/unified`。
+
+更多参见： [cgroup-v2](https://www.kernel.org/doc/Documentation/cgroup-v2.txt)。
+
+cgroup v2 的委托，主要在 rootless 容器场景有用：
+
+* [docker rootless](https://docs.docker.com/engine/security/rootless/#limiting-resources)
+* [rootless cgroup v2](https://rootlesscontaine.rs/getting-started/common/cgroup2/)
+* [systemd cgroup delegation](https://systemd.io/CGROUP_DELEGATION/)
 
 ## cgroup namespace
 
-## Docker 和 kubernetes 的 cgroup
+> [cgroup_namespaces(7) — Linux manual page](https://man7.org/linux/man-pages/man7/cgroup_namespaces.7.html)
 
-## 其他说明
+通过 `/proc/pid/cgroup` 可以看到当前进程所属 cgroup 的层次结构（格式为 `hierarchy_id:controller_list:cgroup_path`）。
 
-* 虽然 Linux 没有限制创建自己的 cgroup hierarchy。但是，一般情况下，没有必要重新创建自己的 cgroup hierarchy。因为在多数情况下，我们对每种系统资源的管控通过一棵树就可以实现。因此，直接在 `/sys/fs/cgroup/<hierarchy>/` 目录下建立自己应用的 cgroup (目录) 即可。
+默认情况下，在 `cgroup_path` 部分，可以看到从根 cgroup 到当前 cgroup 的真个路径，这可能泄漏一些信息。
+
+如果创建进程时，新建一个 cgroup namespace（clone 系统调用带有 `CLONE_NEWCGROUP` 选项），则该进程当前进程的 cgroup 根将变为这个 cgroup。
+
+简单而言，cgroup namespace 就是重设 cgroup 根，让让进程看不到祖先 cgroup。
+
+## 其他
+
+### 管理命令和 API
+
+* 直接通过常规的文件系统工具操作 cgroup 文件系统。
+* [cgroup-tools 命名行工具](https://packages.debian.org/bookworm/cgroup-tools)。
+* [`libcgroup` C 库](https://github.com/libcgroup/libcgroup)
+* [`containerd/cgroups` Golang 库](https://github.com/containerd/cgroups)。
+
+### docker、 kubernetes 使用 cgroup
+
+> 以 cgroup v1 为例
+
+两者在底层都使用了 runc，具体 cgroup 路径有所不同。
+
+* docker 创建 `/sys/fs/cgroup/$hierarchy/docker/容器ID` 并 mount binding 到容器 rootfs 的 `/sys/fs/cgroup/$hierarchy`。
+* kubernetes 创建 `/sys/fs/cgroup/memory/kubepods/podd7f4b509-cf94-4951-9417-d1087c92a5b2` 并 mount binding 到容器 rootfs 的 `/sys/fs/cgroup/$hierarchy`。 （手动观察命令参见：[文档](https://kubernetes.io/zh-cn/docs/concepts/scheduling-eviction/pod-overhead/#%E9%AA%8C%E8%AF%81-pod-cgroup-%E9%99%90%E5%88%B6)）
+
+### 非容器场景使用 cgroup 管理进程
+
+* 虽然 Linux 没有限制创建自己的 cgroup hierarchy。但是，一般情况下，没有必要重新创建自己的 cgroup hierarchy。因为在多数情况下，我们对每种系统资源的管控通过一棵树就可以实现。因此，直接在 `/sys/fs/cgroup/<hierarchy>/` (v2 为 `/sys/fs/cgroup`)  目录下建立自己应用的 cgroup (目录) 即可。
+* 在 cgrouo v2 中，可以通过 systemd cgroup 委托机制来管理 cgroup，非使用 root 权限来管理。
 
 ## 参考
 
-https://tech.meituan.com/2015/03/31/cgroups.html
-
-runc https://www.jianshu.com/p/7c18075aa735
-docker cgroup 配置 https://www.jianshu.com/p/fdfeabcb08b4
-cgroup namespace https://hustcat.github.io/cgroup-namespace/
-runc mount v1 https://github.com/opencontainers/runc/blob/main/libcontainer/rootfs_linux.go#L234 https://github.com/opencontainers/runc/blob/25c9e888686773e7e06429133578038a9abc091d/libcontainer/rootfs_linux.go#L234 binding 的方式。
-
-原理：
-
-* docker
-    * 在宿主机的 /sys/fs/cgroup/$hierarchy/docker/容器ID
-    * mount binding 到 rootfs 的 /sys/fs/cgroup/$hierarchy
-* kubernetes
-    * https://kubernetes.io/zh-cn/docs/concepts/scheduling-eviction/pod-overhead/
-    * /sys/fs/cgroup/memory/kubepods/podd7f4b509-cf94-4951-9417-d1087c92a5b2
+* [美团技术团队 - Linux资源管理之cgroups简介](https://tech.meituan.com/2015/03/31/cgroups.html)
+* [RunC 源码通读指南之 Cgroup](https://www.jianshu.com/p/7c18075aa735)
+* [docker cgroup 配置](https://www.jianshu.com/p/fdfeabcb08b4)
+* [runc mount v1 cgroup 路径](https://github.com/opencontainers/runc/blob/96a61d3bf0dcc26343bfafe5112934d73d280dd3/libcontainer/rootfs_linux.go#L255)
