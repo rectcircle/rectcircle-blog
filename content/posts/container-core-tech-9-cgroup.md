@@ -166,8 +166,6 @@ cgroup on /sys/fs/cgroup/rdma type cgroup (rw,nosuid,nodev,noexec,relatime,rdma)
 
 ## cgroup v2
 
-## Docker 和 kubernetes 的 cgroup
-
 ## 常用的 cgroup 子系统
 
 本部分，仅介绍 cgroup v1 的内容。
@@ -222,7 +220,7 @@ cpuacct 子系统用于统计该 cgroup 下的进程的 CPU 使用情况。在�
     * 假设某一秒内其值为 `2.1` 则表示，使用了 2.1 个 CPU 核，即 `210%` 个 CPU。
 * cgroup cpu 总体使用率：`(after{cpuacct.usage} - before{cpuacct.usage}) / 1000000000 / (cpu.cfs_period_us / cpu.cfs_quota_us)`。取值范围为 `[0, 1]`，即分配给该 cgroup 的全部的 cpu 资源的使用率。
 
-这些指标在容器资源监控场景非常有用，通过 k8s 中，内置到 Kubelet 的 [`cAdvisor`](https://github.com/google/cadvisor) 对容器的 CPU 的监控的原理和上述类似，关于 k8s 的 metrics 相关，参见：[官方文档](https://kubernetes.io/zh-cn/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/)。
+这些指标在容器资源监控场景非常有用，通过 kubernetes 中，内置到 Kubelet 的 [`cAdvisor`](https://github.com/google/cadvisor) 对容器的 CPU 的监控的原理和上述类似，关于 kubernetes 的 metrics 相关，参见：[官方文档](https://kubernetes.io/zh-cn/docs/tasks/debug/debug-cluster/resource-metrics-pipeline/)。
 
 #### cpuset 描述
 
@@ -232,7 +230,7 @@ cpu 子系统控制的是进程在 cpu 时间片上的分配，无法控制 cpu 
 
 * `cpuset.cpus` 当前 cgroup 下的进程可以使用的 cpu 核心的范围，例如 `0-5`。
 
-k8s 的 CPU 策略管理中，如果 kubelet 开启了 static 策略，那么，QoS 为 Guaranteed 的 Pod， 则会利用到了该特性来分配独占 CPU，参见： [官方文档](https://kubernetes.io/zh-cn/docs/tasks/administer-cluster/cpu-management-policies/#static-policy)。
+kubernetes 的 CPU 策略管理中，如果 kubelet 开启了 static 策略，那么，QoS 为 Guaranteed 的 Pod， 则会利用到了该特性来分配独占 CPU，参见： [官方文档](https://kubernetes.io/zh-cn/docs/tasks/administer-cluster/cpu-management-policies/#static-policy)。
 
 #### 实验
 
@@ -782,19 +780,19 @@ pid 380295 state is: [sleep] (oom_adj=, oom_score=668, oom_score_adj=0)
 * `cgroup.event_control` 仅建议用来，监听 oom killer 事件，统计 oom 发生的频率，以辅助调度。
 * 如需收集记录进程被 kill 的日志，只能通过 `dmesg` 或 `/var/log/syslog` 内核日志获取信息 （killed process） 来获取。
 
-#### k8s 驱逐
+#### kubernetes 驱逐
 
-* k8s 对内存管理的最小粒度是 Pod。
-* k8s 将 Pod `resources.limits.memory` 设置到 cgroup 的 `memory.limit_in_bytes`。
-* k8s 会按照 [QoS](https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/quality-service-pod/) 配置 Pod 中进程的 `/proc/<pid>/oom_score_adj`。
-* k8s 的后台进程 (kubelet)，会在后台监控宿主机（node）的资源水位，在触发 cgroup 的 oom-killer 之前，主动的杀死 Pod （压力驱逐，该机制仅针对类似内存之类的不可压缩资源），更多参见：[节点压力驱逐](https://kubernetes.io/zh-cn/docs/concepts/scheduling-eviction/node-pressure-eviction/)。
-* 总结一下，站在 Pod 角度。可以分两种情况，来讨论 k8s Pod 因内存问题而出现异常：
+* kubernetes 对内存管理的最小粒度是 Pod。
+* kubernetes 将 Pod `resources.limits.memory` 设置到 cgroup 的 `memory.limit_in_bytes`。
+* kubernetes 会按照 [QoS](https://kubernetes.io/zh-cn/docs/tasks/configure-pod-container/quality-service-pod/) 配置 Pod 中进程的 `/proc/<pid>/oom_score_adj`。
+* kubernetes 的后台进程 (kubelet)，会在后台监控宿主机（node）的资源水位，在触发 cgroup 的 oom-killer 之前，主动的杀死 Pod （压力驱逐，该机制仅针对类似内存之类的不可压缩资源），更多参见：[节点压力驱逐](https://kubernetes.io/zh-cn/docs/concepts/scheduling-eviction/node-pressure-eviction/)。
+* 总结一下，站在 Pod 角度。可以分两种情况，来讨论 kubernetes Pod 因内存问题而出现异常：
     * Pod 进程实际使用的内存总和的内存超过了 `resources.limits.memory` 的限制。此时 cgroup 的 `memory.limit_in_bytes` 发生作用，会 kill 掉这个内存使用超限的进程。在这种情况下，操作的粒度是进程，因此 Pod 并不一定会被会退出，而是某个（些）进程退出。
-    * Node 压力过大，Pod 申请的内存没有达到限制。此时 k8s 的节点压力驱逐机制生效，会按照策略驱逐某个（些）Pod，并重新调度到其他的 Node 中重新创建。在这种情况下，操作的粒度是 Pod，因此整个 Pod 都会退出。
+    * Node 压力过大，Pod 申请的内存没有达到限制。此时 kubernetes 的节点压力驱逐机制生效，会按照策略驱逐某个（些）Pod，并重新调度到其他的 Node 中重新创建。在这种情况下，操作的粒度是 Pod，因此整个 Pod 都会退出。
 
 ### 其他
 
-在 k8s 中暂未使用，本文不做说明，如需了解，参见如下链接：
+在 kubernetes 中暂未使用，本文不做说明，如需了解，参见如下链接：
 
 * [blkio](https://www.kernel.org/doc/Documentation/cgroup-v1/blkio-controller.txt) 限制进程的磁盘IO带宽和IO操作。
 * [devices](https://www.kernel.org/doc/Documentation/cgroup-v1/devices.txt) 允许或禁止进程访问指定的设备。
@@ -809,7 +807,9 @@ pid 380295 state is: [sleep] (oom_adj=, oom_score=668, oom_score_adj=0)
 
 ## cgroup namespace
 
-## 最佳实践
+## Docker 和 kubernetes 的 cgroup
+
+## 其他说明
 
 * 虽然 Linux 没有限制创建自己的 cgroup hierarchy。但是，一般情况下，没有必要重新创建自己的 cgroup hierarchy。因为在多数情况下，我们对每种系统资源的管控通过一棵树就可以实现。因此，直接在 `/sys/fs/cgroup/<hierarchy>/` 目录下建立自己应用的 cgroup (目录) 即可。
 
@@ -827,6 +827,6 @@ runc mount v1 https://github.com/opencontainers/runc/blob/main/libcontainer/root
 * docker
     * 在宿主机的 /sys/fs/cgroup/$hierarchy/docker/容器ID
     * mount binding 到 rootfs 的 /sys/fs/cgroup/$hierarchy
-* k8s
+* kubernetes
     * https://kubernetes.io/zh-cn/docs/concepts/scheduling-eviction/pod-overhead/
     * /sys/fs/cgroup/memory/kubepods/podd7f4b509-cf94-4951-9417-d1087c92a5b2
