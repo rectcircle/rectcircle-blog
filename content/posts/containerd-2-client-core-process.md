@@ -147,8 +147,7 @@ ctx := namespaces.WithNamespace(context.Background(), "default")
             * `"workdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/27/work"`
             * `"upperdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/27/fs"`
             * `"lowerdir=/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/26/fs"`
-
-    * 通过 GRPC 调用 containerd deamon 的 diff api 的 Apply 函数，该函数应该会将调用 mount 系统调用，mount 到一个临时目录，并将层的内容写入该目录。
+    * 通过 GRPC 调用 containerd deamon 的 diff api 的 Apply 函数，该函数应该会将调用 mount 系统调用，mount 到一个临时目录，并将层的内容写入该目录（该部分细节参见：本系列第四篇）。
     * 调用 `Snapshotter.Commit`，提交该层的 snapshot，完成后该层的 Snapshot 创建完成。
 * 调用镜像服务，创建该镜像，如果镜像存在则更新该镜像。
 

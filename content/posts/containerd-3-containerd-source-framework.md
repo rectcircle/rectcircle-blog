@@ -48,8 +48,9 @@ make GODEBUG=1
 ### dlv 启动
 
 ```bash
-# 第一篇如果已经启动了 containerd 需停止
+# 第一篇如果已经启动了 containerd 需停止，并清空目录
 sudo systemctl stop containerd
+sudo rm -rf /var/lib/containerd
 # 安装 dlv 调试器
 go install github.com/go-delve/delve/cmd/dlv@latest
 # 使用 dlv 启动
@@ -84,6 +85,13 @@ code ./
             "mode": "remote",
             "remotePath": "/home/rectcircle/test/containerd", // 远端 Linux 编译路径
             "port": 2345,
+            "dlvLoadConfig": {
+                "followPointers": true,
+                "maxVariableRecurse": 1,
+                "maxStringLen": 2048,
+                "maxArrayValues": 64,
+                "maxStructFields": -1
+            },
             "host": "192.168.31.7", // 远端 Linux IP
         }
     ]
@@ -111,7 +119,7 @@ cmd/containerd/main.go                     # 程序入口文件
 
 `cmd/containerd/command/main.go@App().Action` 流程如下（忽略 metrics server、ttrpc 相关外围逻辑）：
 
-* 通过命令行参数 `--config` 获取配置文件参数路径（默认为 /etc/containerd/config.toml），并解析配置文件，并进行参数校验。
+* 通过命令行参数 `--config` 获取配置文件参数路径（默认为 `/etc/containerd/config.toml`），并解析配置文件，并进行参数校验。
 * 调用 `services/server/server.go@CreateTopLevelDirectories` 创建 containerd 数据和状态存储目录，默认参见 `defaults/defaults_unix.go`。
 * 注册信号处理函数，以实现优雅退出。
 * 创建临时挂载目录 `/var/lib/containerd/tmpmounts`，并清空当前目录下的所有挂载点。
