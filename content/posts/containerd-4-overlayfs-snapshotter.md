@@ -39,9 +39,7 @@ overlayfs snapshotter 是 containerd 的内建插件，也是默认的 snapshott
 * `snapshots/overlay/overlay.go` 插件实现：实现了 `snapshots/snapshotter.go@Snapshotter` 接口。
 * `snapshots/overlay/overlayutils/check.go` 插件实现依赖的工具函数。
 
-## 流程分析
-
-### 插件注册
+## 插件注册
 
 containerd 的插件注册是基于 go 的 init 函数机制实现的，调用链路为：`cmd/containerd/main.go` -> `cmd/containerd/builtins/builtins_linux.go` -> `snapshots/overlay/plugin/plugin.go`。
 
@@ -65,9 +63,13 @@ containerd 的插件注册是基于 go 的 init 函数机制实现的，调用�
 }
 ```
 
-### 拉新的镜像
+## 流程分析
 
-打开 `snapshots/overlay/overlay.go`，在所有导出的函数添加断点。
+该部分将介绍 containerd 各种操作对 overlayfs snapshotter 函数调用，以及内部细节，这些函数，除非特别说明均在 `snapshots/overlay/overlay.go` 文件中。
+
+为了方便追踪，打开 `snapshots/overlay/overlay.go`，在将所有导出的函数添加断点。
+
+### 拉新的镜像
 
 删除 `/var/lib/containerd` 并重启启动调试，执行 `sudo ctr images pull docker.io/library/nginx:1.25`，流程如下：
 
@@ -121,9 +123,7 @@ TODO
 
 ### 拉已存在的镜像
 
-在第一次拉镜像完成后，再次执行 `sudo ctr images pull docker.io/library/nginx:1.25`，流程如下：
-
-针对每一层，调用 `Stat` 函数
+在上文拉新的镜像完成后，再次执行 `sudo ctr images pull docker.io/library/nginx:1.25`，流程如下为：针对每一层，调用 `Stat` 函数
 
 * 参数 `key` 为 `"default/2/sha256:d310e774110ab038b30c6a5f7b7f7dd527dbe527854496bd30194b9ee6ea496e"`。逻辑如下：
 * 逻辑为 调用 `storage.GetInfo` 获取到 snapshots.Info 并返回。
