@@ -18,6 +18,78 @@ Containerd [项目源码](https://github.com/containerd/containerd) 根目录有
 
 本文将从 containerd deamon 的视角，从 `cmd/containerd/main.go` 源码文件入手，探索该项目源码的框架结构。
 
+## 环境准备
+
+为了更好的跟踪流程，本文通过 VSCode Golang 扩展 + dlv 提供的可视化 debug 能力，观测整体流程。特别说明的时，下文：
+
+* 编译安装、dlv 启动：在 Linux 测试机执行
+* vscode attach：在本地设备执行
+
+### 编译安装
+
+> [BUILDING.md](https://github.com/containerd/containerd/blob/v1.7.0/BUILDING.md)
+
+* Linux amd64 系统环境
+* Go v1.20+
+
+```bash
+# 1. clone 代码并检出指定版本
+git clone https://github.com/containerd/containerd.git
+cd containerd
+git checkout v1.7.0
+# 2. 安装 protobuild 等命令
+script/setup/install-dev-tools
+# 安装 runc cni 等 （第一篇已经安装了可以忽略）
+# make install-deps
+# 3. 带调试符号的构建
+make GODEBUG=1
+```
+
+### dlv 启动
+
+```bash
+# 安装 dlv
+go install github.com/go-delve/delve/cmd/dlv@latest
+# 使用 dlv 启动
+sudo ~/go/bin/dlv exec ./bin/containerd --headless --listen 0.0.0.0:2345 --api-version 2
+```
+
+### vscode attach
+
+> 在本地设备执行
+
+clone 代码，并用 vscode 打开
+
+```bash
+git clone https://github.com/containerd/containerd.git
+cd containerd
+git checkout v1.7.0
+code ./
+```
+
+配置调试器
+
+`.vscode/launch.json`
+
+```json
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Connect to server",
+            "type": "go",
+            "request": "attach",
+            "mode": "remote",
+            "remotePath": "/home/rectcircle/test/containerd", // 远端 Linux 编译路径
+            "port": 2345,
+            "host": "192.168.31.7", // 远端 Linux IP
+        }
+    ]
+}
+```
+
+按 F5 连接
+
 ## 启动流程
 
 `cmd/containerd/main.go` 流程如下：

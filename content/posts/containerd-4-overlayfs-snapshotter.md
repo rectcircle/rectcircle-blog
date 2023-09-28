@@ -10,10 +10,14 @@ tags:
 
 > version: [v1.7.0](https://github.com/containerd/containerd/tree/v1.7.0)
 
-## overlayfs 插件分析
+## 环境准备
+
+参见：[Containerd 详解（三） containerd 源码框架 - 环境准备](/posts/containerd-3-containerd-source-framework/#环境准备)
+
+## 源码分析
+
+## 流程总结
 
 https://dev.to/napicella/what-is-a-containerd-snapshotters-3eo2
 
 https://www.jianshu.com/p/86296691ca49
-
-## 实现自己的 snapshot 插件

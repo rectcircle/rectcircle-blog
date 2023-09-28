@@ -174,7 +174,7 @@ overlay on /run/containerd/io.containerd.runtime.v2.task/default/busybox/rootfs 
 * `workdir` 为 `/var/lib/containerd/io.containerd.snapshotter.v1.overlayfs/snapshots/3/work`。
 * 挂载点为 `/run/containerd/io.containerd.runtime.v2.task/default/busybox/rootfs`
 
-因此 `overlayfs` snapshotter 插件的准备一个容器的 root 的执行过程如下：
+因此 `overlayfs` snapshotter 插件的准备一个容器的 rootfs 的执行过程如下：
 
 * 将 `io.containerd.content.v1.content` 目录的 layer blobs 解压到 `io.containerd.snapshotter.v1.overlayfs/snapshots/<id>/fs` 中，并创建 `work` 目录，并记录到 `metadata.db` 中。
 * 创建一个 `upperdir` 目录，存储到 `io.containerd.snapshotter.v1.overlayfs/snapshots/<id>/fs` 并创建 `work` 目录，并记录到  `metadata.db` 中。
