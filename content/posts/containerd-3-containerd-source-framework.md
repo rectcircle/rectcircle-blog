@@ -48,7 +48,9 @@ make GODEBUG=1
 ### dlv 启动
 
 ```bash
-# 安装 dlv
+# 第一篇如果已经启动了 containerd 需停止
+sudo systemctl stop containerd
+# 安装 dlv 调试器
 go install github.com/go-delve/delve/cmd/dlv@latest
 # 使用 dlv 启动
 sudo ~/go/bin/dlv exec ./bin/containerd --headless --listen 0.0.0.0:2345 --api-version 2
