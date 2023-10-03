@@ -37,8 +37,8 @@ Containerd [项目源码](https://github.com/containerd/containerd) 根目录有
 git clone https://github.com/containerd/containerd.git
 cd containerd
 git checkout v1.7.0
-# 2. 安装 protobuild 等命令
-script/setup/install-dev-tools
+# 2. 安装 protobuild 等命令 (实测不需要)
+# script/setup/install-dev-tools
 # 安装 runc cni 等 （第一篇已经安装了可以忽略）
 # make install-deps
 # 3. 带调试符号的构建

@@ -119,7 +119,46 @@ containerd 的插件注册是基于 go 的 init 函数机制实现的，调用�
 
 ### diff api
 
-TODO
+上文和前篇文档都介绍到了，针对镜像的每一层，mount 完成后，都会调用 diff api 将镜像内容解压到指定路径上，这里来介绍下具体过程。
+
+为了方便追踪，打开 `diff/apply/apply.go`，给 `Apply` 函数添加断点。并删除 `/var/lib/containerd` 并重启启动调试，执行 `sudo ctr images pull docker.io/library/nginx:1.25`。
+
+观察到，流程如下：
+
+* 构建一个面向 `"application/vnd.docker.image.rootfs.diff.tar.gzip"` 格式的解压处理器 `processor` 和镜像层文件流构造一个新的流 `io.Reader` 要求这个流的格式为 tar。
+* 调用 `apply`。三个参数分别是：`ctx`、`snapshotter.Prepare` 返回的 `mounts`、上一步获取到的 `io.Reader`。该步骤在不同的操作系统平台的处理逻辑是不同的，这里仅介绍 Linux 平台的逻辑。在 Linux 平台中，针对不同的挂载模式也是不同的逻辑。以 overlay snapshotter 为例，第 1 层 mounts 是 bind、第 2~n 层是 overlay。
+    * 针对 bind 类型 mount，调用 `mount.WithTempMount` 函数：创建一个临时目录 （如 `"/var/lib/containerd/tmpmounts/containerd-mount1544590108"`），执行 mount 命令，构造一个文件系统，然后，调用 `archive.Apply` 函数，参数为：
+        * `root` 为临时的 mount 目录。
+        * `r` 为第一步构建的流。
+        * `opts` 为 nil。
+    * 针对 overlay 类型 mount，实际上并不会执行该 mount，而是解析可写层 (upper) 路径和 lowers 路径，调用 `archive.Apply`。
+        * `root`  upper 路径。
+        * `r` 为第一步构建的流。
+        * `opts` 有两个，分别为：
+            * `archive.WithConvertWhiteout(archive.OverlayConvertWhiteout)`
+            * `archive.WithParents(parents)`
+
+最终，如上两种情况，都会调用 `applyNaive` （`archive/tar.go`）：
+
+* 使用上面创建的流构建一个 go 标准库的 `tar.Reader` 对象。
+* 遍历 tar 的每个目录和文件，将文件解压到指定目录。这里需要特别强调的是对 without 文件的处理： containerd 使用的 OCI 镜像标准是面相联合文件系统的（如 Overlayfs），因此镜像是分层的。该类文件系统规范都需要支持上层对下层文件的删除。此时，多数都是通过特殊的标记文件实现。OCI 镜像也是如此，OCI 镜像标准使用 `.wh.` 前缀（本质是 aufs 的规范）来标记（更多参见：[OCI 镜像格式规范](/posts/oci-image-spec/#whiteout)）。而 containerd 要支持多种文件系统，containerd 定义了一个函数 `type archive.ConvertWhiteout func(header *tar.Header, path string) (writeFile bool, false error)` 需要将 OCI 镜像的 `.wh.` 格式转换为对该文件系统的操作。
+    * 该函数的语义是：
+        * 参数：
+            * header 该 tar item 的 header
+            * path 该目标目录根目录 join 上 tar item 的 name
+        * 行为
+            * path 如果是一个删除标记，根据当期文件系统情况转换为该文件系统能识别的行为。并返回 `false, nil`。参见下文。
+            * path 如果不是一个删除标记，返回 `true, nil`。
+        * 返回
+            * writeFile tar item 是否需要写入。
+    * 几种实现为：
+        * 默认实现 （位于 `archive/tar.go@applyNaive` 内）：如果是删除标记，这直接调用系统调用（如 `os.RemoveAll`）将对应位置的文件删除。
+        * `OverlayConvertWhiteout` （位于 `archive/tar_opts_linux.go`），如果是删除目录，则给目录添加一个属性 `trusted.overlay.opaque:y`，如果是删除文件，则创建一个字符设备。
+
+总结：
+
+* 简单而言，diff api 实际上就是将 OCI 标准镜像层写入 snapshotter `Prepare` 函数返回的 `mounts` 构造的文件系统中。这里的写入并不是简单的解压到目录，而是需要处理 OCI 标准镜像的 without 规范，对标记删除的目录、文件进行删除。
+* 针对联合文件系统（Overlayfs、aufs 等），做了特殊优化：不真正 mount，而是直接写入对应的 upper 层路径，并对将OCI 标准镜像的 without 规范，转化为对应文件系统的规范。
 
 ### 拉已存在的镜像
 
