@@ -223,3 +223,14 @@ sudo ctr run --mount 'type=bind,src=/tmp,dst=/host-tmp,options=rbind:ro' docker.
 * `Remove` 删除某个快照元数据，删除的这个快照必须是最顶层，不能被其他快照的 Parent 直接或间接引用。在 snapshotter 这个层级，不感知该快照是否正在被使用（即某个快照正在被其他容器使用，也可以被删掉），不删除磁盘占用，磁盘空间需调用 `Cleanup` 清理，如：`sudo ctr snapshot rm nginx-ro`。
 * `Walk` 遍历遍历所有的快照元信息，如 `sudo ctr snapshot ls`。
 * `Cleanup` 清理未被使用的磁盘空间。
+
+### labels 特别说明
+
+在 containerd 中， snapshotter 的 lables 默认是存储在 containerd 自己 metadate 中，不会透传到 snapshotter 中。而 `containerd.io/snapshot/` 开头的 labels 是个例外。
+
+因此，在自定义 snapshotter 使用 labels 作为额外参数传递时，需要以 `containerd.io/snapshot/` 开头。
+
+源码参见：
+
+* `snapshots/snapshotter.go@FilterInheritedLabels`
+* `metadata/snapshot.go@createSnapshot`
