@@ -310,3 +310,4 @@ version = 2
 ## 参考
 
 * [containerd docs: plugin](https://github.com/containerd/containerd/blob/main/docs/PLUGINS.md)
+* [containerd docs: CRI config - snapshotter](https://github.com/containerd/containerd/blob/main/docs/cri/config.md#snapshotter)
