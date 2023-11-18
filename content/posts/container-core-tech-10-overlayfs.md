@@ -436,7 +436,7 @@ mknod lower2/from-lower1-dir2/file c 0 0
 # lower2 opaque 目录
 mkdir -p lower2/from-lower2-opaquedir
 echo 'from-lower2' > lower2/from-lower2-opaquedir/file2
-setfattr -n 'trusted.overlay.opaque' -v 'y' lower2/from-lower2-opaquedir
+setfattr -n 'trusted.overlay.opaque' -v 'y' lower2/from-lower2-opaquedir  # 不能用 attr 命令，因为 attr 会自动添加 user. 前缀
 
 # 操作之后
 echo '=== after ==='
