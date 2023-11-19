@@ -1,7 +1,7 @@
 ---
 title: "容器核心技术（十） OverlayFS"
-date: 2023-11-18T20:00:00+08:00
-draft: true
+date: 2023-11-19T22:48:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -373,6 +373,8 @@ upper/
 
 注意，该操作（在线修改 overlayfs 的底层文件系统），在[内核文档](https://docs.kernel.org/filesystems/overlayfs.html#changes-to-underlying-filesystems)中，是未定义的，但文档也明确说明了该行为不会导致 crash 或死锁。
 
+本部分就是探索在 Linux 的实现中，操作 lower 目录的行为到底是什么样的。
+
 ```bash
 #!/usr/bin/env bash
 # sudo apt install attr
@@ -559,3 +561,201 @@ from-lower2
     * 让 upper 目录的 inode 比 lower 目录的大（在 upper 目录，先 cp 备份，再 rm，mv 回来）。
 
 ## 操作 upper 目录
+
+下面实现代码将一个 lower 通过 overlayfs 生成到 merged 目录后，再在 upper 目录中执行：新建、覆盖、删除、透明操作。
+
+注意，该操作（在线修改 overlayfs 的底层文件系统），在[内核文档](https://docs.kernel.org/filesystems/overlayfs.html#changes-to-underlying-filesystems)中，是未定义的，但文档也明确说明了该行为不会导致 crash 或死锁。
+
+本部分就是探索在 Linux 的实现中，操作 upper 目录的行为到底是什么样的。
+
+```bash
+#!/usr/bin/env bash
+# sudo apt install attr
+# sudo ./src/shell/03-overlayfs/03-operate-upper.sh
+
+# 创建并进入测试目录
+exp_base_dir=/tmp/overlayfs-exp/03-operate-upper
+umount $exp_base_dir/merged >/dev/null 2>&1
+rm -rf $exp_base_dir && mkdir -p $exp_base_dir
+cd $exp_base_dir
+
+# 准备 lower、merged、upper、work 目录
+mkdir -p lower merged upper work
+mkdir -p lower/from-lower-dir1
+echo 'from-lower' > lower/from-lower-dir1/from-lower-file
+mkdir -p lower/from-lower-dir2
+echo 'from-lower' > lower/from-lower-dir2/from-lower-file
+mkdir -p lower/from-lower-dir3
+echo 'from-lower' > lower/from-lower-dir3/from-lower-file
+mkdir -p lower/from-lower-dir4
+echo 'from-lower' > lower/from-lower-dir4/from-lower-file
+mkdir -p lower/from-lower-dir5
+echo 'from-lower' > lower/from-lower-dir5/from-lower-file
+echo 'from-lower' > lower/from-lower-file1
+echo 'from-lower' > lower/from-lower-file2
+echo 'from-lower' > lower/from-lower-file3
+
+# 生成 merged
+mount -t overlay overlay -olowerdir=lower,upperdir=upper,workdir=work merged
+
+# 操作之前
+echo '=== before ==='
+echo '>>> cat merged/from-lower-file1'
+cat merged/from-lower-file1
+echo
+echo '>>> ls merged/from-lower-dir1'
+cat merged/from-lower-dir1
+echo
+
+# 新增
+echo 'from-upper' > upper/from-upper-file
+mkdir -p upper/from-lower-dir1
+echo 'from-upper' > upper/from-lower-dir1/from-upper-file
+mkdir -p upper/from-lower-dir2
+echo 'from-upper' > upper/from-lower-dir2/from-upper-file
+mkdir -p upper/from-upper-dir
+
+# 覆盖
+echo 'from-upper' > upper/from-lower-file1
+echo 'from-upper' > upper/from-lower-file2
+echo 'from-upper' > upper/from-lower-dir1/from-lower-file
+echo 'from-upper' > upper/from-lower-dir2/from-lower-file
+
+# 删除
+mknod upper/from-lower-file3 c 0 0
+mknod upper/from-lower-dir3 c 0 0
+mkdir upper/from-lower-dir4
+mknod upper/from-lower-dir4/from-lower-file c 0 0
+
+# 透明
+mkdir upper/from-lower-dir5
+setfattr -n 'trusted.overlay.opaque' -v 'y' upper/from-lower-dir5  # 不能用 attr 命令，因为 attr 会自动添加 user. 前缀
+echo 'from-upper' > upper/from-lower-dir5/from-upper-file
+
+
+# 观察
+# 操作后
+echo '=== after ==='
+echo '>>> tree merged/'
+tree merged/
+echo
+
+echo '>>> cat merged/from-lower-file1'
+cat merged/from-lower-file1
+echo
+
+echo '>>> cat merged/from-lower-file2'
+cat merged/from-lower-file2
+echo
+
+echo '>>> cat merged/from-lower-dir1/from-lower-file'
+cat merged/from-lower-dir1/from-lower-file
+echo
+
+echo '>>> cat merged/from-lower-dir2/from-lower-file'
+cat merged/from-lower-dir2/from-lower-file
+echo
+
+
+# 清理缓存后
+echo 2 > /proc/sys/vm/drop_caches
+echo '=== after clear cache ==='
+echo '>>> tree merged/'
+tree merged/
+echo
+
+echo '>>> cat merged/from-lower-file1'
+cat merged/from-lower-file1
+echo
+
+echo '>>> cat merged/from-lower-file2'
+cat merged/from-lower-file2
+echo
+
+echo '>>> cat merged/from-lower-dir1/from-lower-file'
+cat merged/from-lower-dir1/from-lower-file
+echo
+
+echo '>>> cat merged/from-lower-dir2/from-lower-file'
+cat merged/from-lower-dir2/from-lower-file
+echo
+```
+
+输出如下：
+
+```
+=== before ===
+>>> cat merged/from-lower-file1
+from-lower
+
+>>> ls merged/from-lower-dir1
+cat: merged/from-lower-dir1: 是一个目录
+
+=== after ===
+>>> tree merged/
+merged/
+├── from-lower-dir1
+│   └── from-lower-file
+├── from-lower-dir2
+│   ├── from-lower-file
+│   └── from-upper-file
+├── from-lower-dir4
+├── from-lower-dir5
+│   └── from-upper-file
+├── from-lower-file1
+├── from-lower-file2
+├── from-upper-dir
+└── from-upper-file
+
+5 directories, 7 files
+
+>>> cat merged/from-lower-file1
+from-lower
+
+>>> cat merged/from-lower-file2
+from-upper
+
+>>> cat merged/from-lower-dir1/from-lower-file
+from-lower
+
+>>> cat merged/from-lower-dir2/from-lower-file
+from-upper
+
+=== after clear cache ===
+>>> tree merged/
+merged/
+├── from-lower-dir1
+│   ├── from-lower-file
+│   └── from-upper-file
+├── from-lower-dir2
+│   ├── from-lower-file
+│   └── from-upper-file
+├── from-lower-dir4
+├── from-lower-dir5
+│   └── from-upper-file
+├── from-lower-file1
+├── from-lower-file2
+├── from-upper-dir
+└── from-upper-file
+
+5 directories, 8 files
+
+>>> cat merged/from-lower-file1
+from-upper
+
+>>> cat merged/from-lower-file2
+from-upper
+
+>>> cat merged/from-lower-dir1/from-lower-file
+from-upper
+
+>>> cat merged/from-lower-dir2/from-lower-file
+from-upper
+```
+
+在 upper 上的操作，可以得出如下结论（内核版本： 5.10.0-20-amd64）：
+
+* 总体上， overlayfs 假设 upper 目录只有 overlayfs 内核能力操作 。因此，overlay 会对 upper 的 inode 进行 cache。
+* 如果在 merged 目录，对应的 upper 目录或文件被读取过，则对这些在 upper 目录中的文件或目录进行手动修改，在 merged 目录中是不可见的。
+* 当 cache 失效或者手动执行 `echo 2 > /proc/sys/vm/drop_caches` 清理缓存，对 upper 目录的操作将会在 merged 目录中可见。
+* 对 upper 目录的 新建、覆盖、删除、透明操作的行为，和对 lower 目录的操作一致，在此不多赘述。
