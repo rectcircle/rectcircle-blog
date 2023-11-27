@@ -127,7 +127,7 @@ GOTOOLCHAIN 是 go 1.21 新增的一个环境变量，可以通过 `export`、`g
     * 如果 `v==v_local`，则直接使用当前的 go 命令执行，否则进行下一步。
     * `PATH` 中查找对应的可执行文件，如： 当 `v=go1.21.3` 时，查找的文件名为 `go1.21.3`，找到后则执行，否则进行下一步。
     * 直接报错，如 `go: cannot find "go1.21.4" in PATH`。
-* `<name>`：忽略 `v_go_line` 和 `v_toolchain_line`，`v=<name>`
+* `<name>`：忽略 `v_go_line` 和 `v_toolchain_line`，选取的版本为 `v=<name>`。
     * 如果 `v==v_local`，则直接使用当前的 go 命令执行，否则进行下一步。
     * `PATH` 中查找对应的可执行文件，如： 当 `v=go1.21.3` 时，查找的文件名为 `go1.21.3`，找到后则执行，否则进行下一步。
     * 前往 GOPROXY 下载对应版本工具链并安装，然后执行该版本。
