@@ -29,7 +29,18 @@ tags:
 * AWS S3 核心 API。
 * MinIO 的手动以及 Kubernetes 高可用部署。
 
-## MinIO 单节点部署
+## MinIO 单节点安装运行
+
+```bash
+# 安装
+wget https://dl.min.io/server/minio/release/linux-amd64/minio
+chmod +x minio
+sudo mv minio /usr/local/bin/
+
+# 运行
+mkdir ~/minio
+minio server ~/minio --console-address :9090
+```
 
 ## MinIO 管理
 
