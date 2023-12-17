@@ -8,7 +8,7 @@ tags:
   - untagged
 ---
 
-> 版本：TODO
+> 版本： [RELEASE.2023-12-09T18-17-51Z](https://github.com/minio/minio/releases/tag/RELEASE.2023-12-09T18-17-51Z)
 
 ## 简介
 
