@@ -12,7 +12,7 @@ tags:
 
 ## 简介
 
-目前广泛使用对象存储的形态最早确定于 AWS S3
+目前广泛使用对象存储的形态最早确定于 AWS S3：
 
 * 用于存储非结构化的数据（称为对象），如照片、音频、视频、二进制制品等（类似于文件系统的文件）。
 * 对象通过唯一标识符访问（类似于文件系统的路径，但对象存储并不提供层次化的目录树的概念，是扁平的）。
@@ -27,7 +27,7 @@ tags:
 * 在单台 Linux 上部署一个单节点的 MinIO 。
 * MinIO 的管理能力。
 * AWS S3 核心 API。
-* MinIO 的手动以及 Kubernetes 高可用部署。
+* MinIO 架构简述。
 
 ## MinIO 单节点安装运行
 
@@ -57,7 +57,7 @@ mc admin info local
 
 ## MinIO 管理
 
-打开 http://127.0.0.1:9090， 输入 root 用户命和密码 (均为 `minioadmin`) 可以看到 MinIO Console 菜单向分为了三类：
+打开 http://127.0.0.1:9090 ，输入 root 用户命和密码 (均为 `minioadmin`) 可以看到 MinIO Console 菜单向分为了三类：
 
 * User 对象浏览、Access Token。
 * Administrator bucket 管理、用户和权限管理等。
