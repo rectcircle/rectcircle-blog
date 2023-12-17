@@ -59,9 +59,9 @@ mc admin info local
 
 打开 http://127.0.0.1:9090 ，输入 root 用户命和密码 (均为 `minioadmin`) 可以看到 MinIO Console 菜单向分为了三类：
 
-* User 对象浏览、Access Token。
-* Administrator bucket 管理、用户和权限管理等。
-* Subscription 付费订阅的企业级能力，本文不做介绍。
+* User: 对象浏览、Access Token。
+* Administrator: bucket 管理、用户和权限管理等。
+* Subscription: 付费订阅的企业级能力，本文不做介绍。
 
 ### bucket 管理
 
@@ -107,7 +107,7 @@ MinIO 采用 PBAC （Policy-Based Access Control , 基于策略的访问控制�
     * Statement 为策略表达式数组，其中值包含一个对象。
         * `"Effect": "Allow"` 表示允许对 `Resource` 做 `Action`。
         * `Action` 表示允许执行的动作，`"s3:*"` 表示所有 AWS S3 API 可以执行所有操作都允许执行。
-        * `Resource` 表示允许操作的资源， `"arn:aws:s3:::bucket-test"` 表示只允许操作 bucket 名为 `bucket-test` 的 bucket
+        * `Resource` 表示允许操作的资源， `"arn:aws:s3:::bucket-test/*"` 表示只允许操作 bucket 名为 `bucket-test` 的 bucket
     * 更多关于策略 JSON 的编写，参见：[官方文档](https://min.io/docs/minio/kubernetes/upstream/administration/identity-access-management/policy-based-access-control.html#policy-document-structure)。
 
 2. 打开 [Identity - Users 页面](http://127.0.0.1:9090/identity/users)，点击创建用户，填写用户名 `bucket-test-user` 密码 `12345678` （仅测试）， Assign Policies 选择 `bucket-test-rw`，点击保存。
