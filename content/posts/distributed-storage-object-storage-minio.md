@@ -1,5 +1,5 @@
 ---
-title: "分布式存储之对象存储"
+title: "分布式存储之对象存储 (MinIO)"
 date: 2023-12-16T18:39:00+08:00
 draft: false
 toc: true
