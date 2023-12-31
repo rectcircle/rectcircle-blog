@@ -25,7 +25,7 @@ Linux 作为冯诺依曼架构计算机的操作系统，必然实现对输入�
 
 为了支持将同一块硬盘划分为多个独立相互不影响的区域，即对硬盘进行分区。以实现在不同的区域，格式化为不同的文件系统。
 
-在 Linux 中，可以使用 [parted](https://man7.org/linux/man-pages/man8/parted.8.html) 命令进行分区（可以用 `parted -l` 查看本机磁盘分区情况）。完成分区后，在 `/dev` 目录中，除了会看到硬盘对应的设备文件外，每个分区也会对应一个设备文件。通过  [lsblk](https://man7.org/linux/man-pages/man8/lsblk.8.html) （list block devices） 命令可以看到所有块设备以及分区关系，示例如下（debian 12 默认 + 挂载两块 1G 的空硬盘）：
+在 Linux 中，可以使用 [parted](https://man7.org/linux/man-pages/man8/parted.8.html) 命令进行分区（可以用 `parted -l` 查看本机磁盘分区情况）。完成分区后，在 `/dev` 目录中，除了会看到硬盘对应的设备文件外，每个分区也会对应一个块设备文件（如 `/dev/sda1`）。通过  [lsblk](https://man7.org/linux/man-pages/man8/lsblk.8.html) （list block devices） 命令可以看到所有块设备以及分区关系，示例如下（debian 12 默认 + 挂载两块 1G 的空硬盘）：
 
 ```
 NAME   MAJ:MIN RM  SIZE RO TYPE MOUNTPOINTS
