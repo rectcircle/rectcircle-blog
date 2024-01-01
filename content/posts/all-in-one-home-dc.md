@@ -132,7 +132,7 @@ nvme0n1            259:0    0 953.9G  0 disk
 * 其他存储类别的，格式为 `qcow2` 的支持快照。
 * 其他情况不支持快照。
 
-各种情况的枚举参见： [Proxmox VE存储入门](https://foxi.buduanwang.vip/linux/2044.html/) 或 [官方文档 Proxmox VE Storage](https://pve.proxmox.com/pve-docs/chapter-pvesm.html)。
+各种情况的枚举参见： [Proxmox VE存储入门](https://foxi.buduanwang.vip/linux/2044.html/) 、 [PVE虚拟机不能打快照](https://foxi.buduanwang.vip/virtualization/pve/1083.html/) 、 [官方文档 Proxmox VE Storage](https://pve.proxmox.com/pve-docs/chapter-pvesm.html)。
 
 特别说明的是，如果想要安装 windows 11，那么则必须要添加一个 TPM 2.0 的磁盘，这个磁盘的格式必须为 `row`。
 
@@ -236,7 +236,7 @@ nvme0n1            259:0    0 953.9G  0 disk
         * 磁盘大小（GiB）：128
         * 格式：QEMU映像格式（qcow2）
     * CPU
-        * 类别：x86-64-v2-AES （pve 8 的默认值，可以保证可迁移性）
+        * 类别：x86-64-v2-AES （pve 8 的默认值，可以保证[可迁移性](https://foxi.buduanwang.vip/virtualization/599.html/)）
         * 核心：4
     * 内存（MiB）：16384
     * 网络
@@ -283,6 +283,8 @@ https://github.com/HelloZhing/pvevm-hooks
 
 https://github.com/HelloZhing/pvevm-hooks
 
+https://foxi.buduanwang.vip/virtualization/pve/1590.html/
+
 ## Dev 虚拟机
 
 * 前往 [Debian DVD ISO 下载页](https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/)，下载无需网络依赖的 ISO （大小约 3.7 G）
@@ -322,12 +324,15 @@ https://github.com/HelloZhing/pvevm-hooks
 
 ## OpenWRT 虚拟机
 
+核心绑定 `lscpu -e`。
+
 ## 备忘
 
 * 当然建议大家使用virtio-scsi-single的磁盘控制器，以获得最佳性能。 https://foxi.buduanwang.vip/virtualization/pve/1226.html/ https://foxi.buduanwang.vip/virtualization/pve/1214.html/
 * ID https://foxi.buduanwang.vip/virtualization/pve/bestpractice/1643.html/
 * 存储 https://foxi.buduanwang.vip/linux/2044.html/ https://pve.proxmox.com/pve-docs/chapter-pvesm.html
 * 镜像 https://foxi.buduanwang.vip/virtualization/pve/1574.html/
+* 系统监控 https://foxi.buduanwang.vip/virtualization/pve/615.html/
 
 ## 参考
 
