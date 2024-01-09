@@ -271,6 +271,8 @@ update-initramfs -u -k all
 
 ### NVIDIA 显卡直通
 
+> 参考：[博客](https://foxi.buduanwang.vip/virtualization/pve/561.html/)
+
 屏蔽显卡驱动
 
 ```bash
@@ -314,14 +316,11 @@ echo "options kvm ignore_msrs=1" > /etc/modprobe.d/kvm.conf
 update-initramfs -k all -u 
 ```
 
+打开 pve 管理页面，选择 windows 虚拟机，点击硬件，点击添加，选择添加 pcie 设备，选择上面的设备号，并勾选所有功能、PCI-Express，取消勾选主 GPU。
 
-TODO https://foxi.buduanwang.vip/yj/561.html/
+保持显示为默认，打开虚拟机，等待 windows 自动安装显卡驱动。
 
-https://www.bilibili.com/read/cv26863115/?jump_opus=1
-
-https://zhing.fun/pve_igpupt/
-
-https://github.com/HelloZhing/pvevm-hooks
+确认安装完成后，停止虚拟机，并将显示设置为 none。
 
 ### vm 停止后归还设备
 
