@@ -271,6 +271,50 @@ update-initramfs -u -k all
 
 ### NVIDIA 显卡直通
 
+屏蔽显卡驱动
+
+```bash
+echo "blacklist nouveau" >> /etc/modprobe.d/pve-blacklist.conf
+echo "blacklist nvidia" >> /etc/modprobe.d/pve-blacklist.conf
+# echo "blacklist nvidiafb" >> /etc/modprobe.d/pve-blacklist.conf
+echo "blacklist snd_hda_intel" >> /etc/modprobe.d/pve-blacklist.conf
+```
+
+查看设备 id
+
+```bash
+lspci -nnk
+# 04:00.0 VGA compatible controller [0300]: NVIDIA Corporation GA106 [GeForce RTX 3060 Lite Hash Rate] [10de:2504] (rev a1)
+#         Subsystem: NVIDIA Corporation GA106 [GeForce RTX 3060 Lite Hash Rate] [10de:2504]
+#         Kernel driver in use: nouveau
+#         Kernel modules: nvidiafb, nouveau
+# 04:00.1 Audio device [0403]: NVIDIA Corporation GA106 High Definition Audio Controller [10de:228e] (rev a1)
+#         Subsystem: NVIDIA Corporation GA106 High Definition Audio Controller [10de:2504]
+#         Kernel modules: snd_hda_intel
+lspci -nnk
+# 04:00.0 0300: 10de:2504 (rev a1)
+# 04:00.1 0403: 10de:228e (rev a1)
+```
+
+将设备加入 vfio
+
+```bash
+echo "options vfio-pci ids=10de:2504,10de:228e" >> /etc/modprobe.d/vfio.conf
+```
+
+添加内核选项
+
+```bash
+echo "options kvm ignore_msrs=1" > /etc/modprobe.d/kvm.conf
+```
+
+更新内核镜像
+
+```bash
+update-initramfs -k all -u 
+```
+
+
 TODO https://foxi.buduanwang.vip/yj/561.html/
 
 https://www.bilibili.com/read/cv26863115/?jump_opus=1
