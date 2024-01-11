@@ -349,6 +349,7 @@ https://github.com/HelloZhing/pvevm-hooks
         * 操作：新建，选择启动程序
             * 配置程序或脚本为 `C:\Program Files\Barrier\barrier`
         * 条件：勾掉只有在计算机使用交流电源时才启动此任务
+        * 设置：勾掉如果任务运行超过一下时间，停止任务
 
 ## Dev 虚拟机
 
