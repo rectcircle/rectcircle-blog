@@ -326,6 +326,30 @@ update-initramfs -k all -u
 
 https://github.com/HelloZhing/pvevm-hooks
 
+### 设置主机名
+
+打开设置，系统，系统信息，重构明明这台电脑。
+
+### 安装配置 barrier
+
+> [github](https://github.com/debauchee/barrier)
+
+* 打开 github release 页，下载 exe ，并安装。
+* 打开，引导页，语言选择中文，设置为客户端。
+* 配置服务端 IP，填写 Deamon 虚拟机的 IP。
+* 点击菜单栏，Barrier，更改设置：勾掉 开启SSL，勾选最小化启动，勾选最小化到系统托盘（这里的自动启动实测不生效）。
+* 设置 barrier 在登录账号前启动。
+    * 打开任务计划程序。
+    * 点击创建任务
+        * 常规
+            * 名称：barrier
+            * 选择：不管用户是否登录都要运行
+            * 勾选：使用最高权限运行
+        * 触发器，新建，选择启动时
+        * 操作：新建，选择启动程序
+            * 配置程序或脚本为 `C:\Program Files\Barrier\barrier`
+        * 条件：勾掉只有在计算机使用交流电源时才启动此任务
+
 ## Dev 虚拟机
 
 * 前往 [Debian DVD ISO 下载页](https://cdimage.debian.org/debian-cd/current/amd64/iso-dvd/)，下载无需网络依赖的 ISO （大小约 3.7 G）
@@ -338,12 +362,14 @@ https://github.com/HelloZhing/pvevm-hooks
 * 操作系统安装：
     * 软件选择：仅保留标准系统工具和 SSH Server
     * 安装 GRUB 启动引导器，选择识别到的硬盘
-* 操作系统配置：
+* 操作系统配置，`su root` 执行：
     * 参考[清华镜像源](https://mirrors.tuna.tsinghua.edu.cn/help/debian/)，配置 apt。
     * 安装常用的软件： `apt install vim curl git sudo`。
     * 配置免密 sudo：`echo 'rectcircle ALL=(ALL:ALL)  NOPASSWD:ALL' > /etc/sudoers.d/rectcircle`。
 
 ## Deamon 虚拟机
+
+### 安装虚拟机
 
 步骤和 [Dev 虚拟机](#dev-虚拟机) 基本一致，差别在于：
 
@@ -352,6 +378,37 @@ https://github.com/HelloZhing/pvevm-hooks
     * 内存：2G
 * 操作系统安装：
     * 软件选择：Debian 桌面环境、LXDE、标准系统工具、 SSH Server
+* 打开虚拟机配置选项，开启开机自启动
+
+### 配置开机自动进入桌面
+
+修改 /etc/lightdm/lightdm.conf 文件，在文件中找到 `#autologin-user=` （位于 `[Seat:*]` 段）。
+
+### 安装配置 barrier
+
+> [github](https://github.com/debauchee/barrier)
+
+安装
+
+```bash
+apt update
+apt install barrier
+```
+
+配置 barrier
+
+* 打开终端，输入 barrier 回车启动。
+* 选择中文，作为服务端。
+* 点击设置服务端。
+* 添加一个屏幕，配置屏幕名为对应设备的主机名。
+* 点击菜单栏，Barrier，更改设置：勾掉 开启SSL，勾选自动启动。
+
+配置自动启动
+
+```bash
+mkdir -p ~/.config/autostart
+ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.desktop
+```
 
 ## OMV 虚拟机
 
