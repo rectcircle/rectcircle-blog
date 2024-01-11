@@ -344,7 +344,6 @@ https://github.com/HelloZhing/pvevm-hooks
         * 常规
             * 名称：barrier
             * 选择：不管用户是否登录都要运行
-            * 勾选：使用最高权限运行
         * 触发器，新建，选择启动时
         * 操作：新建，选择启动程序
             * 配置程序或脚本为 `C:\Program Files\Barrier\barrier`
