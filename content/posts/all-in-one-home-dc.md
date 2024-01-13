@@ -435,7 +435,7 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
     * 自动登出：禁用。
 * 使用备份用硬盘，创建【备份文件系统】。
     * 存储器 -> 文件系统，点击新建，选 ext4，选择备份用的硬盘创建。
-* 其他硬盘，由 LVM 管理，并创建【主文件系统】。
+* 其他硬盘，由 LVM 管理，并创建【主文件系统】（lvm 参见：[文章](/posts/linux-lvm/)）。
     * 系统 -> 插件，搜索 lvm，安装。
     * 存储器 -> LVM
         * 多个物理卷，将物理硬盘添加进去。
@@ -454,7 +454,19 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
             * 选择 main 共享文件系统。
             * 勾掉隐藏点文件。
     * 用户 -> 用户，新建，该操作会新建一个 id 为 1000 用户组为 100 (users) 的 Linux 用户。
-* TODO 配置备份任务。
+* 配置备份任务。
+    * 创建相关共享文件夹，存储器-> 共享文件夹：
+        * 创建：important-source，选择【主文件系统】，相对路径填写 `00-Important/`
+        * 创建：important-backup，选择【备份文件系统】，相对路径填写 `/`
+    * 创建 Rsync 任务，服务 -> Rsync -> 任务，新建：
+        * 类型：本地。
+        * 源共享文件夹：important-source。
+        * 目标共享文件夹：important-backup。
+        * 执行时间：凌晨 5 点。
+        * 试运行：勾选（先测试一次）。
+    * 调试，服务 -> Rsync -> 任务，选择上一步创建的，点击运行。
+    * 勾掉试运行，保存。
+
 
 ### 其他虚拟机使用
 
@@ -507,8 +519,6 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
         ```
 
     * 启用配置：`sudo systemctl enable data-1tb.automount --now`
-
-* TODO Mac:
 
 ### 安装下载器
 
