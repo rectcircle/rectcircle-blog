@@ -412,6 +412,8 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
 
 ## OMV 虚拟机
 
+### 安装虚拟机
+
 步骤和 [Dev 虚拟机](#dev-虚拟机) 基本一致，差别在于：
 
 * 前往 [OMV 下载页](https://www.openmediavault.org/download.html)，下载 ISO。
@@ -419,6 +421,96 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
 * 创建虚拟机
     * CPU： 1 核
     * 内存：2G
+* 打开虚拟机硬件添加硬盘所在的 USB 设备。
+
+### 基础配置
+
+* ssh 登录 root：
+    * 参考[清华镜像源 omv 配置说明](https://mirrors.tuna.tsinghua.edu.cn/help/openmediavault/)，配置 apt。
+    * `apt update && apt upgrade -y`
+* 浏览器输入 ip 地址，输入默认用户名 (admin)、密码 (openmediavault)登录。
+* 修改登录密码：点击右上角用户图标 -> 更改密码，修改密码。
+* 配置仪表盘：点击右上角用户图标 -> 仪表盘，启用所有。
+* 系统 -> 工作台：
+    * 自动登出：禁用。
+* 使用备份用硬盘，创建【备份文件系统】。
+    * 存储器 -> 文件系统，点击新建，选 ext4，选择备份用的硬盘创建。
+* 其他硬盘，由 LVM 管理，并创建【主文件系统】。
+    * 系统 -> 插件，搜索 lvm，安装。
+    * 存储器 -> LVM
+        * 多个物理卷，将物理硬盘添加进去。
+        * 多个卷组，新建一个卷组。
+        * 逻辑卷，创建一个逻辑卷。
+    * 存储器 -> 文件系统，点击新建，选 ext4，选择逻辑卷。
+* 将【主文件系统】通过 SMB 导出。
+    * 存储器 -> 共享文件系统，新建：
+        * 名称：main
+        * 文件系统：【主文件系统】
+        * 相对路径：`/`
+        * 权限：按需选项
+    * 服务 -> SMB/CIFS
+        * 设置：勾选已启用。
+        * 共享，新建：
+            * 选择 main 共享文件系统。
+            * 勾掉隐藏点文件。
+    * 用户 -> 用户，新建，该操作会新建一个 id 为 1000 用户组为 100 (users) 的 Linux 用户。
+* TODO 配置备份任务。
+
+### 其他虚拟机使用
+
+* Windows:
+    * 打开资源管理器，网络
+    * 双击 OMV，输入上一小节步骤新建的用户和密码连接。
+    * 右击 main 目录，映射网络驱动器。
+    * 勾选使用其他凭据链接。
+    * 点击完成，输入上一小节步骤新建的用户和密码连接。
+
+* Linux: [使用 systemd 挂载](https://www.expoli.tech/articles/2022/12/23/use-systemd-mount-any-device)。
+
+    * 创建挂载点和配置文件
+
+        ```bash
+        mkdir -p /home/rectcircle/omv
+        sudo touch /etc/systemd/system/$(systemd-escape -p --suffix=mount "/home/rectcircle/omv")
+        sudo touch /etc/systemd/system/$(systemd-escape -p --suffix=automount "/home/rectcircle/omv")
+        ``` 
+
+    * `/etc/systemd/system/home-rectcircle-omv.mount` 内容如下：
+
+        ```
+        [Unit]
+        Description=OVM SMB mount
+
+        [Mount]
+        What=//192.168.29.7/main
+        Where=/home/rectcircle/omv
+        Type=cifs
+        Options=username=omv,password=sunben960729
+        TimeoutSec=30
+
+        [Install]
+        WantedBy=multi-user.target
+        ```
+
+    * `/etc/systemd/system/home-rectcircle-omv.automount` 内容如下：
+
+        ```
+        [Unit]
+        Description=OVM SMB automount
+
+        [Automount]
+        Where=/home/rectcircle/omv
+        TimeoutIdleSec=10
+
+        [Install]
+        WantedBy=multi-user.target
+        ```
+
+    * 启用配置：`sudo systemctl enable data-1tb.automount --now`
+
+* TODO Mac:
+
+### 安装下载器
 
 ## OpenWRT 虚拟机
 
