@@ -14,6 +14,8 @@ tags:
 
 ### 网络模型
 
+### 存储模型
+
 ## PVE 安装和配置
 
 ### 设置路由器局域网
@@ -422,6 +424,7 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
     * CPU： 1 核
     * 内存：2G
 * 打开虚拟机硬件添加硬盘所在的 USB 设备。
+* 打开虚拟机选项，开启开机自启动。
 
 ### 基础配置
 
