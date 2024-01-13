@@ -520,7 +520,40 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
 
     * 启用配置：`sudo systemctl enable data-1tb.automount --now`
 
-### 安装下载器
+### 安装 omv-extras
+
+```bash
+# 方式1: 自动安装 (能访问外网场景推荐，推荐配置完成 OpenWRT 再执行)
+wget -O - https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master/install | bash
+# https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/pool/main/o/openmediavault-omvextrasorg/
+
+# 方式2: 大陆地区
+# 如下针对：omv 6
+apt --yes --no-install-recommends install dirmngr gnupg
+wget https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/pool/main/o/openmediavault-omvextrasorg/openmediavault-omvextrasorg_6.3.6_all.deb
+dpkg -i openmediavault-omvextrasorg_6.3.6_all.deb
+apt-get update
+rm -rf openmediavault-omvextrasorg_6.3.6_all.deb
+# 设置清华源
+omv-env set OMV_APT_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/public"
+omv-env set OMV_APT_ALT_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/packages"
+omv-env set OMV_APT_KERNEL_BACKPORTS_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/debian"
+omv-env set OMV_APT_SECURITY_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/debian-security"
+omv-env set OMV_EXTRAS_APT_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers"
+omv-env set OMV_DOCKER_APT_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/debian"
+omv-env set OMV_PROXMOX_APT_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/proxmox/debian"
+# 使得环境变量更改生效
+omv-salt stage run all
+```
+
+* 浏览器 omv 管理页面强制刷新 `ctrl + shift + r`。
+* 注意 ：omv-extra 6.3 已经将  docker, portainer 和 yacht 移除了，只能使用 openmediavault-compose，参见：[官方论坛](https://forum.openmediavault.org/index.php?thread/47983-omv-extras-6-3-openmediavault-compose-6-7/)。
+
+### 安装其他常用插件
+
+* `openmediavault-compose` 管理 docker。安装完成后，可在：服务 -> Compose 菜单中使用。
+* `openmediavault-downloader` 下载器。安装完成后，可在：服务 -> Downloader 菜单中使用。
+* `openmediavault-ftp` ftp 服务。
 
 ## OpenWRT 虚拟机
 
