@@ -560,6 +560,46 @@ omv-salt stage run all
 
 ## OpenWRT 虚拟机
 
+### 安装虚拟机
+
+> [官方文档](https://openwrt.org/docs/guide-user/installation/openwrt_x86)
+
+* 从 [清华源](https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/23.05.2/targets/x86/64/) 下载最新版镜像  [`openwrt-23.05.2-x86-64-generic-ext4-combined-efi.img.gz`](https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/23.05.2/targets/x86/64/openwrt-23.05.2-x86-64-generic-ext4-combined-efi.img.gz)。
+* 解压为 img 文件。
+* 打开 pve local 存储，上传 img 文件。
+* 后续步骤和 [Dev 虚拟机](#dev-虚拟机) 基本一致，差别在于：
+    * 创建虚拟机
+        * 名称：openwrt
+        * CPU： 1 核
+        * 操作系统：不适用任何介质
+        * 内存：2G
+        * 删除默认磁盘
+    * 打开 pve shell，执行如下命令，导入磁盘
+
+        ```bash
+        qm disk import 105 /var/lib/vz/template/iso/openwrt-23.05.2-x86-64-generic-ext4-combined-efi.img local --format qcow2
+        ```
+
+    * 打开虚拟机配置：
+        * 硬件，双击选中未使用的磁盘 0，点击添加。
+        * 选项，引导顺序，将硬盘添加到第一个。
+    * 点击启动，即可进入系统。
+
+### 基础配置
+
+* 打开控制台，配置 lan 口：需修改 `/etc/config/network` 的 lan 口的 ipaddr 为分配的地址，如 `192.168.29.254`，执行 `service network restart` 重启网络。
+* 打开 openwrt 控制台 http://192.168.29.254 ，进行如下基础配置：
+    * 通过引导页，配置 root 密码。
+    * System -> Administration -> SSH Access 开启 ssh 登录。
+* ssh 登录 openwrt，进行如下基础配置：
+    * 参考 [清华源](https://mirrors.tuna.tsinghua.edu.cn/help/openwrt/)，配置。
+    * 配置 hostname，`vim /etc/config/system`，hostname 为 `openwrt`。
+* 打开 openwrt 控制台 http://192.168.29.254 。
+    * 配置 lan 口：Network -> Interfaces， 点击 Edit，编辑网关和 DNS。
+    * System -> Sofeware，点击 Update list，
+        * 搜索 `luci-i18n-base-zh-cn`，安装中文包。
+        * 搜索 `qemu-ga`，安装 qemu-agent。
+
 ## 备忘
 
 * 当然建议大家使用virtio-scsi-single的磁盘控制器，以获得最佳性能。 https://foxi.buduanwang.vip/virtualization/pve/1226.html/ https://foxi.buduanwang.vip/virtualization/pve/1214.html/
