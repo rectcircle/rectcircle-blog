@@ -595,10 +595,19 @@ omv-salt stage run all
     * 参考 [清华源](https://mirrors.tuna.tsinghua.edu.cn/help/openwrt/)，配置。
     * 配置 hostname，`vim /etc/config/system`，hostname 为 `openwrt`。
 * 打开 openwrt 控制台 http://192.168.29.254 。
-    * 配置 lan 口：Network -> Interfaces， 点击 Edit，编辑网关和 DNS。
+    * 配置 lan 口：Network -> Interfaces，选择 br-lan，点击 Edit，编辑：常规设置 -> 网关、高级设置 -> DNS 为硬路由的 192.168.29.1 。
     * System -> Sofeware，点击 Update list，
         * 搜索 `luci-i18n-base-zh-cn`，安装中文包。
         * 搜索 `qemu-ga`，安装 qemu-agent。
+* 配置旁路由。
+    * 打开 openwrt 控制台 http://192.168.29.254 。
+        * Network -> Interfaces，选择 br-lan，点击 Edit。
+            * DHCP -> 高级设置 -> DHCP 选项，添加：
+                * 网关 `3,192.168.29.254`。
+                * DNS `6,192.168.29.254`。
+            *  DHCP -> 高级设置，勾选强制。
+    * 打开硬路由控制台 http://192.168.29.1 ，关闭 DHCP 服务。
+    * 将主机和虚拟机设置为 HDCP 静态地址。
 
 ## 备忘
 
