@@ -599,13 +599,15 @@ omv-salt stage run all
     * System -> Sofeware，点击 Update list，
         * 搜索 `luci-i18n-base-zh-cn`，安装中文包。
         * 搜索 `qemu-ga`，安装 qemu-agent。
-* 配置旁路由。
+* 配置旁路由（详见：[博客](https://easonyang.com/posts/transparent-proxy-in-router-gateway/)）。
     * 打开 openwrt 控制台 http://192.168.29.254 。
         * Network -> Interfaces，选择 br-lan，点击 Edit。
             * DHCP -> 高级设置 -> DHCP 选项，添加：
                 * 网关 `3,192.168.29.254`。
                 * DNS `6,192.168.29.254`。
-            *  DHCP -> 高级设置，勾选强制。
+            * DHCP -> 高级设置，勾选强制。
+            * DHCP -> IPv6 设置， RA 服务、 DHCPv6 服务、NDP 服务均关闭。
+        * 网络 -> 防火墙，关闭 SYN-flood 防御，区域 lan => wan 勾选 IP 动态伪装（实测不勾选，网络不稳定）。
     * 打开硬路由控制台 http://192.168.29.1 ，关闭 DHCP 服务。
     * 将主机和虚拟机设置为 HDCP 静态地址。
 
