@@ -610,6 +610,17 @@ omv-salt stage run all
         * 网络 -> 防火墙，关闭 SYN-flood 防御，区域 lan => wan 勾选 IP 动态伪装（实测不勾选，网络不稳定）。
     * 打开硬路由控制台 http://192.168.29.1 ，关闭 DHCP 服务。
     * 将主机和虚拟机设置为 HDCP 静态地址。
+* 磁盘扩容
+    * 打开 pve 控制台，openwrt 虚拟机硬件，选择硬盘，磁盘操作，调整磁盘大小，增量大小，调整到 4 G。
+    * ssh 连接到 openwrt，执行如下命令（参考：[官方文档](https://openwrt.org/docs/guide-user/advanced/expand_root)）：
+
+        ```bash
+        opkg update
+        opkg install parted losetup resize2fs
+        wget -U "" -O expand-root.sh "https://openwrt.org/_export/code/docs/guide-user/advanced/expand_root?codeblock=0"
+        . ./expand-root.sh
+        sh /etc/uci-defaults/70-rootpt-resize
+        ```
 
 ## 备忘
 
