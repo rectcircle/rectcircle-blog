@@ -622,6 +622,15 @@ omv-salt stage run all
         sh /etc/uci-defaults/70-rootpt-resize
         ```
 
+### 局域网透明代理
+
+受限于中国大陆法律法规，不做介绍，如有需要自行搜索。
+
+### Wireguard 配置
+
+* 安装 `luci-proto-wireguard` 软件包，重启虚拟机。
+* 更多参见：[博客](/posts/linux-net-virual-06-wireguard/)。
+
 ## 备忘
 
 * 当然建议大家使用virtio-scsi-single的磁盘控制器，以获得最佳性能。 https://foxi.buduanwang.vip/virtualization/pve/1226.html/ https://foxi.buduanwang.vip/virtualization/pve/1214.html/
