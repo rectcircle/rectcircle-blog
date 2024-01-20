@@ -10,6 +10,10 @@ tags:
 
 ## 设计
 
+### 目标
+
+* 超高性价比。
+
 ### 设备
 
 ### 网络模型
@@ -626,10 +630,44 @@ omv-salt stage run all
 
 受限于中国大陆法律法规，不做介绍，如有需要自行搜索。
 
-### Wireguard 配置
+### 异地组网
 
-* 安装 `luci-proto-wireguard` 软件包，重启虚拟机。
-* 更多参见：[博客](/posts/linux-net-virual-06-wireguard/)。
+* 手动配置 Wireguard
+    * 安装 `luci-proto-wireguard` 软件包，重启虚拟机。
+    * 更多参见：[博客](/posts/linux-net-virual-06-wireguard/)。
+* 使用 [zerotier](https://my.zerotier.com/)，注意：大陆地区速度极慢基本不可用。参考：
+    * [博客](https://kevron2u.com/set-up-a-zerotier-network-on-openwrt/)。
+    * [官方 wiki](https://openwrt.org/docs/guide-user/services/vpn/zerotier)，注意该文命令，有错误，正确写法如下：
+
+        ```bash
+        cat /etc/config/zerotier
+        # config zerotier sample_config
+        #         option enabled 0
+
+        #         # persistent configuration folder (for ZT controller mode)
+        #         #option config_path '/etc/zerotier'
+        #         # copy <config_path> to RAM to prevent writing to flash (for ZT controller mode)
+        #         #option copy_config_path '1'
+
+        #         #option port '9993'
+
+        #         # path to the local.conf
+        #         #option local_conf '/etc/zerotier.conf'
+
+        #         # Generate secret on first start
+        #         option secret ''
+
+        #         # Join a public network called Earth
+        #         list join '8056c2e21c000001'
+        #         #list join '<other_network>'
+
+        uci delete zerotier.sample_config
+        uci set zerotier.rectcircle=zerotier
+        uci add_list zerotier.rectcircle.join='xxx'
+        uci set zerotier.rectcircle.enabled='1'
+        uci commit zerotier
+        service zerotier restart
+        ```
 
 ## 备忘
 
