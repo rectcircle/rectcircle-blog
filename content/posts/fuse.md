@@ -23,9 +23,9 @@ POSIX 作为面向使用者的接口，其设计重点考虑的是通用性和�
 * `file_system_type` 文件系统类型，该结构体定义文件系统名，flag 参数，mount 参数，mount 系统调用回调函数等。
 * [`superblock`](https://litux.nl/mirror/kerneldevelopment/0672327201/ch12lev1sec5.html) 记录某个 mount 了的文件系统的元信息，如顶级目录的 inode，挂载点，关联的设备，空间大小等。
 * [`inode`](https://litux.nl/mirror/kerneldevelopment/0672327201/ch12lev1sec6.html) 文件系统中的每一个文件（包括目录）在读写时，都会对应一个内存中的 inode 结构体（硬链接会多对一），主要记录这个文件的元信息，如：inode 编号 (`i_ino`)，文件类型，文件大小，相关时间，文件权限和类型（`i_mode`）、所有者、所属组。
-* [`dentry`](https://litux.nl/mirror/kerneldevelopment/0672327201/ch12lev1sec7.html) 目录项，POSIX 文件系统本质上是一个由目录组成属性结构，通过路径定位。`dentry` 代表着目录树节点，基于此还实现了 inode 缓存以及文件路径到 inode 的快速定位。`dentry` 主要包含了 inode 指针，文件的 basename，父 `dentry` 指针、子 `dentry` 列表。此外，每个挂载的文件系统都存在一个用于缓存 dentry 的 hash 表（hash key 由文件 basename 和父 `dentry` 的指针组成），在读取一个路径时，会按照目录结构依次从 hash 表中查找 `dentry`，如果找不到才会从文件系统中重新读取（参见：[该知乎文章头图](https://zhuanlan.zhihu.com/p/261669249)，[博客](https://bean-li.github.io/vfs-inode-dentry/)）。
+* [`dentry`](https://litux.nl/mirror/kerneldevelopment/0672327201/ch12lev1sec7.html) 目录项，POSIX 文件系统本质上是一个由目录组成树状结构，通过路径定位。`dentry` 代表着目录树节点，基于此还实现了 inode 缓存以及文件路径到 inode 的快速定位。`dentry` 主要包含了 inode 指针，文件的 basename，父 `dentry` 指针、子 `dentry` 列表。此外，还存在一个用于缓存 dentry 的 hash 表（hash key 由文件 basename 和父 `dentry` 的指针组成），在读取一个路径时，会按照目录结构依次从 hash 表中查找 `dentry`，如果找不到才会从文件系统中重新读取（参见：[知乎文章头图](https://zhuanlan.zhihu.com/p/261669249)，[博客](https://bean-li.github.io/vfs-inode-dentry/)）。
 
-因此，要实现一个文件系统，需要编写一个内核模块，实现 Linux 定义的一系列对上述函数接口。
+因此，要实现一个文件系统，需要编写一个内核模块，实现 Linux 定义的一系列对上述结构体的函数接口。
 
 编写内核模块的成本和难度是比较高的。而 fuse 提供了一种，在用户态的普通应用程序，即可实现一个自定义文件系统的框架。
 
@@ -34,7 +34,7 @@ POSIX 作为面向使用者的接口，其设计重点考虑的是通用性和�
 fuse 框架主要包含如下几个部分：
 
 * 位于内核的 fuse 内核模块，主流的 Linux 发行版（如 debian）均有启用 （`/lib/modules/*/kernel/fs/fuse/`）。
-* 用于内核态和用户态通讯的设备文件 `/dev/fuse`，以及用户态和内核态的一套通讯协议。
+* 用于内核态和用户态通讯的设备文件 `/dev/fuse`，以及用于用户态和内核态通讯的一套通讯协议。
 * fuse 命令行工具集 （以 debian 为例： [fuse3/filelist](https://packages.debian.org/buster/amd64/fuse3/filelist)）
     * `/bin/fusermount` (`/bin/fusermount3`)
     * `/sbin/mount.fuse` (`/sbin/mount.fuse3`)
