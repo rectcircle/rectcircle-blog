@@ -10,9 +10,15 @@ tags:
 
 ## 设计
 
+### 目标
+
+* 超高性价比。
+
 ### 设备
 
 ### 网络模型
+
+### 存储模型
 
 ## PVE 安装和配置
 
@@ -271,19 +277,86 @@ update-initramfs -u -k all
 
 ### NVIDIA 显卡直通
 
-TODO https://foxi.buduanwang.vip/yj/561.html/
+> 参考：[博客](https://foxi.buduanwang.vip/virtualization/pve/561.html/)
 
-https://www.bilibili.com/read/cv26863115/?jump_opus=1
+屏蔽显卡驱动
 
-https://zhing.fun/pve_igpupt/
+```bash
+echo "blacklist nouveau" >> /etc/modprobe.d/pve-blacklist.conf
+echo "blacklist nvidia" >> /etc/modprobe.d/pve-blacklist.conf
+# echo "blacklist nvidiafb" >> /etc/modprobe.d/pve-blacklist.conf
+echo "blacklist snd_hda_intel" >> /etc/modprobe.d/pve-blacklist.conf
+```
 
-https://github.com/HelloZhing/pvevm-hooks
+查看设备 id
+
+```bash
+lspci -nnk
+# 04:00.0 VGA compatible controller [0300]: NVIDIA Corporation GA106 [GeForce RTX 3060 Lite Hash Rate] [10de:2504] (rev a1)
+#         Subsystem: NVIDIA Corporation GA106 [GeForce RTX 3060 Lite Hash Rate] [10de:2504]
+#         Kernel driver in use: nouveau
+#         Kernel modules: nvidiafb, nouveau
+# 04:00.1 Audio device [0403]: NVIDIA Corporation GA106 High Definition Audio Controller [10de:228e] (rev a1)
+#         Subsystem: NVIDIA Corporation GA106 High Definition Audio Controller [10de:2504]
+#         Kernel modules: snd_hda_intel
+lspci -nnk
+# 04:00.0 0300: 10de:2504 (rev a1)
+# 04:00.1 0403: 10de:228e (rev a1)
+```
+
+将设备加入 vfio
+
+```bash
+echo "options vfio-pci ids=10de:2504,10de:228e" >> /etc/modprobe.d/vfio.conf
+```
+
+添加内核选项
+
+```bash
+echo "options kvm ignore_msrs=1" > /etc/modprobe.d/kvm.conf
+```
+
+更新内核镜像
+
+```bash
+update-initramfs -k all -u 
+```
+
+打开 pve 管理页面，选择 windows 虚拟机，点击硬件，点击添加，选择添加 pcie 设备，选择上面的设备号，并勾选所有功能、PCI-Express，取消勾选主 GPU。
+
+保持显示为默认，打开虚拟机，等待 windows 自动安装显卡驱动。
+
+确认安装完成后，停止虚拟机，并将显示设置为 none。
 
 ### vm 停止后归还设备
 
 https://github.com/HelloZhing/pvevm-hooks
 
 https://foxi.buduanwang.vip/virtualization/pve/1590.html/
+
+### 设置主机名
+
+打开设置，系统，系统信息，重构明明这台电脑。
+
+### 安装配置 barrier
+
+> [github](https://github.com/debauchee/barrier)
+
+* 打开 github release 页，下载 exe ，并安装。
+* 打开，引导页，语言选择中文，设置为客户端。
+* 配置服务端 IP，填写 Deamon 虚拟机的 IP。
+* 点击菜单栏，Barrier，更改设置：勾掉 开启SSL，勾选最小化启动，勾选最小化到系统托盘（这里的自动启动实测不生效）。
+* 设置 barrier 在登录账号前启动。
+    * 打开任务计划程序。
+    * 点击创建任务
+        * 常规
+            * 名称：barrier
+            * 选择：不管用户是否登录都要运行
+        * 触发器，新建，选择启动时
+        * 操作：新建，选择启动程序
+            * 配置程序或脚本为 `C:\Program Files\Barrier\barrier`
+        * 条件：勾掉只有在计算机使用交流电源时才启动此任务
+        * 设置：勾掉如果任务运行超过一下时间，停止任务
 
 ## Dev 虚拟机
 
@@ -297,12 +370,14 @@ https://foxi.buduanwang.vip/virtualization/pve/1590.html/
 * 操作系统安装：
     * 软件选择：仅保留标准系统工具和 SSH Server
     * 安装 GRUB 启动引导器，选择识别到的硬盘
-* 操作系统配置：
+* 操作系统配置，`su root` 执行：
     * 参考[清华镜像源](https://mirrors.tuna.tsinghua.edu.cn/help/debian/)，配置 apt。
     * 安装常用的软件： `apt install vim curl git sudo`。
     * 配置免密 sudo：`echo 'rectcircle ALL=(ALL:ALL)  NOPASSWD:ALL' > /etc/sudoers.d/rectcircle`。
 
 ## Deamon 虚拟机
+
+### 安装虚拟机
 
 步骤和 [Dev 虚拟机](#dev-虚拟机) 基本一致，差别在于：
 
@@ -311,8 +386,41 @@ https://foxi.buduanwang.vip/virtualization/pve/1590.html/
     * 内存：2G
 * 操作系统安装：
     * 软件选择：Debian 桌面环境、LXDE、标准系统工具、 SSH Server
+* 打开虚拟机配置选项，开启开机自启动
+
+### 配置开机自动进入桌面
+
+修改 /etc/lightdm/lightdm.conf 文件，在文件中找到 `#autologin-user=` （位于 `[Seat:*]` 段）。
+
+### 安装配置 barrier
+
+> [github](https://github.com/debauchee/barrier)
+
+安装
+
+```bash
+apt update
+apt install barrier
+```
+
+配置 barrier
+
+* 打开终端，输入 barrier 回车启动。
+* 选择中文，作为服务端。
+* 点击设置服务端。
+* 添加一个屏幕，配置屏幕名为对应设备的主机名。
+* 点击菜单栏，Barrier，更改设置：勾掉 开启SSL，勾选自动启动。
+
+配置自动启动
+
+```bash
+mkdir -p ~/.config/autostart
+ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.desktop
+```
 
 ## OMV 虚拟机
+
+### 安装虚拟机
 
 步骤和 [Dev 虚拟机](#dev-虚拟机) 基本一致，差别在于：
 
@@ -321,10 +429,248 @@ https://foxi.buduanwang.vip/virtualization/pve/1590.html/
 * 创建虚拟机
     * CPU： 1 核
     * 内存：2G
+* 打开虚拟机硬件添加硬盘所在的 USB 设备。
+* 打开虚拟机选项，开启开机自启动。
+
+### 基础配置
+
+* ssh 登录 root：
+    * 参考[清华镜像源 omv 配置说明](https://mirrors.tuna.tsinghua.edu.cn/help/openmediavault/)，配置 apt。
+    * `apt update && apt upgrade -y`
+* 浏览器输入 ip 地址，输入默认用户名 (admin)、密码 (openmediavault)登录。
+* 修改登录密码：点击右上角用户图标 -> 更改密码，修改密码。
+* 配置仪表盘：点击右上角用户图标 -> 仪表盘，启用所有。
+* 系统 -> 工作台：
+    * 自动登出：禁用。
+* 使用备份用硬盘，创建【备份文件系统】。
+    * 存储器 -> 文件系统，点击新建，选 ext4，选择备份用的硬盘创建。
+* 其他硬盘，由 LVM 管理，并创建【主文件系统】（lvm 参见：[文章](/posts/linux-lvm/)）。
+    * 系统 -> 插件，搜索 lvm，安装。
+    * 存储器 -> LVM
+        * 多个物理卷，将物理硬盘添加进去。
+        * 多个卷组，新建一个卷组。
+        * 逻辑卷，创建一个逻辑卷。
+    * 存储器 -> 文件系统，点击新建，选 ext4，选择逻辑卷。
+* 将【主文件系统】通过 SMB 导出。
+    * 存储器 -> 共享文件系统，新建：
+        * 名称：main
+        * 文件系统：【主文件系统】
+        * 相对路径：`/`
+        * 权限：按需选项
+    * 服务 -> SMB/CIFS
+        * 设置：勾选已启用。
+        * 共享，新建：
+            * 选择 main 共享文件系统。
+            * 勾掉隐藏点文件。
+    * 用户 -> 用户，新建，该操作会新建一个 id 为 1000 用户组为 100 (users) 的 Linux 用户。
+* 配置备份任务。
+    * 创建相关共享文件夹，存储器-> 共享文件夹：
+        * 创建：important-source，选择【主文件系统】，相对路径填写 `00-Important/`
+        * 创建：important-backup，选择【备份文件系统】，相对路径填写 `/`
+    * 创建 Rsync 任务，服务 -> Rsync -> 任务，新建：
+        * 类型：本地。
+        * 源共享文件夹：important-source。
+        * 目标共享文件夹：important-backup。
+        * 执行时间：凌晨 5 点。
+        * 试运行：勾选（先测试一次）。
+    * 调试，服务 -> Rsync -> 任务，选择上一步创建的，点击运行。
+    * 勾掉试运行，保存。
+
+### 其他虚拟机使用
+
+* Windows:
+    * 打开资源管理器，网络
+    * 双击 OMV，输入上一小节步骤新建的用户和密码连接。
+    * 右击 main 目录，映射网络驱动器。
+    * 勾选使用其他凭据链接。
+    * 点击完成，输入上一小节步骤新建的用户和密码连接。
+
+* Linux: [使用 systemd 挂载](https://www.expoli.tech/articles/2022/12/23/use-systemd-mount-any-device)。
+
+    * 创建挂载点和配置文件
+
+        ```bash
+        mkdir -p /home/rectcircle/omv
+        sudo touch /etc/systemd/system/$(systemd-escape -p --suffix=mount "/home/rectcircle/omv")
+        sudo touch /etc/systemd/system/$(systemd-escape -p --suffix=automount "/home/rectcircle/omv")
+        ```
+
+    * `/etc/systemd/system/home-rectcircle-omv.mount` 内容如下：
+
+        ```
+        [Unit]
+        Description=OVM SMB mount
+
+        [Mount]
+        What=//192.168.29.7/main
+        Where=/home/rectcircle/omv
+        Type=cifs
+        Options=username=omv,password=sunben960729
+        TimeoutSec=30
+
+        [Install]
+        WantedBy=multi-user.target
+        ```
+
+    * `/etc/systemd/system/home-rectcircle-omv.automount` 内容如下：
+
+        ```
+        [Unit]
+        Description=OVM SMB automount
+
+        [Automount]
+        Where=/home/rectcircle/omv
+        TimeoutIdleSec=10
+
+        [Install]
+        WantedBy=multi-user.target
+        ```
+
+    * 启用配置：`sudo systemctl enable data-1tb.automount --now`
+
+### 安装 omv-extras
+
+```bash
+# 方式1: 自动安装 (能访问外网场景推荐，推荐配置完成 OpenWRT 再执行)
+wget -O - https://github.com/OpenMediaVault-Plugin-Developers/packages/raw/master/install | bash
+# https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/pool/main/o/openmediavault-omvextrasorg/
+
+# 方式2: 大陆地区
+# 如下针对：omv 6
+apt --yes --no-install-recommends install dirmngr gnupg
+wget https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers/pool/main/o/openmediavault-omvextrasorg/openmediavault-omvextrasorg_6.3.6_all.deb
+dpkg -i openmediavault-omvextrasorg_6.3.6_all.deb
+apt-get update
+rm -rf openmediavault-omvextrasorg_6.3.6_all.deb
+# 设置清华源
+omv-env set OMV_APT_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/public"
+omv-env set OMV_APT_ALT_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/packages"
+omv-env set OMV_APT_KERNEL_BACKPORTS_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/debian"
+omv-env set OMV_APT_SECURITY_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/debian-security"
+omv-env set OMV_EXTRAS_APT_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/OpenMediaVault/openmediavault-plugin-developers"
+omv-env set OMV_DOCKER_APT_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/docker-ce/linux/debian"
+omv-env set OMV_PROXMOX_APT_REPOSITORY_URL "https://mirrors.tuna.tsinghua.edu.cn/proxmox/debian"
+# 使得环境变量更改生效
+omv-salt stage run all
+```
+
+* 浏览器 omv 管理页面强制刷新 `ctrl + shift + r`。
+* 注意 ：omv-extra 6.3 已经将  docker, portainer 和 yacht 移除了，只能使用 openmediavault-compose，参见：[官方论坛](https://forum.openmediavault.org/index.php?thread/47983-omv-extras-6-3-openmediavault-compose-6-7/)。
+
+### 安装其他常用插件
+
+* `openmediavault-compose` 管理 docker。安装完成后，可在：服务 -> Compose 菜单中使用。
+* `openmediavault-downloader` 下载器。安装完成后，可在：服务 -> Downloader 菜单中使用。
+* `openmediavault-ftp` ftp 服务。
 
 ## OpenWRT 虚拟机
 
 核心绑定 `lscpu -e`。
+
+### 安装虚拟机
+
+> [官方文档](https://openwrt.org/docs/guide-user/installation/openwrt_x86)
+
+* 从 [清华源](https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/23.05.2/targets/x86/64/) 下载最新版镜像  [`openwrt-23.05.2-x86-64-generic-ext4-combined-efi.img.gz`](https://mirrors.tuna.tsinghua.edu.cn/openwrt/releases/23.05.2/targets/x86/64/openwrt-23.05.2-x86-64-generic-ext4-combined-efi.img.gz)。
+* 解压为 img 文件。
+* 打开 pve local 存储，上传 img 文件。
+* 后续步骤和 [Dev 虚拟机](#dev-虚拟机) 基本一致，差别在于：
+    * 创建虚拟机
+        * 名称：openwrt
+        * CPU： 1 核
+        * 操作系统：不适用任何介质
+        * 内存：2G
+        * 删除默认磁盘
+    * 打开 pve shell，执行如下命令，导入磁盘
+
+        ```bash
+        qm disk import 105 /var/lib/vz/template/iso/openwrt-23.05.2-x86-64-generic-ext4-combined-efi.img local --format qcow2
+        ```
+
+    * 打开虚拟机配置：
+        * 硬件，双击选中未使用的磁盘 0，点击添加。
+        * 选项，引导顺序，将硬盘添加到第一个。
+    * 点击启动，即可进入系统。
+
+### 基础配置
+
+* 打开控制台，配置 lan 口：需修改 `/etc/config/network` 的 lan 口的 ipaddr 为分配的地址，如 `192.168.29.254`，执行 `service network restart` 重启网络。
+* 打开 openwrt 控制台 http://192.168.29.254 ，进行如下基础配置：
+    * 通过引导页，配置 root 密码。
+    * System -> Administration -> SSH Access 开启 ssh 登录。
+* ssh 登录 openwrt，进行如下基础配置：
+    * 参考 [清华源](https://mirrors.tuna.tsinghua.edu.cn/help/openwrt/)，配置。
+    * 配置 hostname，`vim /etc/config/system`，hostname 为 `openwrt`。
+* 打开 openwrt 控制台 http://192.168.29.254 。
+    * 配置 lan 口：Network -> Interfaces，选择 br-lan，点击 Edit，编辑：常规设置 -> 网关、高级设置 -> DNS 为硬路由的 192.168.29.1 。
+    * System -> Sofeware，点击 Update list，
+        * 搜索 `luci-i18n-base-zh-cn`，安装中文包。
+        * 搜索 `qemu-ga`，安装 qemu-agent。
+* 配置旁路由（详见：[博客](https://easonyang.com/posts/transparent-proxy-in-router-gateway/)）。
+    * 打开 openwrt 控制台 http://192.168.29.254 。
+        * Network -> Interfaces，选择 br-lan，点击 Edit。
+            * DHCP -> 高级设置 -> DHCP 选项，添加：
+                * 网关 `3,192.168.29.254`。
+                * DNS `6,192.168.29.254`。
+            * DHCP -> 高级设置，勾选强制。
+            * DHCP -> IPv6 设置， RA 服务、 DHCPv6 服务、NDP 服务均关闭。
+        * 网络 -> 防火墙，关闭 SYN-flood 防御，区域 lan => wan 勾选 IP 动态伪装（实测不勾选，网络不稳定）。
+    * 打开硬路由控制台 http://192.168.29.1 ，关闭 DHCP 服务。
+    * 将主机和虚拟机设置为 HDCP 静态地址。
+* 磁盘扩容
+    * 打开 pve 控制台，openwrt 虚拟机硬件，选择硬盘，磁盘操作，调整磁盘大小，增量大小，调整到 4 G。
+    * ssh 连接到 openwrt，执行如下命令（参考：[官方文档](https://openwrt.org/docs/guide-user/advanced/expand_root)）：
+
+        ```bash
+        opkg update
+        opkg install parted losetup resize2fs
+        wget -U "" -O expand-root.sh "https://openwrt.org/_export/code/docs/guide-user/advanced/expand_root?codeblock=0"
+        . ./expand-root.sh
+        sh /etc/uci-defaults/70-rootpt-resize
+        ```
+
+### 局域网透明代理
+
+受限于中国大陆法律法规，不做介绍，如有需要自行搜索。
+
+### 异地组网
+
+* 手动配置 Wireguard
+    * 安装 `luci-proto-wireguard` 软件包，重启虚拟机。
+    * 更多参见：[博客](/posts/linux-net-virual-06-wireguard/)。
+* 使用 [zerotier](https://my.zerotier.com/)，注意：大陆地区速度极慢基本不可用。参考：
+    * [博客](https://kevron2u.com/set-up-a-zerotier-network-on-openwrt/)。
+    * [官方 wiki](https://openwrt.org/docs/guide-user/services/vpn/zerotier)，注意该文命令，有错误，正确写法如下：
+
+        ```bash
+        cat /etc/config/zerotier
+        # config zerotier sample_config
+        #         option enabled 0
+
+        #         # persistent configuration folder (for ZT controller mode)
+        #         #option config_path '/etc/zerotier'
+        #         # copy <config_path> to RAM to prevent writing to flash (for ZT controller mode)
+        #         #option copy_config_path '1'
+
+        #         #option port '9993'
+
+        #         # path to the local.conf
+        #         #option local_conf '/etc/zerotier.conf'
+
+        #         # Generate secret on first start
+        #         option secret ''
+
+        #         # Join a public network called Earth
+        #         list join '8056c2e21c000001'
+        #         #list join '<other_network>'
+
+        uci delete zerotier.sample_config
+        uci set zerotier.rectcircle=zerotier
+        uci add_list zerotier.rectcircle.join='xxx'
+        uci set zerotier.rectcircle.enabled='1'
+        uci commit zerotier
+        service zerotier restart
+        ```
 
 ## 备忘
 

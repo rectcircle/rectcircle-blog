@@ -332,3 +332,7 @@ your_addr=xxx.xx # 域名
 * Chrome SwitchyOmega
 * Mac Proxifier
 * Linux iptable
+
+### OpenWRT
+
+可以使用 v2raya 简化配置，参考： https://github.com/v2rayA/v2raya-openwrt?tab=readme-ov-file 。
