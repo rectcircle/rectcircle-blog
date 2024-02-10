@@ -939,3 +939,10 @@ utterances 是一个基于 Github issues 的评论系统，开源可控。
 ```toml
 customJS = ['/js/anchorforid.js', '/js/main.js']
 ```
+
+## 2024-02-10 使用 Cloudflare 加速
+
+* 打开 https://dash.cloudflare.com ，添加站点，输入上述自己购买的域名，可以获取到 Cloudflare 名称服务器。
+* 在 cloudflare 控制台，DNS 页面，新增 `@` 和 `www` 的 CNAME 解析，目标为  `xxx.netlify.com`，同时打开代理。
+* 前往域名管理平台，修改 DNS 解析设置为第一步获取到的 Cloudflare 名称服务器。
+* 等待解析生效即可。
