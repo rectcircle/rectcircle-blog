@@ -942,6 +942,8 @@ customJS = ['/js/anchorforid.js', '/js/main.js']
 
 ## 2024-02-10 使用 Cloudflare 加速
 
+> 在中国大陆，netlify 访问速度非常慢。而作为全球最大 CDN 提供商 Cloudflare 即使在中国大陆，其访问速度也可以得到很好的保证，且其免费 Plan 基本也可以满足个人博客的需求，因此本部分将介绍如何通过 Cloudflare 来给个人博客加速。
+
 * 打开 https://dash.cloudflare.com ，添加站点，输入上述自己购买的域名，可以获取到 Cloudflare 名称服务器。
 * 在 cloudflare 控制台，DNS 页面，新增 `@` 和 `www` 的 CNAME 解析，目标为  `xxx.netlify.com`，同时打开代理。
 * 前往域名管理平台，修改 DNS 解析设置为第一步获取到的 Cloudflare 名称服务器。
