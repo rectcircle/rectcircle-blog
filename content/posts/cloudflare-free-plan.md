@@ -169,14 +169,14 @@ Cloudflare Zero Trust 本质提供的是面向组织的内网搭建服务，要�
 
     可以实现：
 
-    * public hostname： 将某个端口分配一个上文域名托管 DNS 子域名，实现端口暴露。
+    * public hostname： 将某个端口分配一个上文[域名托管 DNS 子域名](#dns-配置)，实现端口暴露。
     * private network： 将整个网络加入到 Cloudflare Zero Trust 网络中，可以实现虚拟局域网（异地组网），通过 WARP 加入 Cloudflare Zero Trust 网络中的设备都可以直接通过内网 IP 访问这个局域网的任意 IP。
 
-    更多参见下文： Tunnel 章节。
+    更多参见下文： [Tunnel](#tunnel)。
 
 * 接入
     * WARP： 用户接入 Cloudflare Zero Trust 网络的客户端，基本使用，参见下文： WARP 章节。
-    * cloudflared： 用于建立 Tunnel 的客户端，更多参见下文： Tunnel 章节。
+    * cloudflared： 用于建立 Tunnel 的客户端，更多参见下文： [Tunnel](#tunnel)。
 
 ### WARP
 
@@ -243,7 +243,7 @@ Tunnel 是在一台可连接公网的设备和 Cloudflare Zero Trust 网络之�
 * 购买一个 SSL 证书或使用 acme.sh 申请证书。
 * 将证书配置到 VPS Nginx 中。
 * 配置 DNS 解析。
-* 举要记得证书是否过期，过期后还需重新申请。
+* 要记得证书是否过期，过期后还需重新申请。
 
 上述操作很麻烦。如果使用 Cloudflare 免费计划，只需将配置 DNS 解析这一步即可。而证书过期续期全部由 Cloudflare 自动处理，十分方便。
 
@@ -253,7 +253,7 @@ Tunnel 是在一台可连接公网的设备和 Cloudflare Zero Trust 网络之�
 
 很多时候，对于个人站点或流量不大的非商业性站点，上述流程成本偏高，很没必要。
 
-现在，只需将服务部署到位于家庭宽带的个人设备（废旧手机/电脑）上，只需购买一个域名，通过 Zero Trust 的 cloudflared 建立一个 Tunnel，并在 Zero Trust 管理后台的 Networks -> Tunnels 页面，某 Tunnel 配置的 Public Hostname 配置上，暴露内网中的服务。
+现在，只需将服务部署到位于家庭宽带的个人设备（废旧手机/电脑）上，只需购买一个域名，通过 Zero Trust 的 cloudflared 建立一个 Tunnel，并在 Zero Trust 管理后台的 Networks -> Tunnels 页面的创建的 Tunnel 配置的 Public Hostname  Tab 页上，配置暴露内网中的服务即可。
 
 （一个限制是：目前不支持 UDP）
 
@@ -261,7 +261,7 @@ Tunnel 是在一台可连接公网的设备和 Cloudflare Zero Trust 网络之�
 
 由于 Cloudflare 是全球最大 CDN 服务提供商，因此接入 Cloudflare 的站点，在全球都有很好的访问速度。
 
-因此通过 Cloudflare 的免费计划可以为站点加速，举个例子，如： 利用 Cloudflare 给托管到 netlify 的个人博客加速。
+因此通过 Cloudflare 的免费计划可以为站点加速，举个例子，如： [利用 Cloudflare 给托管到 netlify 的个人博客加速](/posts/blog-migration/#2024-02-10-使用-cloudflare-加速)。
 
 ### 加速海外服务器访问
 
@@ -275,17 +275,19 @@ Tunnel 是在一台可连接公网的设备和 Cloudflare Zero Trust 网络之�
 
 和其他免费方案（如 zerotier）相比，体验最好，基础使用（SSH、VSCode Remote SSH 等）基本够用。
 
-实现方式参见上文： TUnnel。
+实现方式参见上文： [Tunnel](#tunnel)。
 
 ### 暴露 NAT 后服务的端口
 
-和上文零成本建站原理类似，这里想表达的是可以利用一些免费的可以访问互联网的计算资源，在上面搭建一些服务，并暴露到互联网上自用或小范围使用。
+和上文[零成本建站](#零成本建站)原理类似，这里想表达的是可以利用一些免费的可以访问互联网的计算资源，在上面搭建一些服务，并暴露到互联网上自用或小范围使用。
 
 这里有个利用 replit 资源的例子，脚本参见：
 
 * 打开 https://replit.com/@rectcircle 。
-* 点击 `v****-and-cloudflared` （由于法律原因， `****` 自行查看）。
-* 打开 main.sh 查看原理，或 fork 直接执行。
+* 点击 `v****-and-cloudflared`。
+* 打开 main.sh 查看原理，或 fork 执行（需配置 `cloudflared_tunnel_secret` 和 `v****_client_id` 这两个 Secret）。
+
+（由于法律原因， `****` 自行参照步骤查看）
 
 注意：
 
