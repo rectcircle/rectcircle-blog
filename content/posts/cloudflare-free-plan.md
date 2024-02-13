@@ -224,7 +224,7 @@ Tunnel 是在一台可连接公网的设备和 Cloudflare Zero Trust 网络之�
     * 好处就像大家常用的，所有流量都经过一个海外 VPS 节点一样，在此就不多言了。
     * 坏处是：
         * 延迟高，访问大陆站点慢，不稳定。
-        * 中国移动宽带/数据在晚高峰时期， WARP 拥堵严重（202400212）。
+        * 中国移动宽带/数据在晚高峰时期， WARP 拥堵严重（20240212）。
 * 通过 IP 查询， 开启 WARP 后，显示的地理位置仍在中国大陆，这让一些基于 IP 地理位置的应用可以正常工作。（实际上出口 IP Geo 是 Cloudflare 伪造的）。
 * 网络拓扑如下图所示（来源：[官方文档](https://developers.cloudflare.com/reference-architecture/architectures/sase/#tunnels-to-self-hosted-applications)）：
 
