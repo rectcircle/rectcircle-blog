@@ -1,24 +1,82 @@
 ---
 title: "All in one 家庭数据中心"
-date: 2023-12-29T18:10:00+08:00
-draft: true
+date: 2024-02-14T17:16:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
   - linux
 ---
 
+## 概述
+
+本文将介绍笔者 all in one 家庭数据中心搭建的思路、设计以及落地实施的全过程。
+
 ## 设计
 
-### 目标
+### 目标和原则
 
-* 超高性价比。
+* 性价比优先，性能次之。
+* all in one 虚拟化。
+* 7 * 24 小时不停机（可接受停电不可用）。
+* 搭建家庭 NAS，保证数据安全，数据备份，虚拟机快照。
+* 旁路由透明代理。
+* 局域网支持公网访问。
+* 开源优先，Linux 优先，轻量级优先，免费计划（订阅）优先，一次性费用优先。
+* 影音、办公优先、不考虑游戏。
 
-### 设备
+### 分析
+
+**主机和配件**
+
+All in one 且需要长时间运行，需要稳定性和省电，因此建议选择迷你主机。这里提一下选购建议：
+
+* 建议选择 2000 以上的准系统版本，CPU AMD 和 Intel 均可，自行购买内存和硬盘。
+    * 该价位迷你主机内存，一般有两个插槽，总共最大 64G，单条最大 32G。因为多个虚拟机需同时运行，且内存和 CPU 不一样，属于无法压缩资源，这里建议直接装到最大 64G。
+    * 硬盘（系统盘），建议选择 PCIe 3.0 以上， 1T 以上的即可。
+* 因为要长时间运行，且可能位于卧室，因此低噪声是最为重要，在购买前一定确认噪声情况。
+
+组建 NAS 需要将多块硬盘接入主机，这里一个最廉价的（延迟和速度基本够用）方案是：
+
+* 二手机械硬盘（价格 100 元/T）。
+* 亚克力支架（搜索亚克力硬盘架，4 盘位包邮 10 元左右）。
+* sata 转 usb3 连接线 （搜索硬盘连接线、硬盘易驱线 20元/个）。
+* 12v DC 电源（多个或 1 拆多，20 元/4A）。
+* USB HUb 1 分 4 （30 元）。
+
+**系统**
+
+根据上述目标，这里选型如下：
+
+* 主机上安装 PVE 虚拟化系统（不选择 EXSI 原因是其是闭源的），其他系统均以虚拟机形式运行在 PVE 中。
+* 旁路由选择 OpenWRT。
+* 桌面系统使用 Windows 11 （核显直通）。
+* 开发系统使用无桌面的 Debian 12， 由 Windows 11 通过 VSCode Remote SSH 连接。
+* NAS 系统选择 OMV。
+* Deamon 系统选择 LXDE 桌面 + Debian 12。
+
+**外部服务**
+
+* 使用免费计划的 cloudflare zero trust 实现在公网访问家庭局域网，详见博客： [Cloudflare 免费计划详解](/posts/cloudflare-free-plan/)。
+* 使用免费计划的 cloudflare 站点托管和海外 VPS （搜索便宜年付 VPS，约 10~20 美元/年） 以及 OpenWRT 旁路由，即可实现旁路由透明代理。
+
+### 硬件设备
+
+本文基于的主要硬件设备如下：
+
+* 主机：小米迷你主机准系统版 （十分不建议购买，噪音巨大）， 64G 内存，1 T SSD 硬盘。
+* 外接显卡：用于 AI 炼丹，或双桌面。本方案不考虑网络游戏，因为是虚拟机，会被网络游戏反作弊程序识别，游戏建议另行购买专用游戏主机。
+    * 雷电显卡扩展坞：[逍遥君DIY 雷电4雷电3显卡扩展坞 显卡坞Thunderbolt](https://item.taobao.com/item.htm?skuId=5278612827653) 。
+    * 独立显卡：英伟达 RTX 3060 。
+    * 台式机电源。
 
 ### 网络模型
 
-### 存储模型
+![image](/image/all-in-one-home-dc-network.svg)
+
+### NAS 存储
+
+![image](/image/all-in-one-home-dc-nas.svg)
 
 ## PVE 安装和配置
 
@@ -330,17 +388,20 @@ update-initramfs -k all -u
 
 ### vm 停止后归还设备
 
-https://github.com/HelloZhing/pvevm-hooks
+略，参见：
 
-https://foxi.buduanwang.vip/virtualization/pve/1590.html/
+* [github](https://github.com/HelloZhing/pvevm-hooks)。
+* [博客](https://foxi.buduanwang.vip/virtualization/pve/1590.html/)。
 
 ### 设置主机名
 
-打开设置，系统，系统信息，重构明明这台电脑。
+打开设置，系统，系统信息，重新命名这台电脑。
 
 ### 安装配置 barrier
 
-> [github](https://github.com/debauchee/barrier)
+> 详见： [github](https://github.com/debauchee/barrier) 。
+
+barrier 是一个开源的鼠标键盘多设备流转的软件。当安装多个桌面系统时，可以使用单套键盘鼠标操作多个系统。
 
 * 打开 github release 页，下载 exe ，并安装。
 * 打开，引导页，语言选择中文，设置为客户端。
@@ -451,7 +512,8 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
         * 多个卷组，新建一个卷组。
         * 逻辑卷，创建一个逻辑卷。
     * 存储器 -> 文件系统，点击新建，选 ext4，选择逻辑卷。
-* 将【主文件系统】通过 SMB 导出。
+* 将【主文件系统】通过 SMB/NFS 导出。
+    * 用户 -> 用户，新建，该操作会新建一个 id 为 1000 用户组为 100 (users) 的 Linux 用户。
     * 存储器 -> 共享文件系统，新建：
         * 名称：main
         * 文件系统：【主文件系统】
@@ -462,7 +524,13 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
         * 共享，新建：
             * 选择 main 共享文件系统。
             * 勾掉隐藏点文件。
-    * 用户 -> 用户，新建，该操作会新建一个 id 为 1000 用户组为 100 (users) 的 Linux 用户。
+    * 服务 -> NFS
+        * 设置：勾选已启动，保存并应用。
+        * 共享：
+            * Shared folder： 选择 main
+            * 客户端： 填写 `192.168.29.0/24`。
+            * 权限： 设为读写。
+            * 扩展选项填写： `subtree_check,insecure,no_root_squash`。
 * 配置备份任务。
     * 创建相关共享文件夹，存储器-> 共享文件夹：
         * 创建：important-source，选择【主文件系统】，相对路径填写 `00-Important/`
@@ -476,9 +544,11 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
     * 调试，服务 -> Rsync -> 任务，选择上一步创建的，点击运行。
     * 勾掉试运行，保存。
 
-### 其他虚拟机使用
+### 其他系统使用
 
-* Windows:
+* 安卓手机：ES 文件浏览器 -> 网络 -> 局域网 -> 扫描。
+* Mac：访达 -> 前往 -> 连接服务器。
+* Windows （SMB 协议）:
     * 打开资源管理器，网络
     * 双击 OMV，输入上一小节步骤新建的用户和密码连接。
     * 右击 main 目录，映射网络驱动器。
@@ -499,14 +569,13 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
 
         ```
         [Unit]
-        Description=OVM SMB mount
+        Description=OVM NFS mount
 
         [Mount]
-        What=//192.168.29.7/main
+        What=192.168.29.7:/export/main
         Where=/home/rectcircle/omv
-        Type=cifs
-        Options=username=omv,password=sunben960729
-        TimeoutSec=30
+        Type=nfs
+
 
         [Install]
         WantedBy=multi-user.target
@@ -516,7 +585,7 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
 
         ```
         [Unit]
-        Description=OVM SMB automount
+        Description=OVM NFS automount
 
         [Automount]
         Where=/home/rectcircle/omv
@@ -526,7 +595,7 @@ ln -s /usr/share/applications/barrier.desktop ~/.config/autostart/barrier.deskto
         WantedBy=multi-user.target
         ```
 
-    * 启用配置：`sudo systemctl enable data-1tb.automount --now`
+    * 启用配置：`sudo systemctl enable home-rectcircle-omv.automount --now`
 
 ### 安装 omv-extras
 
@@ -555,17 +624,15 @@ omv-salt stage run all
 ```
 
 * 浏览器 omv 管理页面强制刷新 `ctrl + shift + r`。
-* 注意 ：omv-extra 6.3 已经将  docker, portainer 和 yacht 移除了，只能使用 openmediavault-compose，参见：[官方论坛](https://forum.openmediavault.org/index.php?thread/47983-omv-extras-6-3-openmediavault-compose-6-7/)。
+* 注意 ：omv-extra 6.3 已经将 docker, portainer 和 yacht 移除了，只能使用 openmediavault-compose，参见：[官方论坛](https://forum.openmediavault.org/index.php?thread/47983-omv-extras-6-3-openmediavault-compose-6-7/)。
 
 ### 安装其他常用插件
 
-* `openmediavault-compose` 管理 docker。安装完成后，可在：服务 -> Compose 菜单中使用。
+* ~~`openmediavault-compose` 管理 docker。安装完成后，可在：服务 -> Compose 菜单中使用。~~ （不建议安装，可能会造成网络问题）
 * `openmediavault-downloader` 下载器。安装完成后，可在：服务 -> Downloader 菜单中使用。
 * `openmediavault-ftp` ftp 服务。
 
 ## OpenWRT 虚拟机
-
-核心绑定 `lscpu -e`。
 
 ### 安装虚拟机
 
@@ -629,13 +696,14 @@ omv-salt stage run all
         sh /etc/uci-defaults/70-rootpt-resize
         ```
 
-### 局域网透明代理
+### 旁路由透明代理
 
 受限于中国大陆法律法规，不做介绍，如有需要自行搜索。
 
 ### 异地组网
 
-* 手动配置 Wireguard
+* （推荐） 使用 cloudflare zero trust，详见博客： [Cloudflare 免费计划详解](/posts/cloudflare-free-plan/)。
+* 手动配置 Wireguard：
     * 安装 `luci-proto-wireguard` 软件包，重启虚拟机。
     * 更多参见：[博客](/posts/linux-net-virual-06-wireguard/)。
 * 使用 [zerotier](https://my.zerotier.com/)，注意：大陆地区速度极慢基本不可用。参考：
@@ -672,14 +740,16 @@ omv-salt stage run all
         service zerotier restart
         ```
 
-## 备忘
+## 参考
+
+* [佛西博客](https://foxi.buduanwang.vip/category/virtualization/pve/)
+
+<!-- 
+
+核心绑定 `lscpu -e`。
 
 * 当然建议大家使用virtio-scsi-single的磁盘控制器，以获得最佳性能。 https://foxi.buduanwang.vip/virtualization/pve/1226.html/ https://foxi.buduanwang.vip/virtualization/pve/1214.html/
 * ID https://foxi.buduanwang.vip/virtualization/pve/bestpractice/1643.html/
 * 存储 https://foxi.buduanwang.vip/linux/2044.html/ https://pve.proxmox.com/pve-docs/chapter-pvesm.html
 * 镜像 https://foxi.buduanwang.vip/virtualization/pve/1574.html/
-* 系统监控 https://foxi.buduanwang.vip/virtualization/pve/615.html/
-
-## 参考
-
-* [佛西博客](https://foxi.buduanwang.vip/category/virtualization/pve/)
+* 系统监控 https://foxi.buduanwang.vip/virtualization/pve/615.html/ -->
