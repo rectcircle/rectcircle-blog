@@ -22,7 +22,7 @@ nixpkgs 作为 nix 官方的 channel，定义了 80000+ 个包的构建过程。
 
 这个 HTTP 服务就被称为二进制缓存服务。本文将围绕这个二进制缓存服务介绍：
 
-* 通过 Go 实现一个简单的聚合器，介绍 HTTP 服务的接口规范（官方暂无详细说明）。
+* 通过 Go 实现一个 HTTP 反向代理，介绍二进制缓存服务的接口规范（官方暂无详细说明）。
 * 如何将任意一台机器的 `/nix/store` 部署成一个二进制缓存服务，并介绍其原理。
 * 如何将存储在 `/nix/store` 的一个包及其依赖导出到文件，以及如何将该文件导入到 `/nix/store` 中。
 
@@ -31,23 +31,13 @@ nixpkgs 作为 nix 官方的 channel，定义了 80000+ 个包的构建过程。
 * [Nix Wiki - Binary Cache](https://nixos.wiki/wiki/Binary_Cache)
 * [Nix Reference Manual - Sharing Packages Between Machines](https://nixos.org/manual/nix/stable/package-management/sharing-packages.html)
 
-## 二进制缓存聚合器
+## 二进制缓存服务相关接口分析
 
-在第一篇文章，安装部分，在 `~/.config/nix/nix.conf` 配置的 `substituters = https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store https://cache.nixos.org/` 就是配置两个二进制缓存地址。
+本部分将简单实现一个 http 反向代理，并打印相关日志，探索 nix 包安装过程中的 http 请求，探索包安装相关的接口规范。
 
-* 第一个 `https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store` 是清华大学提供的 nixpkgs 二进制缓存的 mirror。
-* 第二个 `https://cache.nixos.org/` 是 nixpkgs 官方提供的二进制缓存，在中国大陆地区访问缓慢甚至难以访问。
+### 实现并运行一个简单的 http 代理
 
-以上这些配置，仍然无法保证安装速度原因如下：
-
-* 清华 mirror 同步的并不全且不及时，很多缓存在 `https://cache.nixos.org/` 存在，但是在清华源并不存在。需要 failback 到官方缓存，速度巨慢。
-* 对于非 nixpkgs 的包的二进制缓存，在大陆地区可能仍然无法访问，每加一个二进制缓存，都需要用户更改 `substituters` 配置。
-
-下文将简单的实现一个反向代理，来将多个二进制缓存进行聚合。
-
-### 代码和解读
-
-`nix-binary-cache-aggregator/main.go`
+`nix-binary-cache-http-proxy/main.go`
 
 ```go
 package main
@@ -159,18 +149,14 @@ func main() {
 
 需要注意的是，这段代码只是一个简单的反向代理服务器示例，实际生产环境中需要进行更多的安全和性能优化。例如，可以添加访问控制、缓存、日志记录等功能来提高系统的可用性和稳定性。
 
-### 运行
-
 ```bash
-cd nix-binary-cache-aggregator
+cd nix-binary-cache-http-proxy
 HTTP_PROXY=http://192.168.31.254:1082 go run ./
 ```
 
 这里的 `http://192.168.31.254:1082` 是一个 HTTP 代理，这个 HTTP 代理有一个连接海外的专线。
 
-## 二进制缓存接口规范
-
-### 使用二进制缓存聚合器
+### 使用 http 代理安装 nix 包
 
 使用 `nix-env -e hello && nix-collect-garbage -d  && nix-env -iA nixpkgs.hello --option substituters http://127.0.0.1:8000` 命令（或修改 `~/.config/nix/nix.conf` 的 substituters 字段）。
 
@@ -185,13 +171,13 @@ HTTP_PROXY=http://192.168.31.254:1082 go run ./
 2023/03/19 21:59:53   try upstream[0]: https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store/nar/0qjw94x5c54sk397xhz4l134mk4cvyiakvdbczmal08rgd975sp5.nar.xz, success
 ```
 
-### 二进制缓存接口路径
+### 结果分析
 
 上文，可以看出，一共有三类路径，分别是：
 
 * `/nix-cache-info` 这个缓存服务的基础信息。
-* `/$hash.narinfo` 待下载的文件（nar、Nix 归档文件，参见：[论文](https://edolstra.github.io/pubs/phd-thesis.pdf) Figure 5.2 ）的元信息。
-* `/nar/0qjw94x5c54sk397xhz4l134mk4cvyiakvdbczmal08rgd975sp5.nar.xz` nar 文件的下载路径。
+* `/${pkg_hash}.narinfo` 待下载的文件（nar、Nix 归档文件，参见：[论文](https://edolstra.github.io/pubs/phd-thesis.pdf) Figure 5.2 ）的元信息。
+* `/nar/${file_hash}.nar.xz` nar 文件的下载路径。
 
 执行 `curl http://127.0.0.1:8000/nix-cache-info`，输出如下：
 
@@ -239,7 +225,7 @@ Sig: cache.nixos.org-1:wNCGXAt+CyxXwRFKCama8lAYXI+nz0ON4AWKZ7wCL7ccoJ8UTf1FtQzFi
 
 可以看出，该文件的 size 和 `narinfo` 的 `FileSize` 相同。
 
-## 二进制缓存服务实现探究
+## 二进制缓存服务 nar 详解
 
 二进制缓存服务就是根据设备上 `/nix/store` 以及 `/nix/var/nix` 相关元数据，生成 `.narinfo` 以及 `.nar.xz` 文件的下载服务。
 
