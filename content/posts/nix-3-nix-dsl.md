@@ -1573,3 +1573,27 @@ nix-env -e my-nix-package-demo-by-build-go-module-0.0.1 ; nix-collect-garbage -d
         * 查询包 `nix-env -qaP -f path/to/channel` 输出的第一列，格式为 `$attr_name`。
         * 安装包 `nix-env -iA $channel_name.$attr_name`。
         * 安装包 `nix-env -iA $attr_name -f path/to/channel`。
+
+### 包存储结构
+
+传统的 Unix 包存储结构规范是 [FHS](https://en.wikipedia.org/wiki/Filesystem_Hierarchy_Standard) 。这个规范有如下特点：
+
+* 这个规范并不是强制的，可以遵循可以不遵循。
+* 没有版本的概念，同一个包的不同版本会相互覆盖。
+* 一个包的各个组成部分，在不同个目录。比如 so 文件在 /usr/lib，可执行文件在 /usr/bin。
+
+而 Nix 的包并不遵循 [FHS](https://en.wikipedia.org/wiki/Filesystem_Hierarchy_Standard) 规范，Nix 的包有如下特点：
+
+* Nix 包存储结构是强制，是有 Nix 工具生成和维护的。
+* 有版本的概念，同一个包的不同版本存储在不同的目录。
+* 一个包的所有文件都存储在和其他包隔离的自己的目录中。
+
+下面是来自 [Nix 论文](https://edolstra.github.io/pubs/nspfssd-lisa2004-final.pdf) 的包存储结构和依赖关系示意图。
+
+![Dolstra, Eelco; de Jonge, Merijn; Visser, Eelco (November 2004). "Nix: A Safe and Policy-Free System for Software Deployment" (PDF). LISA '04: Proceedings of the 18th USENIX Conference on System Administration. pp. 79–92. Retrieved 11 July 2023. Figure 4: The Store.](/image/nix-paper-nix-store.png)
+
+* Nix 的所有包都存储在 `/nix/store` 下的目录中，这个目录的格式为 `$hash_$derivation_name`
+    * `$hash`：nix 包都是通过 nix 语言定义的，由于 nix 语言的纯函数性，因此对于每个 nix 包的制品的存储目录（在编译过程中成为 out 目录），生成的唯一的 hash 值。这个 hash 值存在的目的是，当该包的依赖变了的情况下，这个包虽然包名和版本号没变，但是其内容已经变了，这个包已经不是之前的包了，为了不可变性，这个 hash 也会变化。
+    * `$derivation_name`： 由包名和版本号构成。
+* 上图还展示了 Nix 包的依赖关系，这个关系在编译时，根据 Nix 语言包声明的依赖关系就决定了。
+* 在传统的 Linux 发行版中（符合 [FHS](https://en.wikipedia.org/wiki/Filesystem_Hierarchy_Standard) 规范），像 libc 这种最常见的动态链接库都是存储在固定的路径中的如 `/lib/x86_64-linux-gnu`。如果一个包是通过源码编译，自然没有问题，在编译时 libc 也自动的被配置到对应的 `/nix/store/xxx-glibc-xxx/lib` 目录中。但是，某些专有软件并没有提供源码，此时这类软件的编译过程变为：下载常规 Linux 版本可执行文件，然后通过 [patchelf](https://github.com/NixOS/patchelf) 工具修改 [ld-linux.so](https://linux.die.net/man/8/ld-linux.so) 到 `/nix/store/xxx-glibc-xxx/lib` 路径即可，详见：[wiki](https://nixos.wiki/wiki/Packaging/Binaries)。
