@@ -1,6 +1,6 @@
 ---
 title: "Nix 高级话题之 nix store"
-date: 2023-06-17T01:50:00+08:00
+date: 2024-06-17T01:50:00+08:00
 draft: false
 toc: true
 comments: true
