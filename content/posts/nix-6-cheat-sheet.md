@@ -87,6 +87,7 @@ nix-env --switch-generation 43
 释放磁盘空间
 
 ```bash
+# 垃圾回收
 # 真正删除没有被使用的软件包
 nix-collect-garbage -d
 ```
@@ -211,6 +212,13 @@ nix-hash --type sha256 --flat --base32 test.nar
 
 ```bash
 nix-copy-closure --to alice@itchy.example.org /nix/store/v02pl5dhayp8jnz8ahdvg5vi71s8xc6g-hello-2.12.1
+```
+
+## 环境变量
+
+```bash
+# 禁用分页器 (END) 这种全屏显示
+PAGER=
 ```
 
 ## 配置文件

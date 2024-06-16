@@ -120,6 +120,8 @@ Nix 可以从额外的 store （存储）中获取 store object（存储对象�
 
 详见： [Serving a Nix store via HTTP](https://nix.dev/manual/nix/2.22/package-management/binary-cache-substituter)。
 
+注意： 任意一种 store type（存储类型） 的 store （存储），都可以充当 substituter（替代器），常规使用 http cache 只是一种普通的 store type（存储类型），并无特殊性。
+
 ## purity（纯）
 
 Nix 总是假设同一个derivation（派生）在运行时总是产生相同的输出。虽然这通常无法得到保证（例如，构建者可以依赖外部输入，例如网络或系统时间），但 Nix 模型假设了这一点。
@@ -210,6 +212,8 @@ An automatically generated store object that consists of a set of symlinks to �
 A Nix ARchive.
 
 这是 Nix 存储中路径的序列化。它可以包含常规文件、目录和符号链接。 NAR 是使用 `nix-store --dump` 和 `nix-store --restore` 生成和解压的。
+
+NAR 文件格式，详见：[Nix Archive (NAR) format](https://nix.dev/manual/nix/2.22/protocols/nix-archive)。
 
 ## ∅
 
