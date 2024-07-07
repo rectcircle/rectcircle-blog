@@ -10,3 +10,5 @@ tags:
 
 
 > version: nix-2.22.1
+
+https://wiki.nixos.org/wiki/C
