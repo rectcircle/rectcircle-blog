@@ -14,6 +14,24 @@ tags:
 
 本部分仅记录本系列使用过的，以及一些常用的命令，更多细节参见：[官方手册 - 命令参考](https://nixos.org/manual/nix/stable/command-ref/command-ref.html)。
 
+### 安装卸载
+
+```bash
+### 单用户安装（不配置 channel）
+# 国内镜像
+sh <(curl -L https://mirrors.tuna.tsinghua.edu.cn/nix/latest/install) --no-daemon --no-channel-add
+# 官方
+sh <(curl -L https://nixos.org/nix/install) --no-daemon --no-channel-add
+# 官方，另一种语法
+curl -sSL https://nixos.org/nix/install | bash -s -- --no-daemon --no-channel-add
+# 安装固定版本
+curl -sSL https://releases.nixos.org/nix/nix-2.22.1/install | bash -s -- --no-daemon --no-channel-add
+
+
+### 单用户卸载
+sudo rm -rf /nix ~/.nix-* ~/.local/state/nix
+```
+
 ### nix-channel
 
 Channel 管理。
@@ -47,6 +65,9 @@ nix-env -qaPs
 # --S  nixpkgs.binutils            binutils-2.15
 # IPS  nixpkgs.bison               bison-1.875d
 # I 表示已应用到当前环境，P 表示已经安装到 /nix/store 中了，S 表示在缓存 server 是否存在二进制缓存。
+
+# 列出已安装的包的各种信息（json 格式）
+nix-env -q --installed --json --out-path --drv-path --description --meta
 
 # 安装包
 nix-env -iA nixpkgs.go

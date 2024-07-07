@@ -1,5 +1,5 @@
 ---
-title: "Nix 高级话题之 profile"
+title: "Nix 开发环境之 Python"
 date: 2023-04-30T11:00:00+08:00
 draft: true
 toc: true
