@@ -21,7 +21,6 @@ Nix profile （用户环境， user environments） 是 Nix 实现不同用户�
 
 （ nix-channel 本文不做介绍，下一篇专门讨论）
 
-
 ## 原理
 
 > [Nix 参考手册 - 6.1 Profiles](https://nix.dev/manual/nix/2.23/package-management/profiles)
@@ -228,11 +227,57 @@ nix-env -iA nixpkgs.clang_16
     ├── libnixcmd.so -> /nix/store/af39xch7s21s36bd3j8gjssmcbhgm42y-nix-2.23.2/lib/libnixcmd.so
     └── ...
     ```
+
 * 如果最终存在冲突（比如：都需要安装 bin/addr2line），将报错。
+
+最后再安装 libmysqlclient，来观察一下 outputs 包含 dev 的场景：
+
+```bash
+nix-env -iA nixpkgs.libmysqlclient
+# ...
+# copying path '/nix/store/p81agrmnhd2mm8hraqa52j3hl344bsjk-mariadb-connector-c-3.3.5' from 'https://cache.nixos.org' ...
+# copying path '/nix/store/3j0l731cns49pzsffl3pfqini5yf4sqh-mariadb-connector-c-3.3.5-dev' from 'https://cache.nixos.org' ...
+nix-env -q --installed --out-path
+# ...
+# mariadb-connector-c-3.3.5  /nix/store/p81agrmnhd2mm8hraqa52j3hl344bsjk-mariadb-connector-c-3.3.5
+# ...
+ls -al ~/.nix-profile/lib/
+# ...
+# mariadb -> /nix/store/p81agrmnhd2mm8hraqa52j3hl344bsjk-mariadb-connector-c-3.3.5/lib/mariadb
+# ...
+which mariadb_config
+# mariadb_config not found
+ls -al /nix/store/3j0l731cns49pzsffl3pfqini5yf4sqh-mariadb-connector-c-3.3.5-dev/bin
+# mariadb_config
+# mysql_config -> mariadb_config
+ls -al ~/.nix-profile/bin/mariadb_config
+# ls: cannot access '$HOME/.nix-profile/bin/mariadb_config': No such file or directory
+```
+
+可以发现 libmysqlclient derivation outputs 的 dev 目录的 `mariadb_config` 可执行文件并没有安装到 profiles 里面。从现象观察的结论是， `nix-env --install` 不会安装 derivation outputs 的 dev 目录。
+
+如果想安装 dev 目录到 profile 中，需要强制指定 `nix-env -iA nixpkgs.libmysqlclient.dev nixpkgs.libmysqlclient.out` 都安装。
+
+```bash
+nix-env -iA nixpkgs.libmysqlclient.dev nixpkgs.libmysqlclient.out
+nix-env -q --installed --out-path
+# ...
+# mariadb-connector-c-3.3.5  dev=/nix/store/3j0l731cns49pzsffl3pfqini5yf4sqh-mariadb-connector-c-3.3.5-dev
+# mariadb-connector-c-3.3.5  /nix/store/p81agrmnhd2mm8hraqa52j3hl344bsjk-mariadb-connector-c-3.3.5
+# ...
+ls -al ~/.nix-profile/lib/
+# ...
+# mariadb -> /nix/store/p81agrmnhd2mm8hraqa52j3hl344bsjk-mariadb-connector-c-3.3.5/lib/mariadb
+# ...
+which mariadb_config
+# /home/cloudide/.nix-profile/bin/mariadb_config
+ls -al ~/.nix-profile/bin/mariadb_config
+# $HOME/.nix-profile/bin/mariadb_config -> /nix/store/3j0l731cns49pzsffl3pfqini5yf4sqh-mariadb-connector-c-3.3.5-dev/bin/mariadb_config
+```
 
 ### C 库 和 profile
 
->  [Nix Wiki - C](https://nixos.wiki/wiki/C)
+> [Nix Wiki - C](https://nixos.wiki/wiki/C)
 
 从上文可以看出，lib 和 include 已经正确的设置到 profile 中了，但是和 bin 不同。如果使用的不是 NixOS，而是在传统 Linux （如 debian） 中使用 Nix。上面的 profile 中的 lib include 将不会设置到系统中，因为如果设置了，会和系统的 lib 冲突，造成严重问题。
 
