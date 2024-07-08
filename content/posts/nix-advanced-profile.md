@@ -97,15 +97,18 @@ Nix profile （用户环境， user environments） 是 Nix 实现不同用户�
 
         ```bash
         nix-env -q --installed --json --out-path --drv-path --description --meta
-        nix-instantiate --strict --eval  /nix/store/h1m8pdwqh0vj4xq6jr5cwlb21z9rprgb-user-environment/manifest.nix --json
+        nix-instantiate --strict --eval  ~/.nix-profile/manifest.nix --json
         # ["/nix/store/r8mfs49cp5q9l0q8zj2ab78h7gx2chfb-hello-2.12.1","/nix/store/af39xch7s21s36bd3j8gjssmcbhgm42y-nix-2.23.2"]
         nix-store --query --deriver /nix/store/r8mfs49cp5q9l0q8zj2ab78h7gx2chfb-hello-2.12.1
         # /nix/store/c9v5d926q8d2cdb0jq6k3ybnxqdl3nb2-hello-2.12.1.drv 
         nix derivation show /nix/store/c9v5d926q8d2cdb0jq6k3ybnxqdl3nb2-hello-2.12.1.drv --extra-experimental-features nix-command
+        nix derivation show /nix/store/r8mfs49cp5q9l0q8zj2ab78h7gx2chfb-hello-2.12.1 --extra-experimental-features nix-command
         # 略
         ```
 
 ### derivation outputs 和 profile
+
+> [Multiple-output packages](https://ryantm.github.io/nixpkgs/stdenv/multiple-output/)
 
 ```bash
 # 安装 gcc 标准编译器（nix wrapper）
@@ -146,7 +149,7 @@ tree -L 3 /nix/store/l3nxj0c8zippk5aijmkndn0zh6j7h55s-gcc-wrapper-13.3.0-man
 #         └── man7
 ```
 
-可以看出，derivation outputs 目录 `out` 和 `man` 的 `bin/`、`share/man`  都被正确的安装到了 `~/.nix-profile/` 目录。
+可以看出，derivation outputs 目录 `out` 和 `man` 的 `bin/`、`share/man`  都被正确的安装到了 `~/.nix-profile/` 目录（默认是否安装到 profiles 中，是由 `meta.outputsToInstall` 属性控制的，默认应该是 `out`）。
 
 ```bash
 nix-env -iA nixpkgs.libgcc
@@ -256,7 +259,7 @@ ls -al ~/.nix-profile/bin/mariadb_config
 
 可以发现 libmysqlclient derivation outputs 的 dev 目录的 `mariadb_config` 可执行文件并没有安装到 profiles 里面。从现象观察的结论是， `nix-env --install` 不会安装 derivation outputs 的 dev 目录。
 
-如果想安装 dev 目录到 profile 中，需要强制指定 `nix-env -iA nixpkgs.libmysqlclient.dev nixpkgs.libmysqlclient.out` 都安装。
+如果想安装 dev 目录到 profile 中，需要强制指定 `nix-env -iA nixpkgs.libmysqlclient.dev nixpkgs.libmysqlclient.out` 都安装（特别提醒： **nix 似乎有 bug 一旦下面命令执行， profile 就损坏了！因此建议直接使用 nix-shell**）。
 
 ```bash
 nix-env -iA nixpkgs.libmysqlclient.dev nixpkgs.libmysqlclient.out
@@ -273,6 +276,9 @@ which mariadb_config
 # /home/cloudide/.nix-profile/bin/mariadb_config
 ls -al ~/.nix-profile/bin/mariadb_config
 # $HOME/.nix-profile/bin/mariadb_config -> /nix/store/3j0l731cns49pzsffl3pfqini5yf4sqh-mariadb-connector-c-3.3.5-dev/bin/mariadb_config
+nix-env -iA nixpkgs.zlib
+# 报错
+# error: this derivation has bad 'meta.outputsToInstall'
 ```
 
 ### C 库 和 profile
