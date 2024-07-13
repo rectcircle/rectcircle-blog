@@ -35,6 +35,8 @@ Nix profile （用户环境， user environments） 是 Nix 实现不同用户�
     if [ -e ~/.nix-profile/etc/profile.d/nix.sh ]; then . ~/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
     ```
 
+    这个脚本主要设置了 `PATH`、`MANPATH`、`XDG_DATA_DIRS` 环境变量，让命令，man 可以识别 nix 安装的包。
+
 * 执行 `nix-env -iA nixpkgs.hello` 安装一个包后，观察情况。
 * 其中 `~/.nix-profile` 是一个软链，单用户模式，该软链指向 `~/.local/state/nix/profiles/profile`，而  `~/.local/state/nix/profiles/profile` 也是一个软链，指向同目录的 `profile-1-link`，而最终 `~/.local/state/nix/profiles/profile-1-link` 指向 nix store 中的一个 user-environments 目录，如 `/nix/store/197xfcwzc2xk6wkjyblc37grnpc3k4xk-user-environment` 。示意如下：
 
@@ -212,27 +214,6 @@ nix-env -iA nixpkgs.clang_16
 
 可以看出，如果两个包存在同名的二进制，将提示冲突。
 
-总结，在执行 `nix-env --install` 时：
-
-* derivation 的 outputs （实际上是 `meta.outputsToInstall`） 属性指向的目录，，会将其左右的子目录都正确的设置到 ~/.nix-profile/ 中。
-* 多个包的 outputs 的子目录会进行合并合并逻辑为：如果安装的包的 outputs 的子目录没有没有重复的，则直接创建一个软链指向到这个子目录。如果存在存在重复的，则在 ~/.nix-profile/ 中创建这个目录，然后创建软链。
-
-    ```bash
-    # 安装了 nix，只有 nix 的 output 目录有 lib 目录，此时 lib 为：
-    lib -> /nix/store/af39xch7s21s36bd3j8gjssmcbhgm42y-nix-2.23.2/lib
-
-    # 安装了 nix 和 libgcc，这两个目录都有 lib 目录
-    lib
-    ├── libboost_context.so -> /nix/store/af39xch7s21s36bd3j8gjssmcbhgm42y-nix-2.23.2/lib/libboost_context.so
-    ├── ...
-    ├── libgcc_s.so -> /nix/store/pd8xxiyn2xi21fgg9qm7r0qghsk8715k-gcc-13.3.0-libgcc/lib/libgcc_s.so
-    ├── libgcc_s.so.1 -> /nix/store/pd8xxiyn2xi21fgg9qm7r0qghsk8715k-gcc-13.3.0-libgcc/lib/libgcc_s.so.1
-    ├── libnixcmd.so -> /nix/store/af39xch7s21s36bd3j8gjssmcbhgm42y-nix-2.23.2/lib/libnixcmd.so
-    └── ...
-    ```
-
-* 如果最终存在冲突（比如：都需要安装 bin/addr2line），将报错。
-
 最后再安装 libmysqlclient，来观察一下 outputs 包含 dev 的场景：
 
 ```bash
@@ -255,9 +236,48 @@ ls -al /nix/store/3j0l731cns49pzsffl3pfqini5yf4sqh-mariadb-connector-c-3.3.5-dev
 # mysql_config -> mariadb_config
 ls -al ~/.nix-profile/bin/mariadb_config
 # ls: cannot access '$HOME/.nix-profile/bin/mariadb_config': No such file or directory
+cat ~/.nix-profile/manifest.nix
+# [ { meta = { ...; outputsToInstall = [ "out" ]; ... }; name = "mariadb-connector-c-3.3.5"; ...; outputs = [ "out" ]; ... } ...]
+nix-shell --pure -p libmysqlclient --run env | grep PATH
+# stdenv=/nix/store/d3dzfy4amjl826fb8j00qp1d9887h7hm-stdenv-linux
+# buildInputs=/nix/store/3j0l731cns49pzsffl3pfqini5yf4sqh-mariadb-connector-c-3.3.5-dev
+# PATH=...:/nix/store/3j0l731cns49pzsffl3pfqini5yf4sqh-mariadb-connector-c-3.3.5-dev/bin:...
+nix derivation show nixpkgs#libmysqlclient --extra-experimental-features 'nix-command flakes'
+# {
+#   "/nix/store/jnwpkqz0qx9cx7ljirsks5s4b5lxhmz7-mariadb-connector-c-3.3.5.drv": {
+#     //...
+#    "name": "mariadb-connector-c-3.3.5",
+#    "inputDrvs": {
+#      //...
+#      "/nix/store/kjniqf3ladgc55nh4h41vrcwp3z7426b-zlib-1.3.1.drv": {
+#        "dynamicOutputs": {},
+#        "outputs": [
+#          "dev"
+#        ]
+#      },
+#      //...
+#    }
+#     "outputs": {
+#       "dev": {
+#         "path": "/nix/store/lzjh7kfbwhcslywmas0288w1k5k8zh93-mariadb-connector-c-3.3.5-dev"
+#       },
+#       "out": {
+#         "path": "/nix/store/118ayny4nv1d687bgi4js46b40wg4md2-mariadb-connector-c-3.3.5"
+#       }
+#     },
+#     //...
+#   }
+# }
+nix-instantiate --eval --expr 'let pkgs = import <nixpkgs> {}; in pkgs.libmysqlclient.outputs'
+# [ "out" "dev" ]
+nix-instantiate --eval --expr 'let pkgs = import <nixpkgs> {}; in pkgs.zlib.outputs'
+# [ "out" "dev" "static" ]
+
 ```
 
-可以发现 libmysqlclient derivation outputs 的 dev 目录的 `mariadb_config` 可执行文件并没有安装到 profiles 里面。从现象观察的结论是， `nix-env --install` 不会安装 derivation outputs 的 dev 目录。
+可以发现 libmysqlclient derivation outputs 是 `[ "out" "dev" ]`，但 `nix-env --install` 的 dev 目录的 `mariadb_config` 可执行文件并没有安装到 profiles 里面，也就是说安装的 `out` 输出。
+
+libmysqlclient 这个包配置的 outputs 是 `[ "out" "dev" ]`，当执行 `nix-shell` shell 是，配置到 PATH 里的是 `/nix/store/3j0l731cns49pzsffl3pfqini5yf4sqh-mariadb-connector-c-3.3.5-dev/bin`，说明 `nix-shell` 引用的是 `dev` 输出。
 
 如果想安装 dev 目录到 profile 中，需要强制指定 `nix-env -iA nixpkgs.libmysqlclient.dev nixpkgs.libmysqlclient.out` 都安装（特别提醒： **nix 似乎有 bug 一旦下面命令执行， profile 就损坏了！因此建议直接使用 nix-shell**）。
 
@@ -279,7 +299,39 @@ ls -al ~/.nix-profile/bin/mariadb_config
 nix-env -iA nixpkgs.zlib
 # 报错
 # error: this derivation has bad 'meta.outputsToInstall'
+cat ~/.nix-profile/manifest.nix
+# [ { meta = { ...; outputsToInstall = [ "dev" ]; ... }; name = "mariadb-connector-c-3.3.5"; ...; outputs = [ "out" ]; ... } ...]
 ```
+
+
+总结，在执行 `nix-env --install` 时：
+
+* derivation 有一个 `meta.outputsToInstall` 属性（一般情况下为 `out` 或 `bin`），会将其指向的子目录都软链到 ~/.nix-profile/ 中。
+* 多个包的 outputs 的子目录会进行合并，合并是递归的进行：如果安装的包的 outputs 的子目录没有没有重复的，则直接创建一个软链指向到这个子目录。如果存在存在重复的，则在中创建这个目录，然后创建软链。
+
+    ```bash
+    # 安装了 nix，只有 nix 的 output 目录有 lib 目录，此时 lib 为：
+    lib -> /nix/store/af39xch7s21s36bd3j8gjssmcbhgm42y-nix-2.23.2/lib
+
+    # 安装了 nix 和 libgcc，这两个目录都有 lib 目录
+    lib
+    ├── libboost_context.so -> /nix/store/af39xch7s21s36bd3j8gjssmcbhgm42y-nix-2.23.2/lib/libboost_context.so
+    ├── ...
+    ├── libgcc_s.so -> /nix/store/pd8xxiyn2xi21fgg9qm7r0qghsk8715k-gcc-13.3.0-libgcc/lib/libgcc_s.so
+    ├── libgcc_s.so.1 -> /nix/store/pd8xxiyn2xi21fgg9qm7r0qghsk8715k-gcc-13.3.0-libgcc/lib/libgcc_s.so.1
+    ├── libnixcmd.so -> /nix/store/af39xch7s21s36bd3j8gjssmcbhgm42y-nix-2.23.2/lib/libnixcmd.so
+    └── ...
+    ```
+
+* 如果最终存在冲突（比如：gcc 和 clang 都需要安装 bin/addr2line），同时安装，将报错。
+* nix-env --install 支持指定安装特定的 outputs，格式形如 `nixpkgs.libmysqlclient.dev`，但是，这样会破坏掉 profile ，导致后续安装任何的包都报错。原因是生成的 `manifest.nix` 中 `meta.outputsToInstall` 属性的值不包含在 `outputs` 属性中。
+* 由于 nix 的包都是 nixpkgs 维护的，而关于 outputs 目录， nixpkgs 有如下如下约定：
+    * 如果 outputs 有多个输出，`out` 目录一般放到最前面，例如 `[ "out" "dev" ]`。
+    * `meta.outputsToInstall` 默认值规则为：如果 outputs 存在 bin 目录，则添加 bin；如果存在 out 目录，则添加 out；否则添加 outputs 的第一个。最后，如果存在 man，一定会 append man （详见：[源码](https://github.com/NixOS/nixpkgs/blob/4c68bf5473a8e87ffd94322cc3e79a449311325b/pkgs/stdenv/generic/check-meta.nix#L474)） 。
+    * nixpkgs 的包维护者，可以按需选择 `outputs` 中的目录添加到 `meta.outputsToInstall` 中，一般情况下 dev 目录一般不会加到这个属性中。
+    * 使用 nix-shell 或 nix-build 包的依赖是通过 `nixpkgs.lib.stdenv.mkDerivation` 的 buildInputs 声明时，如果这个依赖 outputs 包含 dev 时，实际依赖的是 dev 而非 out 目录。源码详见：[make-derivation.nix](https://github.com/NixOS/nixpkgs/blob/d2f01055afe920f3eb496dbc167b4918ebedfa21/pkgs/stdenv/generic/make-derivation.nix#L310) 和 [attrsets.nix](https://github.com/NixOS/nixpkgs/blob/master/lib/attrsets.nix#L1888)。
+    * 关于 outputs 更多参见： [Nixpkgs Reference Manual - Multiple-output packages](https://nixos.org/manual/nixpkgs/stable/#chap-multiple-output) ，[博客 How to Learn Nix, Part 29: Derivations in detail](https://ianthehenry.com/posts/how-to-learn-nix/derivations-in-detail/)，[setenv.sh](https://github.com/NixOS/nixpkgs/blob/master/pkgs/stdenv/generic/setup.sh)。
+
 
 ### C 库 和 profile
 
@@ -287,7 +339,7 @@ nix-env -iA nixpkgs.zlib
 
 从上文可以看出，lib 和 include 已经正确的设置到 profile 中了，但是和 bin 不同。如果使用的不是 NixOS，而是在传统 Linux （如 debian） 中使用 Nix。上面的 profile 中的 lib include 将不会设置到系统中，因为如果设置了，会和系统的 lib 冲突，造成严重问题。
 
-因此，如果想用 nix 管理 C/C++ 项目的依赖（即 include 头文件 和 lib 动态链接库 so），需要使用 Nix shell 声明依赖，并启动一个 shell，这个 shell 里面会设置 `NIX_CFLAGS_COMPILE` 以及 `NIX_LDFLAGS`。
+因此，如果想用 nix 管理 C/C++ 项目的依赖（即 include 头文件 和 lib 动态链接库 so），需要使用 Nix shell 声明依赖，并启动一个 shell，这个 shell 里面会设置 `NIX_CC_WRAPPER_TARGET_HOST_x86_64_unknown_linux_gnu=1` 等 `NIX_CFLAGS_COMPILE` 以及 `NIX_LDFLAGS` （详见源码： [setup.sh](https://github.com/NixOS/nixpkgs/blob/63fb5880a4f67415f7baf4e2e789d326aa87bd95/pkgs/stdenv/generic/setup.sh)，[setup-hook.sh](https://github.com/NixOS/nixpkgs/blob/master/pkgs/build-support/cc-wrapper/setup-hook.sh)。
 
 然后使用 wrapper 的 C/C++ 编译器（如 `nixpkgs.gcc13`、 `nixpkgs.clang_16`），这样 C/C++ 编译器才能使用正确的识别 Nix 安装依赖。
 
