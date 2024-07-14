@@ -371,9 +371,12 @@ nix-env {--install | -i} args… [{--prebuilt-only | -b}] [{--attr | -A}] [--fro
 安装包的各种写法如下：
 
 ```bash
-# 最常见的写法
+# 最常见的写法（通过属性名安装 nixpkgs 的包）
 nix-env -iA nixpkgs.python312
 nix-env --install --attr nixpkgs.python312
+
+# 根据 derivation 的 name 安装（这种方式需要评估所有 nixpkgs 的包，性能很差，不推荐用在 nixpkgs 的包的安装）
+nix-env --install python3-3.12.3
 
 # -A 和 -f 结合 channel
 nix-env -iA nixpkgs.python312 -f ~/.nix-defexpr/
@@ -412,6 +415,7 @@ nix-env -i -f /tmp/func-list-python.nix
 cat > /tmp/func-attrset-python.nix <<EOF
 { pkgs ? import <nixpkgs> {} }: { python312 = pkgs.python312; }
 EOF
+nix-env -i -f /tmp/func-attrset-python.nix '.*' # 方式 0：可以通过 .* 安装属性集中的所有包。
 nix-env -iA python312 -f /tmp/func-attrset-python.nix  # 方式 1
 nix-env -iA python312 --arg pkgs 'import <nixpkgs> {}' -f /tmp/func-attrset-python.nix  # 方式 2: 验证覆盖函数参数
 nix-env -i -E 'a: let mypkgs = a{}; in mypkgs.python312' -f /tmp/func-attrset-python.nix # 方式 3: 使用表达式参数
@@ -464,7 +468,7 @@ ls -al /tmp/myprofiles
 * `--remove-all` / `-r` 删除所有其他已安装的包，再执行安装，相当于首先运行 `nix-env --uninstall '.*'`，只不过一切都发生在单个事务中。
 * `--file` / `-f` 从哪里获取 nix 表达式，有两种情况：
     * 不填，默认为 nix-channel 维护的 （[Nix 表达式搜索路径](https://nix.dev/manual/nix/2.22/command-ref/conf-file#conf-nix-path)） `~/.nix-defexpr/channels/`，详见后文 nix-channel 。
-    * 可以是本地 nix 源代码文件，包含 default.nix 的目录或压缩包下载链接，要求其表达式类型推导最终的类型定义可以是如下六种情况：
+    * 可以是本地 nix 源代码文件，包含 default.nix 的目录或压缩包下载链接（如 github archive），要求其表达式类型推导最终的类型定义可以是如下六种情况：
         * `derivation`
         * `[]derivation` derivation 列表
         * `{}` 属性集。
