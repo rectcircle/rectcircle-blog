@@ -306,7 +306,7 @@ cat ~/.nix-profile/manifest.nix
 
 总结，在执行 `nix-env --install` 时：
 
-* derivation 有一个 `meta.outputsToInstall` 属性（一般情况下为 `out` 或 `bin`），会将其指向的子目录都软链到 ~/.nix-profile/ 中。
+* nixpkgs 声明的 derivation 都有一个 `meta.outputsToInstall` 属性（一般情况下为 `out` 或 `bin`），会将其指向的子目录都软链到 ~/.nix-profile/ 中。如果裸使用 `derivation`，没有配置 `meta.outputsToInstall`，nix-env 会安装所有的 outputs。
 * 多个包的 outputs 的子目录会进行合并，合并是递归的进行：如果安装的包的 outputs 的子目录没有没有重复的，则直接创建一个软链指向到这个子目录。如果存在存在重复的，则在中创建这个目录，然后创建软链。
 
     ```bash
@@ -347,4 +347,137 @@ cat ~/.nix-profile/manifest.nix
 
 ## 命令详解
 
-TODO
+> [Nix 参考手册 - 8.3.4 nix-env](https://nix.dev/manual/nix/2.22/command-ref/nix-env)
+
+nix 通过 nix-env 命令来实现对 profile 的管理，本部分将详细介绍该命令的各种能力和细节。
+
+### nix-env --delete-generations
+
+删除 profile 的历史版本，示例如下：
+
+* `nix-env delete-generations 1 2 3` 删除 profile 的 1、2、3 版本
+* `nix-env --delete-generations old` 删除除了当前版本之外的所有的版本。
+* `nix-env delete-generations 30d` 删除 30 天之前的版本。
+* `nix-env delete-generations 5+` 保留当前版本之前的 5 个版本以及大于当前版本的版本，删除其他的版本。
+
+### nix-env --install
+
+安装一个或多个包 (derivation) 到 profile 中，语法如下：
+
+```
+nix-env {--install | -i} args… [{--prebuilt-only | -b}] [{--attr | -A}] [--from-expression] [-E] [--from-profile path] [--preserve-installed | -P] [--remove-all | -r]
+```
+
+安装包的各种写法如下：
+
+```bash
+# 最常见的写法
+nix-env -iA nixpkgs.python312
+nix-env --install --attr nixpkgs.python312
+
+# -A 和 -f 结合 channel
+nix-env -iA nixpkgs.python312 -f ~/.nix-defexpr/
+nix-env -iA nixpkgs.python312 -f ~/.nix-defexpr/channels
+nix-env -iA python312 -f ~/.nix-defexpr/channels/nixpkgs
+
+# -f 自定义 nix 表达式
+# -f 文件，最终是一个 derivation
+cat > /tmp/single-python.nix <<EOF
+let pkgs = import <nixpkgs> {}; in pkgs.python312
+EOF
+nix-env -i -f /tmp/single-python.nix 
+# -f 文件，最终是一个 derivation 列表
+cat > /tmp/list-python.nix <<EOF
+let pkgs = import <nixpkgs> {}; in [pkgs.python312]
+EOF
+nix-env -i -f /tmp/list-python.nix
+# -f 文件，最终是一个属性集
+cat > /tmp/attrset-python.nix <<EOF
+let pkgs = import <nixpkgs> {}; in { python312 = pkgs.python312; }
+EOF
+nix-env -iA python312 -f /tmp/attrset-python.nix
+# -f 文件最终函数声明为 a: derivation ，这里的 a 是一个属性集。
+cat > /tmp/func-single-python.nix <<EOF
+{ pkgs ? import <nixpkgs> {} }: pkgs.python312
+EOF
+# 实测，改为如下是不行的
+# _: let pkgs = import <nixpkgs> {}; in pkgs.python312
+nix-env -i -f /tmp/func-single-python.nix
+# -f 文件最终函数声明为 a: derivation列表，这里的 a 是一个属性集。
+cat > /tmp/func-list-python.nix <<EOF
+{ pkgs ? import <nixpkgs> {} }: pkgs.python312
+EOF
+nix-env -i -f /tmp/func-list-python.nix
+# -f 文件最终函数声明为 a: {} 这里的 a 是一个属性集。 （和 nixpkgs 原理相同）
+cat > /tmp/func-attrset-python.nix <<EOF
+{ pkgs ? import <nixpkgs> {} }: { python312 = pkgs.python312; }
+EOF
+nix-env -iA python312 -f /tmp/func-attrset-python.nix  # 方式 1
+nix-env -iA python312 --arg pkgs 'import <nixpkgs> {}' -f /tmp/func-attrset-python.nix  # 方式 2: 验证覆盖函数参数
+nix-env -i -E 'a: let mypkgs = a{}; in mypkgs.python312' -f /tmp/func-attrset-python.nix # 方式 3: 使用表达式参数
+
+# 从表达式安装，这个表达式的必须是一个函数，声明为：
+#   a: derivation { ... }
+# 假设这个函数名为 f ，调用方式分为如下两种情况：
+#   1. 不传递 -f 参数或者 -f 参数是一个 channel 的 user-environment 时：f { _combineChannels = [ ]; nixpkgs = import <nixpkgs>;  }
+#   2. -f  参数传递的是一个包含 default.nix 的目录或压缩包下载链接，或者一个 .nix 源代码文件时：let a = import -f参数值; in f a
+nix-env --install --from-expression 'a: let pkgs = a.nixpkgs{}; in pkgs.python312'
+nix-env --install --from-expression 'a: let pkgs = a.nixpkgs{}; in pkgs.python312' -f ~/.nix-defexpr/channels
+nix-env --install --from-expression 'nixpkgs: let pkgs = nixpkgs{}; in pkgs.python312' -f ~/.nix-defexpr/channels/nixpkgs/
+
+# 直接通过 store path 或 store derivation path 安装。
+nix-env -i $(nix-instantiate --expr 'let pkgs = import <nixpkgs> {}; in pkgs.python312')
+```
+
+默认情况， nix-env 安装的 pname 相同包时，旧的 pname 的包将被删除，并安装这个新的 pname 包，使用 `--preserve-installed` 参数检测这种情况并直接报错，示例如下：
+
+```bash
+nix-env -iA nixpkgs.python311
+nix-env -iA nixpkgs.python312 --preserve-installed
+# 报错: error: Unable to build profile. There is a conflict for the following files:
+nix-env -iA nixpkgs.python312 
+# replacing old 'python3-3.11.9'
+# installing 'python3-3.12.3'
+nix-env --query --installed
+# 只会输出 python3-3.12.3，不会输出 python3.11
+```
+
+从其他 profile 中安装，可用于 copy 其他用户的 profile。
+
+```bash
+nix-env -iA python312 --from-profile /nix/store/xxx-user-environment
+```
+
+将包安装到其他的 nix-profile。
+
+```bash
+mkdir -p /tmp/myprofiles
+nix-env -i -A nixpkgs.python312 nixpkgs.nix --profile /tmp/myprofiles/profile
+ls -al /tmp/myprofiles
+# profile -> profile-1-link
+# profile-1-link -> /nix/store/3hb6nr0n05a2iwbxm0i50968mw2dd220-user-environment
+```
+
+重要参数总结，以及其他参数说明如下：
+
+* `--prebuilt-only` / `-b` 只从 substitute 中安装与构建的包，永不从源码构建。
+* `--remove-all` / `-r` 删除所有其他已安装的包，再执行安装，相当于首先运行 `nix-env --uninstall '.*'`，只不过一切都发生在单个事务中。
+* `--file` / `-f` 从哪里获取 nix 表达式，有两种情况：
+    * 不填，默认为 nix-channel 维护的 （[Nix 表达式搜索路径](https://nix.dev/manual/nix/2.22/command-ref/conf-file#conf-nix-path)） `~/.nix-defexpr/channels/`，详见后文 nix-channel 。
+    * 可以是本地 nix 源代码文件，包含 default.nix 的目录或压缩包下载链接，要求其表达式类型推导最终的类型定义可以是如下六种情况：
+        * `derivation`
+        * `[]derivation` derivation 列表
+        * `{}` 属性集。
+        * `a: derivation` 函数，其中 a 是属性集。
+        * `a: derivation[]` 函数，其中 a 是属性集。
+        * `a: {}` 函数，其中 a 是属性集。
+        * 以上 a 的一般写法为 `{ pkgs ? import <nixpkgs> {} }: ...` 包含默认值，如需自定义，可以使用 `--arg` 指定。
+* `--from-expression` / `-E` 从表达式安装，这个表达式的必须是一个函数，声明为：
+* `--attr` / `-A` 可以指定多个，用来指定要安装的包，这里的写法和 --file 参数有关。只有 `--file` / `-f` 的最终评估值是一个属性集时，才能使用该参数。
+* `--profile` 安装到指定的 profile 必须是一个软链的路径。
+* `--dry-run` 模拟执行。
+* `-I` path，指定包搜索路径，可多次给出，也可以通过 `NIX_PATH` 环境变量配置，-I 优先级高于环境变量，默认为 `~/.nix-defexpr/channels/`，主要再如下场景使用：
+    * nix 表达式语言的 `<nixpkgs>` 语法。
+    * `nix-env --attr nixpkgs.python312` 语法。
+
+    如上吗，底层都是用 [`builtins.findFile`](https://nix.dev/manual/nix/2.22/language/builtins#builtins-findFile)，原理是查找对应的目录，且该目录包含 `default.nix`。
