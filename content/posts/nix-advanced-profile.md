@@ -1,6 +1,6 @@
 ---
 title: "Nix 高级话题之 profile"
-date: 2023-07-17T21:48:00+08:00
+date: 2024-07-17T21:48:00+08:00
 draft: false
 toc: true
 comments: true
