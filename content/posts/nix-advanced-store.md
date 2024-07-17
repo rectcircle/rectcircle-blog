@@ -402,7 +402,7 @@ nix-store --export $(nix-store --query --requisites $(which nix)) > nix-closure-
 nix-store --import
 ```
 
-`--import` 操作从标准输入读取 nix-store --export 生成的一组存储路径的序列化，并将这些存储路径添加到 Nix 存储中。 Nix 存储中已存在的路径将被忽略。如果一个路径引用 Nix 存储中不存在的另一个路径，则导入失败。
+`--import` 操作从标准输入读取 `nix-store --export` 生成的一组存储路径的序列化，并将这些存储路径添加到 Nix 存储中。 Nix 存储中已存在的路径将被忽略。如果一个路径引用 Nix 存储中不存在的另一个路径，则导入失败。
 
 示例如下：
 
@@ -447,7 +447,7 @@ nix-store --optimise # 输出如下
 nix-store --print-env drvpath
 ```
 
-操作 --print-env 以 shell 可以评估的格式打印出派生的环境。构建器的命令行参数放置在变量 `_args` 中。
+操作 `--print-env` 以 shell 可以评估的格式打印出派生的环境。构建器的命令行参数放置在变量 `_args` 中。
 
 ```bash
 nix-instantiate -A hello  ~/.nix-defexpr/channels/nixpkgs  # 输出如下
