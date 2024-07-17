@@ -1,7 +1,7 @@
 ---
 title: "Nix 高级话题之 profile"
-date: 2023-04-30T11:00:00+08:00
-draft: true
+date: 2023-07-17T21:48:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -323,7 +323,9 @@ cat ~/.nix-profile/manifest.nix
     └── ...
     ```
 
-* 如果最终存在冲突（比如：gcc 和 clang 都需要安装 bin/addr2line），同时安装，将报错。
+* 如果最终存在冲突（比如：gcc 和 clang 都需要安装 bin/addr2line），同时安装，将报错。有两点说明如下：
+    * 默认情况， nix-env 安装的 pname 相同包时，旧的 pname 的包将被删除，并安装这个新的 pname 包（未找到相关文档，实测如此），执行 `nix-env --install` 时，可使用 `--preserve-installed` 阻止该行为，行为切换为报错冲突。
+    * derivation 有一个 `meta.priority` 属性（[文档](https://nix.dev/manual/nix/2.22/command-ref/nix-env/install#description)），如果两个包的优先级相同，nix-env 安装存在冲突时，就会报错，如果安装一个优先级更高的包存在冲突时，这个包会覆盖之前安装的优先级地的包。`meta.priority` 的默认值为 `5`。另外，也可以通过 `nix-env --set-flag priority 数字` 调整已安装的包的优先级。
 * nix-env --install 支持指定安装特定的 outputs，格式形如 `nixpkgs.libmysqlclient.dev`，但是，这样会破坏掉 profile ，导致后续安装任何的包都报错。原因是生成的 `manifest.nix` 中 `meta.outputsToInstall` 属性的值不包含在 `outputs` 属性中。
 * 由于 nix 的包都是 nixpkgs 维护的，而关于 outputs 目录， nixpkgs 有如下如下约定：
     * 如果 outputs 有多个输出，`out` 目录一般放到最前面，例如 `[ "out" "dev" ]`。
@@ -485,3 +487,248 @@ ls -al /tmp/myprofiles
     * `nix-env --attr nixpkgs.python312` 语法。
 
     如上吗，底层都是用 [`builtins.findFile`](https://nix.dev/manual/nix/2.22/language/builtins#builtins-findFile)，原理是查找对应的目录，且该目录包含 `default.nix`。
+
+### nix-env --list-generations
+
+列出当前 profile 的所有版本。
+
+### nix-env --query
+
+查询包（derivation）信息，按 `name` 排序，语法如下：
+
+```
+nix-env {--query | -q} names… [--installed | --available | -a] [{--status | -s}] [{--attr-path | -P}] [--no-name] [{--compare-versions | -c}] [--system] [--drv-path] [--out-path] [--description] [--meta] [--xml] [--json] [{--prebuilt-only | -b}] [{--attr | -A} attribute-path]
+```
+
+有如下两种查询目标选择：
+
+* `--installed` 查询已安装的包，该选项是默认的。
+* `--available` 或 `-a` 查询 channel 中，可用的包的信息。
+
+指定查询结构输出格式，默认为文本，可通过 `--xml`、`--json` 指定输出为 xml 或 json 格式。
+
+```bash
+nix-env --query --xml
+# <?xml version='1.0' encoding='utf-8'?>
+# <items>
+#   <item attrPath="1" name="nix-2.24.0pre20240627_b44909ac" outputName="" pname="nix" system="x86_64-linux" version="2.24>
+#     <output name="man" />
+#     <output name="out" />
+#   </item>
+# ...
+# </items>
+nix-env --query --json
+# {
+#   "0": {
+#     "name": "python3-3.12.3",
+#     "outputName": "",
+#     "outputs": {
+#       "out": null
+#     },
+#     "pname": "python3",
+#     "system": "x86_64-linux",
+#     "version": "3.12.3"
+#   },
+#  ...
+# }
+```
+
+其他选项说明如下：
+
+* `--prebuilt-only` 或 `-b` 选项，只查询那些能从 substitute 中安装的包，永不从源码构建（主要和 `--available` 配合使用，主要为了过滤出那些可以快速安装的包）。
+* `--status` 或 `-s` 选项，查询包的状态，状态包含 3 个字符
+    * `I` 已安装到当前 profile。
+    * `P` 已经保存到 store。
+    * `S` 是否在 substitute 中有可用的预购建的产物。
+
+    示例如下：
+
+    ```bash
+    nix-env --query --status
+    #IPS  nix-2.24.0pre20240627_b44909ac
+    #IPS  python3-3.12.3
+    ```
+
+* `--attr-path` 或 `-P` 选项，（仅能和 `--available` 一起使用）打印属性路径。
+* `--no-name` 选项，不打印 `name`。
+* `--compare-versions` 或 `-c` 选项，查询已安装的包的版本和 channel 中可用的包的版本的差异，主要用于检测是否有新版本，示例如下：
+
+    ```bash
+    nix-env --query --compare-versions
+    # nix-2.24.0pre20240627_b44909ac  = 2.24.0pre20240627_b44909ac
+    # python3-3.12.3                  < 3.13.0b3
+    ```
+
+* `--system` 选项，打印包的 system 字段。
+* `--drv-path` 选项，打印 store derivation 路径。
+* `--out-path` 选项，打印 derivation 的输出路径。
+* `--description` 选项，打印 derivation 的 `meta.description` 属性。
+* `meta` 选项，打印 derivation 的 `meta` 属性，该选项只能和 `--xml` 和 `--json` 一起使用。
+
+### nix-env --rollback
+
+将当前 profile 回滚到上一版本。
+
+### nix-env --set-flag
+
+修改已安装的包的 meta 下的属性，语法如下：
+
+```bash
+nix-env --set-flag name value drvnames
+```
+
+目前支持三个：
+
+* `priority`，修改已安装包的 `meta.priority` 字段，影响安装存在冲突的包时的覆盖关系。
+
+    ```bash
+    nix-env -iA nixpkgs.gcc
+    nix-env -iA nixpkgs.binutils
+    nix-env --query binutils-wrapper --meta --json | grep priority
+    #       "priority": 10,
+
+    # 默认安装将失败
+    nix-env -iA nixpkgs.gcc
+    # error: Unable to build profile. There is a conflict for the following files:
+    # 报错
+    #          /nix/store/l46fjkzva0bhvy9p2r7p4vi68kr7a1db-binutils-wrapper-2.41/bin/addr2line
+    #         /nix/store/mpm3i0sbqc9svfch6a17179fs64dz2kv-gcc-wrapper-13.3.0/bin/addr2line
+
+    # 修改优先级后重新安装将成功
+    nix-env --set-flag priority 1 binutils-wrapper
+    nix-env --query binutils-wrapper --meta --json | grep priority
+    #       "priority": "1",
+    nix-env -iA nixpkgs.gcc
+    nix-env --query gcc-wrapper-13.3.0 --meta --json | grep priority
+    #      "priority": 10,
+    ```
+
+* `keep`，可以设置为 true 以防止包被升级或替换。如果您想保留旧版本的软件包，这非常有用。
+
+    ```bash
+    nix-env --set-flag keep true python3-3.12.3
+    nix-env --query python3-3.12.3 --meta --json | grep keep
+    ```
+
+* `active`，可以设置为 false 以禁用该包。也就是说，不会生成包文件的符号链接，但它仍然是配置文件的一部分（因此不会被垃圾收集）。可以将其设置回 true 以重新启用该包。
+
+    ```bash
+    nix-env --install -A nixpkgs.python312
+    which python
+    # /home/rectcircle/.nix-profile/bin/python
+    nix-env --set-flag active false python3-3.12.3
+    which python
+    # 找不到
+    ```
+
+### nix-env --set
+
+设置 profile 指向一个特定的 derivation。
+
+```
+nix-env --set drvname
+```
+
+示例如下：
+
+```bash
+nix-env --set nix
+nix-env --query
+# 无输出
+readlink -f 
+# /nix/store/9b72q76kfi4v0vm08vrsdllw62wpb1ka-nix-2.24.0pre20240627_b44909ac
+
+nix-env -iA nixpkgs.python312
+which nix
+# 无输出
+```
+
+可以看出：
+
+* `--set` 参数实际上可以是 pname 也可以是 name。
+* `--set` 执行 后直接把 profile 指向了 nix 这个包，并没有生成 user environments。
+* 后续再执行 `--install`，上面的 `--set` 的包会丢失。
+
+没有想到这个命令的用途，官方的示例是：
+
+```bash
+nix-env --profile /nix/var/nix/profiles/browser --set firefox
+```
+
+可能在 NixOS 场景有用吧。
+
+### nix-env --switch-generation
+
+将当前 profile 切换到指定的版本。语法如下：
+
+```
+nix-env {--switch-generation | -G} generation
+```
+
+本质上是修改 profile 软链指向软链的指向，即 `~/.nix-profile` 指向的文件 `~/.local/state/nix/profiles/profile` 指向新的 `profile-xxx-link`。
+
+### nix-env --switch-profile
+
+切换用户环境 profile，语法如下：
+
+```
+nix-env {--switch-profile | -S} path
+```
+
+`~/.nix-profile` 是整个 nix profile 的入口文件，该命令的职责就是改变这个软链的指向，详见下文。
+
+### nix-env --uninstall
+
+卸载包，语法如下：
+
+```
+nix-env {--uninstall | -e} drvnames…
+```
+
+示例如下：
+
+```bash
+nix-env --uninstall gcc-wrapper
+# uninstalling 'gcc-wrapper-13.3.0'
+# building '/nix/store/xmn76h44mpyh7s50slmfaqj1l89cmznw-user-environment.drv'...
+nix-env -iA nixpkgs.gcc
+nix-env --uninstall gcc-wrapper-13.3.0
+# uninstalling 'gcc-wrapper-13.3.0'
+# building '/nix/store/xmn76h44mpyh7s50slmfaqj1l89cmznw-user-environment.drv'...
+```
+
+可以看出：
+
+* `--uninstall` 参数实际上可以是 pname 也可以是 name。
+* 卸载操作也会生成一个新的版本，可用以 `--rollback` 回滚。
+
+### nix-env --upgrade
+
+升级一个包，语法如下：
+
+```
+nix-env {--upgrade | -u} args [--lt | --leq | --eq | --always] [{--prebuilt-only | -b}] [{--attr | -A}] [--from-expression] [-E] [--from-profile path] [--preserve-installed | -P]
+```
+
+可选择如下 4 种升级策略中一种：
+
+* `--lt` 选项，默认值。将包升级到 channel 中 pname 相同的更新的版本，如果 channel 降级了，或版本号不变，则啥也不做。
+* `--leq` 选项，channel 中同名 pname 的版本号大于等于该包，则升级到 channel 中这个版本。
+* `--eq` 选项，channel 中同名 pname 的版本号等于该包，则升级到 channel 中这个版本，这种情况主要用来处理这个包本身没有变化，但是依赖有变化的场景。
+* `--always` 选项，不管 channel 中同名 pname 的版本号是否变化，总是重新升级。
+
+其他参数：
+
+* `--prebuilt-only` 或 `-b` 选项，只升级那些能从 substitute 中安装的包，永不从源码构建。
+* `--preserve-installed` 或 `-P` 选项，不清楚这个选项的意义，原文如下：Do not remove derivations with a name matching one of the derivations being installed. Usually, trying to have two versions of the same package installed in the same generation of a profile will lead to an error in building the generation, due to file name clashes between the two versions. However, this is not the case for all packages.
+
+示例如下：
+
+```bash
+# 升级 gcc，指定了属性名（推荐，无需计算所有包，速度很快推荐）。
+nix-env --upgrade --attr nixpkgs.gcc
+# 升级 gcc，使用 panme （很慢，要计算 channel 中所有的包的 pname，然后匹配，和下面升级所有包速度一样慢）
+nix-env --upgrade gcc-wrapper
+# 升级所有包（很慢，要计算 channel 中所有的包）。
+nix-env --upgrade --always
+```
