@@ -326,7 +326,7 @@ cat ~/.nix-profile/manifest.nix
 * 如果最终存在冲突（比如：gcc 和 clang 都需要安装 bin/addr2line），同时安装，将报错。有两点说明如下：
     * 默认情况， nix-env 安装的 pname 相同包时，旧的 pname 的包将被删除，并安装这个新的 pname 包（未找到相关文档，实测如此），执行 `nix-env --install` 时，可使用 `--preserve-installed` 阻止该行为，行为切换为报错冲突。
     * derivation 有一个 `meta.priority` 属性（[文档](https://nix.dev/manual/nix/2.22/command-ref/nix-env/install#description)），如果两个包的优先级相同，nix-env 安装存在冲突时，就会报错，如果安装一个优先级更高的包存在冲突时，这个包会覆盖之前安装的优先级地的包。`meta.priority` 的默认值为 `5`。另外，也可以通过 `nix-env --set-flag priority 数字` 调整已安装的包的优先级。
-* nix-env --install 支持指定安装特定的 outputs，格式形如 `nixpkgs.libmysqlclient.dev`，但是，这样会破坏掉 profile ，导致后续安装任何的包都报错。原因是生成的 `manifest.nix` 中 `meta.outputsToInstall` 属性的值不包含在 `outputs` 属性中。
+* `nix-env --install` 支持指定安装特定的 outputs，格式形如 `nixpkgs.libmysqlclient.dev`，但是，这样会破坏掉 profile ，导致后续安装任何的包都报错。原因是生成的 `manifest.nix` 中 `meta.outputsToInstall` 属性的值不包含在 `outputs` 属性中。
 * 由于 nix 的包都是 nixpkgs 维护的，而关于 outputs 目录， nixpkgs 有如下如下约定：
     * 如果 outputs 有多个输出，`out` 目录一般放到最前面，例如 `[ "out" "dev" ]`。
     * `meta.outputsToInstall` 默认值规则为：如果 outputs 存在 bin 目录，则添加 bin；如果存在 out 目录，则添加 out；否则添加 outputs 的第一个。最后，如果存在 man，一定会 append man （详见：[源码](https://github.com/NixOS/nixpkgs/blob/4c68bf5473a8e87ffd94322cc3e79a449311325b/pkgs/stdenv/generic/check-meta.nix#L474)） 。
@@ -353,7 +353,7 @@ cat ~/.nix-profile/manifest.nix
 
 nix 通过 nix-env 命令来实现对 profile 的管理，本部分将详细介绍该命令的各种能力和细节。
 
-### nix-env --delete-generations
+### `nix-env --delete-generations`
 
 删除 profile 的历史版本，示例如下：
 
@@ -362,7 +362,7 @@ nix 通过 nix-env 命令来实现对 profile 的管理，本部分将详细介�
 * `nix-env delete-generations 30d` 删除 30 天之前的版本。
 * `nix-env delete-generations 5+` 保留当前版本之前的 5 个版本以及大于当前版本的版本，删除其他的版本。
 
-### nix-env --install
+### `nix-env --install`
 
 安装一个或多个包 (derivation) 到 profile 中，语法如下：
 
@@ -488,11 +488,11 @@ ls -al /tmp/myprofiles
 
     如上吗，底层都是用 [`builtins.findFile`](https://nix.dev/manual/nix/2.22/language/builtins#builtins-findFile)，原理是查找对应的目录，且该目录包含 `default.nix`。
 
-### nix-env --list-generations
+### `nix-env --list-generations`
 
 列出当前 profile 的所有版本。
 
-### nix-env --query
+### `nix-env --query`
 
 查询包（derivation）信息，按 `name` 排序，语法如下：
 
@@ -565,11 +565,11 @@ nix-env --query --json
 * `--description` 选项，打印 derivation 的 `meta.description` 属性。
 * `meta` 选项，打印 derivation 的 `meta` 属性，该选项只能和 `--xml` 和 `--json` 一起使用。
 
-### nix-env --rollback
+### `nix-env --rollback`
 
 将当前 profile 回滚到上一版本。
 
-### nix-env --set-flag
+### `nix-env --set-flag`
 
 修改已安装的包的 meta 下的属性，语法如下：
 
@@ -621,7 +621,7 @@ nix-env --set-flag name value drvnames
     # 找不到
     ```
 
-### nix-env --set
+### `nix-env --set`
 
 设置 profile 指向一个特定的 derivation。
 
@@ -657,7 +657,7 @@ nix-env --profile /nix/var/nix/profiles/browser --set firefox
 
 可能在 NixOS 场景有用吧。
 
-### nix-env --switch-generation
+### `nix-env --switch-generation`
 
 将当前 profile 切换到指定的版本。语法如下：
 
@@ -667,7 +667,7 @@ nix-env {--switch-generation | -G} generation
 
 本质上是修改 profile 软链指向软链的指向，即 `~/.nix-profile` 指向的文件 `~/.local/state/nix/profiles/profile` 指向新的 `profile-xxx-link`。
 
-### nix-env --switch-profile
+### `nix-env --switch-profile`
 
 切换用户环境 profile，语法如下：
 
@@ -677,7 +677,7 @@ nix-env {--switch-profile | -S} path
 
 `~/.nix-profile` 是整个 nix profile 的入口文件，该命令的职责就是改变这个软链的指向，详见下文。
 
-### nix-env --uninstall
+### `nix-env --uninstall`
 
 卸载包，语法如下：
 
@@ -702,7 +702,7 @@ nix-env --uninstall gcc-wrapper-13.3.0
 * `--uninstall` 参数实际上可以是 pname 也可以是 name。
 * 卸载操作也会生成一个新的版本，可用以 `--rollback` 回滚。
 
-### nix-env --upgrade
+### `nix-env --upgrade`
 
 升级一个包，语法如下：
 
