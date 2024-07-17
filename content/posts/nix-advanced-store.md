@@ -229,7 +229,7 @@ nix-env -iA nixpkgs.go # 秒装
 ls -al /tmp/nix-local-overlay/nix-store-upper
 ```
 
-## nix-store 命令
+## `nix-store 命令`
 
 > [Nix 参考手册 - 8.3.3 nix-store](https://nix.dev/manual/nix/2.22/command-ref/nix-store)
 
@@ -237,7 +237,7 @@ nix-store 命令是 Nix 的主要命令之一，它提供了对 Nix 存储的访
 
 该命令是相对底层原始的操作，对于一般用户来说，这个命令一般不需要使用，而是由如 nix-env、nix-channel 等命令间接调用。
 
-### nix-store --add-fixed
+### `nix-store --add-fixed`
 
 ```bash
 nix-store --add-fixed [--recursive] algorithm paths…
@@ -260,7 +260,7 @@ nix-store --add-fixed --recursive sha256 abc.txt
 # nix --extra-experimental-features nix-command store add abc.txt --mode nar --hash-algo sha256
 ```
 
-### nix-store --add
+### `nix-store --add`
 
 ```bash
 nix-store --add paths…
@@ -268,7 +268,7 @@ nix-store --add paths…
 
 等价于 `nix-store --add-fixed --recursive sha256 paths…`
 
-### nix-store --delete
+### `nix-store --delete`
 
 ```bash
 nix-store --delete [--ignore-liveness] paths…
@@ -284,7 +284,7 @@ nix-store --delete [--ignore-liveness] paths…
 nix-store --delete /nix/store/6g0r26al9a8bg84ny9v7d42xcamyjrhx-abc.txt
 ```
 
-### nix-store --gc
+### `nix-store --gc`
 
 ```bash
 nix-store --gc
@@ -292,7 +292,7 @@ nix-store --gc
 
 运行垃圾回收，详见： [官方文档](https://nix.dev/manual/nix/2.22/command-ref/nix-store/gc)。
 
-### nix-store --dump-db
+### `nix-store --dump-db`
 
 ```bash
 nix-store --dump-db [paths…]
@@ -323,7 +323,7 @@ cat nix-closure.reginfo
 * 引用（直接依赖）的数量，如： `18`
 * 所有引用（直接依赖）的存储路径，每个一行，如： `/nix/store/1rkhjf55x59w6qm1pbhf80ks2wjpg973-libcpuid-0.6.4` 等。
 
-### nix-store --load-db
+### `nix-store --load-db`
 
 ```bash
 nix-store --load-db < nix-closure.reginfo
@@ -333,7 +333,7 @@ nix-store --load-db < nix-closure.reginfo
 
 nix 安装包中的安装脚本 database 的初始化就是通过该命令实现的。
 
-### nix-store --dump
+### `nix-store --dump`
 
 ```bash
 nix-store --dump path
@@ -351,7 +351,7 @@ nix-store --dump $(readlink $(which nix))/../.. > nix.nar
 
 NAR 文件格式，详见：[Nix Archive (NAR) format](https://nix.dev/manual/nix/2.22/protocols/nix-archive)。
 
-### nix-store --restore
+### `nix-store --restore`
 
 ```bash
 nix-store --restore path
@@ -372,7 +372,7 @@ tree -L 1 nix-nar-unpack # 输出如下：
 # └── share
 ```
 
-### nix-store --export
+### `nix-store --export`
 
 ```
 nix-store --export paths…
@@ -396,7 +396,7 @@ nix-store --export $(which nix) > nix-single-export.storeobject
 nix-store --export $(nix-store --query --requisites $(which nix)) > nix-closure-export.storeobject
 ```
 
-### nix-store --import
+### `nix-store --import`
 
 ```bash
 nix-store --import
@@ -411,7 +411,7 @@ nix-store --import
 nix-store --import < nix-closure-export.storeobject
 ```
 
-### nix-store --generate-binary-cache-key
+### `nix-store --generate-binary-cache-key`
 
 ```bash
 nix-store --generate-binary-cache-key key-name secret-key-file public-key-file
@@ -422,7 +422,7 @@ nix-store --generate-binary-cache-key key-name secret-key-file public-key-file
 * [官方文档](https://nix.dev/manual/nix/2.22/command-ref/nix-store/generate-binary-cache-key)。
 * [Wiki](https://nixos.wiki/wiki/Binary_Cache)。
 
-### nix-store --optimise
+### `nix-store --optimise`
 
 ```bash
 nix-store --optimise
@@ -441,7 +441,7 @@ nix-store --optimise # 输出如下
 # 14.74 MiB freed by hard-linking 1622 files
 ```
 
-### nix-store --print-env
+### `nix-store --print-env`
 
 ```bash
 nix-store --print-env drvpath
@@ -470,7 +470,7 @@ nix-store --print-env $(nix-instantiate -A hello ~/.nix-defexpr/channels/nixpkgs
 # export _args; _args=''-e' '/nix/store/v6x3cs394jgqfbi0a42pam708flxaphh-default-builder.sh''
 ```
 
-### nix-store --realise
+### `nix-store --realise`
 
 ```bash
 nix-store {--realise | -r} paths… [--dry-run]
@@ -503,7 +503,7 @@ nix-instantiate -A hello  ~/.nix-defexpr/channels/nixpkgs  # 输出如下
 nix-store --realise $(nix-instantiate -A hello  ~/.nix-defexpr/channels/nixpkgs)
 ```
 
-### nix-store --read-log
+### `nix-store --read-log`
 
 ```bash
 nix-store {--read-log | -l} paths…
@@ -520,15 +520,15 @@ nix-store --read-log $(nix-store --realise $(nix-instantiate -A hello  ~/.nix-de
 # error: build log of derivation '/nix/store/dbghhbq1x39yxgkv3vkgfwbxrmw9nfzi-hello-2.12.1' is not available
 ```
 
-### nix-store --verify-path
+### `nix-store --verify-path`
 
 ```bash
 nix-store --verify-path paths…
 ```
 
---verify-path 操作将给定存储路径的内容与存储在 Nix 数据库中的加密哈希值进行比较。对于每个更改的路径，它都会打印一条警告消息。如果路径没有更改，则退出状态为 0，否则为 1。
+`--verify-path` 操作将给定存储路径的内容与存储在 Nix 数据库中的加密哈希值进行比较。对于每个更改的路径，它都会打印一条警告消息。如果路径没有更改，则退出状态为 0，否则为 1。
 
-### nix-store --repair-path
+### `nix-store --repair-path`
 
 ```bash
 nix-store --repair-path paths…
@@ -536,7 +536,7 @@ nix-store --repair-path paths…
 
 从 substituter 重新下载路径。
 
-操作 --repair-path 尝试通过使用可用的替代程序重新下载指定的路径来“修复”它们。如果没有可用的替代品，则无法进行修复。
+操作 `--repair-path` 尝试通过使用可用的替代程序重新下载指定的路径来“修复”它们。如果没有可用的替代品，则无法进行修复。
 
 示例如下：
 
@@ -545,7 +545,7 @@ hellow_out_path=$(nix-store --realise $(nix-instantiate -A hello  ~/.nix-defexpr
 nix-store --verify-path $hellow_out_path
 ```
 
-### nix-store --verify
+### `nix-store --verify`
 
 ```bash
 nix-store --verify [--check-contents] [--repair]
@@ -554,22 +554,22 @@ nix-store --verify [--check-contents] [--repair]
 `--verify` 操作验证 Nix 数据库的内部一致性，以及 Nix 数据库和 Nix 存储之间的一致性。遇到的任何不一致都会自动修复。不一致通常是由非 Nix 工具修改 Nix 存储或数据库或 Nix 本身的错误造成的。
 
 该操作有以下选项：
-* `--check-contents` 通过计算内容的 SHA-256 哈希并将其与构建时存储在 Nix 数据库中的哈希进行比较，检查每个有效存储路径的内容是否未被更改。打印出已修改的路径。对于大型存储来说，--check-contents 显然相当慢。
+* `--check-contents` 通过计算内容的 SHA-256 哈希并将其与构建时存储在 Nix 数据库中的哈希进行比较，检查每个有效存储路径的内容是否未被更改。打印出已修改的路径。对于大型存储来说，`--check-contents` 显然相当慢。
 * `--repair` 如果存储中缺少任何有效路径，或者（如果给出了 `--check-contents`）有效路径的内容已被修改，则尝试通过重新下载来修复路径。详见上文 `nix-store --repair-path`。
 
-### nix-store --serve
+### `nix-store --serve`
 
 ```bash
 nix-store --serve [--write]
 ```
 
-操作 --serve 通过 stdin 和 stdout 提供对 Nix 存储的访问，旨在用作向受限 ssh 用户提供 Nix 存储访问的一种方法。
+操作 `--serve` 通过 stdin 和 stdout 提供对 Nix 存储的访问，旨在用作向受限 ssh 用户提供 Nix 存储访问的一种方法。
 
 * `--write` 允许连接的客户端请求实现派生。实际上，这可以用来使主机充当远程构建器。
 
 详见： [SSH Store](https://nix.dev/manual/nix/2.22/store/types/ssh-store)
 
-### nix-store --query
+### `nix-store --query`
 
 ```bash
 nix-store {--query | -q} {--outputs | --requisites | -R | --references | --referrers | --referrers-closure | --deriver | -d | --valid-derivers | --graph | --tree | --binding name | -b name | --hash | --size | --roots} [--use-output] [-u] [--force-realise] [-f] paths…
@@ -665,7 +665,7 @@ nix-store --query --referrers-closure $hellow_out_path
 
 `--deriver; -d`
 
-打印用于构建存储路径的派生程序。如果路径没有派生者（例如，如果它是源文件），或者如果派生者未知（例如，在仅二进制部署的情况下），则打印字符串unknown-deriver。不保证返回的派生程序存在于本地存储中，例如当从二进制缓存替换路径时。使用 --valid-derivers 来仅获取有效路径。
+打印用于构建存储路径的派生程序。如果路径没有派生者（例如，如果它是源文件），或者如果派生者未知（例如，在仅二进制部署的情况下），则打印字符串unknown-deriver。不保证返回的派生程序存在于本地存储中，例如当从二进制缓存替换路径时。使用 `--valid-derivers` 来仅获取有效路径。
 
 ```bash
 nix-store --query --deriver $hellow_drv_path
@@ -729,7 +729,7 @@ nix-store --query --tree $hellow_out_path
 
 以 [GraphML](http://graphml.graphdrawing.org/) 文件格式打印存储路径的引用图。这可用于可视化依赖图。要获取构建时依赖图，请将其应用于存储派生。要获取运行时依赖关系图，请将其应用于输出路径。
 
-#### --binding name
+#### `--binding name`
 
 `--binding name; -b name`
 
@@ -741,7 +741,7 @@ Prints the value of the attribute name (i.e., environment variable) of the store
 
 `--hash`
 
-打印存储路径路径内容的 SHA-256 哈希值（即给定路径上 nix-store --dump 输出的哈希值）。由于哈希值存储在 Nix 数据库中，因此这是一个快速操作。
+打印存储路径路径内容的 SHA-256 哈希值（即给定路径上 `nix-store --dump` 输出的哈希值）。由于哈希值存储在 Nix 数据库中，因此这是一个快速操作。
 
 ```bash
 nix-store --query --hash $hellow_drv_path
@@ -754,7 +754,7 @@ nix-store --query --hash $hellow_out_path
 
 `--size`
 
-打印存储路径 paths 内容的大小（以字节为单位）——准确地说，是给定路径上 nix-store --dump 的输出大小。请注意，存储路径所需的实际磁盘空间可能更高，尤其是在具有较大簇大小的文件系统上。
+打印存储路径 paths 内容的大小（以字节为单位）——准确地说，是给定路径上 `nix-store --dump` 的输出大小。请注意，存储路径所需的实际磁盘空间可能更高，尤其是在具有较大簇大小的文件系统上。
 
 ```bash
 nix-store --query --size $hellow_drv_path
