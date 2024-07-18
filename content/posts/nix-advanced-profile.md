@@ -730,3 +730,7 @@ nix-env --upgrade gcc-wrapper
 # 升级所有包（很慢，要计算 channel 中所有的包）。
 nix-env --upgrade --always
 ```
+
+## 垃圾回收
+
+TODO
