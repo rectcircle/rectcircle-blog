@@ -19,7 +19,7 @@ Nix profile （用户环境， user environments） 是 Nix 实现不同用户�
 
 本文将介绍 Nix profile 的原理以及 nix-env、 nix-collect-garbage 详细用法和示例。
 
-（ nix-channel 本文不做介绍，下一篇专门讨论）
+（nix-channel 本文不做介绍，下一篇专门讨论）
 
 ## 原理
 
@@ -303,7 +303,6 @@ cat ~/.nix-profile/manifest.nix
 # [ { meta = { ...; outputsToInstall = [ "dev" ]; ... }; name = "mariadb-connector-c-3.3.5"; ...; outputs = [ "out" ]; ... } ...]
 ```
 
-
 总结，在执行 `nix-env --install` 时：
 
 * nixpkgs 声明的 derivation 都有一个 `meta.outputsToInstall` 属性（一般情况下为 `out` 或 `bin`），会将其指向的子目录都软链到 ~/.nix-profile/ 中。如果裸使用 `derivation`，没有配置 `meta.outputsToInstall`，nix-env 会安装所有的 outputs。
@@ -333,7 +332,6 @@ cat ~/.nix-profile/manifest.nix
     * nixpkgs 的包维护者，可以按需选择 `outputs` 中的目录添加到 `meta.outputsToInstall` 中，一般情况下 dev 目录一般不会加到这个属性中。
     * 使用 nix-shell 或 nix-build 包的依赖是通过 `nixpkgs.lib.stdenv.mkDerivation` 的 buildInputs 声明时，如果这个依赖 outputs 包含 dev 时，实际依赖的是 dev 而非 out 目录。源码详见：[make-derivation.nix](https://github.com/NixOS/nixpkgs/blob/d2f01055afe920f3eb496dbc167b4918ebedfa21/pkgs/stdenv/generic/make-derivation.nix#L310) 和 [attrsets.nix](https://github.com/NixOS/nixpkgs/blob/master/lib/attrsets.nix#L1888)。
     * 关于 outputs 更多参见： [Nixpkgs Reference Manual - Multiple-output packages](https://nixos.org/manual/nixpkgs/stable/#chap-multiple-output) ，[博客 How to Learn Nix, Part 29: Derivations in detail](https://ianthehenry.com/posts/how-to-learn-nix/derivations-in-detail/)，[setenv.sh](https://github.com/NixOS/nixpkgs/blob/master/pkgs/stdenv/generic/setup.sh)。
-
 
 ### C 库 和 profile
 
