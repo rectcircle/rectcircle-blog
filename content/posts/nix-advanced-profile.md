@@ -345,7 +345,7 @@ cat ~/.nix-profile/manifest.nix
 
 详见： [Nix Wiki - C](https://nixos.wiki/wiki/C)。
 
-## 命令详解
+## nix-env 命令详解
 
 > [Nix 参考手册 - 8.3.4 nix-env](https://nix.dev/manual/nix/2.22/command-ref/nix-env)
 
@@ -733,4 +733,42 @@ nix-env --upgrade --always
 
 ## 垃圾回收
 
-TODO
+> [Nix 参考手册 - 6.2 Garbage Collection](https://nix.dev/manual/nix/2.22/package-management/garbage-collection) | [Nix 参考手册 - 8.4.2 nix-collect-garbage](https://nix.dev/manual/nix/2.22/command-ref/nix-collect-garbage)
+
+上文的 `nix-env --uninstall` 仅仅是生成了一个新的 profiles，并没有真正删除存储对象。通过 `nix-collect-garbage` 命令可以回收那些不可达的存储对象，这个行为被称作垃圾回收。
+
+nix 会遍历如指定路径的 profiles 所有版本直接引用和间接引用（闭包）的存储对象列表，不再该列表的存储对象就是不可达的。
+
+nix 遍历的 profiles 路径如下：
+
+* 在 [profile 章节](https://nix.dev/manual/nix/2.22/command-ref/files/profiles) 说明的目录：
+    * `$XDG_STATE_HOME/nix/profiles` 普通用户的 profiles，一般情况下为 `~/.local/state/nix/profiles` （多用户安装模式会遍历所有使用 Nix 的用户路径的该路径）。
+    * `$NIX_STATE_DIR/profiles/per-user/root`，root 用户的 profiles，一般情况下为 `/nix/var/nix/profiles/per-user/root`。
+* 兼容历史版本的路径（未来可能有变化）： `$NIX_STATE_DIR/profiles` 和 `$NIX_STATE_DIR/profiles/per-user`。
+
+在实现上，上述目录都在 `/nix/var/nix/gcroots/` 目录下存在软链。在执行垃圾回收时，就是根据该目录进行查找的。
+
+* 观察 `/nix/var/nix/gcroots/auto`，可以看到大量指向 `~/.local/state/nix/profiles/profile-xxx-link` 的软链。
+* 如果想让某个包，某个 profiles 依赖的包，不被垃圾回收，可以在 `/nix/var/nix/gcroots/` 目录创建软链。
+* `nix-store`、`nix-instantiate` 等命令存在一个 [`--add-root path`](https://nix.dev/manual/nix/2.22/command-ref/nix-store/add#opt-add-root) 选项，可以将某个存储对象添加到 `/nix/var/nix/gcroots/auto` 目录下 （本质上 `nix-env` 也是通过这个命令来不被垃圾回收的）。
+
+    ```bash
+    nix-store --add-root /home/eelco/bla/result --realise ...
+    #
+    $ ls -l /nix/var/nix/gcroots/auto
+    # lrwxrwxrwx    1 ... 2005-03-13 21:10 dn54lcypm8f8... -> /home/eelco/bla/result
+    $ ls -l /home/eelco/bla/result
+    # lrwxrwxrwx    1 ... 2005-03-13 21:10 /home/eelco/bla/result -> /nix/store/1r11343n6qd4...-f-spot-0.0.10
+    ```
+
+`nix-collect-garbage` 命令，语法如下：
+
+```
+nix-collect-garbage [--delete-old] [-d] [--delete-older-than period] [--max-freed bytes] [--dry-run]
+```
+
+选项说明如下：
+
+* 不加任何参数，等价于 `nix-store --gc`。
+* `--delete-old` 或 `-d`，删除所有用户的 profiles 历史，等价于针对每个 profiles 先执行 `nix-env --delete-generations old`，再执行 `nix-store --gc`。
+* `--delete-older-than period`，等价于针对每个 profiles 先执行 `nix-env --delete-generations <period>`，再执行 `nix-store --gc`。
