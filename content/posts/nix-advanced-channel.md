@@ -1,19 +1,52 @@
 ---
 title: "Nix 高级话题之 channel"
-date: 2023-04-30T11:00:00+08:00
-draft: true
+date: 2024-07-21T19:31:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
   - untagged
 ---
 
-
 > version: nix-2.22.1
 
-## Nix Profile
+## 概述
 
-## Nix Channel
+Nix channel 类似于 apt 的 source，即软件源。
+
+Nix 可以配置多个 channel，每个 channel 都是一个 `<channel-name>` 和 `<channel-url>` 的映射。
+
+Nix 通过 `nix-channel` 命令管理 channel 的配置，语法如下：
+
+```
+nix-channel {--add url [name] | --remove name | --list | --update [names…] | --list-generations | --rollback [generation] }
+```
+
+
+配置完成 nix-channel 后，可以通过 `nix-env -iA <channel-name>.xxx`，安装软件包。
+
+## 配置文件
+
+> [Nix 参考手册 - 8.6.3 Channels](https://nix.dev/manual/nix/2.22/command-ref/files/channels)
+
+Nix channel 的配置文件位于 `~/.nix-channels`，其格式为：
+
+```
+<url> <name>
+...
+```
+
+可以手动修改该配置文件，也可以通过，如下命令修改：
+
+* `nix-channel --add url [name]` 添加有个 channel， 如果 name 为空，name 默认为 url 的最后一个 `/` 后面的字符串，并去除后缀 `-stable` 或 `-unstable`。
+* `nix-channel --remove name` 删除一个 channel。
+* `nix-channel --list` 列出 channel。
+
+## 更新 channel
+
+上述步骤更新了配置文件，还是需要手动执行 `nix-channel --update  [names…]` 更新 channel （这里的 `[name…] 是选填的` ）。
+
+通过如下过程观察 `nix-channel` 执行过程：
 
 ```bash
 # 卸载 nix
@@ -100,3 +133,104 @@ ls -al /nix/store/j13ha7fdr5n95kgk5q7nnn89h2bq6mr2-nixpkgs/nixpkgs
 (p=/nix/store/j13ha7fdr5n95kgk5q7nnn89h2bq6mr2-nixpkgs; find $p -type f; find $p -type d) | wc -l
 # 70552
 ```
+
+因此总结一下，`nix-channel --update` 执行过程如下：
+
+* 读取 nix channel 的配置文件  `~/.nix-channels` 获取到 channel 列表，名依次执行如下操作。
+* 尝试请求 `url`，如果是重定向，则获取到重定向后的地址，然后拼接 `/nixexprs.tar.xz`，并下载该到 `/nix/store/xxx-nixexprs.tar.xz` 中。
+* 解压 `/nix/store/xxx-nixexprs.tar.xz` 到 `/nix/store/xxx-<channel-name>` 中。
+* 构造一个 `/nix/store/xxx-user-environment`，包含如下文件。
+
+    ```
+    /nix/store/xxx-user-environment
+    ├── manifest.nix -> /nix/store/xxx-env-manifest.nix       # 源信息
+    ├── nixpkgs -> /nix/store/xxx-nixpkgs/nixpkgs             # 解压的 channel 的 nixexprs.tar.xz
+    └── ...                                                   # ...
+    ```
+
+    `/nix/store/xxx-env-manifest.nix` 是一个 `[]derivation`，示例内容如下：
+
+    ```
+    [ { meta = { }; name = "nixpkgs"; out = { outPath = "/nix/store/alvsn668jlsllk18p29b6jqadg9qsa44-nixpkgs"; }; outPath = "/nix/store/alvsn668jlsllk18p29b6jqadg9qsa44-nixpkgs"; outputs = [ "out" ]; system = "builtin"; type = "derivation"; } ... ]
+    ```
+
+* 读取 `~/.nix-defexpr/channels` 软链的指向的软链（`~/.local/state/nix/profiles/channels`）所在目录（即 `~/.local/state/nix/profiles`）创建一个 `channels-x-link` 软链，指向 `/nix/store/xxx-user-environment`。然后更新 `~/.nix-defexpr/channels` 软链的指向的软链（`~/.local/state/nix/profiles/channels`）到 `channels-x-link` （和 nix-profile 类似，但是无法自定义，详见下文）。
+
+## 其他说明
+
+### 国内源使用固定版本问题
+
+通过 [Nix channels](https://channels.nixos.org/) 站点可以查询到所有固定版本的 channels，但是这些版本会随着时间而变化，而更新，如：
+
+* `https://channels.nixos.org/nixos-24.05` 在当前时刻会重定向到 `https://releases.nixos.org/nixos/24.05/nixos-24.05.3103.0c53b6b8c2a3`，随着时间的推移，重定向的目标会变化。
+
+因此如果真的想强保证，使用一个固定的版本，应该使用真是的 URL。比如我们项使用 nixos-24.05 的 `24.05.3103.0c53b6b8c2a3` 子版本，则应该重定向后的 url。
+
+```bash
+# https://releases.nixos.org/nixos/24.05/nixos-24.05.675.805a384895c6
+nix-channel --add https://mirrors.tuna.tsinghua.edu.cn/nix-channels/releases/nixos-24.05@nixos-24.05.675.805a384895c6 nixpkgs_24_05
+nix-channel --update
+# error: path 'bvdwdkhfgid51xir705v9rh4gg8hcbbn-nixos-24.05@nixos-24.05.675.805a384895c6' is not a valid store path: name 'nixos-24.05@nixos-24.05.675.805a384895c6' contains illegal character '@'
+nix-channel --remove nixpkgs_24_05
+nix-channel --add https://mirrors.tuna.tsinghua.edu.cn/nix-channels/releases/nixos-24.05%40nixos-24.05.675.805a384895c6 nixpkgs_24_05
+nix-channel --update
+# error: path 'sciazysgcwzs52ig7afsa59fbx6dqw6n-nixos-24.05%40nixos-24.05.675.805a384895c6' is not a valid store path: name 'nixos-24.05%40nixos-24.05.675.805a384895c6' contains illegal character '%'
+nix-channel --remove nixpkgs_24_05
+```
+
+因为国内源的最后一段使用了 @ 特殊字符，导致 `nix-channel --update` 失败，目前官方仍未有任何回应，相关 issue 如下：
+
+* [清华源 issue](https://github.com/tuna/issues/issues/1976)。
+* [Nix issue](https://github.com/NixOS/nix/issues/10831)。
+
+目前仍未得到解决，临时的解决办法是使用短链接服务（如 [bitly](https://bitly.com)），做一个转换。
+
+```bash
+nix-channel --add https://bit.ly/3Y80c55 nixpkgs_24_05
+nix-channel --update
+```
+
+### 无法像切换 profile 存储位置
+
+有些场景，希望将 `nix-channel --update` 的结果的引用存储到一个地方，实现随时切换（类似 `nix-env --switch-profile` 那样的需求）。
+
+但是，目前 nix 不支持，验证如下：
+
+```bash
+mkdir -p /tmp/test-channels
+readlink ~/.nix-defexpr/channels
+# /home/rectcircle/.local/state/nix/profiles/channels
+rm -rf ~/.nix-defexpr/channels
+ln -s /tmp/test-channels/channels ~/.nix-defexpr/channels
+ls -al ~/.nix-defexpr/channels
+#  /home/rectcircle/.nix-defexpr/channels -> /tmp/test-channels/channels
+nix-channel --update
+ls -al ~/.nix-defexpr/channels
+# /home/rectcircle/.nix-defexpr/channels -> /home/rectcircle/.local/state/nix/profiles/channels
+```
+
+可以看出，手动配置 ~/.nix-defexpr/channels 软链是无效的。下面尝试通过 nix-env 切换 profile，观察 channel 的配置是否发生变化。
+
+```bash
+nix_path=$(readlink -f $(which nix))
+# /nix/store/xxx-nix-xxx/bin/nix
+readlink ~/.nix-defexpr/channels
+# /home/rectcircle/.local/state/nix/profiles/channels
+mkdir -p /tmp/test-profiles
+nix-env --switch-profile /tmp/test-profiles/profile
+readlink ~/.nix-defexpr/channels
+# /home/rectcircle/.local/state/nix/profiles/channels
+${nix_path}-channel --update
+readlink ~/.nix-defexpr/channels
+# /home/rectcircle/.local/state/nix/profiles/channels
+rm -rf ~/.nix-defexpr/channels
+ln -s /tmp/test-channels/channels ~/.nix-defexpr/channels
+${nix_path}-channel --update
+readlink ~/.nix-defexpr/channels
+# /home/rectcircle/.local/state/nix/profiles/channels
+${nix_path}-env --switch-profile ~/.local/state/nix/profiles/profile # 恢复
+```
+
+虽然 `nix-channel --update` 的存储位置和 profile 类似，但是在目前版本，存储位置是强制写死到了 `~/.local/state/nix/profiles/channels`，无法通过任何办法自定义。
+
+如果项实现类似  `nix-env --switch-profile` 的能力，只能通过手动维护 `~/.local/state/nix/profiles/channels-x-link` 的元信息，在需要的时候，手动修改 `~/.local/state/nix/profiles/channels` 软链指向特定的 `~/.local/state/nix/profiles/channels-x-link` 来实现。
