@@ -291,6 +291,8 @@ sudo apt-get install musl-tools
 CC=musl-gcc go build -ldflags "-linkmode external -extldflags -static" ./cmd
 ```
 
+注意，如果当前项目不包含 CGO 的依赖如上传递了 `-ldflags` 参数，编译将报错。
+
 ### 场景 ③
 
 由于 Go 标准库的 CGO 实现，依赖 libc，因此，无法使用 glibc。所以解法和 **场景 ②** 一致。
@@ -311,6 +313,8 @@ sudo apt-get install musl-tools
 #   --extldflags -static : 告知 C 语言编译器使用静态编译。
 CC=musl-gcc go build -tags osusergo,netgo -ldflags "-linkmode external -extldflags -static" ./cmd
 ```
+
+注意，如果当前项目不包含 CGO 的依赖如上传递了 `-ldflags` 参数，编译将报错。
 
 ### 场景 ⑥
 
