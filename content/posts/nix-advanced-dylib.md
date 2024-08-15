@@ -15,3 +15,5 @@ tags:
 TODO 详见 Linux 动态链接库详解
 
 ## C 编译器
+
+nix shell 原理，以及通过 hook 模拟。
