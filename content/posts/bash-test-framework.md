@@ -278,7 +278,6 @@ assert_http http://localhost:8080 200 'echo -e "HTTP/1.1 200 OK\n\nok" | nc -l -
 实现如下：
 
 ```bash
-# registe_clear <cmd-or-func>
 registe_clear(){
     trap "[ \"\$?\" -eq 0 ] && $1 || true" EXIT
 }
@@ -927,5 +926,7 @@ bats 有一套自己 dsl 语法，写一个测试脚本 `test.bats`，示例如�
 
 2 tests, 1 failure
 ```
+
+VSCode 扩展： [jetmartin.bats](https://marketplace.visualstudio.com/items?itemName=jetmartin.bats)。
 
 更多详见： [官网](https://bats-core.readthedocs.io/en/stable/index.html)。
