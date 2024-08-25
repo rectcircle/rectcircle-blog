@@ -8,6 +8,8 @@ tags:
   - untagged
 ---
 
+> 示例代码： [rectcircle/linux-dylib-demo](https://github.com/rectcircle/linux-dylib-demo/tree/master/03-symbolversion)
+
 ## 语义化版本
 
 动态链接库作为可执行文件的依赖，必然带来版本管理的问题，因此对于动态链接库的版本管理的实现基本上是符合[“语义化版本规范”](https://semver.org/) （动态链接库的出现远早于“语义化版本”的概念，可以合理推测[“语义化版本规范”](https://semver.org/)是在动态链接库版本管理的基础上发展出来的）。
