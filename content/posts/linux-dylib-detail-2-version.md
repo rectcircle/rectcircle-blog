@@ -34,7 +34,7 @@ tags:
 
 因此 Linux 通过 SO-NAME 机制来实现这一点：
 
-* gcc 编译一个动态链接库时，可以通过指定 `-Wl,-soname` 参数指定一个库的 SO-NAME，这个 SO-NAME 会写入 `.so` 文件。如 `-Wl,-soname,libfoo.so.1 -o libfoo.1.0.0`，在 `libfoo.1.0.0` 将看到 `libfoo.so.1` 的符号。
+* gcc 编译一个动态链接库时，可以通过指定 `-Wl,-soname` 参数指定一个库的 SO-NAME，这个 SO-NAME 会写入 `.so` 文件（elf 的 `.dynamic` 的 `DT_SONAME`，通过 `readelf -d` 查看）。如 `-Wl,-soname,libfoo.so.1 -o libfoo.1.0.0`，在 `libfoo.1.0.0` 将看到 `libfoo.so.1` 的符号。
 * 安装一个库到系统指定的运行时查找路径时，安装脚本会调用 `ldconfig` 会扫描具体版本的动态库文件，查找 SO-NAME 符号，生成或更新一个名为 SO-NAME 符号值的软链指向该文件。如扫描 `libfoo.so.1.0.0` 将生成 `libfoo.so.1 -> libfoo.so.1.0.0` 的软链。
 * gcc 编译一个可执行文件时，使用 `-L` 和 `-l` 指定依赖一个动态库时，如果该动态库包含 SO-NAME 符号，会将 SO-NAME 作为该动态库的运行时查找库的名字，而非文件名。如： `gcc ... -L ... -l foo` 在构建（链接阶段）时，解析到 `libfoo.so` 文件包含 SO-NAME 为 `libfoo.so.1` 则在执行文件中使用 `libfoo.so.1` 作为运行时查找的名字而非 `libfoo.so`。
 * 执行可执行文件时，会按照运行时查找规则查找名字为 SO-NAME 的动态链接库文件进行查找。如上例中，查找的是 `libfoo.so.1` 而非 `libfoo.so`。
