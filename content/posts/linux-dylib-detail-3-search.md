@@ -1,7 +1,7 @@
 ---
 title: "Linux 动态链接库详解（三）动态库查找"
-date: 2024-08-01T11:00:00+08:00
-draft: true
+date: 2024-08-28T23:00:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -39,8 +39,8 @@ tags:
 
 如上配置的搜索优先级顺序为：
 
-* 命令行 `-L` 参数指定的路径（TODO）。
-* 环境变量 `LIBRARY_PATH` 指定的路径（TODO）。
+* 命令行 `-L` 参数指定的路径（包含用户自定义的以及 gcc 添加的）。
+* 环境变量 `LIBRARY_PATH` 指定的路径。
 * 链接器 linker script 配置的默认搜索路径。
 
 最后，在编译真实的项目时，一般使用 Makefile 来定义编译过程，Makefile 识别如下环境变量，可以用来配置自定义搜索路径：
@@ -75,14 +75,81 @@ echo
 
 echo '=== 方式 5: 使用 -L LIBRARY_PATH 指定错误的路径观察查找路径'
 mkdir -p /tmp/by_LIBRARY_PATH /tmp/by_-l
-LIBRARY_PATH=/tmp/by_LIBRARY_PATH gcc -I ./build/include -o ./build/bin/main ./main.c -L /tmp/by_-l -l sample -Wl,-verbose | grep sample && echo '构建成功' || echo '构建失败'
+LIBRARY_PATH=/tmp/by_LIBRARY_PATH gcc -I ./build/include -o ./build/bin/main ./main.c -L /tmp/by_-l -l sample -Wl,-verbose && echo '构建成功' || echo '构建失败'  
 echo
 ```
 
 输出如下：
 
 ```
-TODO
+bash ./01-sample/03-build-stage-search.sh
+=== 方式 1: 找不到库情况
+/usr/bin/ld: /tmp/ccLFcL27.o: in function `main':
+main.c:(.text+0xa): undefined reference to `print_hello'
+collect2: error: ld returned 1 exit status
+构建失败
+
+=== 方式 2: 使用 LD_LIBRARY_PATH 指定查找路径
+/usr/bin/ld: 找不到 -lsample: 没有那个文件或目录
+collect2: error: ld returned 1 exit status
+构建失败
+
+=== 方式 3: 使用 -L 指定查找路径
+构建成功
+
+=== 方式 4: 使用 LIBRARY_PATH 指定查找路径
+构建成功
+
+=== 方式 5: 使用 -L LIBRARY_PATH 指定错误的路径观察查找路径
+...
+试图打开 /tmp/by_-l/libsample.so 失败
+试图打开 /tmp/by_-l/libsample.a 失败
+试图打开 /usr/lib/gcc/x86_64-linux-gnu/12/libsample.so 失败
+试图打开 /usr/lib/gcc/x86_64-linux-gnu/12/libsample.a 失败
+试图打开 /usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/libsample.so 失败
+试图打开 /usr/lib/gcc/x86_64-linux-gnu/12/../../../x86_64-linux-gnu/libsample.a 失败
+试图打开 /usr/lib/gcc/x86_64-linux-gnu/12/../../../../lib/libsample.so 失败
+试图打开 /usr/lib/gcc/x86_64-linux-gnu/12/../../../../lib/libsample.a 失败
+试图打开 /lib/x86_64-linux-gnu/libsample.so 失败
+试图打开 /lib/x86_64-linux-gnu/libsample.a 失败
+试图打开 /lib/../lib/libsample.so 失败
+试图打开 /lib/../lib/libsample.a 失败
+试图打开 /usr/lib/x86_64-linux-gnu/libsample.so 失败
+试图打开 /usr/lib/x86_64-linux-gnu/libsample.a 失败
+试图打开 /usr/lib/../lib/libsample.so 失败
+试图打开 /usr/lib/../lib/libsample.a 失败
+试图打开 /tmp/by_LIBRARY_PATH/libsample.so 失败
+试图打开 /tmp/by_LIBRARY_PATH/libsample.a 失败
+试图打开 /usr/lib/gcc/x86_64-linux-gnu/12/../../../libsample.so 失败
+试图打开 /usr/lib/gcc/x86_64-linux-gnu/12/../../../libsample.a 失败
+试图打开 /usr/local/lib/x86_64-linux-gnu/libsample.so 失败
+试图打开 /usr/local/lib/x86_64-linux-gnu/libsample.a 失败
+试图打开 /lib/x86_64-linux-gnu/libsample.so 失败
+试图打开 /lib/x86_64-linux-gnu/libsample.a 失败
+试图打开 /usr/lib/x86_64-linux-gnu/libsample.so 失败
+试图打开 /usr/lib/x86_64-linux-gnu/libsample.a 失败
+试图打开 /usr/lib/x86_64-linux-gnu64/libsample.so 失败
+试图打开 /usr/lib/x86_64-linux-gnu64/libsample.a 失败
+试图打开 /usr/local/lib64/libsample.so 失败
+试图打开 /usr/local/lib64/libsample.a 失败
+试图打开 /lib64/libsample.so 失败
+试图打开 /lib64/libsample.a 失败
+试图打开 /usr/lib64/libsample.so 失败
+试图打开 /usr/lib64/libsample.a 失败
+试图打开 /usr/local/lib/libsample.so 失败
+试图打开 /usr/local/lib/libsample.a 失败
+试图打开 /lib/libsample.so 失败
+试图打开 /lib/libsample.a 失败
+试图打开 /usr/lib/libsample.so 失败
+试图打开 /usr/lib/libsample.a 失败
+试图打开 /usr/x86_64-linux-gnu/lib64/libsample.so 失败
+试图打开 /usr/x86_64-linux-gnu/lib64/libsample.a 失败
+试图打开 /usr/x86_64-linux-gnu/lib/libsample.so 失败
+试图打开 /usr/x86_64-linux-gnu/lib/libsample.a 失败
+/usr/bin/ld: 找不到 -lsample: 没有那个文件或目录
+...
+collect2: error: ld returned 1 exit status
+构建失败
 ```
 
 ## 运行时查找
@@ -106,18 +173,95 @@ TODO
 
 如上配置的搜索优先级顺序为：
 
-* 可执行文件中 ELF `.dynamic` 段 `DT_RPATH` 或 `DT_RUNPATH` 指定的路径（TODO）。
-* 环境变量 `LD_LIBRARY_PATH` 指定的路径（TODO）。
+* 环境变量 `LD_LIBRARY_PATH` 指定的路径。
+* 可执行文件中 ELF `.dynamic` 段 `DT_RPATH` 或 `DT_RUNPATH` 指定的路径。
 * `/etc/ld.so.conf` 配置的哪些。
 
 验证如下：`01-sample/04-runtime-stage-search.sh`
 
 ```bash
-# 
+#!/usr/bin/env bash
+
+cd $(dirname $(readlink -f $0))
+rm -rf build/bin && mkdir -p build/bin
+
+
+echo '=== 准备: 指定 -rpath'
+gcc -I ./build/include -o ./build/bin/main ./main.c -L ./build/lib -l sample -Wl,-rpath,/tmp/by_-rpath
+echo
+
+
+echo '=== 验证: 观察查找路径'
+mkdir -p /tmp/by_LD_LIBRARY_PATH /tmp/by_-rpath
+LD_DEBUG=libs LD_LIBRARY_PATH=/tmp/by_LD_LIBRARY_PATH ./build/bin/main
+echo
 ```
 
 输出如下：
 
 ```
-TODO
+=== 准备: 指定 -rpath
+
+=== 验证: 观察查找路径
+    655097:     find library=libsample.so [0]; searching
+    655097:      search path=/tmp/by_LD_LIBRARY_PATH/glibc-hwcaps/x86-64-v2:/tmp/by_LD_LIBRARY_PATH/tls/x86_64/x86_64:/tmp/by_LD_LIBRARY_PATH/tls/x86_64:/tmp/by_LD_LIBRARY_PATH/tls/x86_64:/tmp/by_LD_LIBRARY_PATH/tls:/tmp/by_LD_LIBRARY_PATH/x86_64/x86_64:/tmp/by_LD_LIBRARY_PATH/x86_64:/tmp/by_LD_LIBRARY_PATH/x86_64:/tmp/by_LD_LIBRARY_PATH         (LD_LIBRARY_PATH)
+    655097:       trying file=/tmp/by_LD_LIBRARY_PATH/glibc-hwcaps/x86-64-v2/libsample.so
+    655097:       trying file=/tmp/by_LD_LIBRARY_PATH/tls/x86_64/x86_64/libsample.so
+    655097:       trying file=/tmp/by_LD_LIBRARY_PATH/tls/x86_64/libsample.so
+    655097:       trying file=/tmp/by_LD_LIBRARY_PATH/tls/x86_64/libsample.so
+    655097:       trying file=/tmp/by_LD_LIBRARY_PATH/tls/libsample.so
+    655097:       trying file=/tmp/by_LD_LIBRARY_PATH/x86_64/x86_64/libsample.so
+    655097:       trying file=/tmp/by_LD_LIBRARY_PATH/x86_64/libsample.so
+    655097:       trying file=/tmp/by_LD_LIBRARY_PATH/x86_64/libsample.so
+    655097:       trying file=/tmp/by_LD_LIBRARY_PATH/libsample.so
+    655097:      search path=/tmp/by_-rpath/glibc-hwcaps/x86-64-v2:/tmp/by_-rpath/tls/x86_64/x86_64:/tmp/by_-rpath/tls/x86_64:/tmp/by_-rpath/tls/x86_64:/tmp/by_-rpath/tls:/tmp/by_-rpath/x86_64/x86_64:/tmp/by_-rpath/x86_64:/tmp/by_-rpath/x86_64:/tmp/by_-rpath (RUNPATH from file ./build/bin/main)
+    655097:       trying file=/tmp/by_-rpath/glibc-hwcaps/x86-64-v2/libsample.so
+    655097:       trying file=/tmp/by_-rpath/tls/x86_64/x86_64/libsample.so
+    655097:       trying file=/tmp/by_-rpath/tls/x86_64/libsample.so
+    655097:       trying file=/tmp/by_-rpath/tls/x86_64/libsample.so
+    655097:       trying file=/tmp/by_-rpath/tls/libsample.so
+    655097:       trying file=/tmp/by_-rpath/x86_64/x86_64/libsample.so
+    655097:       trying file=/tmp/by_-rpath/x86_64/libsample.so
+    655097:       trying file=/tmp/by_-rpath/x86_64/libsample.so
+    655097:       trying file=/tmp/by_-rpath/libsample.so
+    655097:      search cache=/etc/ld.so.cache
+    655097:      search path=/lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v2:/lib/x86_64-linux-gnu/tls/x86_64/x86_64:/lib/x86_64-linux-gnu/tls/x86_64:/lib/x86_64-linux-gnu/tls/x86_64:/lib/x86_64-linux-gnu/tls:/lib/x86_64-linux-gnu/x86_64/x86_64:/lib/x86_64-linux-gnu/x86_64:/lib/x86_64-linux-gnu/x86_64:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v2:/usr/lib/x86_64-linux-gnu/tls/x86_64/x86_64:/usr/lib/x86_64-linux-gnu/tls/x86_64:/usr/lib/x86_64-linux-gnu/tls/x86_64:/usr/lib/x86_64-linux-gnu/tls:/usr/lib/x86_64-linux-gnu/x86_64/x86_64:/usr/lib/x86_64-linux-gnu/x86_64:/usr/lib/x86_64-linux-gnu/x86_64:/usr/lib/x86_64-linux-gnu:/lib/glibc-hwcaps/x86-64-v2:/lib/tls/x86_64/x86_64:/lib/tls/x86_64:/lib/tls/x86_64:/lib/tls:/lib/x86_64/x86_64:/lib/x86_64:/lib/x86_64:/lib:/usr/lib/glibc-hwcaps/x86-64-v2:/usr/lib/tls/x86_64/x86_64:/usr/lib/tls/x86_64:/usr/lib/tls/x86_64:/usr/lib/tls:/usr/lib/x86_64/x86_64:/usr/lib/x86_64:/usr/lib/x86_64:/usr/lib                (system search path)
+    655097:       trying file=/lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v2/libsample.so
+    655097:       trying file=/lib/x86_64-linux-gnu/tls/x86_64/x86_64/libsample.so
+    655097:       trying file=/lib/x86_64-linux-gnu/tls/x86_64/libsample.so
+    655097:       trying file=/lib/x86_64-linux-gnu/tls/x86_64/libsample.so
+    655097:       trying file=/lib/x86_64-linux-gnu/tls/libsample.so
+    655097:       trying file=/lib/x86_64-linux-gnu/x86_64/x86_64/libsample.so
+    655097:       trying file=/lib/x86_64-linux-gnu/x86_64/libsample.so
+    655097:       trying file=/lib/x86_64-linux-gnu/x86_64/libsample.so
+    655097:       trying file=/lib/x86_64-linux-gnu/libsample.so
+    655097:       trying file=/usr/lib/x86_64-linux-gnu/glibc-hwcaps/x86-64-v2/libsample.so
+    655097:       trying file=/usr/lib/x86_64-linux-gnu/tls/x86_64/x86_64/libsample.so
+    655097:       trying file=/usr/lib/x86_64-linux-gnu/tls/x86_64/libsample.so
+    655097:       trying file=/usr/lib/x86_64-linux-gnu/tls/x86_64/libsample.so
+    655097:       trying file=/usr/lib/x86_64-linux-gnu/tls/libsample.so
+    655097:       trying file=/usr/lib/x86_64-linux-gnu/x86_64/x86_64/libsample.so
+    655097:       trying file=/usr/lib/x86_64-linux-gnu/x86_64/libsample.so
+    655097:       trying file=/usr/lib/x86_64-linux-gnu/x86_64/libsample.so
+    655097:       trying file=/usr/lib/x86_64-linux-gnu/libsample.so
+    655097:       trying file=/lib/glibc-hwcaps/x86-64-v2/libsample.so
+    655097:       trying file=/lib/tls/x86_64/x86_64/libsample.so
+    655097:       trying file=/lib/tls/x86_64/libsample.so
+    655097:       trying file=/lib/tls/x86_64/libsample.so
+    655097:       trying file=/lib/tls/libsample.so
+    655097:       trying file=/lib/x86_64/x86_64/libsample.so
+    655097:       trying file=/lib/x86_64/libsample.so
+    655097:       trying file=/lib/x86_64/libsample.so
+    655097:       trying file=/lib/libsample.so
+    655097:       trying file=/usr/lib/glibc-hwcaps/x86-64-v2/libsample.so
+    655097:       trying file=/usr/lib/tls/x86_64/x86_64/libsample.so
+    655097:       trying file=/usr/lib/tls/x86_64/libsample.so
+    655097:       trying file=/usr/lib/tls/x86_64/libsample.so
+    655097:       trying file=/usr/lib/tls/libsample.so
+    655097:       trying file=/usr/lib/x86_64/x86_64/libsample.so
+    655097:       trying file=/usr/lib/x86_64/libsample.so
+    655097:       trying file=/usr/lib/x86_64/libsample.so
+    655097:       trying file=/usr/lib/libsample.so
+    655097:
+./build/bin/main: error while loading shared libraries: libsample.so: cannot open shared object file: No such file or directory
 ```
