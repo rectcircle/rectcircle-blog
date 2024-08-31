@@ -28,11 +28,11 @@ tags:
 
 ```
 /usr/bin
-    gcc  # gcc 包的可执行文件
+    gcc      # gcc 包的可执行文件
     python3  # python 包的可执行文件
 /usr/lib
     libgcc_s.so.1  # gcc 包的动态链接库
-    python3.12     # python 包的库
+    python3.12/    # python 包的库
 ```
 
 和常规 Linux 发行版不同，nix 管理的所有包，首先都存储在 `/nix/store/<包名>` 目录下。也就是说，软件包在文件系统的组织是先按照包名划分目录，然后这些目录里面包含各个软件包的部分目录：
@@ -43,7 +43,7 @@ tags:
     /lib/libgcc_s.so.1
 /nix/store/xxx-python-x.y.z/  # python 包
     /bin/python3
-    /lib/python3.12
+    /lib/python3.12/
 ```
 
 因此，Nix 在构建时，以及其构建出的可执行文件的无法像常规的 Linux 发型版那样到几个指定的路径查找动态链接库。
