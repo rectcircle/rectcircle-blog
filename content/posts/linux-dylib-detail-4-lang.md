@@ -1,5 +1,5 @@
 ---
-title: "Linux 动态链接库详解（四）"
+title: "Linux 动态链接库详解（四） 各编程语言情况"
 date: 2024-08-01T11:00:00+08:00
 draft: true
 toc: true
