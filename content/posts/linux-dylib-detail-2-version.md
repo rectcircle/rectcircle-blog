@@ -518,18 +518,10 @@ BAR_1.1 {
 
 glibc 主要使用了上述符号版本机制，如果遇到可执行文件报各种关于 glibc 的错误，通过了解上述机制，应该可以快速的解决问题。
 
-* [glibc 的 ld version scripts 示例](https://github.com/bminor/glibc/blob/master/string/Versions) 。
-<!-- 
-（TODO 介绍 glibc 向前兼容） 
-https://abi-laboratory.pro/index.php?view=compat_report&l=glibc&v1=2.31&v2=2.32&obj=ca6f1&kind=abi
-https://developers.redhat.com/articles/2021/12/17/why-glibc-234-removed-libpthread
-https://www.reddit.com/r/linux/comments/ow7cjr/the_gnu_c_library_version_234_is_now_available/
-https://sourceware.org/pipermail/libc-alpha/2021-August/129718.html
-https://lwn.net/Articles/828210/
-https://lists.gnu.org/archive/html/info-gnu/2021-08/msg00001.html
-https://lists.gnu.org/archive/html/info-gnu/2021-02/msg00000.html
-https://lists.gnu.org/archive/html/info-gnu/2020-08/msg00002.html
--->
+* [glibc 的 ld version scripts 示例](https://github.com/bminor/glibc/blob/master/string/Versions) 可以查看 glibc 符号的版本。
+* 可以使用 `ldd`、 `readelf --version-info`、 `readelf --dyn-syms` 等参数查看可执行文件依赖的动态库，找到其中最大的版本。则这个版本就是该可执行文件依赖的 glibc 的最小版本号。
+* 通过 [ABI Laboratory](https://abi-laboratory.pro/index.php?view=timeline&l=glibc) 可以查询 glibc 的向前兼容情况（这个站点叫做向后兼容性，个人理解应该是向前兼容，即：使用新版 glibc 编译在旧版 glibc 环境下仍能运行的符号比例）。
+* 这里重点介绍下 [glibc 2.34](https://lists.gnu.org/archive/html/info-gnu/2021-08/msg00001.html) 的一个重大变化，即：`-lpthread`, `-ldl`, `-lutil`, `-lanl`, `-lresolv` 等的符号，已经被移动到 `libc.so.6` 中。因此，在使用这些库函数的项目编译时，在 2.34 之后，通过 ldd 将只能看到 `libc.so.6` 的依赖。
 
 ## 优缺点和使用场景
 
