@@ -1,60 +1,25 @@
 ---
 title: "Linux 动态链接库详解（四） 各编程语言情况"
-date: 2024-08-01T11:00:00+08:00
-draft: true
+date: 2024-09-14T11:20:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
   - untagged
 ---
 
-## C & C++
+## 标准库中的动态库
 
-前文关于动态库的介绍都是基于 C & C++ 编程语言直接使用 gcc 或者 makefile 进行构建的。
+### 默认行为
 
-这里介绍一下一些其他常见构建工具对动态库的处理情况。
+在之前的文章 [《Go 静态编译 和 CGO》](/posts/go-static-compile-and-cgo/) 介绍过，Go 标准库的 `os/user` 和 `net` 包有部分函数的实现有 C 和纯 Go 两个版本，在构建时，编译期选择那个实现的默认行为如下：
 
-### pkg-config
-
-真实的 C/C++ 项目的动态库依赖是十分复杂的，在调用 gcc 或编写 makefile 时，手动指定 `-L` 和 `-l` 是很比较麻烦的。
-
-pkg-config 就可以解决这个问题，其通过 `.pc` 格式的文件能自动生成 `-L` 和 `-l` 参数。
-
-一般的使用流程如下：
-
-* 库开发者：发布库时会提供一个 `.pc` 文件，这个文件中包含了库的元信息（开源届主流的 C/C++ 库，如 [libcurl](https://github.com/curl/curl/blob/master/libcurl.pc.in)、[zlib](https://github.com/madler/zlib/blob/develop/zlib.pc.in)、[libevent](https://github.com/libevent/libevent/blob/master/libevent.pc.in) 等）。
-* 项目开发者：使用 `pkg-config --cflags --libs xxx` 命令，生成 gcc 的 `-L` 或 `-l` 参数（可以与 gcc、makefile 或 Autotools、CMake 等集成）。例如：
-
-    ```bash
-    gcc -o example example.c $(pkg-config --cflags --libs gtk+-3.0)
-    ```
-
-* 项目使用者：使用包管理工具将项目发型的包、依赖的库都安装到系统中，按照上篇文章介绍的运行时查找方式来查找动态库。
-
-### 主流的构建工具
-
-真实的 C/C++ 项目，不会手动使用 gcc 或 makefile 来构建项目，而是使用一些项目管理工具/构建工具，如：
-
-* CMake
-* Autotools
-* Ninja
-* Meson
-* Bazel
-
-这些项目最终也是使用 pkg-config 或者配置 `-L` `-l` 来管理动态链接库的，在此次不多赘述。
-
-## Go
-
-### 标准库中的动态库
-
-#### 默认行为
-
-在之前的文章 [《Go 静态编译 和 CGO》](/posts/go-static-compile-and-cgo/) 介绍过，Go 标准库的 `os/user` 和 `net` 包有相关函数有 C 的实现和纯 Go 的实现。这里总结一下 Go 标准库的默认行为：
-
-* 当我们的项目的标准库中没有引入这两个包时，且项目不包含任何 C 代码时，默认将静态编译，此时 lld 查看产物将看不到任何动态链接库信息。
+* 当项目的标准库中没有引入这两个包时，且项目不包含任何 CGO 代码时，默认将静态编译，此时 lld 查看产物将看不到任何动态链接库信息。
 * 当我们的项目的引入了如上两个包时，且当前环境包含 gcc 时，将会使用 C 的实现，此时 ldd 查看产物将看到存在动态链接库的依赖。
 
-#### 示例代码
+### 示例
+
+#### 验证代码
 
 下面是示例代码：
 
@@ -97,7 +62,7 @@ func main() {
 }
 ```
 
-#### 示例验证脚本
+#### 验证脚本
 
 验证脚本 `04-lang/01-go/01-build-dep-std.sh`
 
@@ -125,7 +90,7 @@ cd ../
 echo
 ```
 
-#### 示例输出
+#### 输出
 
 * 在 `go1.23.1`、`gcc12`、`glibc2.36`、`debian12` 环境下上述脚本，输出如下：
 
@@ -213,19 +178,20 @@ echo
     0000005c8460  002e00000007 R_X86_64_JUMP_SLO 0000000000000000 pthread_attr_destroy@GLIBC_2.2.5 + 0
     ```
 
-#### 示例分析
+#### 分析
 
-* go 编译器的和上文说的一致。
+* go 编译器对标准库的默认行为的和上文一致。
 * 标准库的 cgo 依赖 `resolv`、 `pthread` 库相关函数。
 * 启用标准库 cgo 后，go 的 glibc 2.31 和 2.36 的产物有如下区别：
     * pthread 相关函数的默认实现在 2.32 和 2.34 发生了变化。
     * 2.36 版本产物不再依赖 `libresolv.so.2` 和 `libpthread.so.0`。
+    * 原因详见： [《Linux 动态链接库详解（二）版本管理 - glibc 情况》](/posts/linux-dylib-detail-2-version/#glibc-情况)
 * 可以得出如下结论：依赖 go 标准库 cgo 实现的产物的 glibc 向前兼容性（使用新版本 glibc 编译，在旧版本的 glibc 环境下是否可以运行）如下：
     * `2.3.2` ~ `2.31`
     * `2.32` ~ `2.33`
     * `2.34` ~ ???
 
-### Go 构建过程探索
+## Go 构建过程探索
 
 验证代码 `04-lang/01-go/02-build-detail.sh` （使用 `-x` 打印详细信息）
 
@@ -313,7 +279,7 @@ GOROOT='/home/rectcircle/.gvm/gos/go1.23.1' /home/rectcircle/.gvm/gos/go1.23.1/p
         * 先将 `.a` 转换为链接器可识别的 `.o` 文件。
         * 使用 `gcc` 进行链接生成 `a.out`。
 
-### 和动态库有关构建参数
+## 和动态库有关构建参数
 
 根据上文的分析，可以总结出和动态链接库有关的命令行参数和环境变量在 go build 细节，以及这些参数透传过程，如下：
 
@@ -335,7 +301,7 @@ CC=$cc CGO_LDFLAGS=$cgo_ldflags CGO_ENABLED=$cgo_enabled go build -ldflags '-lin
     * `-ldflags` 配置为 `-linkmode=external`，将报错 `-linkmode=external requires external (cgo) linking, but cgo is not enabled`。
     * 项目中只有 CGO 的实现时。
 
-### 参考
+## 参考
 
 * **[cmd/cgo/doc.go Implementation details](https://cs.opensource.google/go/go/+/refs/tags/go1.23.1:src/cmd/cgo/doc.go;l=542)**
 * [go cmd go](https://pkg.go.dev/cmd/go)
@@ -344,30 +310,3 @@ CC=$cc CGO_LDFLAGS=$cgo_ldflags CGO_ENABLED=$cgo_enabled go build -ldflags '-lin
 * [go cmd link](https://pkg.go.dev/cmd/link)
 * [go cmd pack](https://pkg.go.dev/cmd/pack)
 * [Go语言高级编程 2.5 内部机制](https://chai2010.cn/advanced-go-programming-book/ch2-cgo/ch2-05-internal.html)
-
-## Python
-
-## Rust
-
-程序员的自我修养——链接、装载与库
-
-* 动态链接库版本号 libXXX.so.x.y.z
-* SO-NAME - ldconfig
-* gcc -lXXX 等价于查找 `libXXX.so.x.y.z` XXX 为链接名
-* 符号版本 （glibc）
-* 运行时动态库查找由 /lib/ld-linux.so.X 实现
-    * `$LD_LIBRARY_PATH` （优先级最高）
-    * /etc/ld.so.conf (/etc/ld.so.cache by ldconfig)
-    * /usr/lib
-    * /lib
-* `$LD_PRELOAD` （/etc/ld.so.preload） 不管需要与否都装载的库，都装载（可覆盖动态库中的个别函数或全局变量）。
-* `$LD_DEBUG` 打印动态库过程，可选值如下：
-    * `files` 打印动态库装载过程。
-    * `libs` 打印查找过程。
-    * `versions` 打印符号的版本依赖关系。
-    * `reloc` 显示重定位过程。
-    * `symbols` 显示符号表查找过程。
-    * `statistics` 显示动态链接过程中的各种统计信息。
-    * `all` 显示所有信息。
-* 为什么是 libc.so.6 glibc 也主要关注Linux 下的开发，成为了Linux 平台的C标准库。
-20世纪90年代初，在glibc成为Linux 下的C运行库之前，Linux的开发者们因为开发 的需要，从Linux内核代码里面分离出了一部分代码，形成了早期Linux 下的C运行库。这 个 C 运 行 库 又 被 称 为 L i n u x l i b c 。 这 个版 本 的 C 运 行 库 被 维 护 了很 多 年 ， 从 版 本 2 一 直 开 发 到版本5。如果你去看早期版本的Linux，会发现/ ib 目录下面有libc.so.5这样的文件，这个 文件就是第五个版本的Linuxlibc。1996 年FSF发布了glibc2.0，这个版本的glibc 开始支持 诸多特性，比如它完全支持POSIX标准、困际化、IPv6、64-位数据访问、多线程及改进了 代码的可移植性。在此时Linuxlibc的开发者也认识到单独地维护一份Linux 下专用的C运 行 库 是 没 有 必 要 的 ， 于 是 L i n u x 开 始 采 用 g l i b c 作 为 默 认 的 C 运 行 库 ，并 且 将 2 . x 版 本 的 g l i b c 看 作 是 L i n u x l i b c 的 后 继 版 本 。 于 是 我 们 可 以 看 到 ，g l i b c 在 n i b 目 录 下 的 . s 0 文 件 为 l i b c . s o . 6 ， 即第六个libc 版本，而且在各个Linux 发行版中，glibc往往被称为libc6。glibc 在Linux 平 台 下占据 了主导地位之后，它又被移植到 了其他操作系统和其他硬件平台，诸如FreeBSD、 NetBSD等，而且它支持
