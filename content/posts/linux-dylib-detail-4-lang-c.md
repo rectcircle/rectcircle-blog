@@ -1,5 +1,5 @@
 ---
-title: "Linux 动态链接库详解（五） C/C++ 语言"
+title: "Linux 动态链接库详解（四） C/C++ 语言"
 date: 2024-09-14T11:11:00+08:00
 draft: false
 toc: true
