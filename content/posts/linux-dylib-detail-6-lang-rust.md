@@ -1,5 +1,5 @@
 ---
-title: "Linux 动态链接库详解（六） rust"
+title: "Linux 动态链接库详解（六） Rust 语言"
 date: 2024-09-16T03:29:00+08:00
 draft: false
 toc: true
@@ -632,7 +632,9 @@ rustflags = ["…", "…"]    # 用途和 build.rustflags 一样。也可以通�
 * [rustc - 自定义目标](https://doc.rust-lang.org/rustc/targets/custom.html)
 * [rustup-components-history](https://rust-lang.github.io/rustup-components-history/x86_64-unknown-linux-gnu.html)
 * [The Cargo Book - Configuration](https://doc.rust-lang.org/cargo/reference/config.html)
+* [The rustc book - Codegen Options - linker](https://doc.rust-lang.org/rustc/codegen-options/index.html#linker)
 * [Build glibc from source](https://github.com/jueve/build-glibc)
 * [toolchains.bootlin.com](https://toolchains.bootlin.com/)
 * [glibc ftp](https://ftp.gnu.org/gnu/glibc/)
 * [pathelf](https://github.com/NixOS/patchelf)
+* [Rust交叉编译arm64 linux环境设置](https://www.cnblogs.com/turingguo/p/17406999.html)
