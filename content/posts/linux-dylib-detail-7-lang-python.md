@@ -19,7 +19,7 @@ tags:
     python3 -> python3.11     # 软链 (python3-minimal)
     python3.11                # python 解释器 (python3.11-minimal)
 /usr/lib/
-    python3.11/               # python3 标准库 (libpython3.11-minimal)
+    python3.11/
         encodings/            # (libpython3.11-minimal)
         ssl.py                # (libpython3.11-minimal)
         random.py             # (libpython3.11-minimal)
