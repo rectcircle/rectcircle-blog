@@ -1,7 +1,7 @@
 ---
 title: "Linux 动态链接库详解（八） Node.js 语言"
-date: 2024-09-23T00:33:00+08:00
-draft: true
+date: 2024-09-28T20:59:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -250,8 +250,156 @@ node 命令动态库依赖情况如下：
     * lld 查看包含的 libc.so.6、 libm.so.6 是因为 libgcc_s.so.1、 libstdc++.so.6 时 gnu 版本间接引入的，在使用 musl 作为 libc 的环境中，不会如此。
     * 详见 [Node.js 非官方构建](https://github.com/nodejs/unofficial-builds/)
 
+## node-gyp
+
+[node-gyp](https://github.com/nodejs/node-gyp) 是 Node.js 提供用于和 C/C++/Rust 代码编译成 Node.js 插件（addon）的工具。
+
+有很多 npm 包是使用 C/C++/Rust 实现的，如： [node-pty](https://www.npmjs.com/package/node-pty)、 [sqlite3](https://www.npmjs.com/package/sqlite3) 等。
+
+本部分将介绍，依赖了 C/C++/Rust 实现的 npm 包后，进程动态链接库情况。
+
+创建一个使用 npm 项目，该项目以来 node-pty 包。
+
+`04-lang/04-nodejs/a01-use-node-gyp/package.json`
+
+```json
+{
+  "name": "a01-use-node-gyp",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  }
+}
+```
+
+`04-lang/04-nodejs/a01-use-node-gyp/index.js`
+
+```js
+var process = require('process');
+var pid = process.pid
+
+const util = require('util');
+const exec = util.promisify(require('child_process').exec);
+
+var child_process = require('child_process');
+
+async function myOpendDylibs(params) {
+
+    try {
+        const { stdout, stderr } = await exec(`cat /proc/${pid}/maps | grep -E '\\.so|\\.node'`);
+        if (stdout) {
+            console.log(stdout);
+        }
+        if (stderr) {
+            console.log(stderr);
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function main() {
+    console.log('=== before require node-pty')
+    await myOpendDylibs()
+    var pty = require('node-pty');
+    console.log('=== after require node-pty')
+    await myOpendDylibs()
+}
+
+
+main()
+```
+
+验证脚本：
+
+```bash
+#!/usr/bin/env bash
+
+
+cd $(dirname $(readlink -f $0))
+cd a01-use-node-gyp
+
+echo '=== 查看 pty.node'
+file node_modules/node-pty/build/Release/pty.node
+
+export PATH=$PATH:~/.local/share/nodejs/node-v20.17.0-linux-x64/bin
+npm install
+node index.js
+```
+
+输出如下：
+
+```
+=== 查看 pty.node
+node_modules/node-pty/build/Release/pty.node: ELF 64-bit LSB shared object, x86-64, version 1 (SYSV), dynamically linked, BuildID[sha1]=9465a142520c0efd2b0400990345067ebfba6117, not stripped
+
+up to date, audited 3 packages in 4s
+
+found 0 vulnerabilities
+=== before require node-pty
+7f3e4861f000-7f3e48645000 r--p 00000000 08:01 1740455                    /usr/lib/x86_64-linux-gnu/libc.so.6
+7f3e48645000-7f3e4879a000 r-xp 00026000 08:01 1740455                    /usr/lib/x86_64-linux-gnu/libc.so.6
+7f3e4879a000-7f3e487ed000 r--p 0017b000 08:01 1740455                    /usr/lib/x86_64-linux-gnu/libc.so.6
+7f3e487ed000-7f3e487f1000 r--p 001ce000 08:01 1740455                    /usr/lib/x86_64-linux-gnu/libc.so.6
+7f3e487f1000-7f3e487f3000 rw-p 001d2000 08:01 1740455                    /usr/lib/x86_64-linux-gnu/libc.so.6
+7f3e48800000-7f3e48899000 r--p 00000000 08:01 1702837                    /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+7f3e48899000-7f3e4899a000 r-xp 00099000 08:01 1702837                    /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+7f3e4899a000-7f3e48a09000 r--p 0019a000 08:01 1702837                    /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+7f3e48a09000-7f3e48a14000 r--p 00209000 08:01 1702837                    /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+7f3e48a14000-7f3e48a17000 rw-p 00214000 08:01 1702837                    /usr/lib/x86_64-linux-gnu/libstdc++.so.6.0.30
+7f3e48a1e000-7f3e48a1f000 r--p 00000000 08:01 1740467                    /usr/lib/x86_64-linux-gnu/libpthread.so.0
+7f3e48a1f000-7f3e48a20000 r-xp 00001000 08:01 1740467                    /usr/lib/x86_64-linux-gnu/libpthread.so.0
+7f3e48a20000-7f3e48a21000 r--p 00002000 08:01 1740467                    /usr/lib/x86_64-linux-gnu/libpthread.so.0
+7f3e48a21000-7f3e48a22000 r--p 00002000 08:01 1740467                    /usr/lib/x86_64-linux-gnu/libpthread.so.0
+7f3e48a22000-7f3e48a23000 rw-p 00003000 08:01 1740467                    /usr/lib/x86_64-linux-gnu/libpthread.so.0
+7f3e48a23000-7f3e48a26000 r--p 00000000 08:01 1700620                    /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7f3e48a26000-7f3e48a3d000 r-xp 00003000 08:01 1700620                    /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7f3e48a3d000-7f3e48a41000 r--p 0001a000 08:01 1700620                    /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7f3e48a41000-7f3e48a42000 r--p 0001d000 08:01 1700620                    /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7f3e48a42000-7f3e48a43000 rw-p 0001e000 08:01 1700620                    /usr/lib/x86_64-linux-gnu/libgcc_s.so.1
+7f3e48a43000-7f3e48a53000 r--p 00000000 08:01 1740458                    /usr/lib/x86_64-linux-gnu/libm.so.6
+7f3e48a53000-7f3e48ac6000 r-xp 00010000 08:01 1740458                    /usr/lib/x86_64-linux-gnu/libm.so.6
+7f3e48ac6000-7f3e48b20000 r--p 00083000 08:01 1740458                    /usr/lib/x86_64-linux-gnu/libm.so.6
+7f3e48b20000-7f3e48b21000 r--p 000dc000 08:01 1740458                    /usr/lib/x86_64-linux-gnu/libm.so.6
+7f3e48b21000-7f3e48b22000 rw-p 000dd000 08:01 1740458                    /usr/lib/x86_64-linux-gnu/libm.so.6
+7f3e48b22000-7f3e48b23000 r--p 00000000 08:01 1740457                    /usr/lib/x86_64-linux-gnu/libdl.so.2
+7f3e48b23000-7f3e48b24000 r-xp 00001000 08:01 1740457                    /usr/lib/x86_64-linux-gnu/libdl.so.2
+7f3e48b24000-7f3e48b25000 r--p 00002000 08:01 1740457                    /usr/lib/x86_64-linux-gnu/libdl.so.2
+7f3e48b25000-7f3e48b26000 r--p 00002000 08:01 1740457                    /usr/lib/x86_64-linux-gnu/libdl.so.2
+7f3e48b26000-7f3e48b27000 rw-p 00003000 08:01 1740457                    /usr/lib/x86_64-linux-gnu/libdl.so.2
+7f3e48b2f000-7f3e48b30000 r--p 00000000 08:01 1740452                    /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7f3e48b30000-7f3e48b55000 r-xp 00001000 08:01 1740452                    /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7f3e48b55000-7f3e48b5f000 r--p 00026000 08:01 1740452                    /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7f3e48b5f000-7f3e48b61000 r--p 00030000 08:01 1740452                    /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+7f3e48b61000-7f3e48b63000 rw-p 00032000 08:01 1740452                    /usr/lib/x86_64-linux-gnu/ld-linux-x86-64.so.2
+
+=== after require node-pty
+7f3e45d63000-7f3e45d66000 r--p 00000000 00:2c 44834996                   /home/rectcircle/omv/00-Important/Workspace/rectcircle/linux-dylib-demo/04-lang/04-nodejs/a01-use-node-gyp/node_modules/node-pty/build/Release/pty.node
+7f3e45d66000-7f3e45d6a000 r-xp 00003000 00:2c 44834996                   /home/rectcircle/omv/00-Important/Workspace/rectcircle/linux-dylib-demo/04-lang/04-nodejs/a01-use-node-gyp/node_modules/node-pty/build/Release/pty.node
+7f3e45d6a000-7f3e45d6b000 r--p 00007000 00:2c 44834996                   /home/rectcircle/omv/00-Important/Workspace/rectcircle/linux-dylib-demo/04-lang/04-nodejs/a01-use-node-gyp/node_modules/node-pty/build/Release/pty.node
+7f3e45d6b000-7f3e45d6c000 r--p 00007000 00:2c 44834996                   /home/rectcircle/omv/00-Important/Workspace/rectcircle/linux-dylib-demo/04-lang/04-nodejs/a01-use-node-gyp/node_modules/node-pty/build/Release/pty.node
+7f3e45d6c000-7f3e45d6d000 rw-p 00008000 00:2c 44834996                   /home/rectcircle/omv/00-Important/Workspace/rectcircle/linux-dylib-demo/04-lang/04-nodejs/a01-use-node-gyp/node_modules/node-pty/build/Release/pty.node
+# ... 和之前一致。
+```
+
+可以看出：
+
+* [Node.JS Addons](https://nodejs.org/api/addons.html) npm 包本质上，是一个动态链接库，其后缀是 `.node`。
+* 在 `require` 引入 Addons 包后，实际上调用了 dlopen 类似的函数，加载了符合 Node.JS Addons 规范的动态链接库。
+* 整体原理和 Python 的 扩展模块原理一致。
+
+一些常见的 Node.JS Addons 包示例： [docs/binding.gyp-files-in-the-wild.md](https://github.com/nodejs/node-gyp/blob/main/docs/binding.gyp-files-in-the-wild.md)。
+
 ## 参考
 
 * [Node.js 官方下载页面](https://nodejs.org/zh-cn/download/package-manager)
 * [nodejs/node - BUILDING.md](https://github.com/nodejs/node/blob/v20.17.0/BUILDING.md)
 * [Node.js 非官方构建](https://github.com/nodejs/unofficial-builds/)
+* [Node.JS Addons](https://nodejs.org/api/addons.html)
