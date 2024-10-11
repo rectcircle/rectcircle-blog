@@ -772,3 +772,76 @@ nix-collect-garbage [--delete-old] [-d] [--delete-older-than period] [--max-free
 * 不加任何参数，等价于 `nix-store --gc`。
 * `--delete-old` 或 `-d`，删除所有用户的 profiles 历史，等价于针对每个 profiles 先执行 `nix-env --delete-generations old`，再执行 `nix-store --gc`。
 * `--delete-older-than period`，等价于针对每个 profiles 先执行 `nix-env --delete-generations <period>`，再执行 `nix-store --gc`。
+
+## 已知问题
+
+### 报错 error: this derivation has bad 'meta.outputsToInstall'
+
+```bash
+# 安装 dig (attribute 是 dig， name 是 bind)，可以安装成功
+nix-env -iA nixpkgs.dig
+# 再安装任意一个包，会报错
+nix-env -iA nixpkgs.ruby
+# error: this derivation has bad 'meta.outputsToInstall'
+```
+
+此时观察 `~/.nix-profile/manifest.nix` 中元信息内容如下：
+
+```nix
+{
+    name = "bind-9.18.28";  
+    meta = { 
+        mainProgram = "dig"; 
+        name = "bind-9.18.28"; 
+        outputsToInstall = [ "out" "dnsutils" "host" ]; 
+        position = "/nix/store/7z7lzz187w5in6lplpxrqrzqh215sklb-nixpkgs/nixpkgs/pkgs/servers/dns/bind/default.nix:125"; unfree = false; 
+        # ...
+    }; 
+    outputs = [ "dnsutils" ]; 
+    dnsutils = { outPath = "/nix/store/04wa3k4m2qdfnd56605hhrw91zihqycg-bind-9.18.28-dnsutils"; };
+    outPath = "/nix/store/04wa3k4m2qdfnd56605hhrw91zihqycg-bind-9.18.28-dnsutils"; 
+    # ...
+}
+# ...
+```
+
+想临时修复这个问题，就是使用包名 `nixpkgs.bind` 重新安装或者卸载 `bind`。
+
+```bash
+# 安装 bind (attribute 是 bind， name 是 bind)
+nix-env -iA nixpkgs.bind
+# 或卸载 bind: nix-env --uninstall bind
+# 后续安装任何包将不会报错
+```
+
+此时，再观察 `~/.nix-profile/manifest.nix` 中元信息内容如下：
+
+```nix
+{ 
+    name = "bind-9.18.28"; 
+    meta = { 
+        name = "bind-9.18.28"; 
+        outputsToInstall = [ "out" "dnsutils" "host" ]; 
+        position = "/nix/store/7z7lzz187w5in6lplpxrqrzqh215sklb-nixpkgs/nixpkgs/pkgs/servers/dns/bind/default.nix:125"; 
+        ## ...
+    };
+    outputs = [ "dnsutils" "host" "out" ]; 
+    dnsutils = { outPath = "/nix/store/04wa3k4m2qdfnd56605hhrw91zihqycg-bind-9.18.28-dnsutils"; }; 
+    host = { outPath = "/nix/store/pwn4dbl6606b3mpcyasks0mlqwjijsyh-bind-9.18.28-host"; }; 
+    out = { outPath = "/nix/store/krw6p2q85a4ca6dvpvfvaxgy99r4xjjh-bind-9.18.28"; }; 
+
+    outPath = "/nix/store/krw6p2q85a4ca6dvpvfvaxgy99r4xjjh-bind-9.18.28"; 
+    # ...
+}
+```
+
+两者区别在于： 使用 `nixpkgs.dig` 安装时，meta.outputsToInstall 中有 `[ "out" "dnsutils" "host" ]`， outputs 中只有 `[ "dnsutils" ]`，找不到。
+
+在 Nixpkgs 中，源码如下：
+
+* [bind 包声明](https://github.com/NixOS/nixpkgs/blob/04e3c70d0e0fce8aa6489d4b3d2e1ed146f3fce4/pkgs/servers/dns/bind/default.nix#L27)
+* [bind、 dnsutils、 dig 列表声明](https://github.com/NixOS/nixpkgs/blob/04e3c70d0e0fce8aa6489d4b3d2e1ed146f3fce4/pkgs/top-level/all-packages.nix#L24164-L24166)
+
+相关 Issue 如下：
+
+* ["bad meta.outputsToInstall" error when installing packages #9340](https://github.com/NixOS/nix/issues/9340)
