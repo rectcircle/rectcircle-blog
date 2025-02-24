@@ -20,6 +20,26 @@ Nydus 的主要应用场景是容器化环境，特别适用于加速 OCI 镜像
 
 通过本文，方案设计者可以获取足够的信息来评估是否采用以及何时采用 Nydus 技术。需要注意的是，本文不涉及在 Kubernetes 等容器平台中深度集成 Nydus 的具体实现细节，如需了解相关内容，请参考[官方文档](https://github.com/dragonflyoss/nydus/tree/v2.3.0?tab=readme-ov-file#supported-platforms)。
 
+## 测试环境
+
+* AWS us-east-1 t2.micro:
+    * CPU: 1 vCPU
+    * RAM: 1 GiB
+    * Disk: gp3, 16000 IOPS, 1000 MiB/s
+* 操作系统: Amazon Linux 2023 (fedora)
+* 用户: root
+* Nydus 版本: v2.3.0
+
+## Nydus 核心工具安装
+
+```bash
+wget https://github.com/dragonflyoss/nydus/releases/download/v2.3.0/nydus-static-v2.3.0-linux-amd64.tgz
+tar -zxvf nydus-static-v2.3.0-linux-amd64.tgz
+chown -R 0:0 nydus-static
+mv nydus-static/nydus* /usr/local/bin
+rm -rf nydus-static nydus-static-v2.3.0-linux-amd64.tgz 
+```
+
 ## 构建 Nydus 镜像
 
 * [nydusify](https://github.com/dragonflyoss/nydus/blob/master/docs/nydusify.md)
