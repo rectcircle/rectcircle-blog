@@ -29,6 +29,7 @@ Nydus 的主要应用场景是容器化环境，特别适用于加速 OCI 镜像
 * 操作系统: Amazon Linux 2023 (fedora)
 * 用户: root
 * Nydus 版本: v2.3.0
+* 测试目录 `/root/nydus-demo`
 
 ## Nydus 核心工具安装
 
@@ -38,6 +39,104 @@ tar -zxvf nydus-static-v2.3.0-linux-amd64.tgz
 chown -R 0:0 nydus-static
 mv nydus-static/nydus* /usr/local/bin
 rm -rf nydus-static nydus-static-v2.3.0-linux-amd64.tgz 
+```
+
+## 基本使用
+
+准备 mock 的根目录
+
+```bash
+mkdir -p 01-basic
+cd 01-basic
+mkdir -p origin-root-dir
+mkdir -p origin-root-dir/dir_1 origin-root-dir/dir_2
+mkdir -p origin-root-dir/dir_1/subdir_a origin-root-dir/dir_1/subdir_b
+echo 'file_a' > origin-root-dir/dir_1/subdir_a/file_a
+echo 'file_b' > origin-root-dir/dir_2/file_b
+echo 'file_c' > origin-root-dir/file_c
+ln -s file_c origin-root-dir/file_c_ln
+tree origin-root-dir
+# origin-root-dir
+# ├── dir_1
+# │   ├── subdir_a
+# │   │   └── file_a
+# │   └── subdir_b
+# ├── dir_2
+# │   └── file_b
+# ├── file_c
+# └── file_c_ln -> file_c
+```
+
+从目录构建 Nydus 镜像
+
+```bash
+nydusify --debug build --name image-basic-01 --source-dir origin-root-dir --output-dir image-store/
+# DEBU[2025-02-24T12:48:02Z]      Command: /usr/local/bin/nydus-image create --bootstrap image-store/image-basic-01.meta --log-level warn --whiteout-spec oci --output-json image-store/output.json --blob image-store/image-basic-01.blob --fs-version 6 --compressor zstd --chunk-size 0x100000 origin-root-dir 
+mv image-store/image-basic-01.blob image-store/$(cat image-store/output.json | jq -r '.blobs[0]')
+du -ah --max-depth 1 image-store/
+# 16K     image-store/image-basic-01.meta
+# 4.0K    image-store/output.json
+# 8.0K    image-store/58048df580011d3a700076d8a1ec9ccaee6881f7feb8352aa298959ee8866f28
+# 28K     image-store/
+```
+
+挂载本地的 Nydus 镜像
+
+```bash
+mkdir -p mnt-local
+tee nydusd-config.localfs.json > /dev/null << EOF
+{
+  "device": {
+    "backend": {
+      "type": "localfs",
+      "config": {
+        "dir": "image-store"
+      }
+    },
+    "cache": {
+      "type": "blobcache",
+      "config": {
+        "work_dir": "cache"
+      }
+    }
+  },
+  "mode": "direct",
+  "digest_validate": false,
+  "iostats_files": false,
+  "enable_xattr": true
+}
+EOF
+nydusd --config nydusd-config.localfs.json --mountpoint mnt-local --bootstrap image-store/image-basic-01.meta --log-level info
+# 打开新终端，切换到该目录，观察 mnt-local 目录
+cd /root/nydus-demo/01-basic
+tree mnt-local/
+# mnt-local/
+# ├── dir_1
+# │   ├── subdir_a
+# │   │   └── file_a
+# │   └── subdir_b
+# ├── dir_2
+# │   └── file_b
+# ├── file_c
+# └── file_c_ln -> file_c
+du -ah --max-depth 1 cache/
+# 4.0K    cache/58048df580011d3a700076d8a1ec9ccaee6881f7feb8352aa298959ee8866f28.blob.data.chunk_map
+# 0       cache/58048df580011d3a700076d8a1ec9ccaee6881f7feb8352aa298959ee8866f28.blob.data
+# 8.0K    cache/58048df580011d3a700076d8a1ec9ccaee6881f7feb8352aa298959ee8866f28.blob.meta
+# 28K     cache/
+cat mnt-local/dir_1/subdir_a/file_a
+# file_a
+cat mnt-local/dir_2/file_b
+# file_b
+cat mnt-local/file_c
+# file_c
+cat mnt-local/file_c_ln
+# file_c
+du -ah --max-depth 1 cache/
+8.0K    cache/58048df580011d3a700076d8a1ec9ccaee6881f7feb8352aa298959ee8866f28.blob.data.chunk_map
+12K     cache/58048df580011d3a700076d8a1ec9ccaee6881f7feb8352aa298959ee8866f28.blob.data
+8.0K    cache/58048df580011d3a700076d8a1ec9ccaee6881f7feb8352aa298959ee8866f28.blob.meta
+44K     cache/
 ```
 
 ## 构建 Nydus 镜像
