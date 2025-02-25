@@ -8,7 +8,7 @@ tags:
   - 云原生
 ---
 
-> [Github](https://github.com/dragonflyoss/nydus)
+> [官方网站](https://nydus.dev/) | [Github](https://github.com/dragonflyoss/nydus)
 
 ## 简介
 
@@ -139,7 +139,43 @@ du -ah --max-depth 1 cache/
 44K     cache/
 ```
 
+## 过程分析
+
+* 镜像构建：
+    * [`nydusify` 工具](https://github.com/dragonflyoss/nydus/blob/v2.3.0/docs/nydusify.md) 指定镜像名、源目录、输出目录。
+    * `nydusify` 工具解析命令行参数，并调用 [`nydus-image` 工具](https://github.com/dragonflyoss/nydus/blob/v2.3.0/docs/nydus-image.md) `create` 子命令构建 Nydus 镜像，参数如下：
+        * `--bootstrap`: 生成的 Nydus 镜像的元数据文件路径。
+        * `--log-level`: 日志级别，可选值： `trace`, `debug`, `info`, `warn`, `error`。
+        * `--whiteout-spec`: whiteout 规范，可选值为 `oci`, `overlayfs`, `none`。
+        * `--output-json`: 输出 JSON 文件，包含构建一些元信息，比如 blob 文件 ID。
+        * `--blob`：生成的 Nydus 镜像的 blob 文件路径。
+        * `--fs-version`：Nydus 镜像的文件系统版本，默认值为 6，可选值： `5`, `6`。
+        * `--compressor`: 压缩算法，可选值： `none`, `lz4_block`, `zstd`。
+        * `--chunk-size`: 压缩块大小，默认值为 `0`，可选范围：`0` 或 `0x1000-0x1000000`。
+        * `path/to/source`: 源目录路径。
+    * `nydus-image` 会生成 3 个文件分别是 `--bootstrap`、`--output-json` 和 `--blob`。
+    * `--bootstrap` 文件是 Nydus 镜像的元数据文件，包含了镜像的目录结构和文件信息。
+* Nydus 定义了一套元数据（目录结构）与文件内容分离的，文件系统格式 Rafs，大致原理如下：
+    ![image](/image/rafs-format.png)
+    * Image MetaData 对应 `--bootstrap` 文件。
+    * Share Data Layer 对应 `--blob` 文件。
+    * 更多详见： [官方文档](https://github.com/dragonflyoss/nydus/blob/master/docs/nydus-design.md)
+* 镜像挂载：通过 `nydusd` 工具通过 fuse 挂载 Nydus 镜像。
+    * `--config`：指定 Nydus 镜像的 blob 存储位置（支持 oss、s3、本地文件）、 cache 配置、以及文件系统参数。
+    * `--mountpoint`：指定挂载点，须确保目录存在。
+    * `--bootstrap`：指定挂载的 Nydus 镜像的元数据文件路径。
+    * `--log-level`：指定日志级别。
+    * `--digest-validate`：是否开启校验。
+    * `--iostats-files`：是否开启 IO 统计。
+    * 除了 FUSE 方式外，还支持 EROFS、VirtioFS 方式挂载，详见下文。
+
 ## 构建 Nydus 镜像
+
+本章节将介绍如何使用 `nydusify` 构建并推送 Nydus 镜像，并分析执行过程以及存储结构。
+
+### 构建单层镜像
+
+### 转化 OCI 镜像（多层）
 
 * [nydusify](https://github.com/dragonflyoss/nydus/blob/master/docs/nydusify.md)
     * 从目录构建
