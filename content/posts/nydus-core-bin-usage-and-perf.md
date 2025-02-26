@@ -169,11 +169,109 @@ du -ah --max-depth 1 cache/
     * `--iostats-files`：是否开启 IO 统计。
     * 除了 FUSE 方式外，还支持 EROFS、VirtioFS 方式挂载，详见下文。
 
+## 使用场景
+
+### 单层镜像构建和懒挂载
+
+#### 构建单层镜像并上传到 s3
+
+```bash
+mkdir -p 01-basic
+cd 01-basic
+# https://github.com/dragonflyoss/nydus/blob/v2.3.0/contrib/nydusify/pkg/packer/backend.go#L60-L70
+tee backend-config.s3.json > /dev/null << EOF
+{
+  "endpoint": "s3.us-east-1.amazonaws.com",
+  "scheme": "https",
+  "access_key_id": "xxx",
+  "access_key_secret": "xxx",
+  "bucket_name": "xxx",
+  "meta_prefix": "nydus-demo/meta/",
+  "blob_prefix": "nydus-demo/blob/",
+  "region": "us-east-1"
+}
+EOF
+nydusify --debug build --name image-basic-01-s3 --source-dir origin-root-dir --backend-push --backend-type s3 --backend-config-file backend-config.s3.json
+# INFO[2025-02-26T08:51:53Z] found 'nydus-image' binary at /usr/local/bin/nydus-image 
+# INFO[2025-02-26T08:51:53Z] start to build image from source directory "origin-root-dir" 
+# DEBU[2025-02-26T08:51:53Z]      Command: /usr/local/bin/nydus-image create --bootstrap .nydus-build-output/image-basic-01-s3.meta --log-level warn --whiteout-spec oci --output-json .nydus-build-output/output.json --blob .nydus-build-output/image-basic-01-s3.blob --fs-version 6 --compressor zstd --chunk-size 0x100000 origin-root-dir 
+# INFO[2025-02-26T08:51:53Z] rename blob file into sha256 csum            
+# INFO[2025-02-26T08:51:53Z] start to push meta and blob to remote backend 
+# INFO[2025-02-26T08:51:53Z] push blob 58048df580011d3a700076d8a1ec9ccaee6881f7feb8352aa298959ee8866f28 
+# DEBU[2025-02-26T08:51:53Z] uploaded blob nydus-demo/blob/58048df580011d3a700076d8a1ec9ccaee6881f7feb8352aa298959ee8866f28 to s3 backend, costs 30.159619ms 
+# DEBU[2025-02-26T08:51:53Z] uploaded blob nydus-demo/meta/image-basic-01-s3 to s3 backend, costs 60.856919ms 
+# INFO[2025-02-26T08:51:53Z] successfully built Nydus image (bootstrap:'https://xxx.s3.us-east-1.amazonaws.com/nydus-demo/meta/image-basic-01-s3', blob:'https://xxx.s3.us-east-1.amazonaws.com/nydus-demo/blob/58048df580011d3a700076d8a1ec9ccaee6881f7feb8352aa298959ee8866f28') 
+```
+
+#### 懒挂载 S3 的单层镜像
+
+```bash
+tee nydusd-config.s3.json > /dev/null << EOF
+{
+  "device": {
+    "backend": {
+      "type": "s3",
+      "config": {
+        "endpoint": "s3.us-east-1.amazonaws.com",
+        "scheme": "https",
+        "access_key_id": "xxx",
+        "access_key_secret": "xxx",
+        "bucket_name": "xxx",
+        "meta_prefix": "nydus-demo/meta/",
+        "blob_prefix": "nydus-demo/blob/",
+        "region": "us-east-1"
+      }
+    },
+    "cache": {
+      "type": "blobcache",
+      "config": {
+        "work_dir": "cache"
+      }
+    }
+  },
+  "mode": "direct",
+  "digest_validate": false,
+  "iostats_files": false,
+  "enable_xattr": true
+}
+EOF
+# 下载元数据
+time wget https://xxx.s3.us-east-1.amazonaws.com/nydus-demo/meta/image-basic-01-s3
+# real    0m0.162s
+# user    0m0.073s
+# sys     0m0.042s
+# 挂载
+mkdir -p mnt-s3
+nydusd \
+  --config nydusd-config.s3.json \
+  --mountpoint mnt-s3 \
+  --bootstrap image-basic-01-s3 \
+  --log-level debug 
+# 打开新终端，切换到该目录，观察 mnt-s3 目录
+cd /root/nydus-demo/01-basic
+tree mnt-s3/
+# mnt-s3/
+# ├── dir_1
+# │   ├── subdir_a
+# │   │   └── file_a
+# │   └── subdir_b
+# ├── dir_2
+# │   └── file_b
+# ├── file_c
+# └── file_c_ln -> file_c
+cat mnt-local/dir_1/subdir_a/file_a
+# file_a
+cat mnt-local/dir_2/file_b
+# file_b
+cat mnt-local/file_c
+# file_c
+cat mnt-local/file_c_ln
+# file_c
+```
+
 ## 构建 Nydus 镜像
 
 本章节将介绍如何使用 `nydusify` 构建并推送 Nydus 镜像，并分析执行过程以及存储结构。
-
-### 构建单层镜像
 
 ### 转化 OCI 镜像（多层）
 
@@ -181,7 +279,6 @@ du -ah --max-depth 1 cache/
     * 从目录构建
     * 从 OCI 构建
     * 构建并上传到 S3
-    * 压缩选项
 * 原理: [nydus-image](https://github.com/dragonflyoss/nydus/blob/master/docs/nydus-image.md)
     * 单层 （结构）
     * 多层
