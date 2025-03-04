@@ -1,7 +1,7 @@
 ---
 title: "Nydus 核心二进制使用和性能测评"
-date: 2025-11-19T22:48:00+08:00
-draft: true
+date: 2025-03-04T15:54:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
@@ -173,7 +173,9 @@ du -ah --max-depth 1 cache/
 
 ### 单层镜像构建和懒挂载
 
-#### 构建单层镜像并上传到 s3
+下面将介绍如何使用 Nydus 构建单层镜像，并将其上传到 s3 上，然后在本地通过 Fuse 方式懒挂载该镜像。
+
+**构建单层镜像并上传到 s3**
 
 ```bash
 mkdir -p 01-basic
@@ -203,7 +205,7 @@ nydusify --debug build --name image-basic-01-s3 --source-dir origin-root-dir --b
 # INFO[2025-02-26T08:51:53Z] successfully built Nydus image (bootstrap:'https://xxx.s3.us-east-1.amazonaws.com/nydus-demo/meta/image-basic-01-s3', blob:'https://xxx.s3.us-east-1.amazonaws.com/nydus-demo/blob/58048df580011d3a700076d8a1ec9ccaee6881f7feb8352aa298959ee8866f28') 
 ```
 
-#### 懒挂载 S3 的单层镜像
+**通过 Fuse 懒挂载 S3 的单层镜像**
 
 ```bash
 tee nydusd-config.s3.json > /dev/null << EOF
@@ -269,36 +271,47 @@ cat mnt-local/file_c_ln
 # file_c
 ```
 
-## 构建 Nydus 镜像
+**通过基于 fscache 的内核文件系统 EROFS 懒挂载 S3 的单层镜像**
 
-本章节将介绍如何使用 `nydusify` 构建并推送 Nydus 镜像，并分析执行过程以及存储结构。
+详见： [Nydus EROFS fscache user guide](https://github.com/dragonflyoss/nydus/blob/v2.3.0/docs/nydus-fscache.md)
 
-### 转化 OCI 镜像（多层）
+### 转化和挂载 OCI 镜像（多层）
 
-* [nydusify](https://github.com/dragonflyoss/nydus/blob/master/docs/nydusify.md)
-    * 从目录构建
-    * 从 OCI 构建
-    * 构建并上传到 S3
-* 原理: [nydus-image](https://github.com/dragonflyoss/nydus/blob/master/docs/nydus-image.md)
-    * 单层 （结构）
-    * 多层
-    * merge
-* [design](https://github.com/dragonflyoss/nydus/blob/master/docs/nydus-design.md)
+在 Docker/K8s 中，使用 Nydus 加速镜像拉取，本质上是：
 
-## 挂载 Nydus 镜像
+* 将标准的 OCI 镜像的每一层，通过上述单层镜像的方式，转化为 Nydus Blob 文件和元数据文件，并存储在 OCI Register，创建一个 Nydus 格式的镜像。
+* 在启动容器，从 OCI Register 获取该镜像，并对每一次通过上述单层镜像的方式进行只读挂载，然后，通过 Overlayfs 构造出容器的 rootfs。
 
-* [nydusd](https://github.com/dragonflyoss/nydus/blob/master/docs/nydusd.md)
-    * 从目录挂载
-    * 从 S3 挂载
-* erofs
-    * 直接使用
-    * [fscache-based EROFS](https://github.com/dragonflyoss/nydus/blob/master/docs/nydus-fscache.md)
+具体命令本文不再赘述，可以参考：
+
+* [Nydusify](https://github.com/dragonflyoss/nydus/blob/v2.3.0/docs/nydusify.md): 转换、检查、挂载多层 Nydus 镜像。
+* [Nydusd](https://github.com/dragonflyoss/nydus/blob/v2.3.0/docs/nydusd.md)：挂载一个多层 Nydus 镜像。
+
+此外 Nydus 为了支持标准 OCI，除了标准的 Rafs 格式外，还提供了 Zran 格式以节省 OCI 镜像转换、Push 耗时以及 Register 存储成本，详见： [Nydus zran artifact user guide](https://github.com/dragonflyoss/nydus/blob/v2.3.0/docs/nydus-zran.md)
 
 ## 性能测评
 
-* fuse + 本地文件
-* fuse + s3 + 首次
-* fuse + s3 + 命中缓存
-* erofs + 本地文件
-* erofs + fscache-based + 首次
-* erofs + fscache-based + 命中缓存
+测试单层 Nydus 镜像挂载后文件系统性能。
+
+基本信息如下：
+
+* 镜像信息：
+    * 大小 2.3G（挂载后 du 统计）
+    * 文件数 134567
+    * 目录数 67678
+    *
+* 磁盘性能：
+    * IOPS 3000
+    * 吞吐量 125M
+
+测试结果：
+
+* 元数据文件大小： 140M
+* 数据（blob）文件大小： 811M
+* 挂载速度： 0.029989s （不包含元数据文件下载）
+* 递归 Copy 整个文件系统到本地磁盘（rsync -av --progress）：
+    * localfs 挂载，开启缓存，首次 copy： 2m12.346s
+    * localfs 挂载，开启缓存，二次 copy： 1m52.521s
+    * s3 挂载，开启缓存，首次 copy： 3m13.644s
+    * s3 挂载，开启缓存，二次 copy： 1m49.133s
+    * 本地裸目录（基准）： 2m53.854s
