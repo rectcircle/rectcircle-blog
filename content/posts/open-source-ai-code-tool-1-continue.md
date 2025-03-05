@@ -77,7 +77,41 @@ Continue 有两种使用方式：
 
 ### openrouter
 
+openrouter 是一个大模型 API 中间商，支持多个大模型提供商，可以使用一个 API Key 和统一的 API 调用多个大模型，支持业界主流的开源和闭源大模型。该平台还提供了几十个免费的大模型，可以直接使用。
+
+1. 访问 [openrouter](https://openrouter.ai/) 官网，注册一个账号，获取 API Key。
+2. 打开 [模型页](https://openrouter.ai/models)，搜索 free，选择模型，如 [DeepSeek R1](https://openrouter.ai/deepseek/deepseek-r1:free)，复制标题下方的模型 ID，如 `deepseek/deepseek-r1:free`。
+3. 配置 `~/.continue/config.json` 文件，在 `models` 数组中添加以下配置，其中 `apiKey` 替换为第一步获取到的 API key：
+
+    ```
+    {
+      "title": "[openrouter] DeepSeek: R1 (free)",
+      "provider": "openrouter",
+      "model": "deepseek/deepseek-r1:free",
+      "apiKey": "xxx"
+    },
+    ```
+
+配置完成后，Continue Chat 页面即可选择 `[openrouter] DeepSeek: R1 (free)` 模型，进行交互。
+
 ### siliconflow (硅基流动)
+
+siliconflow 和 openrouter 类似，也是一个大模型 API 中间商，中国大陆的的公司，主要提供国产模型，也提供了一些免费模型，可以直接使用。
+
+1. 访问 [siliconflow](https://siliconflow.cn/zh-cn/) 官网，注册一个账号，获取 API Key。
+2. 打开 [模型页](https://cloud.siliconflow.cn/models)，选择左侧价格免费选项，选择模型，如 [DeepSeek-R1-Distill-Qwen-7B (Free)](https://cloud.siliconflow.cn/models?target=deepseek-ai/DeepSeek-R1-Distill-Qwen-7B)，复制标题模型 ID，如 `deepseek-ai/DeepSeek-R1-Distill-Qwen-7B`。
+3. 配置 `~/.continue/config.json` 文件，在 `models` 数组中添加以下配置，其中 `apiKey` 替换为第一步获取到的 API key：
+
+    ```
+    {
+      "title": "[siliconflow] DeepSeek-R1-Distill-Qwen-7B (Free)",
+      "provider": "siliconflow",
+      "model": "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B",
+      "apiKey": "xxx"
+    }
+    ```
+
+配置完成后，Continue Chat 页面即可选择 `[siliconflow] DeepSeek-R1-Distill-Qwen-7B (Free)` 模型，进行交互。
 
 ## 免费模型简单测评
 
