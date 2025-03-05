@@ -16,7 +16,7 @@ Nydus 采用了一种创新的文件系统设计，将元数据（目录结构�
 
 Nydus 的主要应用场景是容器化环境，特别适用于加速 OCI 镜像（如 Docker 镜像）的挂载过程。社区提供了对 Kubernetes、Docker 等主流容器运行时的无缝集成支持，使其在容器生态中具有广泛的适用性。
 
-本文将介绍如何利用 Nydus 提供的核心工具构建 Nydus 镜像，并在 Linux 系统中完成镜像的挂载操作。此外，本文还将浅析 Nydus 的技术原理及其性能评估结论。
+本文将介绍如何利用 Nydus 提供的核心工具构建 Nydus 镜像，并在 Linux 系统中完成镜像的挂载操作。此外，本文还将浅析 Nydus 的技术原理及其基础性能评估结论。
 
 通过本文，方案设计者可以获取足够的信息来评估是否采用以及何时采用 Nydus 技术。需要注意的是，本文不涉及在 Kubernetes 等容器平台中深度集成 Nydus 的具体实现细节，如需了解相关内容，请参考[官方文档](https://github.com/dragonflyoss/nydus/tree/v2.3.0?tab=readme-ov-file#supported-platforms)。
 
