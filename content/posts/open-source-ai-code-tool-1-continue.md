@@ -37,6 +37,10 @@ Continue 提供了如下能力：
 
 ### siliconflow (硅基流动)
 
+## 免费模型简单测评
+
+建立 websocket 连接，如果参数有问题，upgrade 请求，服务端将返回 4xx， body {"code": 非零, "msg": "xxx"}。使用 js 写一个在浏览器运行的封装函数，封装 websocket 的建连，如果服务端拒绝 upgrade，返回，能获取到失败的 body 中的 code 和 msg ，并通过 Error 抛出去。注意，实现上，先建立 websocket 连接，如果失败了再通过某种方式获取这个失败的 body。
+
 ## 功能
 
 ### Chat
