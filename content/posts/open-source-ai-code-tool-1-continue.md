@@ -1,12 +1,14 @@
 ---
 title: "开源 AI 编程工具（一） Continue"
-date: 2025-03-01T15:00:00+08:00
-draft: true
+date: 2025-03-24T12:45:00+08:00
+draft: false
 toc: true
 comments: true
 tags:
   - untagged
 ---
+
+> [官网](https://www.continue.dev/) | [VSCode 扩展](https://marketplace.visualstudio.com/items?itemName=Continue.continue) | [github](https://github.com/continuedev/continue)
 
 ## 简介
 
@@ -52,7 +54,7 @@ Continue 有两种使用方式：
     * 在 `models` 字段中添加 Chat、 Edit 和 Actions 功能可使用的模型。该字段是个数组可以配置多个。
     * 在 `tabAutocompleteModel` 字段中配置，自动完成功能使用的模型（自动完成的模型依赖大模型以及其 API 支持 FIM completion）。
 
-### mistral
+### mistral （自动完成）
 
 对于自动完成，[官方推荐](https://docs.continue.dev/autocomplete/model-setup) Mistral 的 [Codestral 模型](https://mistral.ai/news/codestral-2501)。目前 （25-03-05），Codestral 模型的个人使用仍然是免费的，本小结将介绍如何申请和配置使用 Codestral 模型实现 Continue 的自动完成功能。
 
@@ -113,16 +115,54 @@ siliconflow 和 openrouter 类似，也是一个大模型 API 中间商，中国
 
 配置完成后，Continue Chat 页面即可选择 `[siliconflow] DeepSeek-R1-Distill-Qwen-7B (Free)` 模型，进行交互。
 
-## 免费模型简单测评
-
-建立 websocket 连接，如果参数有问题，upgrade 请求，服务端将返回 4xx， body {"code": 非零, "msg": "xxx"}。使用 js 写一个在浏览器运行的封装函数，封装 websocket 的建连，如果服务端拒绝 upgrade，返回，能获取到失败的 body 中的 code 和 msg ，并通过 Error 抛出去。注意，实现上，先建立 websocket 连接，如果失败了再通过某种方式获取这个失败的 body。
-
 ## 功能
 
 ### Chat
 
+* 如下几种方式打开 Chat 方式：
+    * 打开 VSCode 侧边栏，点击 continue 图标，点击加号。
+    * `cmd+l` 快捷键（可选中代码将代码上下文发送给模型）。
+    * 选中代码，右键 -> continue -> Add Highlighted Code to Chat （`cmd+shift+l`）。
+* 在输入框中输入问题，按回车即可发送问题给模型，获取大模型的回答。
+* 除了文字之外，还可以通过 `@` 提供上下文给模型。
+    * `@File` 选择某个文件，将文件作为上下文送给模型。
+    * `@Codebase` 对代码库构建索引，并根据输入内容，查询索引，并将这些上下文发送给模型，原理详见：[官方文档 - @Codebase](https://docs.continue.dev/customize/deep-dives/codebase)。
+    * `@Code` 将某个代码符号（函数、类、变量等）作为上下文发送给模型。
+    * `@Git Diff` 将当前文件的 git diff 信息作为上下文发送给模型（如： `根据 @Git Diff 生成当前变更的变更内容总结，尽量简短，一句话总结。`）。
+    * `@Terminal` 将最后一个终端命令作为上下文发送给模型。
+    * `@Problems` 将当前文件的问题（如 eslint 等）作为上下文发送给模型。
+    * `@Folder` 使用与 `@CodeBase` 相同的检索机制，但仅在一个文件夹中进行。
+    * 更多详见： [官方文档 - Context providers](https://docs.continue.dev/customize/context-providers)。
+
+注意：需配置模型，详见 [配置免费模型章节](#配置免费模型)。
+
 ### 自动完成
+
+在编辑器中输入任何字符都会触发自动完成，按 Tab 可接受，按 Esc 可取消。按 `ctrl + →` 可部分接受。
+
+注意：自动完成，基于大模型的 FIM 能力，需配置支持 FIM 的模型模型，详见 [mistral （自动完成）](#mistral-自动完成)。
 
 ### Edit
 
+* 如下几种方式打开 Eidt 模式：
+    * 在编辑器中按 `cmd+i`。
+* 在 Edit 模式，输入要求，按回车，即可生成代码，并将 diff 展示到编辑器中。
+    * 按 `cmd+opt+y` 即可接受单个变更，按 `cmd+opt+n` 可取消单个变更。
+    * 按 `cmd+shift+回车` 即可接受所有变更，按 `cmd+shift+退格` 可取消所有变更。
+
+注意：需配置模型，详见 [配置免费模型章节](#配置免费模型)。
+
 ### Actions
+
+* 斜线命令，在 Chat 模式下，输入 `/` 可触发，实现下来，在自定义模型下，仅 `/cmd` 命令基本可用：
+    * 内建斜线命令，详见： [官方文档 - Slash commands](https://docs.continue.dev/customize/slash-commands)。
+    * 通过提示词文件自定义斜线命令，详见： [官方文档](https://docs.continue.dev/customize/deep-dives/prompt-files)
+* VSCode 特定的 Actions 集成。
+    * Quick actions：通过 VSCode 命令 `continue.enableQuickActions` 启用。
+    * 右击上下文菜单： 选中代码，右击，选择 `Continue`，即可看到常用的动作（注意：需使用 anthropic 模型）。
+    * Debug action：输入 `cmd+shift+r`，即可将终端最后一个命令和输出发送到 Chat。
+    * Quick fixes：在代码出现问题的地方（波浪线），可以选择 `Ask Continue` 来获取帮助。
+
+### MCP 工具支持
+
+需使用 anthropic 模型，本文不多介绍。
