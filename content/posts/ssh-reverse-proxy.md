@@ -50,7 +50,7 @@ SSH 通用反向代理库需满足如下需求：
 
 说明：
 
-* proxy 包含两个部分，分别是一个 ssh server 和 ssh client。proxy ssh server 对接用户 ssh client，proxy ssh server 对接目标 ssh server。
+* proxy 包含两个部分，分别是一个 ssh server 和 ssh client。proxy ssh server 对接用户 ssh client，proxy ssh client 对接目标 ssh server。
 * 上图 1，用户 ssh client 认证数据包对接 proxy ssh server。上图 3，proxy ssh client 认证数据包对接目标 ssh server。这两个部分为了支持 SSH 认证的拦截。
 * 上图 2，是连接协议的数据包，是明文数据。
     * 对这些数据包，可以进行审计。
