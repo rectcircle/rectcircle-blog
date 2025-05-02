@@ -265,6 +265,66 @@ VSCode 触发 CodeAction 的行为有两种，分别是选中代码和光标变�
 
 > 根据编程语言，将 string、 template-string 等类型的 OriginText 解析成 Text （去除转义等）。
 
+* 询问 AI: `@Builder 设计并实现一套面向不同编程语言的字符串解析机制，输入是 originText、 type、 和 languageId，输出是 text。如果类型不是字符串直接返回 originText。这套机制具有可扩展，每个编程语言都有自己的实现，新增一个编程语言时仅需添加一个文件，并在 index.ts 注册即可。代码在 service 里面新建一个 literalParser 实现包含 index.ts 和 各个编程语言的实现。先实现 typescript/javascript 的解析。`
+
+    AI 目录结构和代码框架实现的较好。
+
+    但是具体的 typescript 解析，仅仅去除引号，没有处理转义字符。
+
+    另外，代码依赖上层的 TokenInfo 类型定义。
+
+* 询问 AI: `@Builder 不要依赖 TokenInfo 类型定义。`
+
+    AI 完美的解决了这个问题。
+
+* 询问 AI: `@Builder 重写： 根据 javascript 字符串、模板字符串语法规范解析字符串，关注性能，不要用查找替换，小心关注各种边界 case。`
+
+    AI 使用了循环逐个字符串处理。但是总是有一些 bug。最终还是手写帮 AI 修 bug。
+
+* 询问 AI: `@Builder 给 #file:src/service/literalParser/typescript.ts 在 #file:src/web/test/suite/service/literalParser/typescript.test.ts 中生成单测，所有分支都要覆盖到。`
+
+    AI 生成了很好的单测。并测试出了手写的 bug。
+
+* 询问 AI: `@Builder 给 #file:src/service/literalParser/index.ts parseLiteral 添加单测`
+
+    AI 并不能很好的理解单测的目录结构，所以生成的单测位置不符合预期，这种场景可以使用 Trae 自定义规则告诉 AI 如何生成单测。
+
+    ```markdown
+    ## 生成单测规则
+
+    * 该规则仅对 src 目录下的文件生效。
+    * 本项目使用了 mocha 单测框架、 assert 断言库。
+    * 使用  suite 代替 describe。
+    * src/path/to/file.ts 对应的单测文件为 src/web/test/suite/path/to/file.test.ts。
+    * 测试文件结构如下：
+
+        ```ts
+        suite('src/path/to/file.ts', () => {
+            suite('待测函数...', () => {
+                test('测试样例描述...', () => {
+                    assert.equal(1, 1);
+                });
+            });
+        });
+        ```
+    ```
+
+    ![image](/image/trae-ai-agent-custom-rule.png)
+
+* 询问 AI: `@Builder 修改当前文件所有 Text 的内容为 parseLiteral 函数的返回值。`
+
+    打开 src/service/codeParser.ts 文件。
+
+    AI 最终按照要求完成了修改，但是又忘记了了导入。
+
+* 询问 AI: `@Builder 根据 typescript.test.ts 在 testdata/main.ts 中添加更多测试代码`
+
+   最终 AI 生成更多的人工测试 case。
+
+* `F5` Debug，人工验证，无问题。让 AI 生成提交消息，并提交代码到 git。
+
+代码详见： [feat: 添加字面量解析器及相关测试](https://github.com/rectcircle/string-converter-vsc-ext/commit/ae860ec43e3dbe07dad92b0aa8ac1948e28e0546)。
+
 ### 实现可扩展机制来识别字符串类型
 
 > 优先实现识别 jwt、时间戳、base64、url、json、yaml。
