@@ -325,6 +325,172 @@ VSCode 触发 CodeAction 的行为有两种，分别是选中代码和光标变�
 
 代码详见： [feat: 添加字面量解析器及相关测试](https://github.com/rectcircle/string-converter-vsc-ext/commit/ae860ec43e3dbe07dad92b0aa8ac1948e28e0546)。
 
-### 实现可扩展机制来识别字符串类型
+## 实现可扩展机制来识别和转换字符串
 
-> 优先实现识别 jwt、时间戳、base64、url、json、yaml。
+### 以 jwt 为切入点实现整体框架
+
+* 询问 AI: `@Builder 定义一个字符串转换器接口，该接口包含如下内容：1. meta 字段，包含当前转换器 id，name，resultLanguageId. 2. match 函数，参数为 tokenInfo 和可选参数 options，返回 boolean。3. convert 函数，参数为 tokenInfo 和可选参数 options，返回字符串。`
+
+    AI 按照要求生成了代码。
+
+* 询问 AI: `@Builder 在 stringConverter 目录添加一个 jwt StringConverter 的实现。`
+
+    AI 基本实现了代码框架，但是逻辑不符合预期。
+
+    手动删除不好的代码。
+
+* 询问 AI: `@Builder 使用最流行的 npm jwt 开源库，来实现 match 和 covert 函数。`
+
+    AI 正确实现了 convert 函数。
+
+* 询问 AI: `@Builder 实现一个并导出一个 stringConverterManager。支持注册 stringConverter、传递一个 tokenInfo 返回匹配的 stringConverter meta 列表，传递 tokenInfo 和 meta 调用对应的 convert 函数。`
+
+    AI 基本正确实现了需求。
+
+* 询问 AI: `@Builder 参考 JwtParser 实现一个 DefaultConverter，如果 token originText 不包含 text  则 match 返回 true，convert 永远返回 text。并注册到 manger。`
+
+    AI 基本实现了需求，只需手动处理文案以及一些小问题。
+
+* `F5` Debug，人工验证，无问题。让 AI 生成提交消息，并提交代码到 git。
+
+代码详见： [feat(字符串转换器): 添加JWT解析功能并重构字符串转换器](https://github.com/rectcircle/string-converter-vsc-ext/commit/9bbf495733ee6b5d14f83ebf1cf5ab588509d305)。
+
+### 探索转换结果的展示
+
+#### 技术调研
+
+* 方案 1: 触发 Quick Action 后，展示 Markdown 浮窗。询问 AI: `VSCode API 如何展示一个 markdown 预览编辑器。`
+
+    观察示例代码发现浮窗只支持 Hover 展示，无法动态触发。
+
+* 方案 2: 创建一个 Markdown 预览。询问 AI: `VSCode API 如何展示一个 markdown 预览编辑器。`
+
+    观察示例代码发现实际上是通过 Webview 实现的。
+
+#### 尝试使用 Webview 展示
+
+* 询问 AI: `@Builder showTextCommandCallback，使用 markdown 预览编辑器。展示 stringConverterManager.convert 结果。`
+
+    AI 基本实现了正确代码。
+
+* 询问 AI: `@Builder 修改 html convert 结果以代码块方式展示。`
+
+    AI 基本实现了正确代码。
+
+这个方案没有高亮，经调研如果想要实现代码高亮，需要使用三方高亮库，有点恶心，尝试使用其他方案。
+
+#### 尝试使用 Markdown Preview 展示
+
+* 询问 AI: `@Builder 使用 markdown 预览命令展示结果。先创建 内存 vscode.Uri 并将结果写入这个文档，最后调用 markdown 侧边栏预览命令展示结果。`
+
+    AI 基于 `untitled:` 实现了通过 markdown 方式展示结果。但是有个问题是，会在编辑器中出现一个 untitled 编辑器。
+
+    经搜索发现可以实现自己的文件系统。
+
+* 询问 AI: `@Builder 在 handler/memfs 实现一个 scheme 为 strconvmemfile 的内存文件系统并在 extensions 中调用 registerTextDocumentContentProvider 注册。`
+
+    AI 很好的实现了这个需求，并解决了之前 `untitled:` 问题。
+
+    可以采用此方案。
+
+* `F5` Debug，人工验证，无问题。让 AI 生成提交消息，并提交代码到 git。
+
+代码详见： [feat: 添加内存文件系统以支持Markdown预览](https://github.com/rectcircle/string-converter-vsc-ext/commit/405dcaebcc946b6d268d7f0cd2a253f90cece089)。
+
+#### 重构 StringConverter 展示更多信息
+
+手动修改了 StringConverter 接口的声明，支持返回更多信息，让 AI 修改所有实现和调用点，以适配变更。
+
+* 询问 AI: `@Builder 我手动修改了 StringConverter 的声明，请修改所有实现和调用点，以适配变更`。
+
+    AI 完成度较低，只修改了接口实现，调用点没有实现。
+
+    后面所有能力手动实现了，并在 JWT 上进行了完整的实现。
+
+* `F5` Debug，人工验证，边验证变修改，无问题后。让 AI 生成提交消息，并提交代码到 git。
+
+代码详见： [feat: 增强 JWT 解析功能并优化字符串转换器](https://github.com/rectcircle/string-converter-vsc-ext/commit/2362268c787e2da1396d9b092093fcdc5a890d41)。
+
+#### 支持 Hover 弹窗展示解析结果
+
+开发时条件有限，没有网路，全部手写。
+
+代码详见： [feat: 重构处理程序模块，提取并优化代码结构，添加 hover 展示结果，并实现复制能力](https://github.com/rectcircle/string-converter-vsc-ext/commit/2362268c787e2da1396d9b092093fcdc5a890d41)
+
+## 添加主流编程语言字符串 Token 解析
+
+> * 优先支持 JSON、Go、Rust、Java、Python、
+> * 后续添加C++、PHP 等 TIOBE - 编程语言排名 / VSCode 官方文档提到的。
+> * 添加默认的字符串 Token 解析逻辑。
+
+* 添加 JSON 支持，询问 AI: `@Builder 参考 #file:src/service/literalParser/typescript.ts，新建 json.ts 实现 JSON 解析（直接使用 JSON.parse 实现），然后注册到 #file:src/service/literalParser/index.ts ，然后实现单测，然后在 #folder:testdata 添加对应的人工测试文件。`
+
+    AI 正确实现了全部需求（提效+1+1+1）。
+
+    最后手动修正了一些单测问题。
+
+    `F5` Debug，人工验证，无问题。让 AI 生成提交消息，提交代码到了 git。
+
+    代码详见： [feat(literalParser): 添加JSON字符串解析功能并重构代码](https://github.com/rectcircle/string-converter-vsc-ext/commit/9c00c83216668cc118d8bac31e75467dc269db8c)。
+
+* 添加 Go 支持，询问 AI: `@Builder 参考 #file:src/service/literalParser/typescript.ts，新建 go.ts 实现 Go 字符串解析，然后注册到 #file:src/service/literalParser/index.ts ，然后实现单测并在 #file:src/web/test/suite/service/literalParser/index.test.ts 中 import，然后在参考 #file:testdata/main.ts#folder:testdata 添加对应的人工测试文件。`
+
+    AI 正确实现了全部需求（提效+1+1+1）。
+
+    最后手动修正了一些单测问题。
+
+    `F5` Debug，人工验证，无问题。让 AI 生成提交消息，提交代码到了 git。
+
+    代码详见： [feat(literalParser): 添加Go字符串字面量解析功能](https://github.com/rectcircle/string-converter-vsc-ext/commit/6ad15a39ab8b6bfb4352a6932e88ee0032a8d3c8)。
+
+* 添加 Rust 支持，询问 AI: `@Builder 参考 #file:src/service/literalParser/typescript.ts，新建 rust.ts 实现 Rust 字符串解析，然后注册到 #file:src/service/literalParser/index.ts ，然后实现单测并在 #file:src/web/test/suite/service/literalParser/index.test.ts 中 import，然后在参考 #file:testdata/main.ts#folder:testdata 添加对应的人工测试文件。`
+
+    AI 基本结构实现正常，但是解析逻辑完全仿写 typescript，没有按照 rust 语法实现。
+
+    需要给 AI 更多引导，下载官方手册 [tokens.md](https://github.com/rust-lang-cn/reference-cn/blob/master/src/tokens.md)，然后导入到上下文，文档集。
+
+    ![image](/image/trae-ai-agent-context-local-docset.png)
+
+    然后删除之前错误实现，询问 AI: `严格按照 @Builder #doc:rust-token 字符串字面量规范，重点关注转义。不要参考其他语言的实现。从光标位置实现解析逻辑`。
+
+    AI 基本正确实现，人工调整了一下细节。
+
+    `F5` Debug，人工验证，无问题。让 AI 生成提交消息，提交代码到了 git。
+
+    代码详见： [feat(literalParser): 添加Rust字符串解析功能](https://github.com/rectcircle/string-converter-vsc-ext/commit/f24d4edfd54444f69400003123583bf2bf10b171)。
+
+* 添加 Java 支持，，询问 AI: `@Builder 参考 #file:src/service/literalParser/typescript.ts，新建 java.ts 实现 Java 字符串解析，然后注册到 #file:src/service/literalParser/index.ts ，然后实现单测并在 #file:src/web/test/suite/service/literalParser/index.test.ts 中 import，然后在参考 #file:testdata/main.ts#folder:testdata 添加对应的人工测试文件。`
+
+    基本实现了需求，但是缺少了 Text Blocks 以及 8 进制转义序列的支持，
+
+    手写并让 AI 继续生成单测。
+
+    最后，手动优化字符串解析器的添加首尾标记支持以优化默认转换器识别率。
+
+    `F5` Debug，人工验证，修复，无问题后，让 AI 生成提交消息，提交代码到了 git。
+
+    代码详见： [feat(literalParser): 添加Java字符串解析功能，添加字符串解析器的标记支持以优化默认转换器识别率](https://github.com/rectcircle/string-converter-vsc-ext/commit/a743f4b279681349769e1778b2b3352886efc6de)。
+
+* 添加 Python 支持，询问 AI: `@Builder 参考 #file:src/service/literalParser/typescript.ts 风格，根据 Python 语言规范，新建 python.ts 实现 Python 字符串解析，然后注册到 #file:src/service/literalParser/index.ts ，然后实现单测并在 #file:src/web/test/suite/service/literalParser/index.test.ts 中 import，然后在参考 #file:testdata/main.ts#folder:testdata 添加对应的人工测试文件。`
+
+    AI 实现了大多数功能。但是转义序列处理不全，缺失 raw 字符串处理。
+
+    把 [Python 3 词法分析文档转义序列](https://docs.python.org/3/reference/lexical_analysis.html#escape-sequences) 部分内容复制发给 AI，让 AI 补充实现。
+
+    手动处理 Unicode NameAliases。结合 AI 和 手动处理 raw 字符串。
+
+    最后，让 AI 更新单测： `@Builder 根据 #file:src/service/literalParser/python.ts 补充 #file:src/web/test/suite/service/literalParser/python.test.ts 自动化测试以及 #file:testdata/main.py 手动测试样例，提高覆盖率。`
+
+    `F5` Debug，人工验证，修复，无问题后，让 AI 生成提交消息，提交代码到了 git。
+
+    代码详见： [feat(literalParser): 添加Python字符串解析功能](https://github.com/rectcircle/string-converter-vsc-ext/commit/a9c1214f47a557abdb52369773eecf3ef364f8ec)。
+
+## 添加更多常见类型的字符串转换器
+
+> * 优先支持 jwt、时间戳、base64、url、json、yaml。
+> * 各种在线工具网站提供的能力。
+
+## 其他问题
+
+* 终端进程启动失败: A native exception occurred during launch (posix_spawnp failed.)。
+* 复制输入框内容（包含 `#xxx` 场景）无法原样粘贴。
