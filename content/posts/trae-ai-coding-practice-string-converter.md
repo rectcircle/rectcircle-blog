@@ -490,6 +490,14 @@ VSCode 触发 CodeAction 的行为有两种，分别是选中代码和光标变�
 > * 优先支持 jwt、时间戳、base64、url、json、yaml。
 > * 各种在线工具网站提供的能力。
 
+* 添加时间戳解析，询问 AI: `@Builder 参考 #file:src/service/stringConverter/jwt.ts ，在 #folder:src/service/stringConverter 目录新建文件，实现时间戳（毫秒/秒）解析的支持，match 支持 tokenInfo 为 string 和 number 两种类型。`
+
+    AI 生成了正确的代码，手动和 AI 优化逻辑，生成单测。
+
+    `F5` Debug，人工验证，修复，无问题后，让 AI 生成提交消息，提交代码到了 git。
+
+    代码详见： [feat(stringConverter): 添加时间戳解析器功能](https://github.com/rectcircle/string-converter-vsc-ext/commit/2533b1e3c776897fbd1c0121cf1acdd8e44dcf81)。
+
 ## 其他问题
 
 * 终端进程启动失败: A native exception occurred during launch (posix_spawnp failed.)。
