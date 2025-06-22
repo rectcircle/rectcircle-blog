@@ -28,21 +28,16 @@ JSON 格式化 | ![str-conv-json-format.png](/image/str-conv-json-format.png)
 
 * [VSCode 官方市场](https://marketplace.visualstudio.com/items?itemName=Rectcircle.str-conv)
 * [Openvsx 社区市场](https://open-vsx.org/extension/Rectcircle/str-conv)
-<!-- * [字节内部插件市场](https://xxx.xxx.xxx/xxx/Rectcircle/str-conv) -->
 
 ## 缘由
 
-<!--
-作为 Trae ai-agent 的开发者，我在调试 PE 的时候，经常需要将文本内容和 JSON 字符串格式之间相互转换。
--->
-
-最近在开发过程中，经常需要将文本内容和 JSON 字符串格式之间相互转换。
+最近在开发过程中，经常需要查看 JSON 格式的日志内容，其中日志内容字段是个 JSON 字符串，换行制表符都被转义成 `\n`、`\r` 等，肉眼很难观察。
 
 我尝试了一些解决办法，如在线网站、node/python REPL，体验都不好：在线网站还有各种广告，需要跳出 IDE，打断思路。都需要很多步操作，来回复制，很是繁琐。
 
 既然问题存在，且没有看到解决办法。我是否可以写一个工具解决这个问题呢？
 
-作为一个<!-- Cloud IDE 相关领域的-->软件开发者，答案当然是可以的，而且这个工具非常适合以 IDE 插件的方式和编码过程深度集成。
+作为一个软件开发者，答案当然是可以的，而且这个工具非常适合以 IDE 插件的方式和编码过程深度集成。
 
 有了想法相当于已经完成了 50%，剩下差的就只是将想法落地的时间。当时正好临近五一假期，有了空闲时间。
 
@@ -66,7 +61,7 @@ JSON 格式化 | ![str-conv-json-format.png](/image/str-conv-json-format.png)
 
 因此，该插件要做的是：
 
-* 用户行为触发 IDE 事件，IDE 插件监听指定时间。
+* 用户行为触发 IDE 事件，IDE 插件监听指定事件。
 * IDE 根据事件信息，获取到原始字符串。然后识别字符串的类型，将其转换为另一种格式字符串。
 * 通过 IDE 的能力将转换后的字符串以合适的方式展示出来，并支持后续的操作。
 
