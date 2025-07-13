@@ -73,7 +73,7 @@ const terminalASNIEscapeSeqDemo =
 "";
 ```
 
-将如上 ANSI 序列，发送给 xtermjs 的 terminal 渲染效果如下（下方按字渲染，是因为按照字符发送给 terminal，每发送一个字符 sleep 2 毫秒，可以看出流式处理的特点，源码详见 [github](https://github.com/rectcircle/implement-terminal-from-scratch/blob/12ffbd1c0a33dc2f9e979b2a11d45e38c2c2c533/demo/01-xterm-js-ansi-escape/src/main.js#L37)）：
+将如上 ANSI 序列，发送给 xtermjs 的 terminal 渲染效果如下（下方按字渲染，是因为按照字符发送给 terminal，每发送一个字符 sleep 2 毫秒，可以看出流式处理的特点，源码详见 [github](https://github.com/rectcircle/implement-terminal-from-scratch/blob/master/demo/01-xterm-js-ansi-escape/src/main.js#L38)）：
 
 <script>
 function loadStyles(url){
@@ -135,9 +135,22 @@ main();
 
 从如上示例可以看出，实现一个终端模拟器还是相对比较简单，即：流式的读取 ANSI 序列，如果是可打印字符，按照终端状态中的属性在光标的下一个位置，按照属性表渲染出这个字符，如果是 escape code 则根据 ANSI escape code 标准，读取指令参数，根据指令标准，进行设置属性、移动光标等操作即可。
 
-### 终端和 Shell
+### 终端输入 API 简述
+
+### 通过 xterm.js 探索 终端输入
+
+### pty 介绍
 
 ### 完整实例：使用 xterm.js 和 Go 实现一个 WebShell
+
+> 源码详见 [github](https://github.com/rectcircle/implement-terminal-from-scratch/tree/master/demo/02-webshell-demo)
+
+接下来，简单实现一个 WebShell 服务：
+
+* 客户端使用 web 技术和 xterm.js 库。
+* 服务端使用 Go 通过 websocket 提供服务。
+
+### 终端和 Shell
 
 ## VSCode 终端 和 Shell 集成分析
 
