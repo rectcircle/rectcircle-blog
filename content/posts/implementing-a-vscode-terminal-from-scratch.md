@@ -16,7 +16,7 @@ tags:
 
 详见： [探索终端的历史渊源](/posts//terminal-history/)
 
-### 终端渲染 API 简述
+### 终端 API 简述
 
 > [ANSI escape code](https://en.wikipedia.org/wiki/ANSI_escape_code)
 
@@ -38,15 +38,17 @@ ASCII 码一共有 128 个，那其他的 33 个字符，因为已经进入了�
 
 从层次划分上，ANSI 序列对于终端而言更像是 GPU/CPU 的底层机器码，终端对 ANSI 序列的处理是流式的。因为命令行界面和 ANSI 序列对人类是非常友好的，因此基本上不需要再进行高层次的抽象。
 
-### 通过 xterm.js 探索 ANSI escape 序列
+需要说明的是。在上个世纪，命令行交互界面时代，终端就是一种真实存在的物理设备。终端作为一个集合了输入和输出的物理设备，ANSI escape code 既是控制终端输出的协议，也是计算机软件读取用户输入的协议。
 
-在上个世纪，命令行交互界面时代，终端就是一种真实存在的物理设备。但是现代计算机的交互已经进化到了图形化交互界面，已经不再需要一个真实的物理终端设备存在。但是在计算机软件开发领域，仍然需要命令行交互界面。因此，在现代，我们能接触到的终端设备，指的都是一种对终端设备的仿真软件（模拟器），即： 遵守 ANSI escape code 规范，将 ANSI escape code 序列，通过图形化交互 API 进行渲染的仿真软件。我们平常用到了各种终端软件都可以归于此类。
+在现代计算机的交互已经进化到了图形化交互界面，已经不再需要一个真实的物理终端设备存在。但是在计算机软件开发领域，仍然需要命令行交互界面。因此，在现代，我们能接触到的终端设备，指的都是一种对终端设备的仿真软件（模拟器），即： 遵守 ANSI escape code 规范，将 ANSI escape code 序列，通过图形化交互 API 进行渲染的仿真软件。我们平常用到了各种终端软件都可以归于此类。
 
-这里，介绍一个 Web 领域，最流行的终端 A 序列渲染库 [xterm.js](https://xtermjs.org/)，该库被众多 WebShell 所使用，也是 VSCode 终端的底层渲染库。本小结，会通过该库探索 ANSI escape code 标准。
+这里，介绍一个 Web 领域，最流行的终端 A 序列渲染库 [xterm.js](https://xtermjs.org/)，该库被众多 WebShell 所使用，也是 VSCode 终端的底层渲染库。下文，会通过该库探索 ANSI escape code 标准。
 
-<!-- <link href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" rel="stylesheet"> -->
+### 终端输出 API
 
-示例：
+本小结将通过 xterm.js 介绍，如何通过 ANSI escape code 控制终端的输出。
+
+示例如下：
 
 ```js
 const terminalASNIEscapeSeqDemo = 
@@ -135,9 +137,120 @@ main();
 
 从如上示例可以看出，实现一个终端模拟器还是相对比较简单，即：流式的读取 ANSI 序列，如果是可打印字符，按照终端状态中的属性在光标的下一个位置，按照属性表渲染出这个字符，如果是 escape code 则根据 ANSI escape code 标准，读取指令参数，根据指令标准，进行设置属性、移动光标等操作即可。
 
-### 终端输入 API 简述
+### 终端键盘输入 API
 
-### 通过 xterm.js 探索 终端输入
+本小结将介绍，用户在终端中的键盘输入，终端设备如何处理，会生成怎样的 ANSI escape 序列。示例代码如下：
+
+index.html
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- ... -->
+  <body>
+    <div id="app">
+      <div id="terminal"></div>
+      <div id="xterm_js_on_data_container">
+        <pre id="xterm_js_on_data_pre"><code id="xterm_js_on_data_code"></code></pre>
+      </div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
+```
+
+`src/main.js`
+
+```js
+import './style.css'
+import '../node_modules/@xterm/xterm/css/xterm.css'
+import { Terminal } from '@xterm/xterm'
+
+const terminalASNIEscapeSeqDemo = `随意按键盘观察 xterm.js onData 的输出: `;
+
+async function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function main() {
+  const terminal = new Terminal();
+  terminal.open(document.querySelector('#terminal'));
+  const xtermJsOnDataCode = document.querySelector('#xterm_js_on_data_code');
+
+  terminal.onData((data) => {
+    xtermJsOnDataCode.textContent += JSON.stringify(data) + "\n";
+  });
+
+  for (const char of terminalASNIEscapeSeqDemo) {
+    terminal.write(char);
+    await sleep(100);
+  }
+
+}
+
+main();
+```
+
+（源码详见： github）
+
+在 xterm.js 中，用户在终端中的输入，通过 `terminal.onData` API 可以获取到，本例中，会将终端用 json 格式化一下（转义一下控制字符，方便观察），然后展示到终端下方页面中。
+
+点击如下终端，获取输入焦点，按键盘任意键即可观察，终端输入 ANSI escape code 协议情况。
+
+<div id="terminal2"></div>
+<div id="xterm_js_on_data_container">
+<pre id="xterm_js_on_data_pre"><code id="xterm_js_on_data_code"></code></pre>
+</div>
+
+<script>
+(function(){
+    const terminalASNIEscapeSeqDemo = `随意按键盘观察 xterm.js onData 的输出: `;
+
+    async function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async function main() {
+    const terminal = new Terminal();
+    terminal.open(document.querySelector('#terminal2'));
+    const xtermJsOnDataCode = document.querySelector('#xterm_js_on_data_code');
+
+    terminal.onData((data) => {
+        xtermJsOnDataCode.textContent += JSON.stringify(data) + "\n";
+    });
+
+    for (const char of terminalASNIEscapeSeqDemo) {
+        terminal.write(char);
+        await sleep(100);
+    }
+
+    }
+
+    main();
+})()
+</script>
+
+这里介绍一些常见的键盘字符对应的 ANSI escape code（可以自行在上方验证）：
+
+* 可打印字符: 保持原样（英文、中文等均是）。
+* 常见的不可打印字符:
+    * ESC 键： `"\u001b"` （escape code 自身，这是是 json 的 unicode 格式，即上文的 `\x1B`）
+    * 方向键：
+        * 上： `"\u001b[A"`
+        * 下： `"\u001b[B"`
+        * 右： `"\u001b[C"`
+        * 左： `"\u001b[D"`
+    * F 功能键，F1~F12，分别是: `"\u001bOP", "\u001bOQ", "\u001bOR", "\u001bOS", "\u001b[15~", "\u001b[17~", "\u001b[18~", "\u001b[19~", "\u001b[20~", "\u001b[21~", "\u001b[23~", "\u001b[24~"`。
+    * 常见快捷键：
+        * `ctrl+a` 行首 (bash)： `"\u0001"`
+        * `ctrl+b` 上一个字符 (bash)： `"\u0002"`
+        * `ctrl+c` 中断运行中程序 (bash)： `"\u0003"`
+        * `ctrl+d` 退出交互式命令自身 (python, node， bash)： `"\u0004"`
+        * `ctrl+e` 行尾 (bash)： `"\u0005"`
+        * `...`
+
+### 终端窗口尺寸和鼠标 API
 
 ### pty 介绍
 
