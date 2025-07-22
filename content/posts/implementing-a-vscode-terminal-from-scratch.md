@@ -179,7 +179,7 @@ async function main() {
   const xtermJsOnDataCode = document.querySelector('#xterm_js_on_data_code');
 
   terminal.onData((data) => {
-    xtermJsOnDataCode.textContent += JSON.stringify(data) + "\n";
+    xtermJsOnDataCode.textContent += JSON.stringify(data) + " " + data.charCodeAt(0) + "\n";
   });
 
   for (const char of terminalASNIEscapeSeqDemo) {
@@ -217,7 +217,7 @@ main();
     const xtermJsOnDataCode = document.querySelector('#xterm_js_on_data_code');
 
     terminal.onData((data) => {
-        xtermJsOnDataCode.textContent += JSON.stringify(data) + "\n";
+        xtermJsOnDataCode.textContent += JSON.stringify(data) + " " + data.charCodeAt(0) + "\n";
     });
 
     for (const char of terminalASNIEscapeSeqDemo) {
@@ -236,6 +236,7 @@ main();
 * 可打印字符: 保持原样（英文、中文等均是）。
 * 常见的不可打印字符:
     * ESC 键： `"\u001b"` （escape code 自身，这是是 json 的 unicode 格式，即上文的 `\x1B`）
+    * 退格键：`"\u007f"` （由于 js 问题这个转义字符打印不出来，但是从编码可以看出来是这个字符）
     * 方向键：
         * 上： `"\u001b[A"`
         * 下： `"\u001b[B"`
@@ -250,9 +251,186 @@ main();
         * `ctrl+e` 行尾 (bash)： `"\u0005"`
         * `...`
 
-### 终端窗口尺寸
+### PTY 详解
 
-### pty 详解
+上文，已经介绍了 xterm.js （终端模拟器）的输入输出是一对 ANSI 字符流。在 Unix 系统中，这对 ANSI 字符流并没有直接和应用程序对接。在系统内核中，对终端模拟器设备进行了抽象，提供了一种称为 PTY 的设备类型（硬件终端对应 TTY 设备，和 PTY 类似，本文不多介绍）。
+
+每个 PTY 设备会产生两个设备文件描述符，一个（主设备）和终端模拟器连接，一个（从设备）和应用程序连接（一般为 shell 程序），这两个文件描述符中间存在一个被称为行规程（line discipline）的内核程序做一些适配逻辑。
+
+```
+    应用程序 (Shell: Bash/Zsh 等)
+      stdin  stdout/stderr
+        ^       |
+        |       |
+      /dev/pts/xxx (从设备 slave，文件描述符)
+        |       |
+        |       v
+    line discipline (行规程)
+        ^       |
+        |       |
+      /dev/ptmx   (主设备 master，文件描述符)
+        |       |
+        |       v
+    终端模拟器
+```
+
+行规程会做如下工作：
+
+* line buffer: 对终端模拟器中的字符输入，进行输入缓冲，直到按 `\r` （回车符），应用程序才能读到。
+* line edit: 根据终端模拟器输入的一些特殊字符对行缓冲中的字符序列进行编辑，如退格等（光标操作是怎样的？）。
+* echo: 回显，在[终端键盘输入 API](#终端键盘输入-api)小节中，在终端中输入的内容，终端中并没有显示，而这依赖回显功能实现。
+* job control: 作业控制，将一些快捷键转换为信号发送给应用程序（如 ctrl+c 等）。
+
+下面使用一个 Go 程序验证行规程的行为（源码详见 [github](https://github.com/rectcircle/implement-terminal-from-scratch/tree/master/demo/03-pty-demo)）。
+
+首先，准备一个模拟的应用程序，该程序只做两件事：
+
+* 接收 SIGINT (2) 信号，接收到后，打印日志并退出。
+* 读取 stdin，并将 stdin 转换为字符串，然后用 JSON 格式化一下并打印。
+
+`demo/03-pty-demo/02-echo-stdin-json-str/main.go`
+
+```go
+package main
+
+import (
+	"encoding/json"
+	"io"
+	"os"
+	"os/signal"
+)
+
+func main() {
+	// 处理 ctrl+c 信号
+	ctrlCCh := make(chan os.Signal, 1)
+	signal.Notify(ctrlCCh, os.Interrupt)
+	go func() {
+		<-ctrlCCh
+		os.Stdout.Write([]byte("[echo-stdin-json-str][signal]: SIGINT (2)\n"))
+		os.Exit(0)
+	}()
+
+	// 读并打印 stdin 内容
+	buf := make([]byte, 4*1024*1024)
+	for {
+		n, err := os.Stdin.Read(buf)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			panic(err)
+		}
+
+		input := string(buf[:n])
+		inputJsonStr, err := json.Marshal(input)
+		if err != nil {
+			panic(err)
+		}
+		os.Stdout.Write([]byte("[echo-stdin-json-str][stdin]: "))
+		os.Stdout.Write(inputJsonStr)
+		os.Stdout.Write([]byte("\n"))
+	}
+
+}
+```
+
+然后，使用实现一个验证程序，该程序：
+
+* 启动上面的模拟应用程序，并将这个应用程序连接到 pty slave。
+* 从 pty master 读取内容，然后原样打印。
+* 然后发送一些 ANSI 序列，观察输出，观测 pty 行规程的应为。
+
+```go
+package main
+
+import (
+	"io"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"time"
+
+	"github.com/creack/pty"
+)
+
+const ASNIEInputSeqDemo = "hello world\r" + // 第一行: 常规的 ascii 字符，应用程序原样接受
+	"中文\r" + // 第二行：中文字符，行为和第一行一样，应用程序原样接受
+	"  对于可打印字符(中英文)\r" +
+	"    1.在应用程序接受之前已经打印了，这是行规程的回显功能\r" +
+	"    2.行规程原样透传到应用程序\r" +
+	"    3.行规程将 \\r 转换为 \\n 传递给应用程序\r" +
+	"    4.行规程有一个行 buffer 遇到 \\r 才会将 buffer 的内容传递给应用程序\r" +
+	"测试行编辑(按退格的效果\\u007f): hello world,\u007f!\r" +
+	"  可以看出，\\u007f 删除了前面的逗号, 应用程序接受到的是 hello world!\r" +
+	"测试行编辑(按方向键效果): world\u001b[D\u001b[D\u001b[D\u001b[D\u001b[Dhello \r" +
+	"  可以看出，方向键不会影响行规程的行编辑\r" +
+	"* 即将发送 ctrl+c 信号，应用程序将收到 SIGINT(2) 信号\r" +
+	"\u0003" // 最后一行：ctrl+c 信号
+
+func main() {
+	binPath, err := filepath.Abs("./echo-stdin-json-str")
+	if err != nil {
+		panic(err)
+	}
+	cmd := exec.Command(binPath)
+
+	ptyMaster, err := pty.Start(cmd)
+	if err != nil {
+		panic(err)
+	}
+	defer ptyMaster.Close()
+	go func() {
+		_, _ = io.Copy(os.Stdout, ptyMaster)
+	}()
+	for _, b := range []byte(ASNIEInputSeqDemo) {
+		_, err = ptyMaster.Write([]byte{b})
+		if err != nil {
+			panic(err)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+```
+
+运行测试：
+
+```bash
+cd demo/03-pty-demo
+go build -o echo-stdin-json-str ./02-echo-stdin-json-str
+go run ./01-pty-host
+```
+
+输出如下（Mac 环境输出，Linux 应该也类似）：
+
+```
+hello world
+[echo-stdin-json-str][stdin]: "hello world\n"
+中文
+[echo-stdin-json-str][stdin]: "中文\n"
+  对于可打印字符(中英文)
+[echo-stdin-json-str][stdin]: "  对于可打印字符(中英文)\n"
+    1.在应用程序接受之前已经打印了，这是行规程的回显功能
+[echo-stdin-json-str][stdin]: "    1.在应用程序接受之前已经打印了，这是行规程的回显功能\n"
+    2.行规程原样透传到应用程序
+[echo-stdin-json-str][stdin]: "    2.行规程原样透传到应用程序\n"
+    3.行规程将 \r 转换为 \n 传递给应用程序
+[echo-stdin-json-str][stdin]: "    3.行规程将 \\r 转换为 \\n 传递给应用程序\n"
+    4.行规程有一个行 buffer 遇到 \r 才会将 buffer 的内容传递给应用程序
+[echo-stdin-json-str][stdin]: "    4.行规程有一个行 buffer 遇到 \\r 才会将 buffer 的内容传递给应用程序\n"
+测试行编辑(按退格的效果\u007f): hello world!
+[echo-stdin-json-str][stdin]: "测试行编辑(按退格的效果\\u007f): hello world!\n"
+  可以看出，\u007f 删除了前面的逗号, 应用程序接受到的是 hello world!
+[echo-stdin-json-str][stdin]: "  可以看出，\\u007f 删除了前面的逗号, 应用程序接受到的是 hello world!\n"
+测试行编辑(按方向键效果): world^[[D^[[D^[[D^[[D^[[Dhello 
+[echo-stdin-json-str][stdin]: "测试行编辑(按方向键效果): world\u001b[D\u001b[D\u001b[D\u001b[D\u001b[Dhello \n"
+  可以看出，方向键不会影响行规程的行编辑
+[echo-stdin-json-str][stdin]: "  可以看出，方向键不会影响行规程的行编辑\n"
+* 即将发送 ctrl+c ，应用程序将收到 SIGINT(2) 信号
+[echo-stdin-json-str][stdin]: "* 即将发送 ctrl+c ，应用程序将收到 SIGINT(2) 信号\n"
+^C[echo-stdin-json-str][signal]: SIGINT (2)
+```
+
+TODO 介绍 Linux 环境创建 pty 的流程。
 
 ### 完整实例：使用 xterm.js 和 Go 实现一个 WebShell
 
@@ -265,7 +443,35 @@ main();
 
 ### 高阶话题：终端和 Shell
 
+在Linux中，作业（Job）、进程组（Process Group）和会话（Session）是用于管理和控制进程的关键概念。作业是指由用户在shell中启动的一组相关的进程，这些进程可以被当作一个整体来管理。进程组是将多个进程关联起来，以便进行批量操作，如发送信号。会话则是一系列进程组的集合，通常与一个登录会话相关联。
+1. 作业(Job):
+作业是用户在shell中启动的一组进程，通常是用户通过管道、重定向等方式将多个命令组合在一起形成的。
+作业可以被暂停、恢复、终止。
+在shell中，可以使用 jobs 命令查看当前会话中的作业，使用 fg 命令将后台作业调回前台，使用 bg 命令将停止的作业在后台继续运行。
+例如，command1 | command2 & 启动了一个后台作业，其中 command1 和 command2 是相关的进程。
+作业与进程组的区别在于，如果作业中的某个进程创建了子进程，子进程不一定属于同一个作业。
+2. 进程组(Process Group):
+进程组是进程的集合，通常与作业相关联，可以接收来自同一终端的信号。
+每个进程组有一个唯一的进程组ID（PGID），通常等于组长进程的进程ID。
+每个进程组可以有一个组长进程，当组长进程终止时，该进程组仍然存在，除非进程组中的最后一个进程也终止。
+进程组主要用于进程管理和信号分发。
+例如，setpgid(pid, pgid) 可以将进程 pid 加入到进程组 pgid 中。
+3. 会话(Session):
+会话是一系列进程组的集合，通常与一个登录会话相关联。
+每个会话有一个会话首进程（session leader），即创建会话的进程。
+会话可以有一个控制终端，用户通过该终端与系统交互。
+会话中的进程组可以分为前台进程组和后台进程组。
+当用户断开终端连接时，会话会收到SIGHUP 信号。
+例如，setsid() 可以创建一个新的会话。
+总结:
+作业是用户层面的进程管理，通过shell命令进行控制。
+进程组是更底层的概念，用于将多个进程组织在一起，便于信号传递和管理。
+会话是最高层面的概念，用于将进程组组织在一起，通常与一个登录会话对应。
+理解这些概念有助于更好地理解和控制Linux系统中的进程和作业。
+
 ### 高阶话题：Vim UI 原理（备用设备、鼠标 API等）
+
+TODO 终端窗口尺寸。
 
 * `\x1b[?1049h\x1b[0m\x1b[2J\x1b[?1003h\x1b[?1015h\x1b[?1006h\x1b[?25l`
 
