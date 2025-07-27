@@ -39,7 +39,7 @@ tags:
 
 * line buffer: 对终端模拟器中的字符输入，进行输入缓冲，直到按 `\r` （回车符），应用程序才能读到（终端诞生的时代计算机性能羸弱，如果每个字符都直接传递给应用程序，会造成性能问题。当然，现代的应用程序也可以配置这个行规程的默认行为，让行规程立即将字符发送给应用程序）。
 * line edit: 根据终端模拟器输入的一些特殊字符对行缓冲中的字符序列进行编辑，如退格等。
-* echo: 回显。在[终端输入 API](/posts/terminal-detail-1-device/#终端输入-API)小节中，在终端中输入的内容，终端中并没有显示，而这依赖回显功能实现。即行规程从终端接收到一个可打印字符后，会立即原样发送回终端。
+* echo: 回显。在[终端输入 API](/posts/terminal-detail-1-device/#终端输入-api)小节中，在终端中输入的内容，终端中并没有显示，而这依赖回显功能实现。即行规程从终端接收到一个可打印字符后，会立即原样发送回终端。
 * job control: 作业控制，将一些快捷键转换为信号发送给应用程序（如 ctrl+c 等）。
 
 下面使用一个 Go 程序验证行规程的行为（源码详见 [github](https://github.com/rectcircle/implement-terminal-from-scratch/tree/master/experiment/03-pty-demo)）。
