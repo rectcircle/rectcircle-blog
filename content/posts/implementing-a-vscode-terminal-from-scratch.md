@@ -10,24 +10,6 @@ tags:
 
 > 本文源码: [rectcircle/implement-terminal-from-scratch](https://github.com/rectcircle/implement-terminal-from-scratch)
 
-### 示例 1：使用 xterm.js 和 Go 实现一个 WebShell
-
-> 源码详见 [github](https://github.com/rectcircle/implement-terminal-from-scratch/tree/master/demo/02-webshell-demo)
-
-TODO:
-
-1. github 示例项目分为 experiment、 demo-project
-2. 将这一系列文章划分为:
-    1. 终端详解（一）： 终端设备和内核 PTY
-    2. 终端详解（二）： 使用 xterm.js 和 Go 实现一个 WebShell
-    3. 终端详解（三）： 实现一个简化版的 Shell
-    4. 终端详解（四）： 实现一个简化版的 VIM
-
-接下来，简单实现一个 WebShell 服务：
-
-* 客户端使用 web 技术和 xterm.js 库。
-* 服务端使用 Go 通过 websocket 提供服务。
-
 ### 示例 2：实现一个简化版 Shell
 
 在Linux中，作业（Job）、进程组（Process Group）和会话（Session）是用于管理和控制进程的关键概念。作业是指由用户在shell中启动的一组相关的进程，这些进程可以被当作一个整体来管理。进程组是将多个进程关联起来，以便进行批量操作，如发送信号。会话则是一系列进程组的集合，通常与一个登录会话相关联。
