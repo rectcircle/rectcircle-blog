@@ -14,17 +14,24 @@ tags:
 
 前面系列文章已介绍 terminal 设备 API 和 PTY 的相关机制。基于此，可以按照如下思路实现一个简单的 WebShell 服务：
 
-* Client (浏览器) <-> Server 使用 WebSocket 进行通讯，手法 ANSI escape 字符流。
-* Client 使用 xterm.js 库，实现终端能力。
+* Client (浏览器) <-> Server 使用 WebSocket 进行通讯，收发 ANSI escape 字符流。
+* Client 使用 [xterm.js](https://xtermjs.org/) 库，实现终端能力。
 * Server 使用 Go 实现：
     * HTTP Server 由使用 Go 的 `"net/http"` 标准库提供支持。
-    * WebSocket 协议由 github.com/coder/websocket 库提供支持。
-    * PTY 创建由 github.com/creack/pty 库提供支持。
+    * WebSocket 协议由 [github.com/coder/websocket](https://github.com/coder/websocket) 库提供支持。
+    * PTY 创建由 [github.com/creack/pty](https://github.com/creack/pty) 库提供支持。
 * 此外，在 Client 和 Server ANSI escape 字符流收发位置打印传输内容，以便于观测 terminal 相关技术内部实现原理。
 
 ## Client
 
-使用 vite 创建一个 vanilla (不适用任何框架) 前端项目，编写 [client/src/main.js](https://github.com/rectcircle/implement-terminal-from-scratch/blob/master/project-demo/01-webshell-demo/client/src/main.js)。
+使用 vite 创建一个 vanilla (不适用任何框架) 前端项目，并添加 xterm.js 依赖。
+
+```bash
+npm create vite@latest 
+npm install -D @xterm/xterm
+```
+
+编写 [client/src/main.js](https://github.com/rectcircle/implement-terminal-from-scratch/blob/master/project-demo/01-webshell-demo/client/src/main.js)：
 
 ```js
 // 引入项目 css
