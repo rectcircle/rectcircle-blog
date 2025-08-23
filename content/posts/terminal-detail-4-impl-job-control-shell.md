@@ -12,7 +12,7 @@ tags:
 
 ## 前言
 
-Shell 是我们与操作系统交互的重要桥梁，它不仅能执行命令行程序和解释 Shell 脚本，还具备一项需要与终端设备深度协作的核心功能—— 作业控制 （Job Control）。
+Shell 是我们与操作系统交互的重要桥梁，它不仅能执行命令行程序和解释 Shell 脚本，还具备一项需要与终端设备深度协作的核心功能 —— 作业控制 （Job Control）。
 
 作业控制是 Shell 的高级特性，它让我们能够：
 
@@ -133,7 +133,7 @@ func (k *JobController) Execute(input string) error {
 }
 ```
 
-### 管道符实现
+### 管道符
 
 在 `project-demo/02-shell-demo/job.go` 中，添加对 Job 的抽象，并实现管道符处理：
 
@@ -342,9 +342,141 @@ func (j *Job) Wait() error {
     * proc1 写入时会触发 SIGPIPE 信号，默认改程序会退出。
     * proc3 读取 stdin 会返回 EOF，一般情况下，程序会自行退出。
 
-### 后台作业实现
+### 作业控制
 
-## 作业控制
+作业控制实现了，一个交互式 Shell 可以在后台运行多个任务。具体而言：
+
+* 0 个或 1 个 Job 在前台运行，0 个或多个 Job 在后台运行。
+* 前台 Job 可以切换到后台，后台 Job 可以切换到前台。
+* 前台 Job 可以接收来自终端的的控制信号，后台 Job 不受影响。
+* 交互式 Shell 退出后，所有的 Job 均被 SIGHUP （挂断信号） 终止。
+
+#### 是否可以启用作业控制
+
+如上可以看出，作业控制和终端密切相关，因此一个 shell 要启用作业控制能力，必须满足如下两个条件：
+
+* stdin 是否是 tty/pty。
+* shell 所在进程组必须是当前会话的前台进程组。
+
+因此，以 bash 为例：
+
+* 如下条件将可以启用作业控制：
+    * 使用 ssh/webshell 连接到远端启动的 `shell`： ssh/webshell server 会配置好会话和 pty。
+    * 在一个 shell 交互式终端内执行 `bash`： 这个 bash 自然的在父 shell 的前台进程组内且 stdin 和 stdout 是 tty/pty。
+* 如下条件将无法启用作业控制：
+    * `echo 'ls -al' | bash`： 此时 bash 的 stdin 是一个 pipe。
+    * `bash &`： 此时 bash 不在前台进程组。
+
+在 `project-demo/02-shell-demo/job.go` 实现一个方法，判断当前进程是否可以启用作业控制。
+
+```go
+import (
+	// ..
+    "golang.org/x/sys/unix"
+
+)
+
+// ...
+
+// CanEnableJobControl 判断当前进程是否可以启用作业控制
+func (k *JobController) CanEnableJobControl() bool {
+	// 检查是否有控制终端
+	if !isatty(os.Stdin.Fd()) {
+		return false
+	}
+
+	// 获取当前进程的进程组ID
+	currentPgid := syscall.Getpgrp()
+
+	// 获取前台进程组ID
+	foregroundPgid, err := unix.IoctlGetInt(int(os.Stdin.Fd()), unix.TIOCGPGRP)
+	if err != nil {
+		return false
+	}
+
+	// 如果当前进程组就是前台进程组，则可以启用作业控制
+	return currentPgid == foregroundPgid
+}
+
+// isatty 检查文件描述符是否是终端
+func isatty(fd uintptr) bool {
+	_, err := unix.IoctlGetTermios(int(fd), ioctlReadTermios)
+	return err == nil
+}
+```
+
+`project-demo/02-shell-demo/main.go` 添加检查，如果无法启用作业控制，则直接退出。
+
+```go
+// ...
+func main() {
+	reader := bufio.NewReader(os.Stdin)
+	jobController := &JobController{}
+
+	if !jobController.CanEnableJobControl() {
+		fmt.Println("Job control not available. Exiting.")
+		os.Exit(1)
+	}
+
+    // ...
+}
+```
+
+获取终端信息，有一些跨平台问题，因此需要使用条件编译。
+
+`project-demo/02-shell-demo/term_unix_bsd.go` MacOS 等系统：
+
+```go
+// https://github.com/golang/term/blob/master/term_unix_bsd.go
+
+//go:build darwin || dragonfly || freebsd || netbsd || openbsd
+
+package main
+
+import "golang.org/x/sys/unix"
+
+const ioctlReadTermios = unix.TIOCGETA
+
+// const ioctlWriteTermios = unix.TIOCSETA
+```
+
+`project-demo/02-shell-demo/term_unix_other.go` Linux 等系统：
+
+```go
+// https://github.com/golang/term/blob/master/term_unix_other.go
+
+//go:build aix || linux || solaris || zos
+
+package main
+
+import "golang.org/x/sys/unix"
+
+const ioctlReadTermios = unix.TCGETS
+
+// const ioctlWriteTermios = unix.TCSETS
+```
+
+测试：
+
+```bash
+cd project-demo/02-shell-demo
+# 如下将可以正常执行
+go run .
+# 如下将立即退出，打印 Job control not available. Exiting. 
+go run . &
+# 如下将立即退出，打印 Job control not available. Exiting.
+echo 'ls' | go run .
+```
+
+#### 支持 `&` 后台 Job
+
+#### 孤儿进程组？？？
+
+#### TODO
+
+首先，要实现作业控制，在 Shell 启动阶段，Shell 必须要处于前台进程组内。
+
+## 总结
 
 * 将 shell 进程作为会话首进程、会话领导者、控制进程、拥有一个控制终端，不需要 shell 程序自己实现，而是由引导程序通过如下方式设置：
     * fork 出进程，如下操作均在子进程中调用
