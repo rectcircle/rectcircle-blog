@@ -342,9 +342,92 @@ func (j *Job) Wait() error {
     * proc1 写入时会触发 SIGPIPE 信号，默认改程序会退出。
     * proc3 读取 stdin 会返回 EOF，一般情况下，程序会自行退出。
 
+### 前台进程组
+
+在上一步，为 Job 创建了进程组。但是没有将这个 Job 设置为前台进程组。因此，这个 shell-demo 和 bash 相比无法正确的处理信号：
+
+比如：
+
+```bash
+cd project-demo/02-shell-demo
+go run .
+# 输入 sleep 100 
+# 输入 回车
+# 输入 ctrl+c
+```
+
+此时 shell-demo 就退出了，这和 bash 行为是不一致的。bash 的行为是将 sleep 100 进程停止， bash 继续等待用户输入。
+
+因为只有前台进程组才能收到终端输入的 ctrl+c 信号，要实现类似 bash 的行为需要：
+
+1. 在执行 Job 进程组的时候，需要将前台进程组从 Shell 所在进程组切换到 Job 所在进程组。
+2. 在 Job 进程组退出后，将前台进程组重新设置为 Shell 所在进程组（必须切换回来，否则 Shell 通过 stdin 读取终端时会触发 SIGTTIN 信号，因为 stdin 只能前台进程组可以读取）。
+
+`project-demo/02-shell-demo/job.go` Job 的 Start 方法，实现上述第 1 点：
+
+```go
+	// ...
+	for i, cmd := range cmds {
+		if i == 0 {
+			// 第一个进程作为进程组组长，并将该进程组设置为前台
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				Setpgid: true,
+				Pgid:    0, // 0 表示使用进程自己的PID作为进程组ID
+				// 实现原理是：
+				// 1. 在 fork 之前，调用 sigprocmask 屏蔽了所有信号 (runtime/proc.go syscall_runtime_BeforeFork)。
+				// 2. 在 fork 之后 exec 之前：
+				//    a. 调用 TIOCSPGRP 将子进程进程组设置为 session 的前台进程组 (syscall/exec_libc2.go forkAndExecInChild)。
+				//    b. 调用 msigrestore 恢复到信号屏蔽集 (runtime/proc.go syscall_runtime_AfterForkInChild)。
+				Foreground: true, // 将当前进程组设置为 session 的前台进程组
+			}
+		}
+		// ...
+	}
+	// ...
+```
+
+`project-demo/02-shell-demo/job.go` Job 的 Execute 方法，实现上述第 2 点：
+
+```go
+
+// Execute 执行Job中的命令
+func (j *Job) Execute() error {
+	// 不管怎样，都需要获取当前进程的进程组ID，并将其设置为前台进程组
+	// 先获取当前的进程组 ID
+	currentPgid, err := unix.Getpgid(0)
+	if err != nil {
+		return fmt.Errorf("Execute job, get pgid failed: %s", err)
+	}
+	defer func() {
+		// 需要忽略 SIGTTOU 信号，否则会导致前台进程组切换失败，原因如下：
+		// 1. Unix 系统为了安全，当调用 TIOCSPGRP 的进程不在前台进程组时，会发送 SIGTTOU 信号，而 SIGTTOU 的默认行为是退出进程。
+		//    因为 TIOCSPGRP 是给 Shell 程序调用的，如果普通程序调用这个函数，会破坏 Shell 的作业管理，因此 Unix 系统才设计了这个机制。
+		// 2. 我们实现的这个程序就是一个 Shell，因此就是要调用 TIOCSPGRP 的，因此需要避免 SIGTTOU 信号的影响，有两种办法。
+		//    a. 忽略这个信号，这里采用这个方案。
+		//    b. 通过 sigprocmask 屏蔽这个信号（这里需要说一下，对于其他信号，屏蔽信号只是延后信号的处理，但是对于 SIGTTOU 信号，屏蔽了之后，就不会再产生了） Go 的 syscall.SysProcAttr.Foreground 通过该方案实现。
+		signal.Ignore(syscall.SIGTTOU)
+		defer signal.Reset(syscall.SIGTTOU)
+		err = unix.IoctlSetPointerInt(int(os.Stdin.Fd()), unix.TIOCSPGRP, currentPgid)
+		if err != nil {
+			panic(err)
+		}
+	}()
+	// 获取当前进程组
+	err = j.Start()
+	if err != nil {
+		return err
+	}
+	return j.Wait()
+}
+```
+
+关于 TIOCSPGRP 以及 SIGTTOU 详见 [文档](https://pubs.opengroup.org/onlinepubs/9699919799/functions/tcsetpgrp.html)。
+
 ### 作业控制
 
-作业控制实现了，一个交互式 Shell 可以在后台运行多个任务。具体而言：
+前文已经介绍了前台进程组，已经涉及了作业控制的核心部分，即前台/后台进程组，而作业控制就是对多个 Job 的前后台的管理。
+
+即：作业控制实现了，一个交互式 Shell 可以在后台运行多个任务。具体而言：
 
 * 0 个或 1 个 Job 在前台运行，0 个或多个 Job 在后台运行。
 * 前台 Job 可以切换到后台，后台 Job 可以切换到前台。
@@ -386,16 +469,16 @@ func (k *JobController) CanEnableJobControl() bool {
 	}
 
 	// 获取当前进程的进程组ID
-	currentPgid := syscall.Getpgrp()
-
-	// 获取前台进程组ID
-	foregroundPgid, err := unix.IoctlGetInt(int(os.Stdin.Fd()), unix.TIOCGPGRP)
+	currentPgid, err := unix.Getpgid(0)
 	if err != nil {
 		return false
 	}
 
+	// 获取前台进程组ID
+	pgrpid := syscall.Getpgrp()
+
 	// 如果当前进程组就是前台进程组，则可以启用作业控制
-	return currentPgid == foregroundPgid
+	return currentPgid == pgrpid
 }
 
 // isatty 检查文件描述符是否是终端
