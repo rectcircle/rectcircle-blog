@@ -153,12 +153,16 @@ type JobController struct {
 
 // Execute 解析并执行命令，支持管道符
 func (k *JobController) Execute(input string) error {
-	// 创建Job并执行
 	job, err := NewJob(input)
 	if err != nil {
 		return err
 	}
-	return job.Execute()
+	// 启动 Job
+	err = job.Start()
+	if err != nil {
+		return err
+	}
+	return job.Wait()
 }
 
 // Job 表示一个作业，包含单个命令或管道命令
@@ -166,6 +170,8 @@ type Job struct {
 	commands []*exec.Cmd     // 命令列表，每个元素是一个 *exec.Cmd
 	pgid     int             // 进程组ID
 	pipes    []io.ReadCloser // 管道连接
+	exitCode int           // Job 整体退出码（最后一个进程），-1 表示正在运行中
+
 }
 
 // NewJob 创建一个新的Job，解析命令字符串
@@ -177,6 +183,7 @@ func NewJob(input string) (*Job, error) {
 	}
 
 	job := &Job{}
+	job.exitCode = -1
 
 	// 将每个命令构造为 *exec.Cmd
 	for _, cmdStr := range pipeCommands {
@@ -191,15 +198,6 @@ func NewJob(input string) (*Job, error) {
 	}
 
 	return job, nil
-}
-
-// Execute 执行Job中的命令
-func (j *Job) Execute() error {
-	err := j.Start()
-	if err != nil {
-		return err
-	}
-	return j.Wait()
 }
 
 // Start 启动Job中的所有命令
@@ -273,41 +271,27 @@ func (j *Job) Wait() error {
 		return nil
 	}
 
-	// 统一使用进程组等待
-	// 等待进程组中的所有进程完成
-	// 使用 Wait4 等待进程组
-	for {
-		var status syscall.WaitStatus
-		// 等待进程组中的任意子进程
-		pid, err := syscall.Wait4(-j.pgid, &status, 0, nil)
+	for i, cmd := range j.commands {
+		if cmd.Process == nil {
+			// 进程还没有启动
+			continue
+		}
+		var wstatus syscall.WaitStatus
+		wpid, err := syscall.Wait4(cmd.Process.Pid, &wstatus, 0, nil)
+		// Wait4 出错，可能是进程不存在或权限问题
 		if err != nil {
-			// 如果没有更多子进程，退出循环
 			if err == syscall.ECHILD {
-				break
+				// 进程已经不存在了
+				continue
 			}
+			// 未知错误，直接抛异常
 			return err
 		}
-
-		// 检查是否所有进程都已完成
-		allDone := true
-		for _, cmd := range j.commands {
-			if cmd.Process != nil && cmd.ProcessState == nil {
-				allDone = false
-				break
-			}
-		}
-
-		if allDone {
-			break
-		}
-
-		// 如果进程异常退出，返回错误
-		if !status.Exited() || status.ExitStatus() != 0 {
-			// 继续等待其他进程，但记录错误状态
-			_ = pid // 可以在这里记录哪个进程出错
+		if wpid == 0 {
+			// WNOHANG 且没有子进程状态变化，说明进程还在运行
+			continue
 		}
 	}
-
 	return nil
 }
 ```
@@ -360,10 +344,51 @@ go run .
 
 因为只有前台进程组才能收到终端输入的 ctrl+c 信号，要实现类似 bash 的行为需要：
 
-1. 在执行 Job 进程组的时候，需要将前台进程组从 Shell 所在进程组切换到 Job 所在进程组。
-2. 在 Job 进程组退出后，将前台进程组重新设置为 Shell 所在进程组（必须切换回来，否则 Shell 通过 stdin 读取终端时会触发 SIGTTIN 信号，因为 stdin 只能前台进程组可以读取）。
+1. 在创建 JobController 的时候，记录当前 shell 所在进程组 ID
+2. 在执行 Job 进程组的时候，需要将前台进程组从 Shell 所在进程组切换到 Job 所在进程组。
+3. 在 Job 进程组退出后，将前台进程组重新设置为 Shell 所在进程组（必须切换回来，否则 Shell 通过 stdin 读取终端时会触发 SIGTTIN 信号，因为 stdin 只能前台进程组可以读取）。
 
-`project-demo/02-shell-demo/job.go` Job 的 Start 方法，实现上述第 1 点：
+`project-demo/02-shell-demo/job.go` 添加 JobController 构造函数，记录当前 shell 所在进程组 ID：
+
+```go
+import (
+    // ...
+	"golang.org/x/sys/unix"
+)
+
+type JobController struct {
+	// 当前 shell 所在的前台进程组 ID
+	shellForegroundPgid int
+}
+
+
+func NewJobController() (*JobController, error) {
+	currentPgid, err := unix.Getpgid(0)
+	if err != nil {
+		return nil, fmt.Errorf("Execute job, get pgid failed: %s", err)
+	}
+
+	return &JobController{
+		shellForegroundPgid: currentPgid,
+	}, nil
+}
+```
+
+在 `project-demo/02-shell-demo/main.go` main 函数中使用构造函数新建 JobController：
+
+```go
+func main() {
+	reader := bufio.NewReader(os.Stdin)
+	jobController, err := NewJobController()
+	if err != nil {
+		fmt.Println("Job control not available. Exiting.")
+		os.Exit(1)
+	}
+	//...
+}
+```
+
+`project-demo/02-shell-demo/job.go` Job 的 Start 方法，实现上述第 2 点：
 
 ```go
 	// ...
@@ -386,38 +411,39 @@ go run .
 	// ...
 ```
 
-`project-demo/02-shell-demo/job.go` Job 的 Execute 方法，实现上述第 2 点：
+`project-demo/02-shell-demo/job.go` JobController 的 Execute 方法，实现上述第 3 点：
 
 ```go
-
-// Execute 执行Job中的命令
-func (j *Job) Execute() error {
-	// 不管怎样，都需要获取当前进程的进程组ID，并将其设置为前台进程组
-	// 先获取当前的进程组 ID
-	currentPgid, err := unix.Getpgid(0)
+func (k *JobController) ForceSetShellForeground() {
+	// 需要忽略 SIGTTOU 信号，否则会导致前台进程组切换失败，原因如下：
+	// 1. Unix 系统为了安全，当调用 TIOCSPGRP 的进程不在前台进程组时，会发送 SIGTTOU 信号，而 SIGTTOU 的默认行为是退出进程。
+	//    因为 TIOCSPGRP 是给 Shell 程序调用的，如果普通程序调用这个函数，会破坏 Shell 的作业管理，因此 Unix 系统才设计了这个机制。
+	// 2. 我们实现的这个程序就是一个 Shell，因此就是要调用 TIOCSPGRP 的，因此需要避免 SIGTTOU 信号的影响，有两种办法。
+	//    a. 忽略这个信号，这里采用这个方案。
+	//    b. 通过 sigprocmask 屏蔽这个信号（这里需要说一下，对于其他信号，屏蔽信号只是延后信号的处理，但是对于 SIGTTOU 信号，屏蔽了之后，就不会再产生了） Go 的 syscall.SysProcAttr.Foreground 通过该方案实现。
+	signal.Ignore(syscall.SIGTTOU)
+	defer signal.Reset(syscall.SIGTTOU)
+	err := unix.IoctlSetPointerInt(int(os.Stdin.Fd()), unix.TIOCSPGRP, k.shellForegroundPgid)
 	if err != nil {
-		return fmt.Errorf("Execute job, get pgid failed: %s", err)
+		panic(err)
 	}
-	defer func() {
-		// 需要忽略 SIGTTOU 信号，否则会导致前台进程组切换失败，原因如下：
-		// 1. Unix 系统为了安全，当调用 TIOCSPGRP 的进程不在前台进程组时，会发送 SIGTTOU 信号，而 SIGTTOU 的默认行为是退出进程。
-		//    因为 TIOCSPGRP 是给 Shell 程序调用的，如果普通程序调用这个函数，会破坏 Shell 的作业管理，因此 Unix 系统才设计了这个机制。
-		// 2. 我们实现的这个程序就是一个 Shell，因此就是要调用 TIOCSPGRP 的，因此需要避免 SIGTTOU 信号的影响，有两种办法。
-		//    a. 忽略这个信号，这里采用这个方案。
-		//    b. 通过 sigprocmask 屏蔽这个信号（这里需要说一下，对于其他信号，屏蔽信号只是延后信号的处理，但是对于 SIGTTOU 信号，屏蔽了之后，就不会再产生了） Go 的 syscall.SysProcAttr.Foreground 通过该方案实现。
-		signal.Ignore(syscall.SIGTTOU)
-		defer signal.Reset(syscall.SIGTTOU)
-		err = unix.IoctlSetPointerInt(int(os.Stdin.Fd()), unix.TIOCSPGRP, currentPgid)
-		if err != nil {
-			panic(err)
-		}
-	}()
-	// 获取当前进程组
-	err = j.Start()
+}
+
+// Execute 解析并执行命令，支持管道符
+func (k *JobController) Execute(input string) error {
+	job, err := NewJob(input)
 	if err != nil {
 		return err
 	}
-	return j.Wait()
+	// 启动 Job
+	err = job.Start()
+	if err != nil {
+		return err
+	}
+	defer k.ForceSetShellForeground() // 执行结束后强制把 shell 进程设置为前台
+
+	return job.Wait()
+
 }
 ```
 
@@ -427,14 +453,12 @@ func (j *Job) Execute() error {
 
 前文已经介绍了前台进程组，已经涉及了作业控制的核心部分，即前台/后台进程组，而作业控制就是对多个 Job 的前后台的管理。
 
-即：作业控制实现了，一个交互式 Shell 可以在后台运行多个任务。具体而言：
-
 * 0 个或 1 个 Job 在前台运行，0 个或多个 Job 在后台运行。
 * 前台 Job 可以切换到后台，后台 Job 可以切换到前台。
 * 前台 Job 可以接收来自终端的的控制信号，后台 Job 不受影响。
 * 交互式 Shell 退出后，所有的 Job 均被 SIGHUP （挂断信号） 终止。
 
-#### 是否可以启用作业控制
+#### 是否支持作业控制
 
 如上可以看出，作业控制和终端密切相关，因此一个 shell 要启用作业控制能力，必须满足如下两个条件：
 
@@ -446,7 +470,7 @@ func (j *Job) Execute() error {
 * 如下条件将可以启用作业控制：
     * 使用 ssh/webshell 连接到远端启动的 `shell`： ssh/webshell server 会配置好会话和 pty。
     * 在一个 shell 交互式终端内执行 `bash`： 这个 bash 自然的在父 shell 的前台进程组内且 stdin 和 stdout 是 tty/pty。
-* 如下条件将无法启用作业控制：
+* 这里介绍一下，一些无法启用作业控制例子：
     * `echo 'ls -al' | bash`： 此时 bash 的 stdin 是一个 pipe。
     * `bash &`： 此时 bash 不在前台进程组。
 
@@ -456,7 +480,6 @@ func (j *Job) Execute() error {
 import (
 	// ..
     "golang.org/x/sys/unix"
-
 )
 
 // ...
@@ -467,18 +490,11 @@ func (k *JobController) CanEnableJobControl() bool {
 	if !isatty(os.Stdin.Fd()) {
 		return false
 	}
-
-	// 获取当前进程的进程组ID
-	currentPgid, err := unix.Getpgid(0)
-	if err != nil {
-		return false
-	}
-
 	// 获取前台进程组ID
 	pgrpid := syscall.Getpgrp()
 
 	// 如果当前进程组就是前台进程组，则可以启用作业控制
-	return currentPgid == pgrpid
+	return k.shellForegroundPgid == pgrpid
 }
 
 // isatty 检查文件描述符是否是终端
@@ -551,7 +567,208 @@ go run . &
 echo 'ls' | go run .
 ```
 
-#### 支持 `&` 后台 Job
+#### 启动后台 Job
+
+在 Bash 中，可以通过在命令末尾添加 `&` 符号，将一个命令置入后台执行，即启用后台 Job。
+
+Bash 后台 Job 的表现如下：
+
+* 后台进程启动后，Bash 不会等待后台进程退出，而是打印 Job ID 和进程组 ID 后，进入下一轮 REPL 循环，等待用户输入新的命令。
+* 后台进程组不会设置为当前会话的前台进程组，也就是说 ctrl + c 等信号不会发送给这个后台进程组。
+* 后台进程的标准输出会输出到当前终端，因此可能出现前后台进程组日志交替输出的现象。
+* 当后台进程组退出后，在 REPL 的下一个命令执行时，会打印这个后台进程组已经退出的相关日志。
+
+例如 `echo 'sleep 2 && echo abc' | sh &` 输入情况如下：
+
+* 立即打印： `[1] 77842`
+* 立即打印： `$PS1` 然后等待用户输入
+* 2 秒后打印： `abc`
+* 按回车后打印： `[1]+  Done                    echo 'sleep 2 && echo abc' | sh`
+
+首先把 `project-demo/02-shell-demo/main.go` 的 main 函数里将用户输入空串的 continue 的逻辑删除掉，因为空串仍然需要后台 Job 逻辑（）。
+
+```diff
+@@ -37,11 +41,6 @@ func main() {
+                // 去除首位换行符和空格
+                input = strings.TrimSpace(input)
+ 
+-               // 如果输入为空，继续下一次循环
+-               if input == "" {
+-                       continue
+-               }
+-
+```
+
+然后 `project-demo/02-shell-demo/job.go` 的 Job 结构体：
+
+* 需要添加 `commandStr`、`exitCode`、`background` 来记录 Job 的命令字符串、退出码以及是否是后台任务，并在 `NewJob` 构造函数解析 `&` 符号，并对前面的字段进行正确初始化。
+* Job 的 Start 函数的 `Foreground` 字段由 Job 的 `background` 字段值决定。
+* 对 `Wait` 函数进行扩展改造：
+    * 支持非阻塞调用，在后台 Job 场景，需要通过非阻塞调用来检测 Job 情况。
+    * Job 最后一个命令的退出码需记录到 Job 结构体的 `exitCode` 字段中。
+
+```go
+// Job 表示一个作业，包含单个命令或管道命令
+type Job struct {
+	commandStr string          // 命令字符串
+	// ...
+	exitCode   int             // Job 整体退出码（最后一个进程），-1 表示正在运行中
+
+	background bool // 是否是后台 job
+}
+
+
+// NewJob 创建一个新的Job，解析命令字符串
+func NewJob(commandStr string) (*Job, error) {
+	commandStr = strings.TrimSpace(commandStr)
+	background := false
+	if strings.HasSuffix(commandStr, "&") {
+		background = true
+		commandStr = strings.TrimSuffix(commandStr, "&")
+	}
+
+	// 按管道符分割命令
+	pipeCommands := strings.Split(commandStr, "|")
+	if len(pipeCommands) == 0 {
+		return nil, nil
+	}
+
+	job := &Job{}
+	job.commandStr = commandStr
+	job.background = background
+	job.exitCode = -1
+
+	// ...
+}
+
+// Start 启动Job中的所有命令
+func (j *Job) Start() error {
+	// ..
+				Foreground: !j.background, // 将当前进程组设置为 session 的前台进程组
+	// ..
+}
+
+func (j *Job) Wait(wnohang bool) error {
+	if j.exitCode != -1 {
+		return nil
+	}
+	if len(j.commands) == 0 {
+		j.exitCode = 0
+		return nil
+	}
+	// 调用 wait 命令检查进程状态
+	waitOptions := 0
+	if wnohang {
+		waitOptions = syscall.WNOHANG
+	}
+	for i, cmd := range j.commands {
+		// ...
+		wpid, err := syscall.Wait4(cmd.Process.Pid, &wstatus, waitOptions, nil)
+		// ...
+		if i == len(j.commands)-1 {
+			// 最后一个命令的退出码作为 job 的退出码
+			j.exitCode = wstatus.ExitStatus()
+		}
+	}
+	return nil
+}
+```
+
+最后 `project-demo/02-shell-demo/job.go` 的 JobController 结构体：
+
+* 添加 `runningJobIds map[int]*Job` 字段，记录运行中的所有 Job。
+* 在 `NewJobController` 构造函数中，对 `runningJobIds` 进行初始化。
+* 在 `Execute` 函数中，前置检查并打印已退出的 Job，并区分前后台 Job 执行不同的逻辑。
+
+```go
+
+type JobController struct {
+	// ...
+	// 运行中的 job id (从 1 开始)
+	runningJobIds map[int]*Job
+
+}
+
+func NewJobController() (*JobController, error) {
+	//...
+
+	return &JobController{
+		// ...
+		runningJobIds:       make(map[int]*Job),
+	}, nil
+}
+
+// NewJob 新建一个 Job，返回 JobID
+func (k *JobController) AddJob(input string) (int, error) {
+	job, err := NewJob(input)
+	if err != nil {
+		return 0, err
+	}
+	var jobId = 1
+	for ; ; jobId++ {
+		if _, ok := k.runningJobIds[jobId]; !ok {
+			k.runningJobIds[jobId] = job
+			break
+		}
+	}
+
+	return jobId, nil
+}
+
+// Execute 解析并执行命令，支持管道符
+func (k *JobController) Execute(input string) error {
+	// 前置流程：检查后台进程是否执行完成
+	for jobId, job := range k.runningJobIds {
+		if job.background {
+			err := job.Wait(true)
+			if err != nil {
+				return err
+			}
+			var statusStr = ""
+			if job.exitCode == -1 {
+				// 进程还在运行
+				continue
+			} else if job.exitCode == 0 {
+				statusStr = "Done"
+			} else {
+				statusStr = fmt.Sprintf("Exit %d", job.exitCode)
+			}
+			fmt.Printf("[%d]+  %s                  %s\n", jobId, statusStr, job.commandStr)
+			delete(k.runningJobIds, jobId)
+		}
+	}
+
+	// 空字符串啥都不做
+	if input == "" {
+		return nil
+	}
+
+	// 创建 Job
+	jobId, err := k.AddJob(input)
+	if err != nil {
+		return err
+	}
+	job := k.runningJobIds[jobId]
+	// 启动 Job
+	err = job.Start()
+	if err != nil {
+		return err
+	}
+	// 前台执行
+	if !job.background {
+		defer func() { // 执行结束后，从 job 列表中删除
+			delete(k.runningJobIds, jobId)
+		}()
+		defer k.ForceSetShellForeground() // 执行结束后强制把 shell 进程设置为前台
+		return job.Wait(false)
+	}
+	// 后台执行
+	fmt.Printf("[%d] %d\n", jobId, job.pgid)
+	return nil
+}
+```
+
+#### 前后台 Job 切换
 
 #### 孤儿进程组？？？
 
