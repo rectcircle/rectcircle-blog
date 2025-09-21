@@ -733,7 +733,7 @@ func (k *JobController) Execute(input string) error {
 			} else {
 				statusStr = fmt.Sprintf("Exit %d", job.exitCode)
 			}
-			fmt.Printf("[%d]+  %s                  %s\n", jobId, statusStr, job.commandStr)
+			fmt.Printf("[%d] %s                  %s\n", jobId, statusStr, job.commandStr)
 			delete(k.runningJobIds, jobId)
 		}
 	}
@@ -769,6 +769,62 @@ func (k *JobController) Execute(input string) error {
 ```
 
 #### 前后台 Job 切换
+
+在 Bash 中前后台 Job 的创建和切换操作和原理如下所示：
+
+* 启动后台 Job: 命令最后添加 `&`，详见上文。
+* 启动前台 Job: 直接输入命令，详见上文。
+* 前台 Job -> 后台 (暂停状态) Job: 用户键入 `ctrl+z`。
+    * 该 Job 进程组内的所有进程，将接收到 SIGTSTP 信号 (Terminal Stop, 20)，内核将这些进程的调度状态设置为 STOP。
+    * Bash 进程 wait4 系统调用返回，通过 wstatus 可以获取到这些进程处于 stopped 状态（不再能获取到CPU，也就是进程被暂停，不再执行了）。
+    * Bash 进程将改进程设置为后台 Job，并将 Bash 自身设置为前台进程组，打印当前该 Job 的 jobid、处于退出状态、命令字符串如： `[1]+  Stopped                 sleep 100`，并打印命令提示符，等待下一个命令。
+* 后台 (暂停状态) Job -> 后台 (运行中) Job：用户在命令提示符输入 `bg <jobid>`。
+    * Bash 向该处于暂停状态的后台 Job 的进程组发送 SIGCONT (Continue, 18) 信号。
+    * 内核将该进程组的所有进程加入内核调度队列，进入正常调度。
+    * Bash 打印 jobid 以及命令字符串全文以及 `&` 后缀，如： `[1]+ sleep 100 &`。并打印命令提示符，等待下一个命令。
+* 后台 Job -> 前台 Job： 用户在命令提示符输入  `fg <jobid>`。
+    * 打印命令字符串全文。
+    * 如果该后台 Job 处于 Stop 状态，则先向该处于暂停状态的后台 Job 的进程组发送 SIGCONT (Continue, 18) 信号。
+    * 将 Job 的进程组设置为前台进程组。
+    * 阻塞 wait4 改 Job 的进程组退出或暂停。
+* 用户可以通过 `jobs` 这 bash 内置命令获取到所有后台任务。
+
+    如：
+
+    ```
+    [1]   Running                 sleep 1000 &
+    [2]+  Stopped                 sleep 10000
+    [3]-  Running                 sleep 100000 &
+    ```
+
+    * 第一列 `[jobid]±` 表示 job id，其中 `+` 和 `-` 的含义参见： [文档](https://tldp.org/LDP/abs/html/x9644.html#JOBIDTABLE)，本文不多介绍。
+    * 第二列 `Running|Stopped|Done|Exit x` 表示 Job 状态
+    * 剩余列 `命令字符串`，如果是 Running 状态则包含 `&` 符号。
+
+一个示例如下：
+
+```
+$ sleep 1000&
+[1] 58485
+
+$ sleep 10000
+^Z
+[2]+  Stopped                 sleep 10000
+
+$ sleep 100000
+^Z
+[3]+  Stopped                 sleep 100000
+
+$ bg 3
+[3]+ sleep 100000 &
+
+$ jobs
+[1]   Running                 sleep 1000 &
+[2]+  Stopped                 sleep 10000
+[3]-  Running                 sleep 100000 &
+```
+
+> 其他说明： Linux 中暂停一个进程除了 SIGTSTP (Terminal Stop, 20, 可捕获， ctrl+z 或 kill 触发) 外，还有一个 SIGSTOP (Stop, 19, 不可捕获， kill 触发) 信号，两者都能通过 SIGCONT 恢复
 
 #### 孤儿进程组？？？
 
