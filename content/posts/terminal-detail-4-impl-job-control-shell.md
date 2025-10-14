@@ -1,7 +1,7 @@
 ---
 title: "终端详解（四）简单实现一个支持作业控制的 Shell"
-date: 2025-08-03T16:11:00+08:00
-draft:  true
+date: 2025-10-14T21:40:00+08:00
+draft:  false
 toc: true
 comments: true
 tags:
@@ -25,9 +25,8 @@ Shell 是我们与操作系统交互的重要桥梁，它不仅能执行命令�
 
 * `proc1 | proc2` 管道符的实现原理是什么？
 * `proc1 &` 后台进程，为什么还会输入到屏幕中？
-* `proc1 &` ssh 断开后，后台任务为什么退出了？
-* `nohup` 原理是什么？
 * `ctrl+c` 原理是什么？
+* `proc1 &` ssh 断开后，后台任务为什么退出了？`nohup` 原理是什么？
 
 ## 实现
 
@@ -325,6 +324,8 @@ func (j *Job) Wait() error {
     * proc2 进程的 stdio 文件描述符会被关闭。
     * proc1 写入时会触发 SIGPIPE 信号，默认改程序会退出。
     * proc3 读取 stdin 会返回 EOF，一般情况下，程序会自行退出。
+
+> 另外： Setpgid 的 Go 的实现隐藏了一个细节。如果是 C 的实现需要 fork 后，父子进程都需要调用 Setpgid 以避免静态问题。
 
 ### 前台进程组
 
@@ -772,12 +773,12 @@ func (k *JobController) Execute(input string) error {
 
 在 Bash 中前后台 Job 的创建和切换操作和原理如下所示：
 
-* 启动后台 Job: 命令最后添加 `&`，详见上文。
-* 启动前台 Job: 直接输入命令，详见上文。
+* 启动后台 Job: 用户在命令最后添加 `&`，详见上文。
+* 启动前台 Job: 用户直接输入命令，详见上文。
 * 前台 Job -> 后台 (暂停状态) Job: 用户键入 `ctrl+z`。
     * 该 Job 进程组内的所有进程，将接收到 SIGTSTP 信号 (Terminal Stop, 20)，内核将这些进程的调度状态设置为 STOP。
     * Bash 进程 wait4 系统调用返回，通过 wstatus 可以获取到这些进程处于 stopped 状态（不再能获取到CPU，也就是进程被暂停，不再执行了）。
-    * Bash 进程将改进程设置为后台 Job，并将 Bash 自身设置为前台进程组，打印当前该 Job 的 jobid、处于退出状态、命令字符串如： `[1]+  Stopped                 sleep 100`，并打印命令提示符，等待下一个命令。
+    * Bash 进程将该进程设置为后台 Job，并将 Bash 自身设置为前台进程组，打印当前该 Job 的 jobid、处于退出状态、命令字符串如： `[1]+  Stopped                 sleep 100`，并打印命令提示符，等待下一个命令。
 * 后台 (暂停状态) Job -> 后台 (运行中) Job：用户在命令提示符输入 `bg <jobid>`。
     * Bash 向该处于暂停状态的后台 Job 的进程组发送 SIGCONT (Continue, 18) 信号。
     * 内核将该进程组的所有进程加入内核调度队列，进入正常调度。
@@ -786,7 +787,7 @@ func (k *JobController) Execute(input string) error {
     * 打印命令字符串全文。
     * 如果该后台 Job 处于 Stop 状态，则先向该处于暂停状态的后台 Job 的进程组发送 SIGCONT (Continue, 18) 信号。
     * 将 Job 的进程组设置为前台进程组。
-    * 阻塞 wait4 改 Job 的进程组退出或暂停。
+    * 阻塞 wait4 该 Job 的进程组退出或暂停。
 * 用户可以通过 `jobs` 这 bash 内置命令获取到所有后台任务。
 
     如：
@@ -826,11 +827,318 @@ $ jobs
 
 > 其他说明： Linux 中暂停一个进程除了 SIGTSTP (Terminal Stop, 20, 可捕获， ctrl+z 或 kill 触发) 外，还有一个 SIGSTOP (Stop, 19, 不可捕获， kill 触发) 信号，两者都能通过 SIGCONT 恢复
 
-#### 孤儿进程组？？？
+修改 `project-demo/02-shell-demo/job.go` 添加相关逻辑
 
-#### TODO
+```go
+package main
 
-首先，要实现作业控制，在 Shell 启动阶段，Shell 必须要处于前台进程组内。
+import (
+	// ...
+	"sort"
+	"strconv"
+	// ...
+)
+
+// Job 状态常量
+const (
+	JobStatusRunning = "Running"
+	JobStatusStopped = "Stopped"
+	JobStatusDone    = "Done"
+)
+
+// ...
+
+// Execute 解析并执行命令，支持管道符
+func (k *JobController) Execute(input string) error {
+	// 前置流程：检查后台进程是否执行完成
+	for _, jobId := range k.sortedJobIds() {
+		job := k.runningJobIds[jobId]
+		if job.background {
+			err := job.Wait(true)
+			if err != nil {
+				return err
+			}
+			var statusStr = ""
+			if job.exitCode == -1 {
+				// 进程还在运行
+				continue
+			} else if job.exitCode == 0 {
+				statusStr = JobStatusDone
+			} else {
+				statusStr = fmt.Sprintf("Exit %d", job.exitCode)
+			}
+			fmt.Printf("[%d] %s                  %s\n", jobId, statusStr, job.commandStr)
+			delete(k.runningJobIds, jobId)
+		}
+	}
+
+	// 空字符串啥都不做
+	if input == "" {
+		return nil
+	}
+
+	// 尝试执行内建命令
+	isBuiltin, err := k.tryExecuteBuiltinCommand(input)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+		return nil
+	}
+	if isBuiltin {
+		return nil
+	}
+
+	// 创建 Job
+	jobId, err := k.AddJob(input)
+	if err != nil {
+		return err
+	}
+	job := k.runningJobIds[jobId]
+	// 启动 Job
+	err = job.Start()
+	if err != nil {
+		delete(k.runningJobIds, jobId)
+		return err
+	}
+	// 前台执行
+	if !job.background {
+		return k.waitForegroundJob(jobId, job)
+	}
+	// 后台执行
+	fmt.Printf("[%d] %d\n", jobId, job.pgid)
+	return nil
+}
+
+
+func (k *JobController) sortedJobIds() []int {
+	keys := make([]int, 0, len(k.runningJobIds))
+	for id := range k.runningJobIds {
+		keys = append(keys, id)
+	}
+	sort.Ints(keys) // 升序
+	return keys
+}
+
+// tryExecuteBuiltinCommand 处理内置命令，返回是否是内置命令
+func (k *JobController) tryExecuteBuiltinCommand(input string) (bool, error) {
+	args := strings.Fields(input)
+	if len(args) == 0 {
+		return false, nil
+	}
+
+	switch args[0] {
+	case "jobs":
+		return true, k.handleJobsCommand()
+	case "bg":
+		if len(args) != 2 {
+			return true, fmt.Errorf("bg: usage: bg <jobid>")
+		}
+		return true, k.handleBgCommand(args[1])
+	case "fg":
+		if len(args) != 2 {
+			return true, fmt.Errorf("fg: usage: fg <jobid>")
+		}
+		return true, k.handleFgCommand(args[1])
+	default:
+		return false, nil
+	}
+}
+
+// handleJobsCommand 处理 jobs 命令
+func (k *JobController) handleJobsCommand() error {
+	for _, jobId := range k.sortedJobIds() {
+		job := k.runningJobIds[jobId]
+		var statusStr string
+		if job.exitCode == -1 {
+			statusStr = JobStatusRunning
+		} else if job.exitCode == -2 {
+			statusStr = JobStatusStopped
+		} else if job.exitCode == 0 {
+			statusStr = JobStatusDone
+		} else {
+			statusStr = fmt.Sprintf("Exit %d", job.exitCode)
+		}
+
+		commandStr := job.commandStr
+		if job.exitCode == -1 && job.background {
+			commandStr += " &"
+		}
+
+		fmt.Printf("[%d] %s                  %s\n", jobId, statusStr, commandStr)
+	}
+	return nil
+}
+
+// handleBgCommand 处理 bg 命令
+func (k *JobController) handleBgCommand(jobIdStr string) error {
+	jobId, err := strconv.Atoi(jobIdStr)
+	if err != nil {
+		return fmt.Errorf("bg: invalid job id: %s", jobIdStr)
+	}
+
+	job, exists := k.runningJobIds[jobId]
+	if !exists {
+		return fmt.Errorf("bg: job %d not found", jobId)
+	}
+
+	if job.exitCode != -2 {
+		return fmt.Errorf("bg: job %d is not stopped", jobId)
+	}
+
+	// 向进程组发送 SIGCONT 信号
+	err = syscall.Kill(-job.pgid, syscall.SIGCONT)
+	if err != nil {
+		return fmt.Errorf("bg: failed to send SIGCONT to job %d: %v", jobId, err)
+	}
+
+	// 更新 Job 状态
+	job.exitCode = -1
+	job.background = true
+
+	// 打印 Job 信息
+	fmt.Printf("[%d] %s &\n", jobId, job.commandStr)
+
+	return nil
+}
+
+// handleFgCommand 处理 fg 命令
+func (k *JobController) handleFgCommand(jobIdStr string) error {
+	jobId, err := strconv.Atoi(jobIdStr)
+	if err != nil {
+		return fmt.Errorf("fg: invalid job id: %s", jobIdStr)
+	}
+
+	job, exists := k.runningJobIds[jobId]
+	if !exists {
+		return fmt.Errorf("fg: job %d not found", jobId)
+	}
+
+	// 打印命令字符串
+	fmt.Printf("%s\n", job.commandStr)
+
+	// 如果 Job 处于 Stop 状态，先发送 SIGCONT 信号
+	if job.exitCode == -2 {
+		err = syscall.Kill(-job.pgid, syscall.SIGCONT)
+		if err != nil {
+			return fmt.Errorf("fg: failed to send SIGCONT to job %d: %v", jobId, err)
+		}
+	}
+
+	// 将 Job 的进程组设置为前台进程组
+	signal.Ignore(syscall.SIGTTOU)
+	defer signal.Reset(syscall.SIGTTOU)
+	err = unix.IoctlSetPointerInt(int(os.Stdin.Fd()), unix.TIOCSPGRP, job.pgid)
+	if err != nil {
+		return fmt.Errorf("fg: failed to set job %d as foreground: %v", jobId, err)
+	}
+
+	// 更新 Job 状态
+	job.background = false
+	job.exitCode = -1
+
+	// TODO: 走统一的 wait 前台进程逻辑，也需要支撑 ctrl + z
+	// 阻塞等待 Job 退出或暂停
+	return k.waitForegroundJob(jobId, job)
+}
+
+// waitForegroundJob 等待前台 Job 执行完成，并处理清理逻辑
+func (k *JobController) waitForegroundJob(jobId int, job *Job) error {
+	defer func() { // 执行结束后，从 job 列表中删除
+		if job.exitCode != -1 && job.exitCode != -2 {
+			delete(k.runningJobIds, jobId)
+		}
+	}()
+	defer k.ForceSetShellForeground() // 执行结束后强制把 shell 进程设置为前台
+
+	err := job.Wait(false)
+	if err != nil {
+		return err
+	}
+
+	// 判断是否是 stop 状态
+	if job.exitCode == -2 {
+		fmt.Printf("[%d] %s                  %s\n", jobId, JobStatusStopped, job.commandStr)
+	}
+
+	return nil
+}
+
+// Job 表示一个作业，包含单个命令或管道命令
+type Job struct {
+	commandStr string          // 命令字符串
+	commands   []*exec.Cmd     // 命令列表，每个元素是一个 *exec.Cmd
+	pgid       int             // 进程组ID
+	pipes      []io.ReadCloser // 管道连接
+	exitCode   int             // Job 整体退出码：-1 运行中，-2 已暂停，其他值为退出码
+	background bool            // 是否是后台 job
+}
+
+// ...
+
+func (j *Job) Wait(wnohang bool) error {
+	if j.exitCode != -1 {
+		return nil
+	}
+	if len(j.commands) == 0 {
+		j.exitCode = 0
+		return nil
+	}
+	// 调用 wait 命令检查进程状态
+	waitOptions := syscall.WUNTRACED // 添加 WUNTRACED
+	if wnohang {
+		waitOptions |= syscall.WNOHANG // 使用位或操作
+	}
+
+	for i, cmd := range j.commands {
+		if cmd.Process == nil {
+			// 进程还没有启动
+			continue
+		}
+		var wstatus syscall.WaitStatus
+		wpid, err := syscall.Wait4(cmd.Process.Pid, &wstatus, waitOptions, nil)
+		// Wait4 出错，可能是进程不存在或权限问题
+		if err != nil {
+			if err == syscall.ECHILD {
+				// 进程已经不存在了
+				continue
+			}
+			// 未知错误，直接抛异常
+			return err
+		}
+		if wpid == 0 {
+			// WNOHANG 且没有子进程状态变化，说明进程还在运行
+			continue
+		}
+		// 检查进程是否被暂停
+		if wstatus.Stopped() {
+			j.exitCode = -2
+			// 对于暂停的进程，不设置 exitCode
+			return nil
+		}
+
+		if i == len(j.commands)-1 {
+			// 最后一个命令的退出码作为 job 的退出码
+			j.exitCode = wstatus.ExitStatus()
+		}
+	}
+	return nil
+}
+
+// ...
+```
+
+#### 挂断信号
+
+SIGHUP（Hangup，挂断）是 Unix/POSIX 系统中的一个信号，最初用于表示“控制终端断开”（例如串口/调制解调器挂断）。现代系统中，pty master 被 close 时，内核会发送 SIGHUP （挂断信号） 给会话内的所有进程。
+
+这也是为什么 SSH 断开连接后，正在运行的程序全都退出了。
+
+而 nohup 就是通过忽略 SIGHUP 信号，然后重定向标准输出/标准出错输出到文件（当标准输出/标准出错为终端时）（默认为 nohup.out），标准输入不处理，然后 exec 加载这个程序（nohup 进程就是要执行的进程本身），来解决 shell 退出后，后台任务退出的问题。
+
+常见用法如下：
+
+```bash
+nohup your_cmd >/var/log/your_cmd.log 2>&1 </dev/null &
+```
 
 ## 总结
 
@@ -843,11 +1151,12 @@ $ jobs
 * shell 进程如何告知控制终端，前台进程组是哪个？
     * 通过 `tcsetpgrp` 系统调用（Terminal Control SET Process GRouP） 设置前台进程组。
     * 不只是 shell 可以调用这个函数，该会话内的所有进程都有权限调用（bash 里面再起一个 bash 的场景的作业控制也就可以实现了）。
+    * 这个系统调用会产生一个 SIGTTOU 信号，需要忽略 SIGTTOU 信号，否则会导致前台进程组切换失败。
 * 作业控制信号：
     * 终端收到如下快捷键，内核会发送信号给关联的会话的前台进程组：
         * `ctrl+c` SIGINT 中断信号
         * `ctrl+\` SIGQUIT 退出信号
-        * `ctrl+z` SIGSTP 挂起信号 （内核将前台进程组挂起后会向父进程 shell 发送 SIGCHLD 信号，Shell 接收到信号后，会将 shell 设置为前台进程组）
+        * `ctrl+z` SIGSTP 挂起信号 （内核暂停前台进程组的进程，然后父进程 wait4 会返回，然后可以获取这个进程是否处于 stop 状态，然后可以将之切换到后台）
     * pty master 被 close 时，内核会发送 SIGHUP （挂断信号） 给会话内的所有进程。
         * 因此 `&` 后，ssh 断开后，进程会挂掉。
         * 此外，如果会话领导者退出了，内核也会发送 SIGHUP 信号。
@@ -857,11 +1166,6 @@ $ jobs
 * 作业和管道：
     * 作业是 shell 的概念不是操作系统的概念。
     * 一般由 `|` 连接起来的命令会组成一个 job，一般 job 和进程组一一对应。
-* nohup 的原理：通过忽略 SIGHUP 信号实现的，并重定向标准输出，然后 exec 加载这个程序（nohup 进程就是要执行的进程本身）。
+* nohup 的原理：通过忽略 SIGHUP 信号并对标准输出标准出错进行重定向，然后 exec 加载这个程序（nohup 进程就是要执行的进程本身），来解决 shell 退出后，后台任务退出的问题。
 * 观测办法：
     * `ps -o pid,ppid,pgid,sid,comm`
-* 判断当前前台进程组是谁？
-
-## TODO
-
-setpgid 需要父子进程均调用。
