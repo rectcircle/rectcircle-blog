@@ -1,6 +1,6 @@
 ---
 title: "终端详解（五）Shell 集成"
-date: 2025-08-03T16:11:00+08:00
+date: 2025-12-27T16:25:00+08:00
 draft: false
 toc: true
 comments: true
