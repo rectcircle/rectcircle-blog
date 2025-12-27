@@ -76,6 +76,8 @@ VSCode 定义了一套私有的转义序列协议，以 `OSC 633` 开头（即 `
 
 本部分将在 [《终端详解（三）实现 WebShell》](/posts/terminal-detail-3-webshell/) 基础上，实现 Shell 集成。
 
+源码位于： github 示例仓库的 [`project-demo/03-shell-integration`](https://github.com/rectcircle/implement-terminal-from-scratch/blob/master/project-demo/03-shell-integration) 目录。
+
 ### 功能介绍
 
 相比 WebShell 只“透传字节流”，Shell 集成会让前端“看懂”一次命令执行的边界与元信息：
