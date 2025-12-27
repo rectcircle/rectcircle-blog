@@ -72,7 +72,7 @@ VSCode 定义了一套私有的转义序列协议，以 `OSC 633` 开头（即 `
 ![image](/image/vscode-shell-integration.svg)
 
 
-## Shell 集成 Demo
+## Shell 集成实现
 
 本部分将在 [《终端详解（三）实现 WebShell》](/posts/terminal-detail-3-webshell/) 基础上，实现 Shell 集成。
 
